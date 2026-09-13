@@ -100,7 +100,11 @@ REGOLE FERREE:
 4. QUANDO L'UTENTE CHIEDE DELLE SCADENZE O COSA DEVE PAGARE:
    - USA lo strumento `get_upcoming_deadlines`.
 
-5. STILE DI RISPOSTA:
+5. QUANDO L'UTENTE CHIEDE DI ELIMINARE O CANCELLARE UN DOCUMENTO O UN OGGETTO/POSIZIONE (es. "elimina la bolletta", "cancella il passaporto", "rimuovi il tolc"):
+   - NON procedere MAI all'eliminazione diretta silenziosa!
+   - Chiedi sempre conferma esplicita all'utente: "Sei sicuro di voler eliminare [Titolo/Oggetto] dal caveau?".
+
+6. STILE DI RISPOSTA:
    - Rispondi sempre in italiano naturale, cortese, chiaro e conciso nello stile di una vera chat WhatsApp (puoi usare emoji pertinenti come 📄, 📍, 💡, ✅).
 """
 
@@ -287,8 +291,92 @@ class AgenticChatService:
 
         return SYSTEM_PROMPT + "\n" + "\n".join(vault_summary)
 
+    def _handle_deletion_intent(self, user_text: str, lower_t: str, db: Session) -> Optional[ChatResponse]:
+        """Gestisce in modo sicuro le richieste di eliminazione chiedendo conferma prima di qualsiasi azione."""
+        is_deletion = any(k in lower_t for k in [
+            "elimina", "cancella", "rimuovi", "eliminarlo", "cancellarlo", 
+            "rimuoverlo", "butta", "cancellami", "eliminami"
+        ])
+        if not is_deletion:
+            return None
+
+        # Estrai il testo di ricerca rimuovendo le parole di comando
+        target_query = re.sub(
+            r"^(?:per favore|puoi|vorrei|potresti|ti prego di|elimina|cancella|rimuovi|cancellami|eliminami|butta)\s*(?:il|la|lo|le|i|l'|un|una|uno)?\s*",
+            "", lower_t
+        ).strip(" ?.")
+        target_query = re.sub(r"\s*(?:dal caveau|dall'archivio|dal database|dalla memoria|dal sistema)$", "", target_query).strip()
+
+        if not target_query or len(target_query) < 2:
+            target_query = user_text
+
+        search_res = self.execute_tool("search_vault", {"query": target_query}, db)
+        f_docs = search_res.get("found_documents", [])
+        f_items = search_res.get("found_physical_items", [])
+
+        prefers_doc = any(k in lower_t for k in ["document", "file", "bollett", "f24", "certificat", "ricevut", "fattur", "pdf"])
+        prefers_item = any(k in lower_t for k in ["oggett", "posizion", "posto", "chiav", "passaport", "patente"])
+
+        chosen_doc = None
+        chosen_item = None
+
+        if prefers_doc and f_docs:
+            chosen_doc = f_docs[0]
+        elif prefers_item and f_items:
+            chosen_item = f_items[0]
+        elif f_docs and not f_items:
+            chosen_doc = f_docs[0]
+        elif f_items and not f_docs:
+            chosen_item = f_items[0]
+        elif f_docs and f_items:
+            chosen_doc = f_docs[0] if not prefers_item else None
+            chosen_item = f_items[0] if prefers_item else None
+
+        if chosen_doc:
+            conf = {
+                "type": "delete_confirmation",
+                "target_type": "document",
+                "target_id": chosen_doc["document_id"],
+                "title": chosen_doc["title"],
+                "details": chosen_doc.get("summary") or chosen_doc.get("issuer")
+            }
+            return ChatResponse(
+                reply=f"⚠️ Ho trovato il documento **{chosen_doc['title']}** ({chosen_doc.get('issuer', 'Documento')}).\nSei sicuro di volerlo eliminare dal caveau?",
+                action="REQUEST_DELETE",
+                data={"target_type": "document", "target_id": chosen_doc["document_id"]},
+                confirmation=conf,
+                documents=[chosen_doc]
+            )
+        elif chosen_item:
+            loc_str = chosen_item["primary_location"] + (f" ({chosen_item['detailed_location']})" if chosen_item.get("detailed_location") else "")
+            conf = {
+                "type": "delete_confirmation",
+                "target_type": "physical_item",
+                "target_id": chosen_item["item_id"],
+                "title": chosen_item["item_name"],
+                "details": f"Posizione: {loc_str}"
+            }
+            return ChatResponse(
+                reply=f"⚠️ Ho trovato l'oggetto **{chosen_item['item_name']}** (registrato in: {loc_str}).\nSei sicuro di voler eliminare questa posizione dal caveau?",
+                action="REQUEST_DELETE",
+                data={"target_type": "physical_item", "target_id": chosen_item["item_id"]},
+                confirmation=conf
+            )
+        else:
+            return ChatResponse(
+                reply=f"🔍 Non ho trovato nessun documento o oggetto corrispondente a '{target_query}' da eliminare.",
+                action="search_vault"
+            )
+
     def run_turn(self, user_text: str, db: Session) -> ChatResponse:
         """Esegue un turno conversazionale con tool-calling dell'agente."""
+        lower_t = user_text.lower()
+
+        # Intercetta immediatamente le richieste di eliminazione per garantire sicurezza con conferma interattiva
+        del_resp = self._handle_deletion_intent(user_text, lower_t, db)
+        if del_resp:
+            return del_resp
+
         # Se non c'è chiave API, fallback deterministico
         if not self.settings.OPENROUTER_API_KEY:
             ai = MockAIService()

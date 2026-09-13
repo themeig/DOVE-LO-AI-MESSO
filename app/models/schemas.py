@@ -24,6 +24,7 @@ class ChatResponse(BaseModel):
     action: str = "REPLY"
     data: Optional[dict] = None
     documents: Optional[List[dict]] = None
+    confirmation: Optional[dict] = None
 
 class DocumentStatusUpdate(BaseModel):
     status: Literal["da_pagare", "quietanzato", "archiviato"]

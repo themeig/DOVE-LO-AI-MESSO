@@ -127,3 +127,27 @@ def update_document_status(
         "due_date": doc.due_date.isoformat() if doc.due_date else None,
         "status": doc.status
     }
+
+@router.delete("/{document_id}")
+def delete_document(document_id: int, db: Session = Depends(get_db)):
+    doc = db.query(Document).filter(Document.id == document_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento non trovato")
+
+    title = doc.title
+    # Try removing physical file
+    if doc.file_path:
+        try:
+            p = Path(doc.file_path)
+            if p.exists():
+                p.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    db.delete(doc)
+    db.commit()
+    return {
+        "success": True,
+        "message": f"Documento '{title}' eliminato con successo.",
+        "document_id": document_id
+    }

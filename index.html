@@ -525,7 +525,7 @@
       scrollBottom();
     }
 
-    function appendAssistantBubble(text, documents = null) {
+    function appendAssistantBubble(text, documents = null, confirmation = null) {
       const aiBubble = document.createElement('div');
       aiBubble.className = 'flex items-start max-w-[85%]';
       const formattedHtml = escapeHtml(text || '').replace(/\n/g, '<br>');
@@ -589,15 +589,105 @@
         `;
       }
 
+      let confHtml = '';
+      if (confirmation && confirmation.type === 'delete_confirmation') {
+        const confTitle = escapeHtml(confirmation.title || 'elemento');
+        const targetType = escapeHtml(confirmation.target_type || 'document');
+        const targetId = confirmation.target_id;
+        const details = escapeHtml(confirmation.details || '');
+        confHtml = `
+          <div id="conf-box-${targetType}-${targetId}" class="mt-3 bg-red-50/90 border border-red-200/90 rounded-xl p-3 shadow-2xs text-left">
+            <div class="flex items-center gap-2 text-red-800 font-bold text-xs mb-1">
+              <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+              <span>Conferma eliminazione</span>
+            </div>
+            <p class="text-xs text-slate-700 leading-snug">
+              Sei sicuro di voler eliminare definitivamente <strong>"${confTitle}"</strong>?
+              ${details ? `<br><span class="text-[11px] text-slate-500 italic">${details}</span>` : ''}
+            </p>
+            <div class="flex items-center gap-2 mt-2.5">
+              <button type="button" onclick="executeDelete('${targetType}', ${targetId}, this)" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-2xs transition active:scale-95 flex items-center gap-1.5">
+                <i class="fa-solid fa-trash-can text-[11px]"></i>
+                <span>Sì, elimina</span>
+              </button>
+              <button type="button" onclick="cancelDelete(this)" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition active:scale-95">
+                No, annulla
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
       aiBubble.innerHTML = `
         <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug max-w-full">
           <p>${formattedHtml}</p>
           ${docsHtml}
+          ${confHtml}
           <span class="block text-[10px] text-gray-400 text-right mt-1">${getTime()}</span>
         </div>
       `;
       chatFeed.appendChild(aiBubble);
       scrollBottom();
+    }
+
+    // --- Eliminazione Sicura: Documenti & Posizioni ---
+    async function executeDelete(targetType, targetId, btnEl) {
+      const confBox = btnEl ? btnEl.closest('[id^="conf-box-"]') : null;
+      if (confBox) {
+        confBox.innerHTML = `
+          <div class="flex items-center gap-2 text-slate-500 text-xs py-1">
+            <span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+            <span>Eliminazione in corso dal caveau...</span>
+          </div>
+        `;
+      }
+
+      try {
+        const url = targetType === 'physical_item' ? `/api/items/${targetId}` : `/api/documents/${targetId}`;
+        const res = await fetch(url, { method: 'DELETE' });
+        if (!res.ok) throw new Error("Errore durante l'eliminazione");
+        const data = await res.json();
+
+        if (confBox) {
+          confBox.className = 'mt-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3 shadow-2xs text-left';
+          confBox.innerHTML = `
+            <div class="flex items-center gap-2 text-emerald-800 text-xs font-bold">
+              <i class="fa-solid fa-circle-check text-emerald-600"></i>
+              <span>${escapeHtml(data.message || 'Eliminato con successo dal caveau.')}</span>
+            </div>
+          `;
+        }
+        await loadDashboard(currentFilter);
+      } catch (err) {
+        console.error("Errore executeDelete:", err);
+        if (confBox) {
+          confBox.innerHTML = `
+            <div class="text-xs text-red-600 font-medium">
+              ⚠️ Impossibile completare l'eliminazione: riprova più tardi.
+            </div>
+          `;
+        }
+      }
+    }
+
+    function cancelDelete(btnEl) {
+      const confBox = btnEl ? btnEl.closest('[id^="conf-box-"]') : null;
+      if (confBox) {
+        confBox.className = 'mt-3 bg-slate-100 border border-slate-200 rounded-xl p-2.5 shadow-2xs text-left';
+        confBox.innerHTML = `
+          <div class="flex items-center gap-1.5 text-slate-600 text-xs font-medium">
+            <i class="fa-solid fa-circle-info text-slate-400"></i>
+            <span>Operazione annullata. Nessuna modifica effettuata al caveau.</span>
+          </div>
+        `;
+      }
+    }
+
+    function confirmDashboardDelete(targetType, targetId, title) {
+      const typeLabel = targetType === 'physical_item' ? 'la posizione di questo oggetto' : 'questo documento';
+      if (confirm(`Sei sicuro di voler eliminare ${typeLabel} ("${title}") dal caveau?\nQuesta operazione è definitiva.`)) {
+        executeDelete(targetType, targetId, null);
+      }
     }
 
     // --- Invio Messaggio Live: POST /api/chat ---
@@ -622,7 +712,7 @@
         if (indicator) indicator.remove();
         if (!res.ok) throw new Error('Errore nella risposta del server');
         const data = await res.json();
-        appendAssistantBubble(data.reply, data.documents);
+        appendAssistantBubble(data.reply, data.documents, data.confirmation);
         loadDashboard(currentFilter);
       } catch (err) {
         if (indicator) indicator.remove();
@@ -893,11 +983,17 @@
 
         // Azioni
         let actionHtml = '<span class="text-slate-400 text-xs">-</span>';
+        const escapedTitle = escapeHtml(rec.title).replace(/'/g, "\\'");
+        const deleteBtn = `
+          <button onclick="confirmDashboardDelete('${rec.type}', ${rec.id}, '${escapedTitle}')" title="Elimina dal caveau" class="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition active:scale-95 text-xs">
+            <i class="fa-regular fa-trash-can"></i>
+          </button>
+        `;
+
         if (rec.type === 'document') {
           let previewBtn = '';
           if (rec.file_url) {
             const escapedUrl = escapeHtml(rec.file_url);
-            const escapedTitle = escapeHtml(rec.title).replace(/'/g, "\\'");
             const escapedType = escapeHtml(rec.file_type || 'application/pdf');
             previewBtn = `
               <button onclick="openMediaModal('${escapedUrl}', '${escapedTitle}', '${escapedType}')" title="Anteprima documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-lg transition active:scale-95 flex items-center gap-1">
@@ -911,9 +1007,9 @@
           } else if (rec.status === 'quietanzato') {
             payBtn = `<span class="text-emerald-600 text-xs font-medium"><i class="fa-solid fa-check mr-1"></i>Saldato</span>`;
           }
-          actionHtml = `<div class="flex items-center justify-end gap-2">${previewBtn} ${payBtn}</div>`;
+          actionHtml = `<div class="flex items-center justify-end gap-2">${previewBtn} ${payBtn} ${deleteBtn}</div>`;
         } else if (rec.type === 'physical_item') {
-          actionHtml = `<span class="text-slate-400 text-xs italic">Registrato</span>`;
+          actionHtml = `<div class="flex items-center justify-end gap-2"><span class="text-slate-400 text-xs italic mr-1">Registrato</span> ${deleteBtn}</div>`;
         }
 
         tr.innerHTML = `
