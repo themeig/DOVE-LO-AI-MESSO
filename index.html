@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Dove L'Ho Messo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --wa-teal: #075E54;
+      --wa-teal-light: #128C7E;
+      --wa-green: #25D366;
+      --wa-bg: #EFEAE2;
+      --wa-bubble-user: #E7FFDB;
+      --wa-bubble-ai: #FFFFFF;
+      --wa-ticks: #53bdeb;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    /* Sfondo originale stile WhatsApp */
+    .wa-wallpaper {
+      background-color: var(--wa-bg);
+      background-image: radial-gradient(#d6cec3 1.2px, transparent 1.2px);
+      background-size: 19px 19px;
+    }
+    /* Bolle autentiche stile WhatsApp */
+    .wa-bubble-in {
+      background-color: var(--wa-bubble-ai);
+      border-radius: 0 10px 10px 10px;
+      box-shadow: 0 1px 0.5px rgba(11,20,26,.13);
+    }
+    .wa-bubble-out {
+      background-color: var(--wa-bubble-user);
+      border-radius: 10px 0 10px 10px;
+      box-shadow: 0 1px 0.5px rgba(11,20,26,.13);
+    }
+    /* Scrollbar moderna per dashboard */
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #E2E8F0;
+      border-radius: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #CBD5E1;
+    }
+  </style>
+</head>
+<body class="h-screen flex flex-col bg-[#d1d7db] text-slate-800 select-none">
+
+  <!-- ================================================================= -->
+  <!-- 1. VISTA CHAT (100% STILE WHATSAPP)                               -->
+  <!-- ================================================================= -->
+  <div id="chatView" class="w-full h-full max-w-lg mx-auto flex flex-col bg-white shadow-2xl sm:border-x border-slate-300">
+    
+    <!-- TOP BAR AUTENTICA WHATSAPP -->
+    <header class="bg-[#075E54] text-white px-3.5 py-2.5 flex items-center justify-between shadow-sm shrink-0 z-20">
+      <div class="flex items-center space-x-2.5">
+        <!-- Avatar e Stato Online -->
+        <div class="relative">
+          <div class="w-10 h-10 rounded-full bg-[#128C7E] flex items-center justify-center text-white text-lg font-bold border border-white/20">
+            <i class="fa-solid fa-compass"></i>
+          </div>
+          <span class="absolute bottom-0 right-0 w-3 h-3 bg-[#25D366] border-2 border-[#075E54] rounded-full"></span>
+        </div>
+        <!-- Contatto & Info -->
+        <div>
+          <h1 class="font-semibold text-sm leading-tight">Dove L'Ho Messo</h1>
+          <p class="text-[11px] text-green-100 flex items-center gap-1 leading-none">
+            online
+          </p>
+        </div>
+      </div>
+
+      <!-- Azioni Header WhatsApp & Pulsante Dashboard -->
+      <div class="flex items-center space-x-2.5">
+        
+        <!-- PULSANTE APRI DASHBOARD -->
+        <button 
+          onclick="openDashboard()" 
+          class="bg-[#128C7E] hover:bg-[#0e7468] text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-xs transition flex items-center gap-1.5 active:scale-95 border border-white/20"
+        >
+          <i class="fa-solid fa-chart-simple text-[11px]"></i>
+          <span>Apri Dashboard</span>
+        </button>
+
+        <!-- Icona Cerca & Menu WhatsApp -->
+        <button onclick="alert('Cerca nella conversazione')" class="text-white/80 hover:text-white p-1">
+          <i class="fa-solid fa-magnifying-glass text-sm"></i>
+        </button>
+        <button onclick="alert('Impostazioni: backup locale, crittografia AES-256')" class="text-white/80 hover:text-white p-1">
+          <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- AREA MESSAGGI CON SFONDO BEIGE WHATSAPP -->
+    <main id="chatFeed" class="flex-1 wa-wallpaper p-3.5 overflow-y-auto space-y-3 custom-scroll">
+      
+      <!-- Pillola Data WhatsApp -->
+      <div class="flex justify-center my-1 select-none">
+        <span class="bg-[#e1f3fb] text-[#54656f] text-[11px] font-medium uppercase px-3 py-0.5 rounded-md shadow-2xs">
+          Oggi
+        </span>
+      </div>
+
+      <!-- Messaggio di benvenuto Assistente -->
+      <div class="flex items-start max-w-[85%]">
+        <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug">
+          <p>👋 Ciao! Sono <strong>Dove L'Ho Messo</strong>.</p>
+          <p class="mt-1 text-[13px] text-gray-700">
+            Puoi scrivermi dove hai riposto un oggetto, mandarmi la foto o il PDF di una bolletta (📎), oppure dettare a voce (🎤)!
+          </p>
+          <span class="block text-[10px] text-gray-400 text-right mt-1">10:00</span>
+        </div>
+      </div>
+
+      <!-- Esempio: Utente salva un oggetto -->
+      <div class="flex justify-end">
+        <div class="wa-bubble-out p-2.5 max-w-[85%] text-sm text-gray-800 leading-snug">
+          <p>Ho messo il passaporto e il libretto della macchina nel primo cassetto della scrivania in studio.</p>
+          <div class="flex justify-end items-center gap-1 mt-0.5">
+            <span class="text-[10px] text-gray-500">10:02</span>
+            <i class="fa-solid fa-check-double text-[11px] text-[#53bdeb]"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risposta AI WhatsApp -->
+      <div class="flex items-start max-w-[85%]">
+        <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug">
+          <p>✅ <strong>Memorizzato!</strong></p>
+          <p class="text-[13px] text-gray-700 mt-0.5">
+            📍 <strong>Passaporto e Libretto auto</strong>: Scrivania studio &rarr; <em>Primo cassetto</em>.
+          </p>
+          <p class="text-[11px] text-gray-500 mt-1 italic">
+            Quando ti serviranno, chiedimi: "Dov'è il passaporto?".
+          </p>
+          <span class="block text-[10px] text-gray-400 text-right mt-1">10:02</span>
+        </div>
+      </div>
+
+      <!-- Esempio: Documento caricato dall'utente -->
+      <div class="flex justify-end">
+        <div class="wa-bubble-out p-2 max-w-[85%] text-sm text-gray-800">
+          <div class="bg-[#d4f2c5] p-2 rounded-md flex items-center gap-2 mb-1">
+            <i class="fa-solid fa-file-invoice text-emerald-800 text-xl"></i>
+            <div class="text-xs truncate">
+              <p class="font-medium text-gray-900">bolletta_luce_enel.pdf</p>
+              <p class="text-[10px] text-gray-600">Documento acquisito • 1.4 MB</p>
+            </div>
+          </div>
+          <p class="text-[13px] px-0.5">Ti lascio la bolletta della luce appena arrivata</p>
+          <div class="flex justify-end items-center gap-1 mt-0.5">
+            <span class="text-[10px] text-gray-500">10:05</span>
+            <i class="fa-solid fa-check-double text-[11px] text-[#53bdeb]"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risposta AI per Documento -->
+      <div class="flex items-start max-w-[85%]">
+        <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug">
+          <p class="font-semibold text-[#075E54] text-xs">📄 Ho letto la bolletta:</p>
+          <div class="mt-1 space-y-0.5 text-[13px] text-gray-700">
+            <p>• <strong>Fornitore:</strong> Enel Energia</p>
+            <p>• <strong>Importo:</strong> <span class="font-bold text-red-600">64,20 €</span></p>
+            <p>• <strong>Scadenza:</strong> <strong>28 Ottobre 2026</strong></p>
+          </div>
+          <p class="text-[11px] text-emerald-700 font-medium mt-1.5">
+            🔔 Promemoria attivo: salvata anche nella tua Dashboard!
+          </p>
+          <span class="block text-[10px] text-gray-400 text-right mt-1">10:05</span>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- BARRA DI INPUT FEDELE WHATSAPP -->
+    <footer class="bg-[#F0F2F5] px-2 py-2 flex items-center space-x-1.5 shrink-0 select-none">
+      
+      <!-- Graffetta (Allega foto o PDF) -->
+      <button 
+        type="button" 
+        onclick="simulateAttachment()" 
+        title="Allega foto o documento" 
+        class="text-gray-500 hover:text-[#075E54] p-1.5 text-xl active:scale-95 transition"
+      >
+        <i class="fa-solid fa-paperclip"></i>
+      </button>
+
+      <!-- Input di Testo Arrotondato a Pillola -->
+      <form id="chatForm" onsubmit="handleSend(event)" class="flex-1 flex items-center bg-white rounded-full px-3.5 py-2 shadow-2xs border border-gray-200">
+        <button type="button" class="text-gray-400 hover:text-gray-600 mr-2 text-base">
+          <i class="fa-regular fa-face-smile"></i>
+        </button>
+        <input 
+          id="messageInput" 
+          type="text" 
+          placeholder="Scrivi un messaggio..." 
+          class="w-full text-sm outline-none bg-transparent placeholder-gray-400 text-gray-800"
+          autocomplete="off"
+        >
+        <button 
+          type="button" 
+          onclick="simulateCamera()" 
+          title="Fotocamera" 
+          class="text-gray-400 hover:text-[#075E54] ml-2 text-base"
+        >
+          <i class="fa-solid fa-camera"></i>
+        </button>
+      </form>
+
+      <!-- Microfono Vocale WhatsApp -->
+      <button 
+        id="micBtn" 
+        type="button" 
+        onclick="simulateVoice()" 
+        title="Registra vocale" 
+        class="bg-[#128C7E] hover:bg-[#075E54] text-white w-10 h-10 rounded-full flex items-center justify-center shadow-md active:scale-95 transition"
+      >
+        <i class="fa-solid fa-microphone text-base"></i>
+      </button>
+
+      <!-- Tasto Invio Verde Circolare WhatsApp -->
+      <button 
+        id="sendBtn" 
+        type="button" 
+        onclick="handleSend(event)" 
+        title="Invia" 
+        class="hidden bg-[#25D366] hover:bg-green-600 text-white w-10 h-10 rounded-full items-center justify-center shadow-md active:scale-95 transition"
+      >
+        <i class="fa-solid fa-paper-plane text-sm ml-0.5"></i>
+      </button>
+
+    </footer>
+
+  </div>
+
+
+  <!-- ================================================================= -->
+  <!-- 2. VISTA DASHBOARD (ULTRA-MODERNA SAAS / FINTECH STYLE)           -->
+  <!-- ================================================================= -->
+  <div id="dashboardView" class="hidden w-full h-full flex-col bg-[#F8FAFC] overflow-hidden">
+    
+    <!-- Top Bar Dashboard Ultra-Moderna -->
+    <header class="bg-white border-b border-slate-200/80 px-6 py-3.5 flex items-center justify-between shrink-0 shadow-xs select-none">
+      
+      <!-- Torna alla Chat e Titolo -->
+      <div class="flex items-center space-x-4">
+        <button 
+          onclick="closeDashboard()" 
+          class="group bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold px-3.5 py-2 rounded-xl transition flex items-center gap-2 active:scale-95"
+        >
+          <i class="fa-solid fa-arrow-left text-slate-500 group-hover:-translate-x-0.5 transition-transform"></i>
+          <span>Torna alla Chat</span>
+        </button>
+
+        <div class="h-5 w-px bg-slate-200"></div>
+
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="font-bold text-sm text-slate-900 tracking-tight">Executive Vault & Scadenzario</h2>
+            <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Sincronizzato
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-500">I dati inseriti via WhatsApp si aggiornano in tempo reale</p>
+        </div>
+      </div>
+
+      <!-- Azioni Rapide & Cifratura -->
+      <div class="flex items-center space-x-3">
+        <div class="hidden md:flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs text-slate-600">
+          <i class="fa-solid fa-lock text-emerald-600 text-[11px]"></i>
+          <span class="font-medium text-[11px]">AES-256 Crittografato</span>
+        </div>
+
+        <button 
+          onclick="alert('Trascina o seleziona un file PDF/F24 per l\'estrazione istantanea!')" 
+          class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xs transition flex items-center gap-2 active:scale-95"
+        >
+          <i class="fa-solid fa-plus text-xs"></i>
+          <span>Carica Documento</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Contenuto Dashboard Scrollabile -->
+    <main class="flex-1 p-6 overflow-y-auto space-y-6 max-w-6xl w-full mx-auto custom-scroll">
+      
+      <!-- BENTO-GRID KPI MODERNO -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        <!-- Card 1: Scadenze & Pagamenti -->
+        <div class="bg-white border border-slate-200/80 p-5 rounded-3xl shadow-xs relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Adempimenti del Mese</span>
+            <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+            </div>
+          </div>
+          <div class="mt-3">
+            <span class="text-2xl font-extrabold text-slate-900 tracking-tight">€ 2.514,20</span>
+            <div class="mt-2 flex items-center gap-2">
+              <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                ⚠️ 1 in scadenza tra 14 gg
+              </span>
+              <span class="text-[11px] text-slate-400">1 quietanzato</span>
+            </div>
+          </div>
+          <!-- Barra avanzamento moderna -->
+          <div class="mt-4 w-full bg-slate-100 h-1.5 rounded-full overflow-hidden flex">
+            <div class="bg-emerald-500 h-full w-[80%]" title="Quietanzato (80%)"></div>
+            <div class="bg-amber-500 h-full w-[20%]" title="In scadenza (20%)"></div>
+          </div>
+        </div>
+
+        <!-- Card 2: Documenti nel Vault -->
+        <div class="bg-white border border-slate-200/80 p-5 rounded-3xl shadow-xs relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Archivio Digitale Cifrato</span>
+            <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm">
+              <i class="fa-solid fa-folder-closed"></i>
+            </div>
+          </div>
+          <div class="mt-3">
+            <span class="text-2xl font-extrabold text-slate-900 tracking-tight">42 Documenti</span>
+            <div class="mt-2 flex items-center gap-2">
+              <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                100% Indicizzati
+              </span>
+              <span class="text-[11px] text-slate-400">Bollette, F24, Atti</span>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-4 flex items-center gap-1.5">
+            <i class="fa-solid fa-shield text-emerald-600"></i> Nessun dato esposto al cloud pubblico
+          </p>
+        </div>
+
+        <!-- Card 3: Posizioni Oggetti Fisici -->
+        <div class="bg-white border border-slate-200/80 p-5 rounded-3xl shadow-xs relative overflow-hidden">
+          <div class="flex justify-between items-start">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Posizioni Fisiche "Dove L'Ho Messo"</span>
+            <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-sm">
+              <i class="fa-solid fa-boxes-stacked"></i>
+            </div>
+          </div>
+          <div class="mt-3">
+            <span class="text-2xl font-extrabold text-slate-900 tracking-tight">18 Cespiti & Oggetti</span>
+            <div class="mt-2 flex items-center gap-2">
+              <span class="bg-purple-50 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                Ricerca Semantica Attiva
+              </span>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-4 truncate">
+            📍 Ultimo salvato: <em>Scrivania studio &rarr; 1° Cassetto</em>
+          </p>
+        </div>
+
+      </div>
+
+      <!-- SELETTORE A SCHEDE & TABELLA INTERATTIVA -->
+      <div class="bg-white border border-slate-200/80 rounded-3xl shadow-xs overflow-hidden flex flex-col">
+        
+        <!-- Header Tabella con Filtri Segmentati -->
+        <div class="px-6 py-4 border-b border-slate-200/80 flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-white">
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-bold text-slate-900">Registro Unificato</span>
+            <span class="text-xs text-slate-400">|</span>
+            <span class="text-xs text-slate-500">Documenti e posizioni sincronizzate</span>
+          </div>
+
+          <!-- Filtri Moderni Segmentati -->
+          <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium self-start sm:self-auto">
+            <button onclick="filterTable('all')" id="fAll" class="px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold">Tutti</button>
+            <button onclick="filterTable('deadlines')" id="fDeadlines" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900">Scadenze (2)</button>
+            <button onclick="filterTable('items')" id="fItems" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900">Oggetti (1)</button>
+          </div>
+        </div>
+
+        <!-- Tabella con Design Moderno -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-50/70 text-slate-500 border-b border-slate-200/80 text-[10px] uppercase font-bold tracking-wider">
+                <th class="py-3 px-6">Descrizione / Titolo</th>
+                <th class="py-3 px-4">Origine</th>
+                <th class="py-3 px-4 text-right">Importo</th>
+                <th class="py-3 px-4">Scadenza</th>
+                <th class="py-3 px-4">Stato / Coordinate</th>
+                <th class="py-3 px-6 text-right">Azioni</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-100 text-slate-700">
+              
+              <!-- Riga 1: Bolletta Enel -->
+              <tr class="hover:bg-slate-50/80 transition-colors">
+                <td class="py-4 px-6">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                      <i class="fa-solid fa-bolt text-xs"></i>
+                    </div>
+                    <div>
+                      <p class="font-bold text-slate-900">Bolletta Enel Luce (Ottobre)</p>
+                      <p class="text-[11px] text-slate-400">Consumo bimestre energia elettrica</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="py-4 px-4">
+                  <span class="bg-[#E7FFDB] text-[#075E54] border border-[#c2e7b0] text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                    📱 WhatsApp Foto
+                  </span>
+                </td>
+                <td class="py-4 px-4 text-right font-bold text-slate-900 text-sm">64,20 €</td>
+                <td class="py-4 px-4 font-medium text-amber-700">28 Ottobre 2026</td>
+                <td class="py-4 px-4">
+                  <span class="bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                    ● Da Saldare
+                  </span>
+                </td>
+                <td class="py-4 px-6 text-right space-x-2">
+                  <button onclick="alert('Segnato come saldato con successo!')" class="text-emerald-700 hover:text-emerald-800 font-semibold underline text-xs">Segna Pagato</button>
+                  <button onclick="alert('Apertura PDF scansione')" class="text-slate-400 hover:text-slate-700 text-xs"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
+                </td>
+              </tr>
+
+              <!-- Riga 2: Modello F24 -->
+              <tr class="hover:bg-slate-50/80 transition-colors">
+                <td class="py-4 px-6">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                      <i class="fa-solid fa-file-invoice-dollar text-xs"></i>
+                    </div>
+                    <div>
+                      <p class="font-bold text-slate-900">Modello F24 Tributi</p>
+                      <p class="text-[11px] text-slate-400">Versamento IVA 3° Trimestre</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="py-4 px-4">
+                  <span class="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                    💻 Caricato da PC
+                  </span>
+                </td>
+                <td class="py-4 px-4 text-right font-bold text-slate-900 text-sm">2.450,00 €</td>
+                <td class="py-4 px-4 text-slate-400">Quietanza 12/09</td>
+                <td class="py-4 px-4">
+                  <span class="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                    ● Quietanzato
+                  </span>
+                </td>
+                <td class="py-4 px-6 text-right">
+                  <button onclick="alert('Download quietanza PDF')" class="text-slate-700 hover:text-slate-900 font-semibold underline text-xs">Vedi Ricevuta</button>
+                </td>
+              </tr>
+
+              <!-- Riga 3: Oggetto Passaporto & Libretto -->
+              <tr class="hover:bg-slate-50/80 transition-colors">
+                <td class="py-4 px-6">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                      <i class="fa-solid fa-key text-xs"></i>
+                    </div>
+                    <div>
+                      <p class="font-bold text-slate-900">Passaporto & Libretto Auto</p>
+                      <p class="text-[11px] text-slate-400">Documenti personali di viaggio</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="py-4 px-4">
+                  <span class="bg-[#E7FFDB] text-[#075E54] border border-[#c2e7b0] text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                    📱 WhatsApp Testo
+                  </span>
+                </td>
+                <td class="py-4 px-4 text-right text-slate-300">-</td>
+                <td class="py-4 px-4 text-slate-400">Scadenza 2030</td>
+                <td class="py-4 px-4">
+                  <span class="text-slate-700 font-medium">📍 Scrivania &rarr; <em>Primo cassetto</em></span>
+                </td>
+                <td class="py-4 px-6 text-right">
+                  <button onclick="alert('Modifica coordinate posizione')" class="text-slate-500 hover:text-slate-800 font-semibold underline text-xs">Modifica</button>
+                </td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Footer Tabella -->
+        <div class="px-6 py-3 bg-slate-50/60 border-t border-slate-200/80 flex justify-between items-center text-xs text-slate-500">
+          <span>Mostrati 3 adempimenti sincronizzati</span>
+          <button onclick="alert('Esportazione calendario e file Excel!')" class="text-slate-700 hover:text-slate-900 font-semibold flex items-center gap-1.5">
+            <i class="fa-solid fa-file-arrow-down text-slate-400"></i> Esporta Report CSV
+          </button>
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- JAVASCRIPT: Gestione Transizione e Chat -->
+  <script>
+    const chatView = document.getElementById('chatView');
+    const dashboardView = document.getElementById('dashboardView');
+    const input = document.getElementById('messageInput');
+    const micBtn = document.getElementById('micBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const chatFeed = document.getElementById('chatFeed');
+
+    // Apertura e Chiusura Dashboard
+    function openDashboard() {
+      chatView.classList.add('hidden');
+      dashboardView.classList.remove('hidden');
+      dashboardView.classList.add('flex');
+    }
+
+    function closeDashboard() {
+      dashboardView.classList.add('hidden');
+      dashboardView.classList.remove('flex');
+      chatView.classList.remove('hidden');
+    }
+
+    // Toggle Tasto Invio / Microfono WhatsApp
+    input.addEventListener('input', () => {
+      if (input.value.trim().length > 0) {
+        micBtn.classList.add('hidden');
+        sendBtn.classList.remove('hidden');
+        sendBtn.classList.add('flex');
+      } else {
+        micBtn.classList.remove('hidden');
+        sendBtn.classList.add('hidden');
+        sendBtn.classList.remove('flex');
+      }
+    });
+
+    function scrollBottom() {
+      chatFeed.scrollTop = chatFeed.scrollHeight;
+    }
+
+    function getTime() {
+      const d = new Date();
+      return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+    }
+
+    function handleSend(e) {
+      if (e) e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+
+      // Crea bolla utente autentica WhatsApp
+      const userBubble = document.createElement('div');
+      userBubble.className = 'flex justify-end';
+      userBubble.innerHTML = `
+        <div class="wa-bubble-out p-2.5 max-w-[85%] text-sm text-gray-800 leading-snug">
+          <p>${escapeHtml(text)}</p>
+          <div class="flex justify-end items-center gap-1 mt-0.5">
+            <span class="text-[10px] text-gray-500">${getTime()}</span>
+            <i class="fa-solid fa-check-double text-[11px] text-[#53bdeb]"></i>
+          </div>
+        </div>
+      `;
+      chatFeed.appendChild(userBubble);
+      input.value = '';
+      input.dispatchEvent(new Event('input'));
+      scrollBottom();
+
+      setTimeout(() => {
+        aiReply(text);
+      }, 400);
+    }
+
+    function aiReply(query) {
+      const q = query.toLowerCase();
+      let replyHtml = '';
+
+      if (q.includes('dove') || q.includes('passaporto') || q.includes('chiav') || q.includes('libretto')) {
+        replyHtml = `
+          <p>📍 Il <strong>passaporto</strong> e il <strong>libretto auto</strong> si trovano nella <strong>scrivania in studio</strong>, nel <em>primo cassetto</em>!</p>
+        `;
+      } else if (q.includes('bollett') || q.includes('scadenz') || q.includes('pagare') || q.includes('luce') || q.includes('enel')) {
+        replyHtml = `
+          <p>📅 Hai in scadenza la bolletta di <strong>Enel Energia da 64,20 €</strong> entro il <strong>28 Ottobre</strong>.</p>
+        `;
+      } else {
+        replyHtml = `
+          <p>✅ Ricevuto! Ho salvato: <em>"${escapeHtml(query)}"</em>. Lo trovi sia qui che nella Dashboard.</p>
+        `;
+      }
+
+      const aiBubble = document.createElement('div');
+      aiBubble.className = 'flex items-start max-w-[85%]';
+      aiBubble.innerHTML = `
+        <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug">
+          ${replyHtml}
+          <span class="block text-[10px] text-gray-400 text-right mt-1">${getTime()}</span>
+        </div>
+      `;
+      chatFeed.appendChild(aiBubble);
+      scrollBottom();
+    }
+
+    function simulateAttachment() {
+      alert("Simulazione Allegato: puoi selezionare una foto o un PDF!");
+      input.value = "Ho caricato la ricevuta del bonifico da 120 euro";
+      handleSend();
+    }
+
+    function simulateCamera() {
+      alert("Simulatore Fotocamera: scatto rapido di una bolletta sul tavolo.");
+      input.value = "Ho fotografato la bolletta del gas di 55 euro";
+      handleSend();
+    }
+
+    function simulateVoice() {
+      const v = prompt("Simula Vocale:\nCosa dici al microfono?", "Ho messo le chiavi di scorta nella cassaforte in corridoio");
+      if (v) {
+        input.value = v;
+        handleSend();
+      }
+    }
+
+    function filterTable(filter) {
+      const btnA = document.getElementById('fAll');
+      const btnD = document.getElementById('fDeadlines');
+      const btnI = document.getElementById('fItems');
+      [btnA, btnD, btnI].forEach(b => b.className = 'px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900');
+
+      if (filter === 'all') btnA.className = 'px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold';
+      if (filter === 'deadlines') btnD.className = 'px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold';
+      if (filter === 'items') btnI.className = 'px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold';
+      
+      alert("Filtro applicato: " + filter);
+    }
+
+    function escapeHtml(string) {
+      return String(string).replace(/[&<>"']/g, function (s) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s];
+      });
+    }
+  </script>
+</body>
+</html>
