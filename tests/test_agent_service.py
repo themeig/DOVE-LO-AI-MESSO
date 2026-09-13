@@ -134,3 +134,8 @@ def test_filter_relevant_documents():
     filtered3 = filter_relevant_documents(docs, text3, "mostrami le bollette")
     assert len(filtered3) == 2
     assert {d["title"] for d in filtered3} == {"Bolletta ENI gas e luce", "Bolletta MM Servizio Idrico"}
+
+    # Scenario 4: Richiesta generica di elenco senza citazioni dirette (nessun widget casuale forzato)
+    text4 = "Ecco l'elenco dei documenti salvati nel caveau."
+    filtered4 = filter_relevant_documents(docs, text4, "elencami i documenti che hai")
+    assert filtered4 is None

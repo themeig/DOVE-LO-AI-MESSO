@@ -140,8 +140,10 @@ REGOLE FERREE:
    - Nel tuo messaggio di testo chiedi sempre conferma con cortesia: "⚠️ Sei sicuro di voler eliminare [Titolo/Oggetto] dal caveau?".
    - Se ci sono più elementi corrispondenti (es. più bollette), puoi elencare cosa hai trovato e predisporre l'eliminazione per guidare l'utente.
 
-6. STILE DI RISPOSTA:
-   - Rispondi sempre in italiano naturale, cortese, chiaro e conciso nello stile di una vera chat WhatsApp (puoi usare emoji pertinenti come 📄, 📍, 💡, ✅).
+6. STILE DI RISPOSTA E COMUNICAZIONE (FONDAMENTALE):
+   - Rispondi sempre in italiano naturale, cortese, chiaro e conciso nello stile autentico di una chat WhatsApp (puoi usare emoji pertinenti come 📄, 📍, 💡, ✅).
+   - NON INCLUDERE MAI identificativi tecnici di database (come "ID", "ID 83", "chiave primaria" o etichette meccaniche come "Sintesi:"). L'utente è una persona reale che legge su WhatsApp e desidera informazioni umane, pulite ed eleganti (es. "- 📄 **Bolletta Enel Energia** (64,20 € - scadenza 28/10/2026)").
+   - Se l'utente ti chiede "elencami i documenti che hai", "quali documenti ci sono?", "cosa hai nel caveau?", elenca i documenti archiviati con un formato leggibile a punti elenco evidenziando il titolo in grassetto e le informazioni essenziali (importo, scadenza, emittente), senza mai mostrare ID numerici o campi tecnici interni!
 """
 
 def strip_tool_tags(text: str) -> str:
@@ -161,8 +163,6 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
     """Filtra i widget dei documenti inviati alla UI in modo che corrispondano solo a quelli pertinenti o citati."""
     if not docs:
         return None
-    if len(docs) == 1:
-        return docs
 
     asst_lower = assistant_text.lower() if assistant_text else ""
     user_lower = user_text.lower() if user_text else ""
@@ -178,21 +178,32 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
         if title_match or issuer_match:
             mentioned.append(d)
 
-    if 0 < len(mentioned) < len(docs):
+    if mentioned:
         return mentioned
 
-    # 2. Se l'utente ha chiesto un singolo elemento ("il documento", "la bolletta", ecc.), restituisci solo il top match
+    # 2. Se l'utente ha chiesto un elenco generico, non forzare l'allegato di un widget singolo arbitrario
+    is_list_request = any(
+        re.search(rf"\b{w}\b", user_lower)
+        for w in ["elenco", "elencami", "lista", "tutti", "tutte", "quali", "cosa hai", "cosa c'è", "archivio"]
+    )
+    if is_list_request:
+        return None
+
+    # 3. Se l'utente ha chiesto un singolo elemento ("il documento", "la bolletta", ecc.), restituisci solo il top match
     is_singular_request = any(
         re.search(rf"\b{w}\b", user_lower)
         for w in ["il", "lo", "la", "l'", "un", "uno", "una", "un'"]
     ) and not any(
         re.search(rf"\b{w}\b", user_lower)
-        for w in ["i", "gli", "le", "tutti", "tutte", "elenco", "lista", "quali"]
+        for w in ["i", "gli", "le", "tutti", "tutte", "elenco", "elencami", "lista", "quali"]
     )
     if is_singular_request and len(docs) > 0:
         return [docs[0]]
 
-    return docs[:3]
+    if len(docs) == 1:
+        return docs
+
+    return None
 
 
 class AgenticChatService:
@@ -335,11 +346,12 @@ class AgenticChatService:
 
         vault_summary = ["\n[STATO ATTUALE E MEMORIA DEL CAVEAU]:"]
         if docs:
-            vault_summary.append("Ultimi Documenti/File archiviati:")
+            vault_summary.append("Ultimi Documenti/File archiviati nel Caveau:")
             for d in docs:
-                amt = f" ({d.amount:.2f} €)" if d.amount else ""
-                due = f" scadenza {d.due_date}" if d.due_date else ""
-                vault_summary.append(f"- ID {d.id}: '{d.title}' (emittente: {d.issuer or 'N/D'}, tipo: {d.doc_type}){amt}{due}\n  Sintesi: {d.summary[:250]}")
+                amt = f", importo: {d.amount:.2f} €" if d.amount else ""
+                due = f", scadenza: {d.due_date}" if d.due_date else ""
+                issuer_info = f", emittente: {d.issuer}" if d.issuer else ""
+                vault_summary.append(f"- '{d.title}' (categoria: {d.doc_type}{issuer_info}{amt}{due}) — {d.summary[:200]}")
         else:
             vault_summary.append("Nessun documento registrato finora.")
 
@@ -394,6 +406,7 @@ class AgenticChatService:
             r"^(?:documenti\s+delle|documenti\s+dei|documenti\s+di|documenti\s+del|documenti|documento\s+delle|documento\s+del|documento\s+di|documento|file\s+delle|file\s+di|file\s+del|file)\s*",
             "", target_query
         ).strip(" ?.")
+        target_query = re.sub(r"\s*(?:per favore|per cortesia|grazie|per piacere)$", "", target_query).strip()
         target_query = re.sub(r"\s*(?:dal caveau|dall'archivio|dal database|dalla memoria|dal sistema)$", "", target_query).strip()
 
         if not target_query or len(target_query) < 2:
@@ -671,11 +684,12 @@ class AgenticChatService:
 
                     fallback_docs = None
                     s_res = None
-                    if is_doc_intent:
+                    is_list_query = any(k in lower_t for k in ["elenc", "lista", "tutti", "tutte", "quali", "cosa c'è", "cosa hai", "tutto il", "archivio"])
+                    if is_doc_intent and not is_list_query:
                         s_res = self.execute_tool("search_vault", {"query": user_text}, db=db, thread_id=thread_id)
                         f_docs = s_res.get("found_documents", [])
                         if f_docs:
-                            fallback_docs = filter_relevant_documents(f_docs, direct_reply, user_text) or [f_docs[0]]
+                            fallback_docs = filter_relevant_documents(f_docs, direct_reply, user_text)
 
                     return ChatResponse(
                         reply=direct_reply,
@@ -686,12 +700,42 @@ class AgenticChatService:
 
         except Exception as e:
             logger.error(f"Errore Agentic loop: {e}")
-            return ChatResponse(
-                reply="Mi dispiace, si è verificato un errore di connessione con il motore AI. Riprova tra qualche istante!",
-                action="REPLY"
-            )
+            return self._fallback_deterministic_response(user_text, lower_t, db, thread_id)
+
+        # Se la chiamata non ha restituito 200 o non è riuscita
+        return self._fallback_deterministic_response(user_text, lower_t, db, thread_id)
+
+    def _fallback_deterministic_response(self, user_text: str, lower_t: str, db: Session, thread_id: str) -> ChatResponse:
+        """Fallback locale robusto per memorizzazione, ricerca e scadenze in caso di rate-limit API o disconnessione."""
+        is_store = any(k in lower_t for k in ["messo", "riposto", "salvato", "lasciato", "conservato"]) and not any(k in lower_t for k in ["dov'è", "dov'e", "dove"])
+        if is_store:
+            m = re.search(r"(?:messo|riposto|salvato|lasciato|conservato)\s+(?:il\s+|la\s+|le\s+|i\s+|l\')?(.+?)\s+(?:nel|nella|in|su|sul|sotto|a)\s+(.+)", lower_t)
+            item = m.group(1).strip() if m else "Oggetto"
+            loc = m.group(2).strip() if m else "posto specificato"
+            db_res = self.execute_tool("store_physical_item", {"item_name": item, "primary_location": loc}, db, thread_id=thread_id)
+            return ChatResponse(reply=f"✅ Memorizzato! Ho salvato la posizione di '{item}' in: {loc}.", action="store_physical_item", data=db_res)
+
+        if any(k in lower_t for k in ["dov'è", "dov'e", "dove ho", "dove sono", "trovami", "cerca"]):
+            search_q = re.sub(r"^(?:dov'è|dov'e|dove ho messo|dove sono|dove|cerca|trovami)\s*(?:il|la|lo|le|i|l'|un|una|uno)?\s*", "", lower_t).strip(" ?.")
+            s_res = self.execute_tool("search_vault", {"query": search_q or user_text}, db, thread_id=thread_id)
+            f_docs = s_res.get("found_documents", [])
+            f_items = s_res.get("found_physical_items", [])
+            if f_items:
+                it = f_items[0]
+                loc = it['primary_location'] + (f" ({it['detailed_location']})" if it.get('detailed_location') else "")
+                return ChatResponse(reply=f"📍 Il tuo {it['item_name']} si trova in: {loc}.", action="search_vault", data=s_res)
+            if f_docs:
+                d = f_docs[0]
+                return ChatResponse(reply=f"📄 Ho trovato: **{d['title']}**\n💡 {d['summary']}", action="search_vault", data=s_res, documents=[d])
+
+        if any(k in lower_t for k in ["scadenz", "bollett", "da pagare", "f24"]):
+            t_out = self.execute_tool("get_upcoming_deadlines", {}, db, thread_id=thread_id)
+            docs = t_out.get("upcoming_documents", [])
+            if docs:
+                lines = [f"- 📄 **{d['title']}** — {d.get('amount','?')} € scad. {d.get('due_date','?')}" for d in docs[:5]]
+                return ChatResponse(reply="📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines), action="get_upcoming_deadlines", data=t_out, documents=docs)
 
         return ChatResponse(
-            reply="Non sono riuscito a elaborare la richiesta. Puoi chiedermi dove si trova un oggetto, cercare un documento o verificare le scadenze!",
+            reply="Non sono riuscito a elaborare la richiesta con il motore AI. Puoi chiedermi dove si trova un oggetto, cercare un documento o verificare le scadenze!",
             action="REPLY"
         )
