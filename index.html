@@ -56,6 +56,9 @@
 </head>
 <body class="h-screen flex flex-col bg-[#d1d7db] text-slate-800 select-none">
 
+  <!-- Invisible file input for real uploads -->
+  <input type="file" id="realFileInput" accept="image/*,application/pdf" style="display:none">
+
   <!-- ================================================================= -->
   <!-- 1. VISTA CHAT (100% STILE WHATSAPP)                               -->
   <!-- ================================================================= -->
@@ -123,65 +126,6 @@
         </div>
       </div>
 
-      <!-- Esempio: Utente salva un oggetto -->
-      <div class="flex justify-end">
-        <div class="wa-bubble-out p-2.5 max-w-[85%] text-sm text-gray-800 leading-snug">
-          <p>Ho messo il passaporto e il libretto della macchina nel primo cassetto della scrivania in studio.</p>
-          <div class="flex justify-end items-center gap-1 mt-0.5">
-            <span class="text-[10px] text-gray-500">10:02</span>
-            <i class="fa-solid fa-check-double text-[11px] text-[#53bdeb]"></i>
-          </div>
-        </div>
-      </div>
-
-      <!-- Risposta AI WhatsApp -->
-      <div class="flex items-start max-w-[85%]">
-        <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug">
-          <p>✅ <strong>Memorizzato!</strong></p>
-          <p class="text-[13px] text-gray-700 mt-0.5">
-            📍 <strong>Passaporto e Libretto auto</strong>: Scrivania studio &rarr; <em>Primo cassetto</em>.
-          </p>
-          <p class="text-[11px] text-gray-500 mt-1 italic">
-            Quando ti serviranno, chiedimi: "Dov'è il passaporto?".
-          </p>
-          <span class="block text-[10px] text-gray-400 text-right mt-1">10:02</span>
-        </div>
-      </div>
-
-      <!-- Esempio: Documento caricato dall'utente -->
-      <div class="flex justify-end">
-        <div class="wa-bubble-out p-2 max-w-[85%] text-sm text-gray-800">
-          <div class="bg-[#d4f2c5] p-2 rounded-md flex items-center gap-2 mb-1">
-            <i class="fa-solid fa-file-invoice text-emerald-800 text-xl"></i>
-            <div class="text-xs truncate">
-              <p class="font-medium text-gray-900">bolletta_luce_enel.pdf</p>
-              <p class="text-[10px] text-gray-600">Documento acquisito • 1.4 MB</p>
-            </div>
-          </div>
-          <p class="text-[13px] px-0.5">Ti lascio la bolletta della luce appena arrivata</p>
-          <div class="flex justify-end items-center gap-1 mt-0.5">
-            <span class="text-[10px] text-gray-500">10:05</span>
-            <i class="fa-solid fa-check-double text-[11px] text-[#53bdeb]"></i>
-          </div>
-        </div>
-      </div>
-
-      <!-- Risposta AI per Documento -->
-      <div class="flex items-start max-w-[85%]">
-        <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug">
-          <p class="font-semibold text-[#075E54] text-xs">📄 Ho letto la bolletta:</p>
-          <div class="mt-1 space-y-0.5 text-[13px] text-gray-700">
-            <p>• <strong>Fornitore:</strong> Enel Energia</p>
-            <p>• <strong>Importo:</strong> <span class="font-bold text-red-600">64,20 €</span></p>
-            <p>• <strong>Scadenza:</strong> <strong>28 Ottobre 2026</strong></p>
-          </div>
-          <p class="text-[11px] text-emerald-700 font-medium mt-1.5">
-            🔔 Promemoria attivo: salvata anche nella tua Dashboard!
-          </p>
-          <span class="block text-[10px] text-gray-400 text-right mt-1">10:05</span>
-        </div>
-      </div>
-
     </main>
 
     <!-- BARRA DI INPUT FEDELE WHATSAPP -->
@@ -190,7 +134,7 @@
       <!-- Graffetta (Allega foto o PDF) -->
       <button 
         type="button" 
-        onclick="simulateAttachment()" 
+        onclick="triggerFileInput()" 
         title="Allega foto o documento" 
         class="text-gray-500 hover:text-[#075E54] p-1.5 text-xl active:scale-95 transition"
       >
@@ -199,7 +143,7 @@
 
       <!-- Input di Testo Arrotondato a Pillola -->
       <form id="chatForm" onsubmit="handleSend(event)" class="flex-1 flex items-center bg-white rounded-full px-3.5 py-2 shadow-2xs border border-gray-200">
-        <button type="button" class="text-gray-400 hover:text-gray-600 mr-2 text-base">
+        <button type="button" class="text-gray-400 hover:text-gray-600 mr-2 text-base" title="Emoji">
           <i class="fa-regular fa-face-smile"></i>
         </button>
         <input 
@@ -211,7 +155,7 @@
         >
         <button 
           type="button" 
-          onclick="simulateCamera()" 
+          onclick="triggerFileInput()" 
           title="Fotocamera" 
           class="text-gray-400 hover:text-[#075E54] ml-2 text-base"
         >
@@ -223,7 +167,7 @@
       <button 
         id="micBtn" 
         type="button" 
-        onclick="simulateVoice()" 
+        onclick="handleVoice()" 
         title="Registra vocale" 
         class="bg-[#128C7E] hover:bg-[#075E54] text-white w-10 h-10 rounded-full flex items-center justify-center shadow-md active:scale-95 transition"
       >
@@ -285,7 +229,7 @@
         </div>
 
         <button 
-          onclick="alert('Trascina o seleziona un file PDF/F24 per l\'estrazione istantanea!')" 
+          onclick="triggerFileInput()" 
           class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-xs transition flex items-center gap-2 active:scale-95"
         >
           <i class="fa-solid fa-plus text-xs"></i>
@@ -309,18 +253,17 @@
             </div>
           </div>
           <div class="mt-3">
-            <span class="text-2xl font-extrabold text-slate-900 tracking-tight">€ 2.514,20</span>
+            <span id="kpiUpcomingAmount" class="text-2xl font-extrabold text-slate-900 tracking-tight">€ 0,00</span>
             <div class="mt-2 flex items-center gap-2">
-              <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                ⚠️ 1 in scadenza tra 14 gg
+              <span id="kpiUpcomingBadge" class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                ✅ Nessuna scadenza
               </span>
-              <span class="text-[11px] text-slate-400">1 quietanzato</span>
+              <span class="text-[11px] text-slate-400">Sincronizzato</span>
             </div>
           </div>
           <!-- Barra avanzamento moderna -->
           <div class="mt-4 w-full bg-slate-100 h-1.5 rounded-full overflow-hidden flex">
-            <div class="bg-emerald-500 h-full w-[80%]" title="Quietanzato (80%)"></div>
-            <div class="bg-amber-500 h-full w-[20%]" title="In scadenza (20%)"></div>
+            <div id="kpiProgressBar" class="bg-emerald-500 h-full w-full" title="Stato pagamenti"></div>
           </div>
         </div>
 
@@ -333,12 +276,12 @@
             </div>
           </div>
           <div class="mt-3">
-            <span class="text-2xl font-extrabold text-slate-900 tracking-tight">42 Documenti</span>
+            <span id="kpiDocsCount" class="text-2xl font-extrabold text-slate-900 tracking-tight">0 Documenti</span>
             <div class="mt-2 flex items-center gap-2">
               <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
                 100% Indicizzati
               </span>
-              <span class="text-[11px] text-slate-400">Bollette, F24, Atti</span>
+              <span class="text-[11px] text-slate-400">Bollette, F24, Ricevute</span>
             </div>
           </div>
           <p class="text-[11px] text-slate-400 mt-4 flex items-center gap-1.5">
@@ -355,7 +298,7 @@
             </div>
           </div>
           <div class="mt-3">
-            <span class="text-2xl font-extrabold text-slate-900 tracking-tight">18 Cespiti & Oggetti</span>
+            <span id="kpiItemsCount" class="text-2xl font-extrabold text-slate-900 tracking-tight">0 Cespiti & Oggetti</span>
             <div class="mt-2 flex items-center gap-2">
               <span class="bg-purple-50 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
                 Ricerca Semantica Attiva
@@ -363,7 +306,7 @@
             </div>
           </div>
           <p class="text-[11px] text-slate-400 mt-4 truncate">
-            📍 Ultimo salvato: <em>Scrivania studio &rarr; 1° Cassetto</em>
+            📍 Posizioni memorizzate con AI
           </p>
         </div>
 
@@ -383,8 +326,8 @@
           <!-- Filtri Moderni Segmentati -->
           <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium self-start sm:self-auto">
             <button onclick="filterTable('all')" id="fAll" class="px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold">Tutti</button>
-            <button onclick="filterTable('deadlines')" id="fDeadlines" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900">Scadenze (2)</button>
-            <button onclick="filterTable('items')" id="fItems" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900">Oggetti (1)</button>
+            <button onclick="filterTable('deadlines')" id="fDeadlines" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900">Scadenze</button>
+            <button onclick="filterTable('items')" id="fItems" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900">Oggetti</button>
           </div>
         </div>
 
@@ -402,104 +345,15 @@
               </tr>
             </thead>
             <tbody id="tableBody" class="divide-y divide-slate-100 text-slate-700">
-              
-              <!-- Riga 1: Bolletta Enel -->
-              <tr class="hover:bg-slate-50/80 transition-colors">
-                <td class="py-4 px-6">
-                  <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                      <i class="fa-solid fa-bolt text-xs"></i>
-                    </div>
-                    <div>
-                      <p class="font-bold text-slate-900">Bolletta Enel Luce (Ottobre)</p>
-                      <p class="text-[11px] text-slate-400">Consumo bimestre energia elettrica</p>
-                    </div>
-                  </div>
-                </td>
-                <td class="py-4 px-4">
-                  <span class="bg-[#E7FFDB] text-[#075E54] border border-[#c2e7b0] text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                    📱 WhatsApp Foto
-                  </span>
-                </td>
-                <td class="py-4 px-4 text-right font-bold text-slate-900 text-sm">64,20 €</td>
-                <td class="py-4 px-4 font-medium text-amber-700">28 Ottobre 2026</td>
-                <td class="py-4 px-4">
-                  <span class="bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                    ● Da Saldare
-                  </span>
-                </td>
-                <td class="py-4 px-6 text-right space-x-2">
-                  <button onclick="alert('Segnato come saldato con successo!')" class="text-emerald-700 hover:text-emerald-800 font-semibold underline text-xs">Segna Pagato</button>
-                  <button onclick="alert('Apertura PDF scansione')" class="text-slate-400 hover:text-slate-700 text-xs"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
-                </td>
-              </tr>
-
-              <!-- Riga 2: Modello F24 -->
-              <tr class="hover:bg-slate-50/80 transition-colors">
-                <td class="py-4 px-6">
-                  <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                      <i class="fa-solid fa-file-invoice-dollar text-xs"></i>
-                    </div>
-                    <div>
-                      <p class="font-bold text-slate-900">Modello F24 Tributi</p>
-                      <p class="text-[11px] text-slate-400">Versamento IVA 3° Trimestre</p>
-                    </div>
-                  </div>
-                </td>
-                <td class="py-4 px-4">
-                  <span class="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                    💻 Caricato da PC
-                  </span>
-                </td>
-                <td class="py-4 px-4 text-right font-bold text-slate-900 text-sm">2.450,00 €</td>
-                <td class="py-4 px-4 text-slate-400">Quietanza 12/09</td>
-                <td class="py-4 px-4">
-                  <span class="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                    ● Quietanzato
-                  </span>
-                </td>
-                <td class="py-4 px-6 text-right">
-                  <button onclick="alert('Download quietanza PDF')" class="text-slate-700 hover:text-slate-900 font-semibold underline text-xs">Vedi Ricevuta</button>
-                </td>
-              </tr>
-
-              <!-- Riga 3: Oggetto Passaporto & Libretto -->
-              <tr class="hover:bg-slate-50/80 transition-colors">
-                <td class="py-4 px-6">
-                  <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                      <i class="fa-solid fa-key text-xs"></i>
-                    </div>
-                    <div>
-                      <p class="font-bold text-slate-900">Passaporto & Libretto Auto</p>
-                      <p class="text-[11px] text-slate-400">Documenti personali di viaggio</p>
-                    </div>
-                  </div>
-                </td>
-                <td class="py-4 px-4">
-                  <span class="bg-[#E7FFDB] text-[#075E54] border border-[#c2e7b0] text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                    📱 WhatsApp Testo
-                  </span>
-                </td>
-                <td class="py-4 px-4 text-right text-slate-300">-</td>
-                <td class="py-4 px-4 text-slate-400">Scadenza 2030</td>
-                <td class="py-4 px-4">
-                  <span class="text-slate-700 font-medium">📍 Scrivania &rarr; <em>Primo cassetto</em></span>
-                </td>
-                <td class="py-4 px-6 text-right">
-                  <button onclick="alert('Modifica coordinate posizione')" class="text-slate-500 hover:text-slate-800 font-semibold underline text-xs">Modifica</button>
-                </td>
-              </tr>
-
+              <!-- Dynamic rows loaded via loadDashboard() -->
             </tbody>
           </table>
         </div>
 
         <!-- Footer Tabella -->
         <div class="px-6 py-3 bg-slate-50/60 border-t border-slate-200/80 flex justify-between items-center text-xs text-slate-500">
-          <span>Mostrati 3 adempimenti sincronizzati</span>
-          <button onclick="alert('Esportazione calendario e file Excel!')" class="text-slate-700 hover:text-slate-900 font-semibold flex items-center gap-1.5">
+          <span id="tableFooterCount">Caricamento in corso...</span>
+          <button onclick="exportCSV()" class="text-slate-700 hover:text-slate-900 font-semibold flex items-center gap-1.5">
             <i class="fa-solid fa-file-arrow-down text-slate-400"></i> Esporta Report CSV
           </button>
         </div>
@@ -510,7 +364,7 @@
 
   </div>
 
-  <!-- JAVASCRIPT: Gestione Transizione e Chat -->
+  <!-- JAVASCRIPT: Gestione Transizione, Live API Chat & Dashboard -->
   <script>
     const chatView = document.getElementById('chatView');
     const dashboardView = document.getElementById('dashboardView');
@@ -518,12 +372,17 @@
     const micBtn = document.getElementById('micBtn');
     const sendBtn = document.getElementById('sendBtn');
     const chatFeed = document.getElementById('chatFeed');
+    const realFileInput = document.getElementById('realFileInput');
 
-    // Apertura e Chiusura Dashboard
+    let currentFilter = 'all';
+    let currentRecords = [];
+
+    // --- Apertura e Chiusura Dashboard ---
     function openDashboard() {
       chatView.classList.add('hidden');
       dashboardView.classList.remove('hidden');
       dashboardView.classList.add('flex');
+      loadDashboard(currentFilter);
     }
 
     function closeDashboard() {
@@ -532,7 +391,7 @@
       chatView.classList.remove('hidden');
     }
 
-    // Toggle Tasto Invio / Microfono WhatsApp
+    // --- Toggle Tasto Invio / Microfono WhatsApp ---
     input.addEventListener('input', () => {
       if (input.value.trim().length > 0) {
         micBtn.classList.add('hidden');
@@ -554,12 +413,40 @@
       return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
     }
 
-    function handleSend(e) {
-      if (e) e.preventDefault();
-      const text = input.value.trim();
-      if (!text) return;
+    function escapeHtml(string) {
+      if (!string) return '';
+      return String(string).replace(/[&<>"']/g, function (s) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s];
+      });
+    }
 
-      // Crea bolla utente autentica WhatsApp
+    function formatFileSize(bytes) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    // --- Indicatori UI Chat ---
+    function showTypingIndicator() {
+      const indicator = document.createElement('div');
+      indicator.id = 'typingIndicator';
+      indicator.className = 'flex items-start max-w-[85%]';
+      indicator.innerHTML = `
+        <div class="wa-bubble-in px-3 py-2 text-xs text-gray-500 italic flex items-center gap-1.5">
+          <span class="inline-block w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
+          <span class="inline-block w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+          <span class="inline-block w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></span>
+          <span class="ml-1 text-[11px]">Sta elaborando...</span>
+        </div>
+      `;
+      chatFeed.appendChild(indicator);
+      scrollBottom();
+      return indicator;
+    }
+
+    function appendUserBubble(text) {
       const userBubble = document.createElement('div');
       userBubble.className = 'flex justify-end';
       userBubble.innerHTML = `
@@ -572,38 +459,40 @@
         </div>
       `;
       chatFeed.appendChild(userBubble);
-      input.value = '';
-      input.dispatchEvent(new Event('input'));
       scrollBottom();
-
-      setTimeout(() => {
-        aiReply(text);
-      }, 400);
     }
 
-    function aiReply(query) {
-      const q = query.toLowerCase();
-      let replyHtml = '';
+    function appendUserFileBubble(fileName, fileSize) {
+      const isPdf = fileName.toLowerCase().endsWith('.pdf');
+      const iconClass = isPdf ? 'fa-solid fa-file-pdf text-red-700' : 'fa-solid fa-file-image text-emerald-800';
+      const userBubble = document.createElement('div');
+      userBubble.className = 'flex justify-end';
+      userBubble.innerHTML = `
+        <div class="wa-bubble-out p-2 max-w-[85%] text-sm text-gray-800">
+          <div class="bg-[#d4f2c5] p-2 rounded-md flex items-center gap-2 mb-1">
+            <i class="${iconClass} text-xl shrink-0"></i>
+            <div class="text-xs truncate max-w-[200px]">
+              <p class="font-medium text-gray-900 truncate">${escapeHtml(fileName)}</p>
+              <p class="text-[10px] text-gray-600">${formatFileSize(fileSize)}</p>
+            </div>
+          </div>
+          <div class="flex justify-end items-center gap-1 mt-0.5">
+            <span class="text-[10px] text-gray-500">${getTime()}</span>
+            <i class="fa-solid fa-check-double text-[11px] text-[#53bdeb]"></i>
+          </div>
+        </div>
+      `;
+      chatFeed.appendChild(userBubble);
+      scrollBottom();
+    }
 
-      if (q.includes('dove') || q.includes('passaporto') || q.includes('chiav') || q.includes('libretto')) {
-        replyHtml = `
-          <p>📍 Il <strong>passaporto</strong> e il <strong>libretto auto</strong> si trovano nella <strong>scrivania in studio</strong>, nel <em>primo cassetto</em>!</p>
-        `;
-      } else if (q.includes('bollett') || q.includes('scadenz') || q.includes('pagare') || q.includes('luce') || q.includes('enel')) {
-        replyHtml = `
-          <p>📅 Hai in scadenza la bolletta di <strong>Enel Energia da 64,20 €</strong> entro il <strong>28 Ottobre</strong>.</p>
-        `;
-      } else {
-        replyHtml = `
-          <p>✅ Ricevuto! Ho salvato: <em>"${escapeHtml(query)}"</em>. Lo trovi sia qui che nella Dashboard.</p>
-        `;
-      }
-
+    function appendAssistantBubble(text) {
       const aiBubble = document.createElement('div');
       aiBubble.className = 'flex items-start max-w-[85%]';
+      const formattedHtml = escapeHtml(text).replace(/\n/g, '<br>');
       aiBubble.innerHTML = `
         <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug">
-          ${replyHtml}
+          <p>${formattedHtml}</p>
           <span class="block text-[10px] text-gray-400 text-right mt-1">${getTime()}</span>
         </div>
       `;
@@ -611,44 +500,380 @@
       scrollBottom();
     }
 
-    function simulateAttachment() {
-      alert("Simulazione Allegato: puoi selezionare una foto o un PDF!");
-      input.value = "Ho caricato la ricevuta del bonifico da 120 euro";
-      handleSend();
+    // --- Invio Messaggio Live: POST /api/chat ---
+    async function handleSend(e) {
+      if (e) e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+
+      appendUserBubble(text);
+      input.value = '';
+      input.dispatchEvent(new Event('input'));
+      scrollBottom();
+
+      const indicator = showTypingIndicator();
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text })
+        });
+        if (indicator) indicator.remove();
+        if (!res.ok) throw new Error('Errore nella risposta del server');
+        const data = await res.json();
+        appendAssistantBubble(data.reply);
+        loadDashboard(currentFilter);
+      } catch (err) {
+        if (indicator) indicator.remove();
+        console.error('Errore /api/chat:', err);
+        appendAssistantBubble("⚠️ Errore di connessione: impossibile contattare il server.");
+      }
     }
 
-    function simulateCamera() {
-      alert("Simulatore Fotocamera: scatto rapido di una bolletta sul tavolo.");
-      input.value = "Ho fotografato la bolletta del gas di 55 euro";
-      handleSend();
+    // --- Upload File Live: POST /api/documents/upload ---
+    function triggerFileInput() {
+      if (realFileInput) realFileInput.click();
     }
 
-    function simulateVoice() {
+    realFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      appendUserFileBubble(file.name, file.size);
+      const indicator = showTypingIndicator();
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/documents/upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (indicator) indicator.remove();
+        if (!res.ok) throw new Error('Errore durante l\'estrazione');
+        const data = await res.json();
+        appendAssistantBubble(data.chat_reply || "📄 Documento salvato e catalogato!");
+        loadDashboard(currentFilter);
+      } catch (err) {
+        if (indicator) indicator.remove();
+        console.error('Errore /api/documents/upload:', err);
+        appendAssistantBubble("⚠️ Errore durante il caricamento del documento.");
+      } finally {
+        realFileInput.value = '';
+      }
+    });
+
+    // --- Riconoscimento Vocale Reale & Fallback ---
+    let recognition = null;
+    let isRecording = false;
+
+    function handleVoice() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        fallbackVoicePrompt();
+        return;
+      }
+
+      if (isRecording && recognition) {
+        recognition.stop();
+        return;
+      }
+
+      try {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'it-IT';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => {
+          isRecording = true;
+          micBtn.classList.add('animate-pulse', 'bg-red-500');
+          micBtn.classList.remove('bg-[#128C7E]');
+          input.placeholder = "In ascolto... Parla adesso...";
+        };
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          input.value = transcript;
+          input.dispatchEvent(new Event('input'));
+        };
+
+        recognition.onerror = (event) => {
+          console.warn("Speech recognition error:", event.error);
+          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            fallbackVoicePrompt();
+          }
+        };
+
+        recognition.onend = () => {
+          isRecording = false;
+          micBtn.classList.remove('animate-pulse', 'bg-red-500');
+          micBtn.classList.add('bg-[#128C7E]');
+          input.placeholder = "Scrivi un messaggio...";
+        };
+
+        recognition.start();
+      } catch (err) {
+        console.warn("Speech recognition exception:", err);
+        fallbackVoicePrompt();
+      }
+    }
+
+    function fallbackVoicePrompt() {
       const v = prompt("Simula Vocale:\nCosa dici al microfono?", "Ho messo le chiavi di scorta nella cassaforte in corridoio");
       if (v) {
         input.value = v;
+        input.dispatchEvent(new Event('input'));
         handleSend();
       }
     }
 
+    // --- Fetch Dashboard Live: GET /api/dashboard ---
+    async function loadDashboard(filter = 'all') {
+      currentFilter = filter;
+      try {
+        const res = await fetch(`/api/dashboard?filter=${encodeURIComponent(filter)}`);
+        if (!res.ok) throw new Error("Errore recupero feed dashboard");
+        const data = await res.json();
+
+        currentRecords = data.records || [];
+
+        // 1. Aggiorna Card KPI
+        const kpi = data.kpi || {};
+        const upcomingAmt = kpi.total_upcoming_amount != null ? kpi.total_upcoming_amount : 0;
+        const formattedAmount = upcomingAmt.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        
+        const kpiAmtEl = document.getElementById('kpiUpcomingAmount');
+        if (kpiAmtEl) kpiAmtEl.textContent = `€ ${formattedAmount}`;
+
+        const kpiBadgeEl = document.getElementById('kpiUpcomingBadge');
+        if (kpiBadgeEl) {
+          const count = kpi.pending_deadlines_count || 0;
+          kpiBadgeEl.textContent = count > 0 ? `⚠️ ${count} in scadenza` : `✅ Nessuna scadenza`;
+          kpiBadgeEl.className = count > 0
+            ? "bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full"
+            : "bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full";
+        }
+
+        const kpiDocsEl = document.getElementById('kpiDocsCount');
+        if (kpiDocsEl) kpiDocsEl.textContent = `${kpi.total_documents_count || 0} Documenti`;
+
+        const kpiItemsEl = document.getElementById('kpiItemsCount');
+        if (kpiItemsEl) kpiItemsEl.textContent = `${kpi.total_items_count || 0} Cespiti & Oggetti`;
+
+        // Aggiorna contatori filtri
+        const fD = document.getElementById('fDeadlines');
+        if (fD) fD.textContent = kpi.pending_deadlines_count ? `Scadenze (${kpi.pending_deadlines_count})` : 'Scadenze';
+        const fI = document.getElementById('fItems');
+        if (fI) fI.textContent = kpi.total_items_count ? `Oggetti (${kpi.total_items_count})` : 'Oggetti';
+
+        // 2. Render righe tabella
+        renderTableRows(currentRecords);
+
+        // 3. Footer contatore
+        const tableFooterCount = document.getElementById('tableFooterCount');
+        if (tableFooterCount) {
+          tableFooterCount.textContent = `Mostrati ${currentRecords.length} elementi sincronizzati`;
+        }
+      } catch (err) {
+        console.error("Errore loadDashboard:", err);
+      }
+    }
+
+    // --- Rendering Righe Tabella con Design Moderno ---
+    function renderTableRows(records) {
+      const tbody = document.getElementById('tableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (!records || records.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-10 text-center text-slate-400 text-xs">
+              <i class="fa-solid fa-folder-open text-3xl mb-2.5 block text-slate-300"></i>
+              Nessun record trovato per il filtro selezionato.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      records.forEach(rec => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/80 transition-colors';
+
+        // Icona e stile tipo elemento
+        let iconClass = 'fa-file-lines';
+        let iconBg = 'bg-slate-100 text-slate-600';
+        if (rec.type === 'physical_item') {
+          iconClass = 'fa-box-archive';
+          iconBg = 'bg-purple-50 text-purple-600';
+          const lowerTitle = (rec.title || '').toLowerCase();
+          if (lowerTitle.includes('chiav')) {
+            iconClass = 'fa-key';
+          } else if (lowerTitle.includes('passaporto') || lowerTitle.includes('carta') || lowerTitle.includes('patente')) {
+            iconClass = 'fa-id-card';
+          }
+        } else {
+          const lowerTitle = (rec.title || '').toLowerCase();
+          if (lowerTitle.includes('bolletta') || lowerTitle.includes('luce') || lowerTitle.includes('enel') || lowerTitle.includes('gas') || lowerTitle.includes('energia')) {
+            iconClass = 'fa-bolt';
+            iconBg = 'bg-amber-50 text-amber-600';
+          } else if (lowerTitle.includes('f24') || lowerTitle.includes('iva') || lowerTitle.includes('tribut') || lowerTitle.includes('fisco')) {
+            iconClass = 'fa-file-invoice-dollar';
+            iconBg = 'bg-blue-50 text-blue-600';
+          } else {
+            iconClass = 'fa-file-invoice';
+            iconBg = 'bg-emerald-50 text-emerald-700';
+          }
+        }
+
+        // Badge Origine
+        let originBadge = '';
+        if (rec.type === 'physical_item') {
+          originBadge = `
+            <span class="bg-[#E7FFDB] text-[#075E54] border border-[#c2e7b0] text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+              📱 WhatsApp Testo
+            </span>
+          `;
+        } else {
+          originBadge = `
+            <span class="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+              📄 ${escapeHtml(rec.source || 'Documento')}
+            </span>
+          `;
+        }
+
+        // Importo formattato
+        let amountHtml = '<span class="text-slate-300">-</span>';
+        if (rec.amount != null) {
+          amountHtml = `${rec.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+        }
+
+        // Scadenza formattata
+        let dueDateHtml = '<span class="text-slate-400">-</span>';
+        if (rec.due_date) {
+          const parts = rec.due_date.split('-');
+          const formatted = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : rec.due_date;
+          if (rec.status === 'da_pagare') {
+            dueDateHtml = `<span class="font-medium text-amber-700">${formatted}</span>`;
+          } else {
+            dueDateHtml = `<span class="text-slate-500">${formatted}</span>`;
+          }
+        }
+
+        // Stato / Coordinate
+        let statusHtml = '';
+        if (rec.type === 'physical_item') {
+          statusHtml = `<span class="text-slate-700 font-medium">📍 ${escapeHtml(rec.location_or_notes || 'Posizione registrata')}</span>`;
+        } else if (rec.status === 'da_pagare') {
+          statusHtml = `<span class="bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-md">● Da Saldare</span>`;
+        } else if (rec.status === 'quietanzato') {
+          statusHtml = `<span class="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md">● Quietanzato</span>`;
+        } else {
+          statusHtml = `<span class="bg-slate-50 text-slate-700 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-md">● ${escapeHtml(rec.status)}</span>`;
+        }
+
+        // Azioni
+        let actionHtml = '<span class="text-slate-400 text-xs">-</span>';
+        if (rec.type === 'document' && rec.status === 'da_pagare') {
+          actionHtml = `<button onclick="markAsPaid(${rec.id})" class="text-emerald-700 hover:text-emerald-800 font-semibold underline text-xs transition active:scale-95">Segna Pagato</button>`;
+        } else if (rec.type === 'document' && rec.status === 'quietanzato') {
+          actionHtml = `<span class="text-emerald-600 text-xs font-medium"><i class="fa-solid fa-check mr-1"></i>Saldato</span>`;
+        } else if (rec.type === 'physical_item') {
+          actionHtml = `<span class="text-slate-400 text-xs italic">Registrato</span>`;
+        }
+
+        tr.innerHTML = `
+          <td class="py-4 px-6">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl ${iconBg} flex items-center justify-center shrink-0">
+                <i class="fa-solid ${iconClass} text-xs"></i>
+              </div>
+              <div>
+                <p class="font-bold text-slate-900">${escapeHtml(rec.title)}</p>
+                <p class="text-[11px] text-slate-400">${escapeHtml(rec.location_or_notes || '')}</p>
+              </div>
+            </div>
+          </td>
+          <td class="py-4 px-4">${originBadge}</td>
+          <td class="py-4 px-4 text-right font-bold text-slate-900 text-sm">${amountHtml}</td>
+          <td class="py-4 px-4">${dueDateHtml}</td>
+          <td class="py-4 px-4">${statusHtml}</td>
+          <td class="py-4 px-6 text-right">${actionHtml}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // --- Filtri Tabella ---
     function filterTable(filter) {
+      currentFilter = filter;
       const btnA = document.getElementById('fAll');
       const btnD = document.getElementById('fDeadlines');
       const btnI = document.getElementById('fItems');
-      [btnA, btnD, btnI].forEach(b => b.className = 'px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900');
-
-      if (filter === 'all') btnA.className = 'px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold';
-      if (filter === 'deadlines') btnD.className = 'px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold';
-      if (filter === 'items') btnI.className = 'px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold';
-      
-      alert("Filtro applicato: " + filter);
-    }
-
-    function escapeHtml(string) {
-      return String(string).replace(/[&<>"']/g, function (s) {
-        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s];
+      [btnA, btnD, btnI].forEach(b => {
+        if (b) b.className = 'px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900';
       });
+
+      if (filter === 'all' && btnA) btnA.className = 'px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold';
+      if (filter === 'deadlines' && btnD) btnD.className = 'px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold';
+      if (filter === 'items' && btnI) btnI.className = 'px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold';
+
+      loadDashboard(filter);
     }
+
+    // --- Azione Segna Pagato: PATCH /api/documents/{id}/status ---
+    async function markAsPaid(documentId) {
+      try {
+        const res = await fetch(`/api/documents/${documentId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'quietanzato' })
+        });
+        if (!res.ok) throw new Error("Impossibile aggiornare lo stato");
+        await loadDashboard(currentFilter);
+      } catch (err) {
+        console.error("Errore markAsPaid:", err);
+        alert("Errore nell'aggiornamento dello stato del documento.");
+      }
+    }
+
+    // --- Esportazione Report CSV ---
+    function exportCSV() {
+      if (!currentRecords || currentRecords.length === 0) {
+        alert("Nessun record da esportare.");
+        return;
+      }
+      const headers = ["ID", "Tipo", "Titolo", "Origine", "Importo", "Scadenza", "Stato", "Dettagli"];
+      const rows = currentRecords.map(r => [
+        r.id,
+        r.type,
+        `"${(r.title || '').replace(/"/g, '""')}"`,
+        `"${(r.source || '').replace(/"/g, '""')}"`,
+        r.amount != null ? r.amount : '',
+        r.due_date || '',
+        r.status || '',
+        `"${(r.location_or_notes || '').replace(/"/g, '""')}"`
+      ]);
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `dovelhomesso_report_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Inizializzazione al caricamento della pagina
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDashboard('all');
+    });
+    // Chiamata immediata per sicurezza nel caso il DOM sia già pronto
+    loadDashboard('all');
   </script>
 </body>
 </html>
