@@ -48,5 +48,5 @@ def test_patch_document_status():
 def test_root_serves_index():
     res = client.get("/")
     assert res.status_code == 200
-    assert "Dove L'Ho Messo" in res.text
+    assert "Dove lo AI messo" in res.text
 

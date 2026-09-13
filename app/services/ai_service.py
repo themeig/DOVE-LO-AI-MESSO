@@ -78,7 +78,7 @@ class MockAIService:
     def generate_conversational_reply(self, text: str, chat_history: list = None) -> str:
         t = text.lower()
         if "chi sei" in t or "cosa fai" in t or "cosa puoi fare" in t or "ai" in t:
-            return "Ciao! Sono l'assistente AI di 'Dove L'Ho Messo'. Posso memorizzare dove riponi oggetti e documenti importanti, leggere foto e PDF di bollette ed F24 con le relative scadenze, e gestire lo scadenzario dei pagamenti."
+            return "Ciao! Sono l'assistente AI di 'Dove lo AI messo'. Posso memorizzare dove riponi oggetti e documenti importanti, leggere foto e PDF di bollette ed F24 con le relative scadenze, e gestire lo scadenzario dei pagamenti."
         if "document" in t or "mandare" in t or "inviare" in t or "carica" in t or "foto" in t:
             return "Certamente! Puoi inviarmi documenti e bollette (foto o PDF) cliccando sull'icona della graffetta 📎 o della fotocamera 📷 qui in basso. Estrarrò automaticamente fornitore, importo e data di scadenza!"
         if "ciao" in t or "buongiorno" in t or "buonasera" in t or "salve" in t:
@@ -102,7 +102,7 @@ class OpenRouterAIService:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "HTTP-Referer": "http://localhost:8000",
-            "X-Title": "Dove L Ho Messo",
+            "X-Title": "Dove lo AI messo",
             "Content-Type": "application/json"
         }
         first_model = model_override or self.primary_model
@@ -161,7 +161,7 @@ class OpenRouterAIService:
 
     def classify_and_extract_intent(self, text: str) -> MessageIntent:
         try:
-            prompt = f"""Sei l'assistente 'Dove L'Ho Messo'. Analizza questo messaggio in italiano dell'utente:
+            prompt = f"""Sei l'assistente 'Dove lo AI messo'. Analizza questo messaggio in italiano dell'utente:
 "{text}"
 
 Identifica l'intenzione ed estrai le informazioni necessarie. Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
@@ -190,7 +190,7 @@ Regole:
     def generate_conversational_reply(self, text: str, chat_history: list = None) -> str:
         try:
             system_prompt = (
-                "Sei l'assistente virtuale intelligente e cordiale di 'Dove L'Ho Messo' per WhatsApp. "
+                "Sei l'assistente virtuale intelligente e cordiale di 'Dove lo AI messo' per WhatsApp. "
                 "Aiuti famiglie e professionisti a ricordare dove hanno riposto oggetti importanti, "
                 "a catalogare bollette e documenti (che l'utente può inviare cliccando sull'icona graffetta 📎 o fotocamera 📷), "
                 "e a tenere d'occhio le scadenze nella Dashboard moderna in alto a destra.\n"

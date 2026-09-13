@@ -1,4 +1,4 @@
-# Specifica Architetturale: "Dove L'Ho Messo" (Backend & Engine Core)
+# Specifica Architetturale: "Dove lo AI messo" (Backend & Engine Core)
 
 **Data**: 13 Settembre 2026  
 **Autore**: Team di Sviluppo & Antigravity  
@@ -8,7 +8,7 @@
 
 ## 1. Visione & Obiettivi del Sistema
 
-**"Dove L'Ho Messo"** è un assistente intelligente personale e professionale per archiviare e ritrovare qualsiasi cosa (documenti burocratici/fiscali, scadenze di pagamento e collocazione fisica di oggetti e beni).
+**"Dove lo AI messo"** è un assistente intelligente personale e professionale per archiviare e ritrovare qualsiasi cosa (documenti burocratici/fiscali, scadenze di pagamento e collocazione fisica di oggetti e beni).
 
 ### Obiettivi Chiave:
 * **Esperienza Dual-View Coerente**:
@@ -74,7 +74,7 @@ Memorizza i documenti fiscali, bollette e ricevute caricate tramite foto o PDF.
 | `created_at` | DateTime | Timestamp di acquisizione |
 
 ### 3.2 Tabella `physical_items`
-Memorizza le posizioni fisiche di beni e oggetti ("Dove L'Ho Messo").
+Memorizza le posizioni fisiche di beni e oggetti ("Dove lo AI messo").
 
 | Campo | Tipo | Descrizione |
 | :--- | :--- | :--- |

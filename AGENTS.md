@@ -1,6 +1,6 @@
-# DOVE L'HO MESSO - Regole di Progetto (AGENTS.md)
+# DOVE LO AI MESSO - Regole di Progetto (AGENTS.md)
 
-Questo documento definisce l'architettura, le convenzioni di design e i vincoli tecnici per lo sviluppo di **"Dove L'Ho Messo"**.
+Questo documento definisce l'architettura, le convenzioni di design e i vincoli tecnici per lo sviluppo di **"Dove lo AI messo"**.
 
 ---
 

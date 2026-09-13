@@ -17,8 +17,8 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(
-    title="Dove L'Ho Messo",
-    description="Backend API for Dove L'Ho Messo",
+    title="Dove lo AI messo",
+    description="Backend API for Dove lo AI messo",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -48,4 +48,4 @@ def serve_index():
     index_file = settings.BASE_DIR / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
-    return HTMLResponse("<h1>Dove L'Ho Messo</h1>")
+    return HTMLResponse("<h1>Dove lo AI messo</h1>")

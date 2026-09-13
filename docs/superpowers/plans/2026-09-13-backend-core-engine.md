@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the complete Python FastAPI backend, SQLite database, Pydantic AI extraction engine, and REST endpoints for "Dove L'Ho Messo", fully connecting the frontend chat and dashboard.
+**Goal:** Build the complete Python FastAPI backend, SQLite database, Pydantic AI extraction engine, and REST endpoints for "Dove lo AI messo", fully connecting the frontend chat and dashboard.
 
 **Architecture:** Clean Layered FastAPI architecture. The API layer delegates to specialized services (`ai_service`, `document_service`) that read and persist entities in an embedded SQLite database (`vault.db`). Pluggable AI provider supports both real Gemini Flash API and an offline Mock for deterministic TDD.
 
