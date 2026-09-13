@@ -38,12 +38,18 @@ def handle_chat_message(
     chat_response = agent.run_turn(payload.message, db=db, thread_id=thread_id)
 
     # 3. Save assistant reply to chat history
+    meta_dict = {"action": chat_response.action}
+    if chat_response.documents:
+        meta_dict["documents"] = chat_response.documents
+    if chat_response.confirmation:
+        meta_dict["confirmation"] = chat_response.confirmation
+
     asst_msg = ChatMessage(
         thread_id=thread_id,
         sender="assistant",
         message_type="text",
         content=chat_response.reply,
-        metadata_json=json.dumps({"action": chat_response.action})
+        metadata_json=json.dumps(meta_dict)
     )
     db.add(asst_msg)
     db.commit()

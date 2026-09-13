@@ -8,6 +8,7 @@ if str(BASE_DIR) not in sys.path:
 from mcp.server.mcpserver import MCPServer
 from sqlalchemy.orm import Session
 from app.models.database import get_db, init_db, Document, PhysicalItem
+from app.services.search_service import search_vault_documents, search_vault_items
 
 mcp = MCPServer("dove-lo-ai-messo")
 
@@ -47,30 +48,18 @@ def get_vault_context() -> str:
 
 @mcp.tool()
 def search_vault(query: str) -> str:
-    """Cerca nel caveau documenti e oggetti fisici corrispondenti alla parola chiave."""
+    """Cerca nel caveau documenti e oggetti fisici con supporto per singolari/plurali, sinonimi e tolleranza ai refusi."""
     db = _get_db_session()
-    q = query.strip().lower()
-
-    docs = db.query(Document).order_by(Document.id.desc()).all()
-    matching_docs = []
-    for d in docs:
-        blob = f"{d.title} {d.issuer or ''} {d.summary} {d.doc_type}".lower()
-        if q in blob:
-            matching_docs.append(f"- Documento #{d.id}: {d.title} ({d.doc_type}) - Emittente: {d.issuer}\n  {d.summary}")
-
-    items = db.query(PhysicalItem).order_by(PhysicalItem.id.desc()).all()
-    matching_items = []
-    for it in items:
-        blob = f"{it.item_name} {it.primary_location} {it.detailed_location or ''}".lower()
-        if q in blob:
-            loc = it.primary_location + (f" ({it.detailed_location})" if it.detailed_location else "")
-            matching_items.append(f"- Oggetto: {it.item_name} -> Posizione: {loc}")
+    docs = search_vault_documents(db, query)
+    items = search_vault_items(db, query)
 
     result = []
-    if matching_docs:
-        result.append("Documenti trovati:\n" + "\n".join(matching_docs[:3]))
-    if matching_items:
-        result.append("Oggetti fisici trovati:\n" + "\n".join(matching_items[:3]))
+    if docs:
+        doc_lines = [f"- Documento #{d['document_id']}: {d['title']} ({d['doc_type']}) - Emittente: {d.get('issuer', 'N/D')}\n  {d.get('summary', '')}" for d in docs[:3]]
+        result.append("Documenti trovati:\n" + "\n".join(doc_lines))
+    if items:
+        item_lines = [f"- Oggetto: {it['item_name']} -> Posizione: {it['primary_location']}" + (f" ({it['detailed_location']})" if it.get("detailed_location") else "") for it in items[:3]]
+        result.append("Oggetti fisici trovati:\n" + "\n".join(item_lines))
     if not result:
         return f"Nessun risultato trovato nel caveau per '{query}'."
     return "\n\n".join(result)
