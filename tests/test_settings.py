@@ -1,11 +1,9 @@
-﻿from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient
 from app.main import app
 from app.models.database import init_db
 
 client = TestClient(app)
 
-def setup_module():
-    init_db()
 
 def test_get_and_update_ai_model_setting():
     # 1. Get model setting

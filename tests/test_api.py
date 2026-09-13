@@ -5,8 +5,6 @@ from app.models.database import init_db
 
 client = TestClient(app)
 
-def setup_module():
-    init_db()
 
 def test_chat_store_and_query():
     # 1. Store item via chat

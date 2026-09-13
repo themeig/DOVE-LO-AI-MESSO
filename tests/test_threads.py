@@ -5,8 +5,6 @@ from app.models.database import init_db
 
 client = TestClient(app)
 
-def setup_module():
-    init_db()
 
 def test_list_default_threads():
     res = client.get("/api/threads")
