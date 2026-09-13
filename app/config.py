@@ -3,7 +3,6 @@ from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
 
-# Carica automaticamente il file .env se presente
 load_dotenv()
 
 class Settings(BaseModel):
@@ -12,6 +11,8 @@ class Settings(BaseModel):
     DB_PATH: Path = BASE_DIR / "storage" / "vault.db"
     DATABASE_URL: str = f"sqlite:///{DB_PATH}"
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
+    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "google/gemma-4-31b-it:free")
     DEBUG: bool = True
 
 _settings = None
