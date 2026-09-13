@@ -1,8 +1,10 @@
+import io
 import re
 import json
 import base64
 import logging
 import httpx
+import pypdf
 from typing import Protocol, Optional
 from app.models.schemas import ExtractedDocument, MessageIntent
 from app.config import get_settings
@@ -50,6 +52,15 @@ class MockAIService:
     """Motore offline deterministico per test e sviluppo senza consumo di token."""
     def extract_document(self, file_bytes: bytes, mime_type: str, filename: str = "") -> ExtractedDocument:
         fn = filename.lower()
+        if "tolc" in fn or "certificate" in fn or "certificat" in fn:
+            return ExtractedDocument(
+                doc_type="certificato",
+                issuer="CISIA / Università degli Studi di Milano",
+                amount=None,
+                due_date=None,
+                summary="Certificato ufficiale esiti del test TOLC-E svolto da Riccardo Maggi. Punteggio totale: 22.5.",
+                tags=["tolc", "università", "esame", "cisia"]
+            )
         if "f24" in fn or "tribut" in fn:
             return ExtractedDocument(
                 doc_type="f24",
@@ -116,41 +127,33 @@ class MockAIService:
 
 
 class OpenRouterAIService:
-    """Motore AI multimodale tramite OpenRouter API (modelli gratuiti inclusi)."""
-    def __init__(self, api_key: str, model: str = "liquid/lfm-2.5-2.6b:free"):
+    """Motore AI multimodale tramite OpenRouter API (modello unico: inclusionai/ling-3.0-flash-vl:free)."""
+    def __init__(self, api_key: str, model: str = "inclusionai/ling-3.0-flash-vl:free"):
         self.api_key = api_key.strip()
-        self.primary_model = model.strip() or "liquid/lfm-2.5-2.6b:free"
-        self.fallback_models = [
-            "nex-agi/nex-n2.5-mini:free",
-            "nex-agi/nex-n2.5-pro:free"
-        ]
-        self.vision_model = "dots-studio/dots-3-note-preview:free"
+        self.primary_model = model.strip() or "inclusionai/ling-3.0-flash-vl:free"
+        self.fallback_models = ["inclusionai/ling-3.0-flash-vl:free"]
+        self.vision_model = "inclusionai/ling-3.0-flash-vl:free"
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
 
-    def _call_openrouter(self, messages: list, max_tokens: int = 400, model_override: str = None, temperature: float = 0.2) -> str:
+    def _call_openrouter(self, messages: list, max_tokens: int = 1500, model_override: str = None, temperature: float = 0.2) -> str:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "HTTP-Referer": "http://localhost:8000",
             "X-Title": "Dove lo AI messo",
             "Content-Type": "application/json"
         }
-        first_model = model_override or self.primary_model
-        # Se stiamo inviando immagini, non provare modelli text-only nei fallback
-        has_images = any(
-            isinstance(m.get("content"), list) and any(item.get("type") == "image_url" for item in m.get("content", []))
-            for m in messages
-        )
-        models_to_try = [first_model] if has_images else ([first_model] + [m for m in self.fallback_models if m != first_model])
+        target_model = model_override or self.primary_model
+        payload = {
+            "model": target_model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature
+        }
         
-        for m in models_to_try:
-            payload = {
-                "model": m,
-                "messages": messages,
-                "max_tokens": max_tokens,
-                "temperature": temperature
-            }
+        # Prova fino a 2 tentativi con backoff breve su rate limit
+        for attempt in range(2):
             try:
-                res = httpx.post(self.base_url, headers=headers, json=payload, timeout=25.0 if has_images else 12.0)
+                res = httpx.post(self.base_url, headers=headers, json=payload, timeout=30.0)
                 if res.status_code == 200:
                     data = res.json()
                     choices = data.get("choices", [])
@@ -162,18 +165,64 @@ class OpenRouterAIService:
                             return content.strip()
                         if reasoning and reasoning.strip():
                             return reasoning.strip()
+                elif res.status_code == 429 and attempt == 0:
+                    import time; time.sleep(1.5)
+                    continue
                 else:
-                    logger.warning(f"OpenRouter errore modello {m}: {res.status_code} - {res.text[:100]}")
+                    logger.warning(f"OpenRouter errore modello {target_model}: {res.status_code} - {res.text[:100]}")
             except Exception as e:
-                logger.warning(f"OpenRouter eccezione modello {m}: {e}")
+                logger.warning(f"OpenRouter eccezione modello {target_model}: {e}")
                 
-        raise RuntimeError("Tutti i modelli OpenRouter sono al momento non disponibili.")
+        raise RuntimeError("Modello OpenRouter inclusionai/ling-3.0-flash-vl:free non disponibile al momento.")
 
     def extract_document(self, file_bytes: bytes, mime_type: str, filename: str = "") -> ExtractedDocument:
         try:
-            mt = mime_type or "image/jpeg"
+            fn = filename.lower()
+            mt = (mime_type or "").lower()
+            is_pdf = "pdf" in mt or fn.endswith(".pdf") or file_bytes.startswith(b"%PDF")
+
+            # 1. GESTIONE DOCUMENTI PDF (Estrazione del testo reale delle pagine)
+            if is_pdf:
+                pdf_text = ""
+                try:
+                    reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+                    for p in reader.pages:
+                        page_str = p.extract_text()
+                        if page_str:
+                            pdf_text += page_str + "\n"
+                except Exception as p_err:
+                    logger.warning(f"Errore lettura pypdf: {p_err}")
+
+                if pdf_text.strip():
+                    pdf_prompt = f"""Sei l'assistente 'Dove lo AI messo'. Analizza questo testo estratto dal documento PDF caricato dall'utente:
+---
+{pdf_text[:3500]}
+---
+
+Identifica con la massima precisione:
+1. Che documento è (es. certificato, bolletta, f24, contratto, ricevuta, dichiarazione, patente, ecc.)
+2. Chi è l'emittente/università o fornitore e chi è l'intestatario/soggetto
+3. Se è una bolletta o tributo da pagare con scadenza, estrai l'importo e la data. Se NON è una bolletta da pagare, imposta amount=null e due_date=null!
+4. Nel campo 'summary', scrivi una spiegazione chiara e completa di 2-3 frasi in italiano che riassume tutti i dettagli (punteggi, codici, esiti, intestatario, date).
+
+Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
+{{
+  "doc_type": "certificato" | "bolletta" | "f24" | "contratto" | "ricevuta" | "fattura" | "generico",
+  "issuer": "nome ente o università o fornitore",
+  "amount": null oppure numero decimale,
+  "due_date": null oppure "YYYY-MM-DD",
+  "summary": "riassunto dettagliato in 2-3 frasi in italiano",
+  "tags": ["tag1", "tag2", "tag3"]
+}}
+"""
+                    messages = [{"role": "user", "content": pdf_prompt}]
+                    resp_text = self._call_openrouter(messages, max_tokens=1500, model_override=self.primary_model, temperature=0.1)
+                    parsed = _extract_json_object(resp_text)
+                    return ExtractedDocument(**parsed)
+
+            # 2. GESTIONE IMMAGINI (Foto, screenshot, scansioni grafiche)
             b64_img = base64.b64encode(file_bytes).decode("utf-8")
-            data_url = f"data:{mt};base64,{b64_img}"
+            data_url = f"data:{mt or 'image/jpeg'};base64,{b64_img}"
 
             prompt = (
                 "Sei l'assistente 'Dove lo AI messo'. Analizza con precisione questa immagine caricata dall'utente.\n"
@@ -226,8 +275,7 @@ Regole:
 - Se saluta, fa domande generali sull'app, su chi sei o se può mandare documenti -> intent: "GENERAL"
 """
             messages = [{"role": "user", "content": prompt}]
-            # nex-agi is very reliable for structured JSON
-            response_text = self._call_openrouter(messages, max_tokens=200, model_override="nex-agi/nex-n2.5-mini:free", temperature=0.1)
+            response_text = self._call_openrouter(messages, max_tokens=1200, model_override=self.primary_model, temperature=0.1)
             parsed = _extract_json_object(response_text)
             return MessageIntent(**parsed)
         except Exception as e:
@@ -250,8 +298,7 @@ Regole:
                     messages.append({"role": m.get("role", "user"), "content": m.get("content", "")})
             messages.append({"role": "user", "content": text})
 
-            # liquid/lfm-2.5-2.6b:free is great and conversational
-            return self._call_openrouter(messages, max_tokens=200, model_override="liquid/lfm-2.5-2.6b:free", temperature=0.4)
+            return self._call_openrouter(messages, max_tokens=1200, model_override=self.primary_model, temperature=0.4)
         except Exception as e:
             logger.error(f"Errore OpenRouter generate_conversational_reply: {e}. Uso fallback Mock.")
             return MockAIService().generate_conversational_reply(text, chat_history)
