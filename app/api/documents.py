@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.models.database import get_db, Document, ChatMessage
@@ -13,6 +13,7 @@ router = APIRouter(prefix="/api/documents", tags=["documents"])
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile = File(...),
+    thread_id: str = Form("general"),
     db: Session = Depends(get_db)
 ):
     # 1. Read file contents and save to disk
@@ -44,6 +45,7 @@ async def upload_document(
     doc_status = "da_pagare" if is_payable else "archiviato"
 
     doc = Document(
+        thread_id=thread_id,
         title=title,
         file_path=saved_path,
         file_type=file_ext,
@@ -67,12 +69,14 @@ async def upload_document(
         chat_reply = f"📸 Ho analizzato e archiviato il file: {doc.title}.\n💡 {doc.summary}"
 
     user_msg = ChatMessage(
+        thread_id=thread_id,
         sender="user",
         message_type="document",
         content=f"Caricato file: {filename}",
         metadata_json=f'{{"document_id": {doc.id}}}'
     )
     asst_msg = ChatMessage(
+        thread_id=thread_id,
         sender="assistant",
         message_type="document",
         content=chat_reply,

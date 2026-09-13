@@ -18,6 +18,32 @@ class MessageIntent(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
+    thread_id: Optional[str] = "general"
+
+class ChatThreadCreate(BaseModel):
+    name: str = Field(..., description="Nome del gruppo o area tematica")
+    thread_type: Literal["group", "thematic"] = Field(default="group", description="Tipo di chat")
+    icon: Optional[str] = Field(default=None, description="Icona FontAwesome")
+    color: Optional[str] = Field(default=None, description="Colore classe Tailwind")
+    description: Optional[str] = Field(default=None, description="Descrizione dell'area o gruppo")
+    members: Optional[List[str]] = Field(default_factory=list, description="Elenco membri del gruppo")
+
+class ChatThreadResponse(BaseModel):
+    id: str
+    name: str
+    thread_type: str
+    icon: str
+    color: str
+    description: Optional[str] = None
+    members: Optional[List[str]] = None
+    created_at: Optional[str] = None
+    last_message: Optional[str] = None
+    last_message_time: Optional[str] = None
+    message_count: int = 0
+    unread_count: int = 0
+
+class ThreadListResponse(BaseModel):
+    threads: List[ChatThreadResponse]
 
 class ChatResponse(BaseModel):
     reply: str
@@ -41,6 +67,8 @@ class RecordItem(BaseModel):
     badge_color: str
     file_url: Optional[str] = None
     file_type: Optional[str] = None
+    thread_id: Optional[str] = None
+    thread_name: Optional[str] = None
 
 class DashboardKPI(BaseModel):
     total_upcoming_amount: float

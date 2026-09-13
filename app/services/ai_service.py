@@ -127,12 +127,12 @@ class MockAIService:
 
 
 class OpenRouterAIService:
-    """Motore AI multimodale tramite OpenRouter API (modello unico: inclusionai/ling-3.0-flash-vl:free)."""
-    def __init__(self, api_key: str, model: str = "inclusionai/ling-3.0-flash-vl:free"):
+    """Motore AI multimodale tramite OpenRouter API (modello: google/gemini-2.5-flash-lite con fallback a free)."""
+    def __init__(self, api_key: str, model: str = "google/gemini-2.5-flash-lite"):
         self.api_key = api_key.strip()
-        self.primary_model = model.strip() or "inclusionai/ling-3.0-flash-vl:free"
-        self.fallback_models = ["inclusionai/ling-3.0-flash-vl:free"]
-        self.vision_model = "inclusionai/ling-3.0-flash-vl:free"
+        self.primary_model = model.strip() or "google/gemini-2.5-flash-lite"
+        self.fallback_models = ["nex-agi/nex-n2.5-pro:free", "inclusionai/ling-3.0-flash-vl:free"]
+        self.vision_model = self.primary_model
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
 
     def _call_openrouter(self, messages: list, max_tokens: int = 1500, model_override: str = None, temperature: float = 0.2) -> str:
@@ -173,7 +173,7 @@ class OpenRouterAIService:
             except Exception as e:
                 logger.warning(f"OpenRouter eccezione modello {target_model}: {e}")
                 
-        raise RuntimeError("Modello OpenRouter inclusionai/ling-3.0-flash-vl:free non disponibile al momento.")
+        raise RuntimeError(f"Modello OpenRouter {target_model} non disponibile al momento.")
 
     def extract_document(self, file_bytes: bytes, mime_type: str, filename: str = "") -> ExtractedDocument:
         try:
@@ -304,13 +304,24 @@ Regole:
             return MockAIService().generate_conversational_reply(text, chat_history)
 
 
-def get_ai_service() -> AIServiceInterface:
+def get_ai_service(db=None) -> AIServiceInterface:
     settings = get_settings()
     if settings.OPENROUTER_API_KEY and settings.OPENROUTER_API_KEY.strip():
-        logger.info("Utilizzo OpenRouter AI Service")
+        model_name = settings.OPENROUTER_MODEL
+        try:
+            from app.models.database import get_db, get_app_setting
+            if db is not None:
+                model_name = get_app_setting(db, "ai_model", default=model_name)
+            else:
+                session_gen = get_db()
+                s = next(session_gen)
+                model_name = get_app_setting(s, "ai_model", default=model_name)
+                s.close()
+        except Exception:
+            pass
         return OpenRouterAIService(
             api_key=settings.OPENROUTER_API_KEY.strip(),
-            model=settings.OPENROUTER_MODEL
+            model=model_name
         )
     if settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip():
         from app.services.ai_service import GeminiAIService

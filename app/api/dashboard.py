@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.models.database import get_db, Document, PhysicalItem
+from app.models.database import get_db, Document, PhysicalItem, ChatThread
 from app.models.schemas import DashboardResponse, DashboardKPI, RecordItem
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -12,11 +12,23 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 @router.get("/", response_model=DashboardResponse, include_in_schema=False)
 def get_dashboard(
     filter: Optional[str] = Query(default="all"),
+    thread_id: Optional[str] = Query(default=None),
     db: Session = Depends(get_db)
 ):
+    # Lookup threads for readable names
+    threads = db.query(ChatThread).all()
+    thread_map = {t.id: t.name for t in threads}
+
     # 1. Fetch documents and physical items
-    all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
-    all_items = db.query(PhysicalItem).order_by(PhysicalItem.updated_at.desc()).all()
+    doc_query = db.query(Document)
+    item_query = db.query(PhysicalItem)
+
+    if thread_id and thread_id != "all":
+        doc_query = doc_query.filter(Document.thread_id == thread_id)
+        item_query = item_query.filter(PhysicalItem.thread_id == thread_id)
+
+    all_docs = doc_query.order_by(Document.created_at.desc()).all()
+    all_items = item_query.order_by(PhysicalItem.updated_at.desc()).all()
 
     # 2. Compute KPIs
     pending_docs = [d for d in all_docs if d.status == "da_pagare"]
@@ -55,7 +67,9 @@ def get_dashboard(
                     location_or_notes=doc.summary,
                     badge_color=badge_color,
                     file_url=f"/uploads/{fn}",
-                    file_type=doc.file_type
+                    file_type=doc.file_type,
+                    thread_id=doc.thread_id,
+                    thread_name=thread_map.get(doc.thread_id, "Principale")
                 )
             )
 
@@ -76,7 +90,9 @@ def get_dashboard(
                     due_date=None,
                     status="conservato",
                     location_or_notes=loc,
-                    badge_color="blue"
+                    badge_color="blue",
+                    thread_id=item.thread_id,
+                    thread_name=thread_map.get(item.thread_id, "Principale")
                 )
             )
 

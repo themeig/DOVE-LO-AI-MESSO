@@ -52,6 +52,23 @@
     .custom-scroll::-webkit-scrollbar-thumb:hover {
       background: #CBD5E1;
     }
+
+    /* Layout panels — prevent horizontal scroll durante le transizioni mobile */
+    #chatView {
+      overflow: hidden;
+    }
+    #sidebarPanel,
+    #conversationPanel {
+      will-change: transform, opacity;
+      backface-visibility: hidden;
+    }
+
+    /* Animazione slide-in da sinistra (sidebar) e da destra (conversazione) */
+    @media (max-width: 767px) {
+      #chatView {
+        overflow: hidden;
+      }
+    }
   </style>
 </head>
 <body class="h-screen flex flex-col bg-[#d1d7db] text-slate-800 select-none">
@@ -62,131 +79,405 @@
   <!-- ================================================================= -->
   <!-- 1. VISTA CHAT (100% STILE WHATSAPP)                               -->
   <!-- ================================================================= -->
-  <div id="chatView" class="w-full h-full max-w-lg mx-auto flex flex-col bg-white shadow-2xl sm:border-x border-slate-300">
+  <!-- ================================================================= -->
+  <!-- 1. VISTA CHAT (100% STILE WHATSAPP WEB & MOBILE MULTI-THREAD)     -->
+  <!-- ================================================================= -->
+  <div id="chatView" class="w-full h-full max-w-7xl mx-auto flex bg-white md:shadow-2xl md:border-x border-slate-300 overflow-hidden" style="position:relative">
     
-    <!-- TOP BAR AUTENTICA WHATSAPP -->
-    <header class="bg-[#075E54] text-white px-3.5 py-2.5 flex items-center justify-between shadow-sm shrink-0 z-20">
-      <div class="flex items-center space-x-2.5">
-        <!-- Avatar e Stato Online -->
-        <div class="relative">
-          <div class="w-10 h-10 rounded-full bg-[#128C7E] flex items-center justify-center text-white text-lg font-bold border border-white/20">
-            <i class="fa-solid fa-compass"></i>
+    <!-- A. SIDEBAR CANALI / GRUPPI WHATSAPP -->
+    <aside id="sidebarPanel" class="shrink-0 border-r border-[#e9edef] bg-white flex flex-col h-full z-10 transition-transform duration-300">
+      
+      <!-- Top Bar Sidebar -->
+      <div class="bg-[#075E54] text-white px-3.5 py-3 flex items-center justify-between shrink-0 shadow-xs select-none">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-9 h-9 rounded-full bg-[#128C7E] flex items-center justify-center text-white text-base font-bold border border-white/20">
+            <i class="fa-solid fa-vault"></i>
           </div>
-          <span class="absolute bottom-0 right-0 w-3 h-3 bg-[#25D366] border-2 border-[#075E54] rounded-full"></span>
+          <div>
+            <h2 class="font-semibold text-sm leading-tight">I tuoi Spazi & Chat</h2>
+            <p class="text-[10px] text-green-200">Dove lo AI messo</p>
+          </div>
         </div>
-        <!-- Contatto & Info -->
-        <div>
-          <h1 class="font-semibold text-sm leading-tight">Dove lo AI messo</h1>
-          <p class="text-[11px] text-green-100 flex items-center gap-1 leading-none">
-            online
-          </p>
+
+        <div class="flex items-center space-x-1.5">
+          <!-- Crea Nuovo Gruppo / Area -->
+          <button 
+            onclick="openNewThreadModal()" 
+            class="bg-[#128C7E] hover:bg-[#0e7468] text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-xs transition flex items-center gap-1 active:scale-95 border border-white/20"
+            title="Crea nuovo gruppo o area tematica"
+          >
+            <i class="fa-solid fa-plus text-[10px]"></i>
+            <span class="text-[11px]">Nuovo</span>
+          </button>
+
+          <!-- Apri Dashboard -->
+          <button 
+            onclick="openDashboard()" 
+            class="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-full transition" 
+            title="Apri Dashboard"
+          >
+            <i class="fa-solid fa-chart-simple text-sm"></i>
+          </button>
+
+          <!-- Impostazioni Modello AI -->
+          <button 
+            onclick="openAiSettingsModal()" 
+            class="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-full transition" 
+            title="Impostazioni Modello AI"
+          >
+            <i class="fa-solid fa-sliders text-sm"></i>
+          </button>
         </div>
       </div>
 
-      <!-- Azioni Header WhatsApp & Pulsante Dashboard -->
-      <div class="flex items-center space-x-2.5">
+      <!-- Barra di Ricerca Chat WhatsApp -->
+      <div class="p-2 border-b border-slate-100 bg-[#F0F2F5]">
+        <div class="flex items-center bg-white rounded-lg px-3 py-1.5 shadow-2xs border border-slate-200 text-xs">
+          <i class="fa-solid fa-magnifying-glass text-slate-400 mr-2 text-xs"></i>
+          <input 
+            id="threadsSearchInput" 
+            oninput="renderThreadsList()" 
+            type="text" 
+            placeholder="Cerca o inizia una nuova chat..." 
+            class="w-full outline-none bg-transparent text-slate-800 placeholder-slate-400 text-xs"
+          >
+        </div>
+      </div>
+
+      <!-- Filtri Pillole: Tutte, Gruppi, Aree -->
+      <div class="flex items-center gap-1.5 px-3 py-2 border-b border-slate-100 bg-white select-none overflow-x-auto custom-scroll">
+        <button id="pillAll" onclick="setThreadFilter('all')" class="px-2.5 py-1 text-xs rounded-full font-medium transition bg-[#E7FFDB] text-[#075E54] border border-[#25D366]/30">Tutte</button>
+        <button id="pillGroup" onclick="setThreadFilter('group')" class="px-2.5 py-1 text-xs rounded-full font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-600">Gruppi 👥</button>
+        <button id="pillThematic" onclick="setThreadFilter('thematic')" class="px-2.5 py-1 text-xs rounded-full font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-600">Aree Tematiche 🗂️</button>
+      </div>
+
+      <!-- Lista dei Canali / Thread -->
+      <div id="threadsContainer" class="flex-1 overflow-y-auto divide-y divide-slate-100 custom-scroll">
+        <!-- Renderizzato da renderThreadsList() -->
+      </div>
+    </aside>
+
+    <!-- B. PANNELLO CONVERSAZIONE ATTIVA (WHATSAPP 100%) -->
+    <main id="conversationPanel" class="flex-1 flex-col h-full bg-[#EFEAE2] relative overflow-hidden transition-transform duration-300">
+      
+      <!-- Top Bar WhatsApp Chat Attiva -->
+      <header class="bg-[#075E54] text-white px-3.5 py-2.5 flex items-center justify-between shadow-sm shrink-0 z-20 select-none">
+        <div class="flex items-center space-x-2.5 min-w-0">
+          <!-- Back button per mobile (torna all'elenco chat) -->
+          <button 
+            onclick="showThreadsSidebar()" 
+            class="md:hidden text-white/90 hover:text-white p-1.5 mr-0.5 active:scale-90"
+            title="Torna alla lista chat"
+          >
+            <i class="fa-solid fa-arrow-left text-base"></i>
+          </button>
+
+          <!-- Avatar e Stato Online -->
+          <div class="relative shrink-0">
+            <div id="activeThreadAvatar" class="w-10 h-10 rounded-full bg-[#128C7E] flex items-center justify-center text-white text-base font-bold border border-white/20">
+              <i id="activeThreadIcon" class="fa-solid fa-compass"></i>
+            </div>
+            <span class="absolute bottom-0 right-0 w-3 h-3 bg-[#25D366] border-2 border-[#075E54] rounded-full"></span>
+          </div>
+
+          <!-- Titolo Chat & Info Membri / Area -->
+          <div class="min-w-0">
+            <h1 id="activeThreadTitle" class="font-semibold text-sm leading-tight truncate">Dove lo AI messo</h1>
+            <p id="activeThreadSubtitle" class="text-[11px] text-green-100 truncate">
+              Assistente Personale & Caveau • online
+            </p>
+          </div>
+        </div>
+
+        <!-- Azioni Header Destra -->
+        <div class="flex items-center space-x-2 shrink-0">
+          <!-- Pill Switch Modello AI Attivo -->
+          <button 
+            id="aiModelHeaderBtn"
+            onclick="openAiSettingsModal()" 
+            class="bg-white/10 hover:bg-white/20 text-white text-xs font-medium px-2.5 py-1.5 rounded-full shadow-2xs transition flex items-center gap-1.5 active:scale-95 border border-white/20 cursor-pointer"
+            title="Clicca per cambiare motore AI (Gemini 2.5 Flash Lite o Gratuito)"
+          >
+            <span id="aiModelStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <i id="aiModelHeaderIcon" class="fa-solid fa-bolt text-amber-300 text-[11px]"></i>
+            <span id="aiModelHeaderLabel" class="text-[11px] font-semibold">Gemini 2.5 Lite</span>
+          </button>
+
+          <!-- Pulsante Apri Dashboard -->
+          <button 
+            onclick="openDashboard()" 
+            class="bg-[#128C7E] hover:bg-[#0e7468] text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-xs transition flex items-center gap-1.5 active:scale-95 border border-white/20"
+          >
+            <i class="fa-solid fa-chart-simple text-[11px]"></i>
+            <span class="hidden sm:inline">Apri Dashboard</span>
+          </button>
+
+          <!-- Elimina Gruppo/Area Personalizzata -->
+          <button 
+            id="deleteThreadBtn" 
+            onclick="confirmDeleteCurrentThread()" 
+            class="hidden text-white/70 hover:text-red-200 p-1.5 hover:bg-white/10 rounded-full transition" 
+            title="Elimina questo gruppo/area"
+          >
+            <i class="fa-solid fa-trash-can text-sm"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Feed Messaggi WhatsApp -->
+      <section id="chatFeed" class="flex-1 wa-wallpaper p-3.5 overflow-y-auto space-y-3 custom-scroll">
+        <!-- I messaggi vengono iniettati dinamicamente -->
+      </section>
+
+      <!-- Barra Input WhatsApp -->
+      <footer class="bg-[#F0F2F5] px-2 py-2 flex items-center space-x-1.5 shrink-0 select-none">
         
-        <!-- PULSANTE APRI DASHBOARD -->
-        <button 
-          onclick="openDashboard()" 
-          class="bg-[#128C7E] hover:bg-[#0e7468] text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-xs transition flex items-center gap-1.5 active:scale-95 border border-white/20"
-        >
-          <i class="fa-solid fa-chart-simple text-[11px]"></i>
-          <span>Apri Dashboard</span>
-        </button>
-
-        <!-- Icona Cerca & Menu WhatsApp -->
-        <button onclick="alert('Cerca nella conversazione')" class="text-white/80 hover:text-white p-1">
-          <i class="fa-solid fa-magnifying-glass text-sm"></i>
-        </button>
-        <button onclick="alert('Impostazioni: backup locale, crittografia AES-256')" class="text-white/80 hover:text-white p-1">
-          <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
-        </button>
-      </div>
-    </header>
-
-    <!-- AREA MESSAGGI CON SFONDO BEIGE WHATSAPP -->
-    <main id="chatFeed" class="flex-1 wa-wallpaper p-3.5 overflow-y-auto space-y-3 custom-scroll">
-      
-      <!-- Pillola Data WhatsApp -->
-      <div class="flex justify-center my-1 select-none">
-        <span class="bg-[#e1f3fb] text-[#54656f] text-[11px] font-medium uppercase px-3 py-0.5 rounded-md shadow-2xs">
-          Oggi
-        </span>
-      </div>
-
-      <!-- Messaggio di benvenuto Assistente -->
-      <div class="flex items-start max-w-[85%]">
-        <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug">
-          <p>👋 Ciao! Sono <strong>Dove lo AI messo</strong>.</p>
-          <p class="mt-1 text-[13px] text-gray-700">
-            Puoi scrivermi dove hai riposto un oggetto, mandarmi la foto o il PDF di una bolletta (📎), oppure dettare a voce (🎤)!
-          </p>
-          <span class="block text-[10px] text-gray-400 text-right mt-1">10:00</span>
-        </div>
-      </div>
-
-    </main>
-
-    <!-- BARRA DI INPUT FEDELE WHATSAPP -->
-    <footer class="bg-[#F0F2F5] px-2 py-2 flex items-center space-x-1.5 shrink-0 select-none">
-      
-      <!-- Graffetta (Allega foto o PDF) -->
-      <button 
-        type="button" 
-        onclick="triggerFileInput()" 
-        title="Allega foto o documento" 
-        class="text-gray-500 hover:text-[#075E54] p-1.5 text-xl active:scale-95 transition"
-      >
-        <i class="fa-solid fa-paperclip"></i>
-      </button>
-
-      <!-- Input di Testo Arrotondato a Pillola -->
-      <form id="chatForm" onsubmit="handleSend(event)" class="flex-1 flex items-center bg-white rounded-full px-3.5 py-2 shadow-2xs border border-gray-200">
-        <button type="button" class="text-gray-400 hover:text-gray-600 mr-2 text-base" title="Emoji">
-          <i class="fa-regular fa-face-smile"></i>
-        </button>
-        <input 
-          id="messageInput" 
-          type="text" 
-          placeholder="Scrivi un messaggio..." 
-          class="w-full text-sm outline-none bg-transparent placeholder-gray-400 text-gray-800"
-          autocomplete="off"
-        >
+        <!-- Graffetta (Allega foto o PDF) -->
         <button 
           type="button" 
           onclick="triggerFileInput()" 
-          title="Fotocamera" 
-          class="text-gray-400 hover:text-[#075E54] ml-2 text-base"
+          title="Allega foto o documento" 
+          class="text-gray-500 hover:text-[#075E54] p-1.5 text-xl active:scale-95 transition"
         >
-          <i class="fa-solid fa-camera"></i>
+          <i class="fa-solid fa-paperclip"></i>
         </button>
+
+        <!-- Input di Testo Arrotondato a Pillola -->
+        <form id="chatForm" onsubmit="handleSend(event)" class="flex-1 flex items-center bg-white rounded-full px-3.5 py-2 shadow-2xs border border-gray-200">
+          <button type="button" class="text-gray-400 hover:text-gray-600 mr-2 text-base" title="Emoji">
+            <i class="fa-regular fa-face-smile"></i>
+          </button>
+          <input 
+            id="messageInput" 
+            type="text" 
+            placeholder="Scrivi un messaggio..." 
+            class="w-full text-sm outline-none bg-transparent placeholder-gray-400 text-gray-800"
+            autocomplete="off"
+          >
+          <button 
+            type="button" 
+            onclick="triggerFileInput()" 
+            title="Fotocamera" 
+            class="text-gray-400 hover:text-[#075E54] ml-2 text-base"
+          >
+            <i class="fa-solid fa-camera"></i>
+          </button>
+        </form>
+
+        <!-- Microfono Vocale WhatsApp -->
+        <button 
+          id="micBtn" 
+          type="button" 
+          onclick="handleVoice()" 
+          title="Registra vocale" 
+          class="bg-[#128C7E] hover:bg-[#075E54] text-white w-10 h-10 rounded-full flex items-center justify-center shadow-md active:scale-95 transition"
+        >
+          <i class="fa-solid fa-microphone text-base"></i>
+        </button>
+
+        <!-- Tasto Invio Verde Circolare WhatsApp -->
+        <button 
+          id="sendBtn" 
+          type="button" 
+          onclick="handleSend(event)" 
+          title="Invia" 
+          class="hidden bg-[#25D366] hover:bg-green-600 text-white w-10 h-10 rounded-full items-center justify-center shadow-md active:scale-95 transition"
+        >
+          <i class="fa-solid fa-paper-plane text-sm ml-0.5"></i>
+        </button>
+
+      </footer>
+    </main>
+
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- MODAL: CREA NUOVO GRUPPO O AREA TEMATICA                          -->
+  <!-- ================================================================= -->
+  <div id="newThreadModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-[#128C7E] text-white flex items-center justify-center">
+            <i class="fa-solid fa-comments text-sm"></i>
+          </div>
+          <h3 class="font-bold text-slate-800 text-sm">Crea Nuova Chat / Spazio</h3>
+        </div>
+        <button onclick="closeNewThreadModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Selettore Tipo di Spazio -->
+      <div class="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
+        <button 
+          type="button" 
+          id="tabTypeGroup" 
+          onclick="selectThreadType('group')" 
+          class="py-2 text-xs font-semibold rounded-lg transition bg-white text-slate-900 shadow-xs flex items-center justify-center gap-1.5"
+        >
+          <i class="fa-solid fa-users text-emerald-600"></i>
+          <span>Gruppo Persone</span>
+        </button>
+        <button 
+          type="button" 
+          id="tabTypeThematic" 
+          onclick="selectThreadType('thematic')" 
+          class="py-2 text-xs font-semibold rounded-lg transition text-slate-500 hover:text-slate-900 flex items-center justify-center gap-1.5"
+        >
+          <i class="fa-solid fa-folder text-indigo-600"></i>
+          <span>Area Tematica</span>
+        </button>
+      </div>
+
+      <!-- Form di creazione -->
+      <form id="newThreadForm" onsubmit="handleCreateThread(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-medium text-slate-700 mb-1" id="labelThreadName">Nome del Gruppo</label>
+          <input 
+            id="threadNameInput" 
+            type="text" 
+            required 
+            placeholder="Es. Famiglia, Condominio, Casa Mare..." 
+            class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#128C7E] outline-none text-slate-800"
+          >
+        </div>
+
+        <!-- Solo per Gruppi: Membri -->
+        <div id="groupMembersGroup">
+          <label class="block font-medium text-slate-700 mb-1">Membri del gruppo (separati da virgola)</label>
+          <input 
+            id="threadMembersInput" 
+            type="text" 
+            placeholder="Es. Io, Chiara, Marco" 
+            class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#128C7E] outline-none text-slate-800"
+          >
+          <p class="text-[10px] text-slate-400 mt-1">L'AI riconoscerà i partecipanti nei messaggi e nelle ricerche.</p>
+        </div>
+
+        <!-- Solo per Aree Tematiche: Selezione Icona -->
+        <div id="thematicIconGroup" class="hidden">
+          <label class="block font-medium text-slate-700 mb-1">Scegli un'icona tematica</label>
+          <div class="grid grid-cols-5 gap-2 text-center" id="iconPickerGrid">
+            <button type="button" onclick="selectThematicIcon('fa-briefcase')" data-icon="fa-briefcase" class="p-2 border rounded-xl hover:border-[#128C7E] bg-slate-50 icon-choice border-[#128C7E] text-indigo-600"><i class="fa-solid fa-briefcase text-sm"></i></button>
+            <button type="button" onclick="selectThematicIcon('fa-house')" data-icon="fa-house" class="p-2 border rounded-xl hover:border-[#128C7E] bg-slate-50 icon-choice text-amber-600"><i class="fa-solid fa-house text-sm"></i></button>
+            <button type="button" onclick="selectThematicIcon('fa-receipt')" data-icon="fa-receipt" class="p-2 border rounded-xl hover:border-[#128C7E] bg-slate-50 icon-choice text-emerald-600"><i class="fa-solid fa-receipt text-sm"></i></button>
+            <button type="button" onclick="selectThematicIcon('fa-car')" data-icon="fa-car" class="p-2 border rounded-xl hover:border-[#128C7E] bg-slate-50 icon-choice text-blue-600"><i class="fa-solid fa-car text-sm"></i></button>
+            <button type="button" onclick="selectThematicIcon('fa-heart-pulse')" data-icon="fa-heart-pulse" class="p-2 border rounded-xl hover:border-[#128C7E] bg-slate-50 icon-choice text-rose-600"><i class="fa-solid fa-heart-pulse text-sm"></i></button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">Descrizione o Scopo (opzionale)</label>
+          <input 
+            id="threadDescInput" 
+            type="text" 
+            placeholder="Es. Bollette luce/gas e chiavi di riserva" 
+            class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#128C7E] outline-none text-slate-800"
+          >
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeNewThreadModal()" class="px-3.5 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-medium">Annulla</button>
+          <button type="submit" class="px-4 py-2 bg-[#128C7E] hover:bg-[#075E54] text-white rounded-xl font-semibold shadow-xs flex items-center gap-1.5">
+            <i class="fa-solid fa-check"></i>
+            <span>Crea Spazio</span>
+          </button>
+        </div>
       </form>
+    </div>
+  </div>
 
-      <!-- Microfono Vocale WhatsApp -->
-      <button 
-        id="micBtn" 
-        type="button" 
-        onclick="handleVoice()" 
-        title="Registra vocale" 
-        class="bg-[#128C7E] hover:bg-[#075E54] text-white w-10 h-10 rounded-full flex items-center justify-center shadow-md active:scale-95 transition"
-      >
-        <i class="fa-solid fa-microphone text-base"></i>
-      </button>
+  <!-- Modal Impostazioni Modello AI & Switch Gratuito/Economico -->
+  <div id="aiSettingsModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 backdrop-blur-xs">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 animate-fade-in border border-slate-100">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-slate-100 text-[#075E54] flex items-center justify-center text-base">
+            <i class="fa-solid fa-sliders"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-800 text-sm">Motore Intelligenza Artificiale</h3>
+            <p class="text-[11px] text-slate-400">Seleziona il modello per chat, visione e documenti</p>
+          </div>
+        </div>
+        <button onclick="closeAiSettingsModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
 
-      <!-- Tasto Invio Verde Circolare WhatsApp -->
-      <button 
-        id="sendBtn" 
-        type="button" 
-        onclick="handleSend(event)" 
-        title="Invia" 
-        class="hidden bg-[#25D366] hover:bg-green-600 text-white w-10 h-10 rounded-full items-center justify-center shadow-md active:scale-95 transition"
-      >
-        <i class="fa-solid fa-paper-plane text-sm ml-0.5"></i>
-      </button>
+      <!-- Quick Switch Pill / Toggle Modalità Gratuita -->
+      <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm">
+            <i class="fa-solid fa-gift"></i>
+          </div>
+          <div>
+            <span class="text-xs font-bold text-slate-800 block">Passa a Modello 100% Gratuito</span>
+            <span class="text-[10px] text-slate-500">Zero costi di API, nessun addebito OpenRouter</span>
+          </div>
+        </div>
+        <!-- Toggle Switch HTML -->
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="freeModelToggle" onchange="handleFreeToggle(this.checked)" class="sr-only peer">
+          <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#128C7E]"></div>
+        </label>
+      </div>
 
-    </footer>
+      <!-- Scelte Modello Card -->
+      <div class="space-y-2.5" id="aiModelsList">
+        <!-- Opzione 1: Google Gemini 2.5 Flash Lite -->
+        <div 
+          id="modelCard_gemini"
+          onclick="selectAiModel('google/gemini-2.5-flash-lite')" 
+          class="p-3.5 rounded-xl border-2 border-slate-200 cursor-pointer transition relative hover:border-[#128C7E] flex flex-col gap-1.5 bg-white"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-bolt text-amber-500 text-sm"></i>
+              <span class="font-bold text-xs text-slate-800">Google Gemini 2.5 Flash Lite</span>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">⚡ Consigliato</span>
+          </div>
+          <p class="text-[11px] text-slate-500 leading-snug">
+            Visione multimodale ad altissima precisione (tabelle, scontrini, F24) e Tool Calling nativo istantaneo.
+          </p>
+          <div class="flex items-center justify-between pt-1.5 text-[10px] text-slate-400 border-t border-slate-100">
+            <span>Costo: <strong>~$0.10 / 1M token</strong> (~0,0001 € / msg)</span>
+            <span id="check_gemini" class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check"></i> Attivo</span>
+          </div>
+        </div>
 
+        <!-- Opzione 2: Nex-AGI Nex-N2.5-Pro (Free) -->
+        <div 
+          id="modelCard_nex"
+          onclick="selectAiModel('nex-agi/nex-n2.5-pro:free')" 
+          class="p-3.5 rounded-xl border-2 border-slate-200 cursor-pointer transition relative hover:border-[#128C7E] flex flex-col gap-1.5 bg-white"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-cube text-emerald-500 text-sm"></i>
+              <span class="font-bold text-xs text-slate-800">Nex-AGI Nex-N2.5-Pro (Free)</span>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">🆓 100% Gratuito</span>
+          </div>
+          <p class="text-[11px] text-slate-500 leading-snug">
+            Modello open gratuito. Supporta visione di foto/PDF e function calling sul caveau a costo zero.
+          </p>
+          <div class="flex items-center justify-between pt-1.5 text-[10px] text-slate-400 border-t border-slate-100">
+            <span>Costo: <strong>0,00 € per sempre</strong></span>
+            <span id="check_nex" class="text-emerald-600 font-bold hidden"><i class="fa-solid fa-circle-check"></i> Attivo</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+        <span id="aiModelSavingNotice" class="text-[11px] text-slate-400">Salvataggio automatico istantaneo</span>
+        <button type="button" onclick="closeAiSettingsModal()" class="px-4 py-2 bg-[#128C7E] hover:bg-[#075E54] text-white rounded-xl font-semibold text-xs transition cursor-pointer">
+          Chiudi
+        </button>
+      </div>
+    </div>
   </div>
 
 
@@ -323,11 +614,16 @@
             <span class="text-xs text-slate-500">Documenti e posizioni sincronizzate</span>
           </div>
 
-          <!-- Filtri Moderni Segmentati -->
-          <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium self-start sm:self-auto">
-            <button onclick="filterTable('all')" id="fAll" class="px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold">Tutti</button>
-            <button onclick="filterTable('deadlines')" id="fDeadlines" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900">Scadenze</button>
-            <button onclick="filterTable('items')" id="fItems" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900">Oggetti</button>
+          <!-- Filtri Moderni Segmentati & Filtro Spazio/Gruppo -->
+          <div class="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+            <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium">
+              <button onclick="filterTable('all')" id="fAll" class="px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold">Tutti</button>
+              <button onclick="filterTable('deadlines')" id="fDeadlines" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900">Scadenze</button>
+              <button onclick="filterTable('items')" id="fItems" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900">Oggetti</button>
+            </div>
+            <select id="dashboardThreadSelect" onchange="loadDashboard()" class="text-xs bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl px-3 py-1.5 outline-none font-medium cursor-pointer">
+              <option value="">📁 Tutti gli Spazi / Gruppi</option>
+            </select>
           </div>
         </div>
 
@@ -337,6 +633,7 @@
             <thead>
               <tr class="bg-slate-50/70 text-slate-500 border-b border-slate-200/80 text-[10px] uppercase font-bold tracking-wider">
                 <th class="py-3 px-6">Descrizione / Titolo</th>
+                <th class="py-3 px-4">Spazio / Gruppo</th>
                 <th class="py-3 px-4">Origine</th>
                 <th class="py-3 px-4 text-right">Importo</th>
                 <th class="py-3 px-4">Scadenza</th>
@@ -368,11 +665,19 @@
   <script>
     const chatView = document.getElementById('chatView');
     const dashboardView = document.getElementById('dashboardView');
+    const sidebarPanel = document.getElementById('sidebarPanel');
+    const conversationPanel = document.getElementById('conversationPanel');
     const input = document.getElementById('messageInput');
     const micBtn = document.getElementById('micBtn');
     const sendBtn = document.getElementById('sendBtn');
     const chatFeed = document.getElementById('chatFeed');
     const realFileInput = document.getElementById('realFileInput');
+
+    let currentThreadId = 'general';
+    let threadsCache = [];
+    let activeThreadFilter = 'all'; // 'all', 'group', 'thematic'
+    let newThreadType = 'group';
+    let selectedThematicIcon = 'fa-briefcase';
 
     let currentFilter = 'all';
     let currentRecords = [];
@@ -389,6 +694,586 @@
       dashboardView.classList.add('hidden');
       dashboardView.classList.remove('flex');
       chatView.classList.remove('hidden');
+    }
+
+    // --- Gestione Threads, Gruppi e Aree Tematiche ---
+    async function loadThreads() {
+      try {
+        const res = await fetch('/api/threads');
+        if (!res.ok) throw new Error("Errore recupero thread");
+        const data = await res.json();
+        threadsCache = data.threads || [];
+        renderThreadsList();
+        updateDashboardThreadFilter();
+        const found = threadsCache.find(t => t.id === currentThreadId);
+        if (found) {
+          updateActiveThreadHeader(found);
+        } else if (threadsCache.length > 0) {
+          switchThread(threadsCache[0].id, false);
+        }
+      } catch (err) {
+        console.error("Errore loadThreads:", err);
+      }
+    }
+
+    function renderThreadsList() {
+      const container = document.getElementById('threadsContainer');
+      const searchVal = (document.getElementById('threadsSearchInput')?.value || '').toLowerCase().trim();
+      if (!container) return;
+
+      let filtered = threadsCache;
+      if (activeThreadFilter === 'group') {
+        filtered = filtered.filter(t => t.thread_type === 'group');
+      } else if (activeThreadFilter === 'thematic') {
+        filtered = filtered.filter(t => t.thread_type === 'thematic');
+      }
+
+      if (searchVal) {
+        filtered = filtered.filter(t => 
+          (t.name || '').toLowerCase().includes(searchVal) ||
+          (t.description || '').toLowerCase().includes(searchVal) ||
+          (t.members || []).some(m => m.toLowerCase().includes(searchVal))
+        );
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="p-8 text-center text-slate-400 text-xs">
+            <i class="fa-solid fa-comments text-2xl mb-2 text-slate-300"></i>
+            <p>Nessun gruppo o area trovata.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(t => {
+        const isActive = t.id === currentThreadId;
+        const activeClass = isActive ? 'bg-[#F0F2F5] border-l-4 border-[#075E54]' : 'hover:bg-slate-50';
+        const isGroup = t.thread_type === 'group';
+        const badgeTag = isGroup 
+          ? `<span class="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-1.5 py-0.5 rounded border border-emerald-200">👥 Gruppo</span>`
+          : `<span class="text-[10px] bg-indigo-50 text-indigo-700 font-semibold px-1.5 py-0.5 rounded border border-indigo-200">🗂️ Area</span>`;
+
+        const lastMsg = t.last_message || t.description || 'Nessun messaggio';
+        const timeStr = t.last_message_time || '';
+
+        return `
+          <div onclick="switchThread('${t.id}')" class="flex items-center gap-3 px-3.5 py-3 cursor-pointer transition select-none ${activeClass}">
+            <div class="relative shrink-0">
+              <div class="w-11 h-11 rounded-full flex items-center justify-center text-white text-lg font-bold border border-white/20 shadow-2xs ${t.color || 'bg-[#128C7E]'}">
+                <i class="fa-solid ${t.icon || 'fa-compass'}"></i>
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-1 mb-0.5">
+                <h4 class="font-semibold text-xs text-slate-900 truncate">${escapeHtml(t.name)}</h4>
+                <span class="text-[10px] text-slate-400 shrink-0">${escapeHtml(timeStr)}</span>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-[11px] text-slate-500 truncate leading-tight">${formatMessageText(lastMsg)}</p>
+                <div class="shrink-0">${badgeTag}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setThreadFilter(filter) {
+      activeThreadFilter = filter;
+      const pAll = document.getElementById('pillAll');
+      const pGroup = document.getElementById('pillGroup');
+      const pThematic = document.getElementById('pillThematic');
+      
+      const activeStyle = 'px-2.5 py-1 text-xs rounded-full font-medium transition bg-[#E7FFDB] text-[#075E54] border border-[#25D366]/30';
+      const inactiveStyle = 'px-2.5 py-1 text-xs rounded-full font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-600';
+
+      if (pAll) pAll.className = filter === 'all' ? activeStyle : inactiveStyle;
+      if (pGroup) pGroup.className = filter === 'group' ? activeStyle : inactiveStyle;
+      if (pThematic) pThematic.className = filter === 'thematic' ? activeStyle : inactiveStyle;
+
+      renderThreadsList();
+    }
+
+    async function switchThread(threadId, fetchMessages = true) {
+      currentThreadId = threadId;
+      const thread = threadsCache.find(t => t.id === threadId);
+      if (thread) {
+        updateActiveThreadHeader(thread);
+      }
+      renderThreadsList();
+      showConversation();
+
+      if (fetchMessages) {
+        await loadThreadMessages(threadId);
+      }
+    }
+
+    function updateActiveThreadHeader(thread) {
+      const titleEl = document.getElementById('activeThreadTitle');
+      const subEl = document.getElementById('activeThreadSubtitle');
+      const iconEl = document.getElementById('activeThreadIcon');
+      const avatarEl = document.getElementById('activeThreadAvatar');
+      const delBtn = document.getElementById('deleteThreadBtn');
+
+      if (titleEl) titleEl.textContent = thread.name;
+      if (iconEl) iconEl.className = `fa-solid ${thread.icon || 'fa-compass'}`;
+      if (avatarEl) {
+        avatarEl.className = `w-10 h-10 rounded-full flex items-center justify-center text-white text-base font-bold border border-white/20 shrink-0 ${thread.color || 'bg-[#128C7E]'}`;
+      }
+
+      if (subEl) {
+        if (thread.thread_type === 'group') {
+          const mList = thread.members && thread.members.length > 0 ? thread.members.join(', ') : 'Io';
+          subEl.textContent = `Membri: ${mList} • online`;
+        } else {
+          subEl.textContent = `${thread.description || 'Area tematica'} • ${thread.message_count || 0} messaggi`;
+        }
+      }
+
+      if (delBtn) {
+        if (thread.id === 'general') {
+          delBtn.classList.add('hidden');
+        } else {
+          delBtn.classList.remove('hidden');
+        }
+      }
+    }
+
+    async function loadThreadMessages(threadId) {
+      chatFeed.innerHTML = `
+        <div class="flex justify-center my-4">
+          <span class="text-xs text-slate-400 bg-white/80 px-3 py-1 rounded-full shadow-2xs">
+            <i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Caricamento messaggi...
+          </span>
+        </div>
+      `;
+      try {
+        const res = await fetch(`/api/threads/${encodeURIComponent(threadId)}/messages`);
+        if (!res.ok) throw new Error("Errore recupero messaggi");
+        const data = await res.json();
+        const msgs = data.messages || [];
+
+        chatFeed.innerHTML = `
+          <div class="flex justify-center my-1 select-none">
+            <span class="bg-[#e1f3fb] text-[#54656f] text-[11px] font-medium uppercase px-3 py-0.5 rounded-md shadow-2xs">
+              Oggi
+            </span>
+          </div>
+        `;
+
+        for (const m of msgs) {
+          if (m.sender === 'user') {
+            appendUserBubble(m.content);
+          } else {
+            const docs = m.metadata && m.metadata.documents ? m.metadata.documents : null;
+            const conf = m.metadata && m.metadata.confirmation ? m.metadata.confirmation : null;
+            appendAssistantBubble(m.content, docs, conf);
+          }
+        }
+        scrollBottom();
+      } catch (err) {
+        console.error("Errore loadThreadMessages:", err);
+        chatFeed.innerHTML = `
+          <div class="flex justify-center my-4 text-xs text-red-600 bg-red-50 p-2 rounded-lg">
+            Impossibile caricare i messaggi di questa chat.
+          </div>
+        `;
+      }
+    }
+
+    // --- Sistema Responsivo Mobile/Desktop (WhatsApp-style) ---
+
+    const MOBILE_BREAKPOINT = 768;
+    let isMobileView = window.innerWidth < MOBILE_BREAKPOINT;
+
+    function applyLayout() {
+      const mobile = window.innerWidth < MOBILE_BREAKPOINT;
+      isMobileView = mobile;
+
+      if (mobile) {
+        // ── MOBILE ── layout a singolo pannello sovrapposto
+        // Sidebar: posizione assoluta, larghezza 100%, sovrapposta
+        sidebarPanel.style.cssText = `
+          position: absolute;
+          top: 0; left: 0;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          z-index: 20;
+        `;
+        // ConversationPanel: posizione assoluta, larghezza 100%
+        conversationPanel.style.cssText = `
+          position: absolute;
+          top: 0; left: 0;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          z-index: 10;
+        `;
+        // Stato iniziale: mostra sidebar, nascondi conversazione
+        // (gestito da mobileShowSidebar / mobileShowConversation)
+        if (!conversationPanel.classList.contains('mobile-active')) {
+          _mobileShowSidebar(false);
+        } else {
+          _mobileShowConversation(false);
+        }
+      } else {
+        // ── DESKTOP ── layout affiancato
+        sidebarPanel.style.cssText = `
+          position: relative;
+          width: 350px;
+          min-width: 350px;
+          max-width: 390px;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          z-index: 10;
+          transform: none;
+          opacity: 1;
+        `;
+        conversationPanel.style.cssText = `
+          position: relative;
+          flex: 1;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          z-index: 10;
+          transform: none;
+          opacity: 1;
+        `;
+        sidebarPanel.classList.remove('mobile-active');
+        conversationPanel.classList.remove('mobile-active');
+      }
+    }
+
+    function _mobileShowSidebar(animate) {
+      // Sidebar visibile (sopra, z-index più alto)
+      sidebarPanel.style.zIndex = '20';
+      conversationPanel.style.zIndex = '10';
+      sidebarPanel.classList.add('mobile-active');
+      conversationPanel.classList.remove('mobile-active');
+
+      if (animate) {
+        sidebarPanel.style.transform = 'translateX(-100%)';
+        sidebarPanel.style.opacity = '0';
+        requestAnimationFrame(() => {
+          sidebarPanel.style.transition = 'transform 0.28s cubic-bezier(.4,0,.2,1), opacity 0.25s ease';
+          sidebarPanel.style.transform = 'translateX(0)';
+          sidebarPanel.style.opacity = '1';
+          conversationPanel.style.transition = 'transform 0.28s cubic-bezier(.4,0,.2,1)';
+          conversationPanel.style.transform = 'translateX(20px)';
+          conversationPanel.style.opacity = '0.4';
+        });
+      } else {
+        sidebarPanel.style.transition = 'none';
+        sidebarPanel.style.transform = 'translateX(0)';
+        sidebarPanel.style.opacity = '1';
+        conversationPanel.style.transition = 'none';
+        conversationPanel.style.transform = 'translateX(20px)';
+        conversationPanel.style.opacity = '0.4';
+      }
+    }
+
+    function _mobileShowConversation(animate) {
+      // Conversazione visibile (sopra, z-index più alto)
+      sidebarPanel.style.zIndex = '10';
+      conversationPanel.style.zIndex = '20';
+      conversationPanel.classList.add('mobile-active');
+      sidebarPanel.classList.remove('mobile-active');
+
+      if (animate) {
+        conversationPanel.style.transform = 'translateX(100%)';
+        conversationPanel.style.opacity = '0';
+        requestAnimationFrame(() => {
+          conversationPanel.style.transition = 'transform 0.28s cubic-bezier(.4,0,.2,1), opacity 0.22s ease';
+          conversationPanel.style.transform = 'translateX(0)';
+          conversationPanel.style.opacity = '1';
+          sidebarPanel.style.transition = 'transform 0.28s cubic-bezier(.4,0,.2,1)';
+          sidebarPanel.style.transform = 'translateX(-20px)';
+          sidebarPanel.style.opacity = '0.4';
+        });
+      } else {
+        conversationPanel.style.transition = 'none';
+        conversationPanel.style.transform = 'translateX(0)';
+        conversationPanel.style.opacity = '1';
+        sidebarPanel.style.transition = 'none';
+        sidebarPanel.style.transform = 'translateX(-20px)';
+        sidebarPanel.style.opacity = '0.4';
+      }
+    }
+
+    function showThreadsSidebar() {
+      if (isMobileView) {
+        _mobileShowSidebar(true);
+      }
+      // Su desktop non fa nulla — entrambi i pannelli sono sempre visibili
+    }
+
+    function showConversation() {
+      if (isMobileView) {
+        _mobileShowConversation(true);
+      }
+    }
+
+    // Listener resize e orientamento — ricalcola layout
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(applyLayout, 80);
+    });
+    window.addEventListener('orientationchange', () => {
+      setTimeout(applyLayout, 200);
+    });
+
+    // --- Gestione Modale Nuovo Thread / Gruppo ---
+    function openNewThreadModal() {
+      const modal = document.getElementById('newThreadModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        selectThreadType('group');
+        document.getElementById('threadNameInput').value = '';
+        document.getElementById('threadMembersInput').value = '';
+        document.getElementById('threadDescInput').value = '';
+        document.getElementById('threadNameInput').focus();
+      }
+    }
+
+    function closeNewThreadModal() {
+      const modal = document.getElementById('newThreadModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function selectThreadType(type) {
+      newThreadType = type;
+      const tabGroup = document.getElementById('tabTypeGroup');
+      const tabThematic = document.getElementById('tabTypeThematic');
+      const groupGroup = document.getElementById('groupMembersGroup');
+      const thematicGroup = document.getElementById('thematicIconGroup');
+      const labelName = document.getElementById('labelThreadName');
+      const nameInput = document.getElementById('threadNameInput');
+
+      if (type === 'group') {
+        tabGroup.className = 'py-2 text-xs font-semibold rounded-lg transition bg-white text-slate-900 shadow-xs flex items-center justify-center gap-1.5';
+        tabThematic.className = 'py-2 text-xs font-semibold rounded-lg transition text-slate-500 hover:text-slate-900 flex items-center justify-center gap-1.5';
+        groupGroup.classList.remove('hidden');
+        thematicGroup.classList.add('hidden');
+        labelName.textContent = 'Nome del Gruppo';
+        nameInput.placeholder = 'Es. Famiglia, Condominio, Amici Vacanze...';
+      } else {
+        tabThematic.className = 'py-2 text-xs font-semibold rounded-lg transition bg-white text-slate-900 shadow-xs flex items-center justify-center gap-1.5';
+        tabGroup.className = 'py-2 text-xs font-semibold rounded-lg transition text-slate-500 hover:text-slate-900 flex items-center justify-center gap-1.5';
+        groupGroup.classList.add('hidden');
+        thematicGroup.classList.remove('hidden');
+        labelName.textContent = 'Nome dell\'Area Tematica';
+        nameInput.placeholder = 'Es. Lavoro, Fisco & Tasse, Auto & Moto...';
+      }
+    }
+
+    function selectThematicIcon(icon) {
+      selectedThematicIcon = icon;
+      document.querySelectorAll('.icon-choice').forEach(btn => {
+        if (btn.getAttribute('data-icon') === icon) {
+          btn.classList.add('border-[#128C7E]', 'bg-emerald-50');
+        } else {
+          btn.classList.remove('border-[#128C7E]', 'bg-emerald-50');
+        }
+      });
+    }
+
+    async function handleCreateThread(e) {
+      if (e) e.preventDefault();
+      const name = (document.getElementById('threadNameInput')?.value || '').trim();
+      if (!name) return;
+
+      const desc = (document.getElementById('threadDescInput')?.value || '').trim();
+      let members = [];
+      if (newThreadType === 'group') {
+        const rawM = (document.getElementById('threadMembersInput')?.value || '').trim();
+        members = rawM ? rawM.split(',').map(m => m.trim()).filter(m => m.length > 0) : ['Io'];
+      }
+
+      let icon = newThreadType === 'group' ? 'fa-users' : selectedThematicIcon;
+      let color = newThreadType === 'group' ? 'bg-emerald-600' : 'bg-indigo-600';
+      if (icon === 'fa-house') color = 'bg-amber-600';
+      if (icon === 'fa-car') color = 'bg-blue-600';
+      if (icon === 'fa-heart-pulse') color = 'bg-rose-600';
+      if (icon === 'fa-receipt') color = 'bg-emerald-700';
+
+      try {
+        const res = await fetch('/api/threads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name,
+            thread_type: newThreadType,
+            icon: icon,
+            color: color,
+            description: desc,
+            members: members
+          })
+        });
+
+        if (!res.ok) throw new Error("Errore durante la creazione dello spazio");
+        const newThread = await res.json();
+        closeNewThreadModal();
+        await loadThreads();
+        await switchThread(newThread.id);
+      } catch (err) {
+        console.error("Errore handleCreateThread:", err);
+        alert("Errore durante la creazione del gruppo o area: " + err.message);
+      }
+    }
+
+    async function confirmDeleteCurrentThread() {
+      if (currentThreadId === 'general') {
+        alert("Non è possibile eliminare lo spazio principale 'Dove lo AI messo'.");
+        return;
+      }
+      const t = threadsCache.find(th => th.id === currentThreadId);
+      const name = t ? t.name : currentThreadId;
+      if (!confirm(`Sei sicuro di voler eliminare lo spazio "${name}"?\nI messaggi verranno eliminati e i file associati saranno ricollocati nel canale principale.`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/threads/${encodeURIComponent(currentThreadId)}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error("Errore eliminazione thread");
+        await loadThreads();
+        await switchThread('general');
+      } catch (err) {
+        console.error("Errore confirmDeleteCurrentThread:", err);
+        alert("Errore durante l'eliminazione dello spazio: " + err.message);
+      }
+    }
+
+    // --- Gestione Impostazioni Modello AI (Switch Gratuito / Gemini Flash Lite) ---
+    let currentAiModel = 'google/gemini-2.5-flash-lite';
+
+    async function loadAiModelSetting() {
+      try {
+        const res = await fetch('/api/settings/ai-model');
+        if (!res.ok) return;
+        const data = await res.json();
+        currentAiModel = data.current_model || 'google/gemini-2.5-flash-lite';
+        updateAiModelUI(data);
+      } catch (err) {
+        console.warn("Impossibile caricare impostazioni modello AI:", err);
+      }
+    }
+
+    function updateAiModelUI(data) {
+      const isFree = data.is_free || (currentAiModel.includes(':free'));
+      const headerLabel = document.getElementById('aiModelHeaderLabel');
+      const headerIcon = document.getElementById('aiModelHeaderIcon');
+      const statusDot = document.getElementById('aiModelStatusDot');
+      const freeToggle = document.getElementById('freeModelToggle');
+
+      if (freeToggle) {
+        freeToggle.checked = isFree;
+      }
+
+      if (headerLabel) {
+        headerLabel.textContent = isFree ? 'Nex-AGI (Free)' : 'Gemini 2.5 Lite';
+      }
+      if (headerIcon) {
+        headerIcon.className = isFree ? 'fa-solid fa-gift text-emerald-300 text-[11px]' : 'fa-solid fa-bolt text-amber-300 text-[11px]';
+      }
+      if (statusDot) {
+        statusDot.className = isFree ? 'w-2 h-2 rounded-full bg-emerald-400' : 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+      }
+
+      // Aggiorna le card nel modale
+      const cardGemini = document.getElementById('modelCard_gemini');
+      const cardNex = document.getElementById('modelCard_nex');
+      const checkGemini = document.getElementById('check_gemini');
+      const checkNex = document.getElementById('check_nex');
+
+      if (cardGemini && cardNex) {
+        if (!isFree) {
+          cardGemini.classList.add('border-[#128C7E]', 'bg-emerald-50/20');
+          cardGemini.classList.remove('border-slate-200');
+          cardNex.classList.remove('border-[#128C7E]', 'bg-emerald-50/20');
+          cardNex.classList.add('border-slate-200');
+          if (checkGemini) checkGemini.classList.remove('hidden');
+          if (checkNex) checkNex.classList.add('hidden');
+        } else {
+          cardNex.classList.add('border-[#128C7E]', 'bg-emerald-50/20');
+          cardNex.classList.remove('border-slate-200');
+          cardGemini.classList.remove('border-[#128C7E]', 'bg-emerald-50/20');
+          cardGemini.classList.add('border-slate-200');
+          if (checkNex) checkNex.classList.remove('hidden');
+          if (checkGemini) checkGemini.classList.add('hidden');
+        }
+      }
+    }
+
+    function openAiSettingsModal() {
+      const modal = document.getElementById('aiSettingsModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        loadAiModelSetting();
+      }
+    }
+
+    function closeAiSettingsModal() {
+      const modal = document.getElementById('aiSettingsModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    async function selectAiModel(modelId) {
+      const notice = document.getElementById('aiModelSavingNotice');
+      if (notice) notice.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Salvataggio...';
+      try {
+        const res = await fetch('/api/settings/ai-model', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model_id: modelId })
+        });
+        if (!res.ok) throw new Error("Errore aggiornamento modello");
+        const data = await res.json();
+        currentAiModel = data.current_model;
+        updateAiModelUI(data);
+        if (notice) notice.innerHTML = '<span class="text-emerald-600 font-semibold"><i class="fa-solid fa-check mr-1"></i> Modello attivato!</span>';
+        setTimeout(() => {
+          if (notice) notice.textContent = 'Salvataggio automatico istantaneo';
+        }, 2000);
+      } catch (err) {
+        console.error("Errore selectAiModel:", err);
+        if (notice) notice.innerHTML = '<span class="text-red-500">Errore nel salvataggio</span>';
+      }
+    }
+
+    function handleFreeToggle(isFree) {
+      const targetModel = isFree ? 'nex-agi/nex-n2.5-pro:free' : 'google/gemini-2.5-flash-lite';
+      selectAiModel(targetModel);
+    }
+
+
+    function updateDashboardThreadFilter() {
+      const select = document.getElementById('dashboardThreadSelect');
+      if (!select) return;
+      const currentVal = select.value;
+      select.innerHTML = '<option value="">📁 Tutti gli Spazi / Gruppi</option>';
+      threadsCache.forEach(t => {
+        const isGroup = t.thread_type === 'group';
+        const prefix = isGroup ? '👥' : '🗂️';
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = `${prefix} ${t.name}`;
+        if (t.id === currentVal) opt.selected = true;
+        select.appendChild(opt);
+      });
     }
 
     // --- Toggle Tasto Invio / Microfono WhatsApp ---
@@ -731,12 +1616,19 @@
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text })
+          body: JSON.stringify({ message: text, thread_id: currentThreadId })
         });
         if (indicator) indicator.remove();
         if (!res.ok) throw new Error('Errore nella risposta del server');
         const data = await res.json();
         appendAssistantBubble(data.reply, data.documents, data.confirmation);
+        const th = threadsCache.find(t => t.id === currentThreadId);
+        if (th) {
+          th.last_message = text;
+          th.last_message_time = getTime();
+          th.message_count = (th.message_count || 0) + 2;
+          renderThreadsList();
+        }
         loadDashboard(currentFilter);
       } catch (err) {
         if (indicator) indicator.remove();
@@ -763,6 +1655,7 @@
 
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('thread_id', currentThreadId);
 
       try {
         const res = await fetch('/api/documents/upload', {
@@ -860,10 +1753,17 @@
     }
 
     // --- Fetch Dashboard Live: GET /api/dashboard ---
-    async function loadDashboard(filter = 'all') {
-      currentFilter = filter;
+    async function loadDashboard(filter = null) {
+      if (filter !== null) currentFilter = filter;
+      const tSelect = document.getElementById('dashboardThreadSelect');
+      const threadId = tSelect ? tSelect.value : '';
+
       try {
-        const res = await fetch(`/api/dashboard?filter=${encodeURIComponent(filter)}`);
+        let url = `/api/dashboard?filter=${encodeURIComponent(currentFilter)}`;
+        if (threadId) {
+          url += `&thread_id=${encodeURIComponent(threadId)}`;
+        }
+        const res = await fetch(url);
         if (!res.ok) throw new Error("Errore recupero feed dashboard");
         const data = await res.json();
 
@@ -920,7 +1820,7 @@
       if (!records || records.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="6" class="py-10 text-center text-slate-400 text-xs">
+            <td colspan="7" class="py-10 text-center text-slate-400 text-xs">
               <i class="fa-solid fa-folder-open text-3xl mb-2.5 block text-slate-300"></i>
               Nessun record trovato per il filtro selezionato.
             </td>
@@ -1031,10 +1931,31 @@
           } else if (rec.status === 'quietanzato') {
             payBtn = `<span class="text-emerald-600 text-xs font-medium"><i class="fa-solid fa-check mr-1"></i>Saldato</span>`;
           }
-          actionHtml = `<div class="flex items-center justify-end gap-2">${previewBtn} ${payBtn} ${deleteBtn}</div>`;
+          actionHtml = `
+            <div class="flex items-center justify-end gap-1.5 flex-wrap">
+              ${previewBtn}
+              ${payBtn}
+              ${deleteBtn}
+            </div>
+          `;
         } else if (rec.type === 'physical_item') {
-          actionHtml = `<div class="flex items-center justify-end gap-2"><span class="text-slate-400 text-xs italic mr-1">Registrato</span> ${deleteBtn}</div>`;
+          actionHtml = `
+            <div class="flex items-center justify-end gap-1.5">
+              ${deleteBtn}
+            </div>
+          `;
         }
+
+        // Badge Spazio / Gruppo
+        const threadName = escapeHtml(rec.thread_name || 'Principale');
+        const isGroup = (rec.thread_id || '').includes('famiglia') || (rec.thread_id || '').includes('gruppo');
+        const threadIcon = isGroup ? 'fa-users text-emerald-600' : 'fa-folder text-indigo-600';
+        const threadBadge = `
+          <span class="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full border border-slate-200">
+            <i class="fa-solid ${threadIcon} text-[10px]"></i>
+            <span>${threadName}</span>
+          </span>
+        `;
 
         tr.innerHTML = `
           <td class="py-4 px-6">
@@ -1048,6 +1969,7 @@
               </div>
             </div>
           </td>
+          <td class="py-4 px-4">${threadBadge}</td>
           <td class="py-4 px-4">${originBadge}</td>
           <td class="py-4 px-4 text-right font-bold text-slate-900 text-sm">${amountHtml}</td>
           <td class="py-4 px-4">${dueDateHtml}</td>
@@ -1193,9 +2115,15 @@
 
     // Inizializzazione al caricamento della pagina
     document.addEventListener('DOMContentLoaded', () => {
+      applyLayout();
+      loadAiModelSetting();
+      loadThreads();
       loadDashboard('all');
     });
     // Chiamata immediata per sicurezza nel caso il DOM sia già pronto
+    applyLayout();
+    loadAiModelSetting();
+    loadThreads();
     loadDashboard('all');
   </script>
 

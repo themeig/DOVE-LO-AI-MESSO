@@ -21,8 +21,11 @@ def handle_chat_message(
     payload: ChatRequest,
     db: Session = Depends(get_db)
 ):
+    thread_id = payload.thread_id or "general"
+
     # 1. Save incoming user message
     user_msg = ChatMessage(
+        thread_id=thread_id,
         sender="user",
         message_type="text",
         content=payload.message
@@ -30,12 +33,13 @@ def handle_chat_message(
     db.add(user_msg)
     db.commit()
 
-    # 2. Run intelligent agent with real tools
+    # 2. Run intelligent agent with real tools and thread context
     agent = get_agent()
-    chat_response = agent.run_turn(payload.message, db=db)
+    chat_response = agent.run_turn(payload.message, db=db, thread_id=thread_id)
 
     # 3. Save assistant reply to chat history
     asst_msg = ChatMessage(
+        thread_id=thread_id,
         sender="assistant",
         message_type="text",
         content=chat_response.reply,
