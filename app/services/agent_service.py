@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from pathlib import Path
 import httpx
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
@@ -136,6 +137,7 @@ class AgenticChatService:
                     if t in text_blob:
                         score += 10
                 if score > 0:
+                    fn = Path(d.file_path).name
                     doc_scored.append((score, {
                         "document_id": d.id,
                         "title": d.title,
@@ -145,7 +147,9 @@ class AgenticChatService:
                         "due_date": d.due_date.isoformat() if d.due_date else None,
                         "status": d.status,
                         "summary": d.summary,
-                        "filename": d.file_path.split("\\")[-1].split("/")[-1]
+                        "filename": fn,
+                        "file_url": f"/uploads/{fn}",
+                        "file_type": d.file_type
                     }))
 
             doc_scored.sort(key=lambda x: x[0], reverse=True)
@@ -183,21 +187,24 @@ class AgenticChatService:
         elif name == "get_recent_vault_documents":
             limit = args.get("limit", 3)
             recent_docs = db.query(Document).order_by(Document.created_at.desc()).limit(limit).all()
+            recent_list = []
+            for d in recent_docs:
+                fn = Path(d.file_path).name
+                recent_list.append({
+                    "document_id": d.id,
+                    "title": d.title,
+                    "issuer": d.issuer,
+                    "doc_type": d.doc_type,
+                    "amount": d.amount,
+                    "due_date": d.due_date.isoformat() if d.due_date else None,
+                    "status": d.status,
+                    "summary": d.summary,
+                    "filename": fn,
+                    "file_url": f"/uploads/{fn}",
+                    "file_type": d.file_type
+                })
             return {
-                "recent_documents": [
-                    {
-                        "document_id": d.id,
-                        "title": d.title,
-                        "issuer": d.issuer,
-                        "doc_type": d.doc_type,
-                        "amount": d.amount,
-                        "due_date": d.due_date.isoformat() if d.due_date else None,
-                        "status": d.status,
-                        "summary": d.summary,
-                        "filename": d.file_path.split("\\")[-1].split("/")[-1]
-                    }
-                    for d in recent_docs
-                ]
+                "recent_documents": recent_list
             }
 
         elif name == "store_physical_item":
@@ -371,7 +378,10 @@ class AgenticChatService:
                         if final_text:
                             if tool_action == "store_physical_item" and "Memorizzato" not in final_text:
                                 final_text = f"✅ Memorizzato! {final_text}"
-                            return ChatResponse(reply=final_text, action=tool_action, data=tool_data)
+                            docs_found = None
+                            if isinstance(tool_data, dict):
+                                docs_found = tool_data.get("found_documents") or tool_data.get("recent_documents")
+                            return ChatResponse(reply=final_text, action=tool_action, data=tool_data, documents=docs_found)
                 
                 direct_reply = (msg1.get("content") or "").strip()
                 lower_t = user_text.lower()
@@ -381,7 +391,15 @@ class AgenticChatService:
                 if tc_match:
                     raw_tc = tc_match.group(1).strip()
                     logger.info(f"Intercettata chiamata di tool nel testo del modello: {raw_tc}")
-                    if "search_vault" in raw_tc or any(k in lower_t for k in ["cerca", "trova", "graduatori", "tolc", "passaporto"]):
+                    is_store_tc = "store_physical_item" in raw_tc or (any(k in lower_t for k in ["messo", "riposto", "salvato", "lasciato", "conservato"]) and not any(k in lower_t for k in ["dov'è", "dov'e", "dove"]))
+                    if is_store_tc:
+                        m = re.search(r"(?:messo|riposto|salvato|lasciato|conservato)\s+(?:il\s+|la\s+|le\s+|i\s+|l\')?(.+?)\s+(?:nel|nella|in|su|sul|sotto|a)\s+(.+)", lower_t)
+                        item = m.group(1).strip() if m else "Oggetto"
+                        loc = m.group(2).strip() if m else "posto specificato"
+                        db_res = self.execute_tool("store_physical_item", {"item_name": item, "primary_location": loc}, db)
+                        return ChatResponse(reply=f"✅ Memorizzato! Ho salvato la posizione di '{item}' in: {loc}.", action="store_physical_item", data=db_res)
+
+                    if "search_vault" in raw_tc or any(k in lower_t for k in ["cerca", "trova", "graduatori", "tolc", "dov'è", "dov'e", "dove"]):
                         q_term = re.sub(r"^(?:cerca|trovami|trova|dov'è|dov'e|dove)\s*", "", lower_t).strip(" ?.")
                         t_out = self.execute_tool("search_vault", {"query": q_term or user_text}, db)
                         docs = t_out.get("found_documents", [])
@@ -391,7 +409,8 @@ class AgenticChatService:
                             return ChatResponse(
                                 reply=f"📄 Ho trovato il documento '{d['title']}':\n💡 {d['summary']}",
                                 action="search_vault",
-                                data=t_out
+                                data=t_out,
+                                documents=docs
                             )
                         if items:
                             it = items[0]
@@ -409,26 +428,51 @@ class AgenticChatService:
                         return ChatResponse(
                             reply="Ho trovato nel tuo archivio documenti:\n\n" + "\n\n".join(lines),
                             action="search_vault",
-                            data=t_out
+                            data=t_out,
+                            documents=docs
                         )
 
                 # 0.5 Se l'utente chiede del file appena mandato / caricato o cosa dice un file
                 if any(k in lower_t for k in ["cosa parla", "cosa dice", "cosa c'è", "cosa ce", "cosa contiene", "appena mandato", "ho mandato", "appena caricato", "ho caricato", "ultimo file", "ultimo documento"]):
                     latest_doc = db.query(Document).order_by(Document.id.desc()).first()
                     if latest_doc:
+                        fn = latest_doc.file_path.split("\\")[-1].split("/")[-1]
+                        doc_dict = [{
+                            "document_id": latest_doc.id,
+                            "title": latest_doc.title,
+                            "issuer": latest_doc.issuer,
+                            "doc_type": latest_doc.doc_type,
+                            "amount": latest_doc.amount,
+                            "due_date": latest_doc.due_date.isoformat() if latest_doc.due_date else None,
+                            "status": latest_doc.status,
+                            "summary": latest_doc.summary,
+                            "filename": fn,
+                            "file_url": f"/uploads/{fn}",
+                            "file_type": latest_doc.file_type
+                        }]
                         return ChatResponse(
                             reply=f"📄 **{latest_doc.title}** ({latest_doc.issuer or 'Documento recente'})\n\n💡 {latest_doc.summary}",
                             action="search_vault",
-                            data={"document_id": latest_doc.id, "title": latest_doc.title}
+                            data={"document_id": latest_doc.id, "title": latest_doc.title},
+                            documents=doc_dict
                         )
 
-                # 1. Se l'utente fa una DOMANDA (cerca qualcosa, chiede dove si trova o info su un file)
+                # 1. Se l'utente comunica che ha memorizzato o riposto qualcosa (STORE)
+                is_storing = any(k in lower_t for k in ["ho messo", "messo", "riposto", "salvato", "lasciato", "conservato"]) and not any(k in lower_t for k in ["dov'è", "dov'e", "dove ho", "dove l'ho", "dove si trova", "dove sono", "cosa ho", "cosa c'è", "cosa c'e"])
+                if is_storing:
+                    m = re.search(r"(?:messo|riposto|salvato|lasciato|conservato)\s+(?:il\s+|la\s+|le\s+|i\s+|l\')?(.+?)\s+(?:nel|nella|in|su|sul|sotto|a)\s+(.+)", lower_t)
+                    item = m.group(1).strip() if m else "Oggetto"
+                    loc = m.group(2).strip() if m else "posto specificato"
+                    db_res = self.execute_tool("store_physical_item", {"item_name": item, "primary_location": loc}, db)
+                    return ChatResponse(reply=f"✅ Memorizzato! Ho salvato la posizione di '{item}' in: {loc}.", action="store_physical_item", data=db_res)
+
+                # 2. Se l'utente fa una DOMANDA (cerca qualcosa, chiede dove si trova o info su un file)
                 is_query = any(k in lower_t for k in [
                     "dov'è", "dov'e", "dove", "trovami", "trova", "cerca", "qual è", "qual e",
                     "che file", "che documento", "cos'è", "cos e", "spiegami", "graduatori",
                     "hai", "ci sono", "c'è", "c e", "mostrami", "fammi vedere", "elenca", "vediamo",
-                    "test", "tolc", "bollett", "f24", "ricevut", "fattur", "passaport", "chiav", "patente", "universit"
-                ])
+                    "test", "tolc", "bollett", "f24", "ricevut", "fattur"
+                ]) or (any(k in lower_t for k in ["passaport", "chiav", "patente", "universit"]) and any(q in lower_t for q in ["dov", "trov", "cerc", "qual", "hai", "ci sono"]))
                 if is_query:
                     query_clean = re.sub(r"^(?:hai|ci sono|c'è|c e|mostrami|fammi vedere|elenca|dov'è|dov'e|dove ho messo|dove si trova|dove sono|dove|trovami|trova|cerca|che file è|che file e|che file|che documento è|che documento|cos'è il file|cos'è|spiegami il file|spiegami)\s*", "", lower_t).strip(" ?.")
                     if len(query_clean) >= 2:
@@ -441,14 +485,16 @@ class AgenticChatService:
                                 return ChatResponse(
                                     reply=f"📄 Ho trovato il documento '{d['title']}':\n💡 {d['summary']}",
                                     action="search_vault",
-                                    data=found
+                                    data=found,
+                                    documents=docs
                                 )
                             else:
                                 lines = [f"- 📄 **{d['title']}** ({d['doc_type']})\n  💡 {d['summary']}" for d in docs[:3]]
                                 return ChatResponse(
                                     reply=f"Ho trovato {len(docs)} documenti correlati nel tuo caveau:\n\n" + "\n\n".join(lines),
                                     action="search_vault",
-                                    data=found
+                                    data=found,
+                                    documents=docs
                                 )
                         if items:
                             it = items[0]
@@ -473,15 +519,6 @@ class AgenticChatService:
                                 data=recent
                             )
 
-                # 2. Se l'utente comunica che ha memorizzato o riposto qualcosa
-                if any(k in lower_t for k in ["messo", "riposto", "salvato", "lasciato"]):
-                    m = re.search(r"(?:messo|riposto|salvato|lasciato)\s+(?:il\s+|la\s+|le\s+|i\s+|l\')?(.+?)\s+(?:nel|nella|in|su|sul|sotto)\s+(.+)", lower_t)
-                    item = m.group(1).strip() if m else "Oggetto"
-                    loc = m.group(2).strip() if m else "posto specificato"
-                    db_res = self.execute_tool("store_physical_item", {"item_name": item, "primary_location": loc}, db)
-                    final_reply = direct_reply if ("Memorizzato" in direct_reply) else f"✅ Memorizzato! {direct_reply or f'Ho salvato la posizione di {item} in {loc}.'}"
-                    return ChatResponse(reply=final_reply, action="store_physical_item", data=db_res)
-
                 if direct_reply:
                     return ChatResponse(reply=direct_reply, action="REPLY")
 
@@ -490,12 +527,24 @@ class AgenticChatService:
 
         # Safety-net euristico deterministico se la rete è lenta o non chiama il tool
         lower_t = user_text.lower()
+        is_storing = any(k in lower_t for k in ["ho messo", "messo", "riposto", "salvato", "lasciato", "conservato"]) and not any(k in lower_t for k in ["dov'è", "dov'e", "dove ho", "dove l'ho", "dove si trova", "dove sono", "cosa ho"])
+        if is_storing:
+            m = re.search(r"(?:messo|riposto|salvato|lasciato|conservato)\s+(?:il\s+|la\s+|le\s+|i\s+|l\')?(.+?)\s+(?:nel|nella|in|su|sul|sotto|a)\s+(.+)", lower_t)
+            item = m.group(1).strip() if m else "Oggetto"
+            loc = m.group(2).strip() if m else "posto specificato"
+            res = self.execute_tool("store_physical_item", {"item_name": item, "primary_location": loc}, db)
+            return ChatResponse(
+                reply=f"✅ Memorizzato! Ho salvato la posizione di '{item}': {loc}.",
+                action="store_physical_item",
+                data=res
+            )
+
         is_query = any(k in lower_t for k in [
             "dov'è", "dov'e", "dove", "trovami", "trova", "cerca", "qual è", "qual e",
             "che file", "che documento", "cos'è", "cos e", "spiegami", "graduatori",
             "hai", "ci sono", "c'è", "c e", "mostrami", "fammi vedere", "elenca", "vediamo",
-            "test", "tolc", "bollett", "f24", "ricevut", "fattur", "passaport", "chiav", "patente", "universit"
-        ])
+            "test", "tolc", "bollett", "f24", "ricevut", "fattur"
+        ]) or (any(k in lower_t for k in ["passaport", "chiav", "patente", "universit"]) and any(q in lower_t for q in ["dov", "trov", "cerc", "qual"]))
         if is_query:
             query_clean = re.sub(r"^(?:hai|ci sono|c'è|c e|mostrami|fammi vedere|elenca|dov'è|dov'e|dove ho messo|dove si trova|dove sono|dove|trovami|trova|cerca|che file è|che file e|che file|che documento è|che documento|cos'è il file|cos'è|spiegami il file|spiegami)\s*", "", lower_t).strip(" ?.")
             if len(query_clean) >= 2:
@@ -507,14 +556,16 @@ class AgenticChatService:
                         return ChatResponse(
                             reply=f"📄 Ho trovato il documento '{docs[0]['title']}':\n💡 {docs[0]['summary']}",
                             action="search_vault",
-                            data=found
+                            data=found,
+                            documents=docs
                         )
                     else:
                         lines = [f"- 📄 **{d['title']}** ({d['doc_type']})\n  💡 {d['summary']}" for d in docs[:3]]
                         return ChatResponse(
                             reply=f"Ho trovato {len(docs)} documenti correlati nel tuo caveau:\n\n" + "\n\n".join(lines),
                             action="search_vault",
-                            data=found
+                            data=found,
+                            documents=docs
                         )
                 if items:
                     loc = items[0]['primary_location'] + (f" ({items[0]['detailed_location']})" if items[0]['detailed_location'] else "")
@@ -530,19 +581,9 @@ class AgenticChatService:
                 return ChatResponse(
                     reply="Ho trovato nel tuo archivio documenti:\n\n" + "\n\n".join(lines),
                     action="search_vault",
-                    data=recent
+                    data=recent,
+                    documents=docs
                 )
-
-        if "messo" in lower_t or "riposto" in lower_t:
-            m = re.search(r"(?:messo|riposto|salvato)\s+(?:il\s+|la\s+|le\s+|i\s+|l\')?(.+?)\s+(?:nel|nella|in|su|sul|sotto)\s+(.+)", lower_t)
-            item = m.group(1).strip() if m else "Oggetto"
-            loc = m.group(2).strip() if m else "posto specificato"
-            res = self.execute_tool("store_physical_item", {"item_name": item, "primary_location": loc}, db)
-            return ChatResponse(
-                reply=f"✅ Memorizzato! Ho salvato la posizione di '{item}': {loc}.",
-                action="store_physical_item",
-                data=res
-            )
 
         # Saluti o domande generali
         if any(k in lower_t for k in ["ciao", "salve", "buongiorno", "buonasera", "hey", "chi sei", "cosa fai"]):

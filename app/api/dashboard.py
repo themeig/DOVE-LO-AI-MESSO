@@ -1,4 +1,5 @@
 from typing import Optional
+from pathlib import Path
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -40,7 +41,8 @@ def get_dashboard(
             if filter == "deadlines" and doc.status != "da_pagare":
                 continue
 
-            badge_color = "amber" if doc.status == "da_pagare" else ("emerald" if doc.status == "quietanzato" else "slate")
+            badge_color = "amber" if doc.status == "da_pagare" else "emerald"
+            fn = Path(doc.file_path).name
             records.append(
                 RecordItem(
                     id=doc.id,
@@ -51,7 +53,9 @@ def get_dashboard(
                     due_date=doc.due_date.isoformat() if doc.due_date else None,
                     status=doc.status,
                     location_or_notes=doc.summary,
-                    badge_color=badge_color
+                    badge_color=badge_color,
+                    file_url=f"/uploads/{fn}",
+                    file_type=doc.file_type
                 )
             )
 

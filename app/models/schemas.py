@@ -23,6 +23,7 @@ class ChatResponse(BaseModel):
     reply: str
     action: str = "REPLY"
     data: Optional[dict] = None
+    documents: Optional[List[dict]] = None
 
 class DocumentStatusUpdate(BaseModel):
     status: Literal["da_pagare", "quietanzato", "archiviato"]
@@ -37,6 +38,8 @@ class RecordItem(BaseModel):
     status: str
     location_or_notes: Optional[str] = None
     badge_color: str
+    file_url: Optional[str] = None
+    file_type: Optional[str] = None
 
 class DashboardKPI(BaseModel):
     total_upcoming_amount: float

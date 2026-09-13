@@ -82,6 +82,7 @@ async def upload_document(
     db.add(asst_msg)
     db.commit()
 
+    fn = Path(doc.file_path).name
     return {
         "document_id": doc.id,
         "title": doc.title,
@@ -89,8 +90,20 @@ async def upload_document(
         "amount": doc.amount,
         "due_date": doc.due_date.isoformat() if doc.due_date else None,
         "status": doc.status,
-        "chat_reply": chat_reply
+        "chat_reply": chat_reply,
+        "file_url": f"/uploads/{fn}",
+        "file_type": doc.file_type,
+        "summary": doc.summary
     }
+
+@router.get("/{document_id}/file")
+def get_document_file(document_id: int, db: Session = Depends(get_db)):
+    doc = db.query(Document).filter(Document.id == document_id).first()
+    if not doc or not Path(doc.file_path).exists():
+        raise HTTPException(status_code=404, detail="File non trovato")
+    from fastapi.responses import FileResponse
+    media_type = "application/pdf" if doc.file_type == "pdf" else f"image/{doc.file_type}"
+    return FileResponse(doc.file_path, media_type=media_type, filename=Path(doc.file_path).name)
 
 @router.patch("/{document_id}/status")
 def update_document_status(

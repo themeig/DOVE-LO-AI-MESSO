@@ -462,13 +462,46 @@
       scrollBottom();
     }
 
-    function appendUserFileBubble(fileName, fileSize) {
-      const isPdf = fileName.toLowerCase().endsWith('.pdf');
-      const iconClass = isPdf ? 'fa-solid fa-file-pdf text-red-700' : 'fa-solid fa-file-image text-emerald-800';
+    function appendUserFileBubble(fileName, fileSize, previewUrl = null, isImage = false, isPdf = false) {
       const userBubble = document.createElement('div');
       userBubble.className = 'flex justify-end';
-      userBubble.innerHTML = `
-        <div class="wa-bubble-out p-2 max-w-[85%] text-sm text-gray-800">
+
+      let previewContent = '';
+      if (isImage && previewUrl) {
+        previewContent = `
+          <div class="cursor-pointer group mb-1" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', 'image')">
+            <div class="relative overflow-hidden rounded-lg bg-black/5 max-h-48 flex items-center justify-center">
+              <img src="${previewUrl}" class="w-full h-auto object-cover max-h-48 rounded-lg group-hover:scale-105 transition duration-200" alt="Anteprima">
+              <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                <i class="fa-solid fa-magnifying-glass-plus text-xl drop-shadow"></i>
+              </div>
+            </div>
+            <div class="flex items-center justify-between px-1 pt-1 text-[11px] text-gray-700 font-medium">
+              <span class="truncate max-w-[170px]">${escapeHtml(fileName)}</span>
+              <span class="text-gray-500">${formatFileSize(fileSize)}</span>
+            </div>
+          </div>
+        `;
+      } else if (isPdf && previewUrl) {
+        previewContent = `
+          <div class="bg-[#d4f2c5] p-2.5 rounded-lg flex items-center justify-between gap-3 mb-1 border border-emerald-200/70">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="w-9 h-9 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0 shadow-2xs">
+                <i class="fa-solid fa-file-pdf text-lg"></i>
+              </div>
+              <div class="text-xs min-w-0">
+                <p class="font-bold text-gray-900 truncate max-w-[140px]">${escapeHtml(fileName)}</p>
+                <p class="text-[10px] text-gray-600">${formatFileSize(fileSize)} • PDF</p>
+              </div>
+            </div>
+            <button type="button" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', 'application/pdf')" class="shrink-0 bg-white/95 hover:bg-white text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-md shadow-2xs border border-emerald-300 transition active:scale-95 flex items-center gap-1">
+              <i class="fa-regular fa-eye text-xs"></i> Vedi
+            </button>
+          </div>
+        `;
+      } else {
+        const iconClass = isPdf ? 'fa-solid fa-file-pdf text-red-700' : 'fa-solid fa-file-image text-emerald-800';
+        previewContent = `
           <div class="bg-[#d4f2c5] p-2 rounded-md flex items-center gap-2 mb-1">
             <i class="${iconClass} text-xl shrink-0"></i>
             <div class="text-xs truncate max-w-[200px]">
@@ -476,6 +509,12 @@
               <p class="text-[10px] text-gray-600">${formatFileSize(fileSize)}</p>
             </div>
           </div>
+        `;
+      }
+
+      userBubble.innerHTML = `
+        <div class="wa-bubble-out p-2 max-w-[85%] text-sm text-gray-800">
+          ${previewContent}
           <div class="flex justify-end items-center gap-1 mt-0.5">
             <span class="text-[10px] text-gray-500">${getTime()}</span>
             <i class="fa-solid fa-check-double text-[11px] text-[#53bdeb]"></i>
@@ -486,13 +525,74 @@
       scrollBottom();
     }
 
-    function appendAssistantBubble(text) {
+    function appendAssistantBubble(text, documents = null) {
       const aiBubble = document.createElement('div');
       aiBubble.className = 'flex items-start max-w-[85%]';
-      const formattedHtml = escapeHtml(text).replace(/\n/g, '<br>');
+      const formattedHtml = escapeHtml(text || '').replace(/\n/g, '<br>');
+
+      let docsHtml = '';
+      if (documents && Array.isArray(documents) && documents.length > 0) {
+        docsHtml = `
+          <div class="mt-2.5 space-y-2 w-full">
+            ${documents.map(doc => {
+              const isPdf = (doc.file_type && doc.file_type.includes('pdf')) || (doc.file_url && doc.file_url.toLowerCase().endsWith('.pdf'));
+              const iconClass = isPdf ? 'fa-solid fa-file-pdf text-red-600' : 'fa-solid fa-file-lines text-blue-600';
+              const iconBg = isPdf ? 'bg-red-50' : 'bg-blue-50';
+              const title = escapeHtml(doc.title || 'Documento');
+              const issuer = escapeHtml(doc.issuer || 'Ente / Mittente');
+              const summary = escapeHtml(doc.summary || '');
+              const url = doc.file_url || '';
+              const fileType = doc.file_type || (isPdf ? 'application/pdf' : 'image');
+
+              let amountStr = '';
+              if (doc.amount != null) {
+                amountStr = `<span class="inline-block mt-1 font-bold text-slate-900 text-xs">${doc.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>`;
+              }
+
+              let dueStr = '';
+              if (doc.due_date) {
+                dueStr = `<span class="inline-block mt-1 ml-1.5 text-[10px] font-semibold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Scad: ${escapeHtml(doc.due_date)}</span>`;
+              }
+
+              return `
+                <div class="bg-slate-50 hover:bg-slate-100/90 border border-slate-200/90 rounded-xl p-2.5 transition shadow-2xs text-left">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="flex items-start gap-2.5 min-w-0">
+                      <div class="w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                        <i class="${iconClass} text-sm"></i>
+                      </div>
+                      <div class="min-w-0">
+                        <p class="font-bold text-slate-900 text-xs truncate">${title}</p>
+                        <p class="text-[11px] text-slate-500 truncate">${issuer}</p>
+                        <div class="flex items-center flex-wrap gap-1">
+                          ${amountStr}
+                          ${dueStr}
+                        </div>
+                      </div>
+                    </div>
+                    ${url ? `
+                      <button type="button" onclick="openMediaModal('${url}', '${title.replace(/'/g, "\\'")}', '${fileType}')" class="shrink-0 bg-[#075E54] hover:bg-[#128C7E] text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 active:scale-95">
+                        <i class="fa-regular fa-eye text-xs"></i>
+                        <span>Vedi</span>
+                      </button>
+                    ` : ''}
+                  </div>
+                  ${summary ? `
+                    <p class="mt-2 pt-1.5 border-t border-slate-200 text-[11px] text-slate-600 italic leading-snug line-clamp-2">
+                      ${summary}
+                    </p>
+                  ` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+
       aiBubble.innerHTML = `
-        <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug">
+        <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug max-w-full">
           <p>${formattedHtml}</p>
+          ${docsHtml}
           <span class="block text-[10px] text-gray-400 text-right mt-1">${getTime()}</span>
         </div>
       `;
@@ -522,7 +622,7 @@
         if (indicator) indicator.remove();
         if (!res.ok) throw new Error('Errore nella risposta del server');
         const data = await res.json();
-        appendAssistantBubble(data.reply);
+        appendAssistantBubble(data.reply, data.documents);
         loadDashboard(currentFilter);
       } catch (err) {
         if (indicator) indicator.remove();
@@ -540,7 +640,11 @@
       const file = e.target.files && e.target.files[0];
       if (!file) return;
 
-      appendUserFileBubble(file.name, file.size);
+      const isImage = file.type.startsWith('image/');
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      const blobUrl = URL.createObjectURL(file);
+
+      appendUserFileBubble(file.name, file.size, blobUrl, isImage, isPdf);
       const indicator = showTypingIndicator();
 
       const formData = new FormData();
@@ -554,7 +658,18 @@
         if (indicator) indicator.remove();
         if (!res.ok) throw new Error('Errore durante l\'estrazione');
         const data = await res.json();
-        appendAssistantBubble(data.chat_reply || "📄 Documento salvato e catalogato!");
+        const docItem = {
+          id: data.document_id,
+          title: data.title,
+          issuer: data.issuer,
+          amount: data.amount,
+          due_date: data.due_date,
+          status: data.status,
+          summary: data.summary,
+          file_url: data.file_url || blobUrl,
+          file_type: data.file_type || (isPdf ? 'application/pdf' : 'image')
+        };
+        appendAssistantBubble(data.chat_reply || "📄 Documento salvato e catalogato!", [docItem]);
         loadDashboard(currentFilter);
       } catch (err) {
         if (indicator) indicator.remove();
@@ -778,10 +893,25 @@
 
         // Azioni
         let actionHtml = '<span class="text-slate-400 text-xs">-</span>';
-        if (rec.type === 'document' && rec.status === 'da_pagare') {
-          actionHtml = `<button onclick="markAsPaid(${rec.id})" class="text-emerald-700 hover:text-emerald-800 font-semibold underline text-xs transition active:scale-95">Segna Pagato</button>`;
-        } else if (rec.type === 'document' && rec.status === 'quietanzato') {
-          actionHtml = `<span class="text-emerald-600 text-xs font-medium"><i class="fa-solid fa-check mr-1"></i>Saldato</span>`;
+        if (rec.type === 'document') {
+          let previewBtn = '';
+          if (rec.file_url) {
+            const escapedUrl = escapeHtml(rec.file_url);
+            const escapedTitle = escapeHtml(rec.title).replace(/'/g, "\\'");
+            const escapedType = escapeHtml(rec.file_type || 'application/pdf');
+            previewBtn = `
+              <button onclick="openMediaModal('${escapedUrl}', '${escapedTitle}', '${escapedType}')" title="Anteprima documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-lg transition active:scale-95 flex items-center gap-1">
+                <i class="fa-regular fa-eye text-xs"></i> Vedi
+              </button>
+            `;
+          }
+          let payBtn = '';
+          if (rec.status === 'da_pagare') {
+            payBtn = `<button onclick="markAsPaid(${rec.id})" class="text-emerald-700 hover:text-emerald-800 font-semibold underline text-xs transition active:scale-95">Segna Pagato</button>`;
+          } else if (rec.status === 'quietanzato') {
+            payBtn = `<span class="text-emerald-600 text-xs font-medium"><i class="fa-solid fa-check mr-1"></i>Saldato</span>`;
+          }
+          actionHtml = `<div class="flex items-center justify-end gap-2">${previewBtn} ${payBtn}</div>`;
         } else if (rec.type === 'physical_item') {
           actionHtml = `<span class="text-slate-400 text-xs italic">Registrato</span>`;
         }
@@ -868,6 +998,79 @@
       document.body.removeChild(link);
     }
 
+    // --- Modale Viewer Documenti & Immagini ---
+    function openMediaModal(url, title, fileType = '') {
+      const modal = document.getElementById('mediaModal');
+      const titleEl = document.getElementById('modalTitle');
+      const subtitleEl = document.getElementById('modalSubtitle');
+      const downloadBtn = document.getElementById('modalDownloadBtn');
+      const pdfFrame = document.getElementById('modalPdfFrame');
+      const imgPreview = document.getElementById('modalImagePreview');
+      const fallback = document.getElementById('modalFallback');
+
+      if (!modal) return;
+
+      const safeTitle = title || 'Documento';
+      titleEl.textContent = safeTitle;
+      downloadBtn.href = url || '#';
+      if (url) {
+        const safeDownloadName = safeTitle.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        downloadBtn.setAttribute('download', safeDownloadName);
+      }
+
+      pdfFrame.classList.add('hidden');
+      pdfFrame.src = '';
+      imgPreview.classList.add('hidden');
+      imgPreview.src = '';
+      fallback.classList.add('hidden');
+
+      const lowerType = (fileType || '').toLowerCase();
+      const lowerUrl = (url || '').toLowerCase();
+      const isPdf = lowerType.includes('pdf') || lowerUrl.endsWith('.pdf');
+      const isImg = lowerType.includes('image') || lowerType.includes('png') || lowerType.includes('jpg') || lowerType.includes('jpeg') || lowerType.includes('webp') || /\.(png|jpe?g|webp|gif)$/i.test(lowerUrl);
+
+      if (isPdf) {
+        subtitleEl.textContent = "Documento PDF protetto";
+        pdfFrame.src = url;
+        pdfFrame.classList.remove('hidden');
+      } else if (isImg) {
+        subtitleEl.textContent = "Immagine / Scansione";
+        imgPreview.src = url;
+        imgPreview.classList.remove('hidden');
+      } else if (url) {
+        subtitleEl.textContent = "Visualizzazione file";
+        pdfFrame.src = url;
+        pdfFrame.classList.remove('hidden');
+      } else {
+        fallback.classList.remove('hidden');
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeMediaModal() {
+      const modal = document.getElementById('mediaModal');
+      const pdfFrame = document.getElementById('modalPdfFrame');
+      const imgPreview = document.getElementById('modalImagePreview');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      if (pdfFrame) pdfFrame.src = '';
+      if (imgPreview) imgPreview.src = '';
+    }
+
+    function handleModalBackdropClick(e) {
+      if (e.target && e.target.id === 'mediaModal') {
+        closeMediaModal();
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeMediaModal();
+    });
+
     // Inizializzazione al caricamento della pagina
     document.addEventListener('DOMContentLoaded', () => {
       loadDashboard('all');
@@ -875,5 +1078,47 @@
     // Chiamata immediata per sicurezza nel caso il DOM sia già pronto
     loadDashboard('all');
   </script>
+
+  <!-- ================================================================= -->
+  <!-- 3. MODALE VIEWER DOCUMENTI & ANTEPRIME                            -->
+  <!-- ================================================================= -->
+  <div id="mediaModal" class="fixed inset-0 bg-black/75 z-50 hidden items-center justify-center p-2 sm:p-4 backdrop-blur-xs" onclick="handleModalBackdropClick(event)">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[88vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150" onclick="event.stopPropagation()">
+      <!-- Header Modale -->
+      <div class="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between shrink-0 shadow-xs">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0">
+            <i class="fa-regular fa-file text-sm"></i>
+          </div>
+          <div class="min-w-0">
+            <h3 id="modalTitle" class="font-bold text-sm text-white truncate">Anteprima Documento</h3>
+            <p id="modalSubtitle" class="text-[11px] text-slate-300">Visualizzatore sicuro</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <a id="modalDownloadBtn" href="#" target="_blank" download class="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 active:scale-95">
+            <i class="fa-solid fa-arrow-down text-xs"></i>
+            <span class="hidden sm:inline">Scarica / Apri</span>
+          </a>
+          <button onclick="closeMediaModal()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition active:scale-95 text-sm" title="Chiudi">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+      <!-- Corpo Modale -->
+      <div class="flex-1 bg-slate-100 relative overflow-hidden flex items-center justify-center p-2 sm:p-4">
+        <!-- Iframe per PDF -->
+        <iframe id="modalPdfFrame" class="w-full h-full border-0 rounded-xl bg-white shadow-xs hidden"></iframe>
+        <!-- Immagine per foto / scansioni -->
+        <img id="modalImagePreview" class="max-w-full max-h-full object-contain mx-auto my-auto rounded-xl shadow-md hidden" alt="Anteprima">
+        <!-- Fallback -->
+        <div id="modalFallback" class="hidden flex flex-col items-center justify-center text-slate-500 text-center p-6">
+          <i class="fa-solid fa-circle-exclamation text-3xl text-amber-500 mb-2"></i>
+          <p class="font-semibold text-slate-700 text-sm">Anteprima diretta non disponibile</p>
+          <p class="text-xs text-slate-500 mt-1">Puoi scaricare il file o aprirlo in una nuova scheda usando il pulsante in alto a destra.</p>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
