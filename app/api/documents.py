@@ -40,6 +40,9 @@ async def upload_document(
         title = filename
 
     # 5. Save Document in DB
+    is_payable = (extracted.amount is not None) and (extracted.doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"])
+    doc_status = "da_pagare" if is_payable else "archiviato"
+
     doc = Document(
         title=title,
         file_path=saved_path,
@@ -48,7 +51,7 @@ async def upload_document(
         issuer=extracted.issuer,
         amount=extracted.amount,
         due_date=due_date_obj,
-        status="da_pagare",
+        status=doc_status,
         summary=extracted.summary
     )
     db.add(doc)
@@ -56,9 +59,12 @@ async def upload_document(
     db.refresh(doc)
 
     # 6. Generate chat reply and record in chat history
-    amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
-    due_str = f" con scadenza {doc.due_date.strftime('%d/%m/%Y')}" if doc.due_date else ""
-    chat_reply = f"📄 Ho archiviato {doc.title}{amount_str}{due_str}."
+    if is_payable:
+        amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
+        due_str = f" con scadenza {doc.due_date.strftime('%d/%m/%Y')}" if doc.due_date else ""
+        chat_reply = f"📄 Ho registrato la bolletta/scadenza: {doc.title}{amount_str}{due_str}."
+    else:
+        chat_reply = f"📸 Ho analizzato e archiviato il file: {doc.title}.\n💡 {doc.summary}"
 
     user_msg = ChatMessage(
         sender="user",

@@ -18,7 +18,25 @@ class AIServiceInterface(Protocol):
         ...
 
 def _extract_json_object(raw_text: str) -> dict:
-    """Estrae in modo robusto il dizionario JSON dal testo della risposta del modello."""
+    """Estrae in modo robusto il dizionario JSON dal testo o dal reasoning del modello."""
+    # 1. Prova prima con il blocco di codice markdown ```json ... ```
+    json_block = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw_text, re.DOTALL)
+    if json_block:
+        try:
+            return json.loads(json_block.group(1))
+        except Exception:
+            pass
+
+    # 2. Cerca blocchi graffe bilanciati
+    for m in re.finditer(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", raw_text, re.DOTALL):
+        try:
+            parsed = json.loads(m.group(0))
+            if isinstance(parsed, dict) and ("doc_type" in parsed or "intent" in parsed or "issuer" in parsed):
+                return parsed
+        except Exception:
+            continue
+
+    # 3. Fallback: pulizia testo e ricerca greedy
     cleaned = re.sub(r"```(?:json)?", "", raw_text).replace("```", "").strip()
     match = re.search(r"\{.*\}", cleaned, re.DOTALL)
     if match:
@@ -41,13 +59,24 @@ class MockAIService:
                 summary="Modello F24 versamento IVA trimestrale.",
                 tags=["f24", "fisco", "iva"]
             )
+        if "bollett" in fn or "enel" in fn or "luce" in fn or "gas" in fn:
+            return ExtractedDocument(
+                doc_type="bolletta",
+                issuer="Enel Energia",
+                amount=64.20,
+                due_date="2026-10-28",
+                summary="Bolletta Enel Luce bimestre agosto-settembre.",
+                tags=["luce", "energia", "utenze"]
+            )
+        # Per foto, screenshot o altri allegati non fiscali
+        is_screen = any(k in fn for k in [".png", "screen", "cattura", "screenshot"])
         return ExtractedDocument(
-            doc_type="bolletta",
-            issuer="Enel Energia",
-            amount=64.20,
-            due_date="2026-10-28",
-            summary="Bolletta Enel Luce bimestre agosto-settembre.",
-            tags=["luce", "energia", "utenze"]
+            doc_type="screenshot" if is_screen else "generico",
+            issuer="File Utente",
+            amount=None,
+            due_date=None,
+            summary=f"Immagine/allegato '{filename}' salvato in archivio.",
+            tags=["allegato", "foto" if not is_screen else "screenshot"]
         )
 
     def classify_and_extract_intent(self, text: str) -> MessageIntent:
@@ -95,7 +124,7 @@ class OpenRouterAIService:
             "nex-agi/nex-n2.5-mini:free",
             "nex-agi/nex-n2.5-pro:free"
         ]
-        self.vision_model = "inclusionai/ling-3.0-flash-vl:free"
+        self.vision_model = "dots-studio/dots-3-note-preview:free"
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
 
     def _call_openrouter(self, messages: list, max_tokens: int = 400, model_override: str = None, temperature: float = 0.2) -> str:
@@ -106,7 +135,12 @@ class OpenRouterAIService:
             "Content-Type": "application/json"
         }
         first_model = model_override or self.primary_model
-        models_to_try = [first_model] + [m for m in self.fallback_models if m != first_model]
+        # Se stiamo inviando immagini, non provare modelli text-only nei fallback
+        has_images = any(
+            isinstance(m.get("content"), list) and any(item.get("type") == "image_url" for item in m.get("content", []))
+            for m in messages
+        )
+        models_to_try = [first_model] if has_images else ([first_model] + [m for m in self.fallback_models if m != first_model])
         
         for m in models_to_try:
             payload = {
@@ -116,14 +150,18 @@ class OpenRouterAIService:
                 "temperature": temperature
             }
             try:
-                res = httpx.post(self.base_url, headers=headers, json=payload, timeout=12.0)
+                res = httpx.post(self.base_url, headers=headers, json=payload, timeout=25.0 if has_images else 12.0)
                 if res.status_code == 200:
                     data = res.json()
                     choices = data.get("choices", [])
                     if choices:
-                        content = choices[0]["message"]["content"]
-                        if content:
+                        msg = choices[0]["message"]
+                        content = msg.get("content")
+                        reasoning = msg.get("reasoning")
+                        if content and content.strip():
                             return content.strip()
+                        if reasoning and reasoning.strip():
+                            return reasoning.strip()
                 else:
                     logger.warning(f"OpenRouter errore modello {m}: {res.status_code} - {res.text[:100]}")
             except Exception as e:
@@ -138,9 +176,18 @@ class OpenRouterAIService:
             data_url = f"data:{mt};base64,{b64_img}"
 
             prompt = (
-                "Sei un assistente per la gestione documentale italiana. Analizza questa immagine/documento (bolletta, F24, fattura, ricevuta). "
-                "Estrai con la massima precisione queste informazioni e rispondi ESCLUSIVAMENTE in formato JSON con questi campi: "
-                '{"doc_type": "string", "issuer": "string", "amount": float_o_null, "due_date": "YYYY-MM-DD_o_null", "summary": "spiegazione in 2 frasi in italiano semplice", "tags": ["tag1", "tag2"]}'
+                "Sei l'assistente 'Dove lo AI messo'. Analizza con precisione questa immagine caricata dall'utente.\n"
+                "1. Se è una bolletta, F24, fattura o ricevuta con scadenza/pagamento, estrai ente, importo da pagare e data di scadenza.\n"
+                "2. Se NON è un documento fiscale o bolletta da pagare (es. è uno screenshot di un sito o app, una foto di un oggetto, una schermata web, un meme, ecc.), NON inventare dati! Imposta amount=null e due_date=null, e descrivi fedelmente cosa vedi nel campo 'summary'.\n\n"
+                "Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:\n"
+                "{\n"
+                '  "doc_type": "bolletta" | "f24" | "ricevuta" | "fattura" | "screenshot" | "foto" | "generico",\n'
+                '  "issuer": "nome ente, sito o applicazione riconosciuta",\n'
+                '  "amount": null oppure numero decimale,\n'
+                '  "due_date": null oppure "YYYY-MM-DD",\n'
+                '  "summary": "descrizione reale in 1-2 frasi in italiano di cosa si vede",\n'
+                '  "tags": ["tag1", "tag2"]\n'
+                "}"
             )
 
             messages = [
@@ -152,7 +199,7 @@ class OpenRouterAIService:
                     ]
                 }
             ]
-            response_text = self._call_openrouter(messages, max_tokens=350, model_override=self.vision_model)
+            response_text = self._call_openrouter(messages, max_tokens=1600, model_override=self.vision_model, temperature=0.1)
             parsed = _extract_json_object(response_text)
             return ExtractedDocument(**parsed)
         except Exception as e:
