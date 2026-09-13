@@ -12,7 +12,7 @@ class Settings(BaseModel):
     DATABASE_URL: str = f"sqlite:///{DB_PATH}"
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
-    OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "google/gemma-4-31b-it:free")
+    OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "liquid/lfm-2.5-2.6b:free")
     DEBUG: bool = True
 
 _settings = None

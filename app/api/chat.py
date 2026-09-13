@@ -81,7 +81,7 @@ def handle_chat_message(
             reply = f"📍 Il tuo {found_item.item_name} si trova in: {loc_str}."
         else:
             search_label = cleaned_query or raw_query or "questo oggetto"
-            reply = f"Non ho trovato dove si trova '{search_label}' nei tuoi oggetti registrati."
+            reply = f"Non ho trovato dove si trova '{search_label}' tra i tuoi oggetti registrati. Se vuoi posso salvarlo ora: dimmi pure dove l'hai riposto (es. 'Ho messo {search_label} nell\'armadio') e lo ricorderò per te!"
 
     elif intent.intent == "QUERY_DEADLINES":
         docs = db.query(Document).filter(Document.status == "da_pagare").order_by(Document.due_date.asc().nulls_last()).all()
@@ -96,7 +96,14 @@ def handle_chat_message(
             reply = "🎉 Non ci sono scadenze o bollette da pagare in questo momento!"
 
     else:  # GENERAL
-        reply = "Ciao! Sono il tuo assistente per 'Dove L'Ho Messo'. Puoi chiedermi dove hai riposto un oggetto, caricare documenti o bollette, o verificare le tue scadenze."
+        # Retrieve recent messages for conversational context
+        recent_msgs = db.query(ChatMessage).order_by(ChatMessage.id.desc()).limit(6).all()
+        history = []
+        for m in reversed(recent_msgs):
+            if m.content != payload.message:
+                history.append({"role": "assistant" if m.sender == "assistant" else "user", "content": m.content})
+        
+        reply = ai_service.generate_conversational_reply(payload.message, chat_history=history)
 
     # 3. Save assistant reply to chat history
     asst_msg = ChatMessage(
