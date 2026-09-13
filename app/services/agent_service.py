@@ -423,20 +423,33 @@ class AgenticChatService:
                         )
 
                 # 1. Se l'utente fa una DOMANDA (cerca qualcosa, chiede dove si trova o info su un file)
-                is_query = any(k in lower_t for k in ["dov'è", "dov'e", "dove", "trovami", "trova", "cerca", "qual è", "che file", "che documento", "cos'è", "spiegami", "graduatori"])
+                is_query = any(k in lower_t for k in [
+                    "dov'è", "dov'e", "dove", "trovami", "trova", "cerca", "qual è", "qual e",
+                    "che file", "che documento", "cos'è", "cos e", "spiegami", "graduatori",
+                    "hai", "ci sono", "c'è", "c e", "mostrami", "fammi vedere", "elenca", "vediamo",
+                    "test", "tolc", "bollett", "f24", "ricevut", "fattur", "passaport", "chiav", "patente", "universit"
+                ])
                 if is_query:
-                    query_clean = re.sub(r"^(?:dov'è|dov'e|dove ho messo|dove si trova|dove sono|dove|trovami|trova|cerca|che file è|che file e|che file|che documento è|che documento|cos'è il file|cos'è|spiegami il file|spiegami)\s*", "", lower_t).strip(" ?.")
+                    query_clean = re.sub(r"^(?:hai|ci sono|c'è|c e|mostrami|fammi vedere|elenca|dov'è|dov'e|dove ho messo|dove si trova|dove sono|dove|trovami|trova|cerca|che file è|che file e|che file|che documento è|che documento|cos'è il file|cos'è|spiegami il file|spiegami)\s*", "", lower_t).strip(" ?.")
                     if len(query_clean) >= 2:
                         found = self.execute_tool("search_vault", {"query": query_clean}, db)
                         docs = found.get("found_documents", [])
                         items = found.get("found_physical_items", [])
                         if docs:
-                            d = docs[0]
-                            return ChatResponse(
-                                reply=f"📄 Ho trovato il documento '{d['title']}':\n💡 {d['summary']}",
-                                action="search_vault",
-                                data=found
-                            )
+                            if len(docs) == 1:
+                                d = docs[0]
+                                return ChatResponse(
+                                    reply=f"📄 Ho trovato il documento '{d['title']}':\n💡 {d['summary']}",
+                                    action="search_vault",
+                                    data=found
+                                )
+                            else:
+                                lines = [f"- 📄 **{d['title']}** ({d['doc_type']})\n  💡 {d['summary']}" for d in docs[:3]]
+                                return ChatResponse(
+                                    reply=f"Ho trovato {len(docs)} documenti correlati nel tuo caveau:\n\n" + "\n\n".join(lines),
+                                    action="search_vault",
+                                    data=found
+                                )
                         if items:
                             it = items[0]
                             loc = it['primary_location'] + (f" ({it['detailed_location']})" if it['detailed_location'] else "")
@@ -477,19 +490,32 @@ class AgenticChatService:
 
         # Safety-net euristico deterministico se la rete è lenta o non chiama il tool
         lower_t = user_text.lower()
-        is_query = any(k in lower_t for k in ["dov'è", "dov'e", "dove", "trovami", "trova", "cerca", "qual è", "che file", "che documento", "cos'è", "spiegami"])
+        is_query = any(k in lower_t for k in [
+            "dov'è", "dov'e", "dove", "trovami", "trova", "cerca", "qual è", "qual e",
+            "che file", "che documento", "cos'è", "cos e", "spiegami", "graduatori",
+            "hai", "ci sono", "c'è", "c e", "mostrami", "fammi vedere", "elenca", "vediamo",
+            "test", "tolc", "bollett", "f24", "ricevut", "fattur", "passaport", "chiav", "patente", "universit"
+        ])
         if is_query:
-            query_clean = re.sub(r"^(?:dov'è|dov'e|dove ho messo|dove si trova|dove sono|dove|trovami|trova|cerca|che file è|che file e|che file|che documento è|che documento|cos'è il file|cos'è|spiegami il file|spiegami)\s*", "", lower_t).strip(" ?.")
+            query_clean = re.sub(r"^(?:hai|ci sono|c'è|c e|mostrami|fammi vedere|elenca|dov'è|dov'e|dove ho messo|dove si trova|dove sono|dove|trovami|trova|cerca|che file è|che file e|che file|che documento è|che documento|cos'è il file|cos'è|spiegami il file|spiegami)\s*", "", lower_t).strip(" ?.")
             if len(query_clean) >= 2:
                 found = self.execute_tool("search_vault", {"query": query_clean}, db)
                 docs = found.get("found_documents", [])
                 items = found.get("found_physical_items", [])
                 if docs:
-                    return ChatResponse(
-                        reply=f"📄 Ho trovato il documento '{docs[0]['title']}':\n💡 {docs[0]['summary']}",
-                        action="search_vault",
-                        data=found
-                    )
+                    if len(docs) == 1:
+                        return ChatResponse(
+                            reply=f"📄 Ho trovato il documento '{docs[0]['title']}':\n💡 {docs[0]['summary']}",
+                            action="search_vault",
+                            data=found
+                        )
+                    else:
+                        lines = [f"- 📄 **{d['title']}** ({d['doc_type']})\n  💡 {d['summary']}" for d in docs[:3]]
+                        return ChatResponse(
+                            reply=f"Ho trovato {len(docs)} documenti correlati nel tuo caveau:\n\n" + "\n\n".join(lines),
+                            action="search_vault",
+                            data=found
+                        )
                 if items:
                     loc = items[0]['primary_location'] + (f" ({items[0]['detailed_location']})" if items[0]['detailed_location'] else "")
                     return ChatResponse(
@@ -517,37 +543,34 @@ class AgenticChatService:
                 action="store_physical_item",
                 data=res
             )
-            res = self.execute_tool("store_physical_item", {"item_name": item, "primary_location": loc}, db)
+
+        # Saluti o domande generali
+        if any(k in lower_t for k in ["ciao", "salve", "buongiorno", "buonasera", "hey", "chi sei", "cosa fai"]):
             return ChatResponse(
-                reply=f"✅ Memorizzato! Ho salvato la posizione di '{item}': {loc}.",
-                action="store_physical_item",
-                data=res
+                reply="Ciao! 👋 Sono il tuo assistente per 'Dove lo AI messo'. Posso aiutarti a ricordare dove hai riposto oggetti fisici, a cercare documenti/certificati archiviati o a controllare le tue scadenze!",
+                action="GENERAL"
             )
 
-        if any(k in lower_t for k in ["dov'è", "dove ho", "dove si trova", "dove sono", "trovami", "cerca"]):
-            query_clean = re.sub(r".*?(dov'è|dove ho messo|dove si trova|dove sono|trovami|cerca)\s+", "", lower_t).strip(" ?.")
-            found = self.execute_tool("search_vault", {"query": query_clean}, db)
-            docs = found.get("found_documents", [])
-            items = found.get("found_physical_items", [])
-            if docs:
-                return ChatResponse(
-                    reply=f"📄 Ho trovato il documento '{docs[0]['title']}': {docs[0]['summary']}",
-                    action="search_vault",
-                    data=found
-                )
-            if items:
-                loc = items[0]['primary_location'] + (f" ({items[0]['detailed_location']})" if items[0]['detailed_location'] else "")
-                return ChatResponse(
-                    reply=f"📍 Il tuo {items[0]['item_name']} si trova in: {loc}.",
-                    action="search_vault",
-                    data=found
-                )
+        # Fallback intelligente con ricerca nel vault
+        found = self.execute_tool("search_vault", {"query": user_text}, db)
+        docs = found.get("found_documents", [])
+        items = found.get("found_physical_items", [])
+        if docs:
+            lines = [f"- 📄 **{d['title']}** ({d['doc_type']}): {d['summary']}" for d in docs[:2]]
             return ChatResponse(
-                reply=f"Non ho trovato dove si trova '{query_clean}' nel tuo caveau. Se vuoi salvarlo, dimmi pure dove l'hai riposto!",
-                action="search_vault"
+                reply="Ho trovato questi documenti correlati nel tuo caveau:\n\n" + "\n\n".join(lines),
+                action="search_vault",
+                data=found
+            )
+        if items:
+            loc = items[0]['primary_location'] + (f" ({items[0]['detailed_location']})" if items[0]['detailed_location'] else "")
+            return ChatResponse(
+                reply=f"📍 Il tuo {items[0]['item_name']} si trova in: {loc}.",
+                action="search_vault",
+                data=found
             )
 
         return ChatResponse(
-            reply="Ciao! Sono il tuo assistente per 'Dove lo AI messo'. Puoi chiedermi dove hai riposto un oggetto, cercare documenti e certificati, o verificare le tue scadenze.",
+            reply=f"Non ho trovato nessun documento o oggetto corrispondente a '{user_text}' nel tuo caveau. Se vuoi posso salvarlo ora: dimmi pure dove si trova o carica il file!",
             action="GENERAL"
         )
