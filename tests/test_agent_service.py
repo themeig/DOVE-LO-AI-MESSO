@@ -1,6 +1,6 @@
 from datetime import date
 from sqlalchemy.orm import Session
-from app.models.database import Document, PhysicalItem, init_db, get_engine
+from app.models.database import Document, PhysicalItem, ChatMessage, init_db, get_engine
 from app.services.agent_service import AgenticChatService, filter_relevant_documents
 
 
@@ -324,5 +324,125 @@ def test_flow_modifica_e_query_posizione():
         r4 = agent.run_turn("dove è la tenda da campeggio?", session, thread_id="casa")
         assert "soggiorno" not in r4.reply.lower()
         assert "non ho trovato" in r4.reply.lower()
+
+
+def test_database_grounding_overrides_chat_history():
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        # Inietta nella cronologia della chat messaggi che menzionano oggetti inesistenti o vecchi
+        old_msg1 = ChatMessage(
+            sender="assistant",
+            content="Al momento ho memorizzato la posizione dei seguenti oggetti:\n* Tenda da campeggio: garage\n* Occhiali da sole: custodia",
+            thread_id="general"
+        )
+        old_msg2 = ChatMessage(
+            sender="user",
+            content="ok grazie",
+            thread_id="general"
+        )
+        session.add_all([old_msg1, old_msg2])
+        session.commit()
+
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = "" # offline
+
+        # 1. Nel DB non ci sono oggetti: la risposta DEVE dire che non ci sono oggetti, ignorando la chat vecchia
+        res_empty = agent.run_turn("che oggetti hai?", session, thread_id="general")
+        assert "tenda" not in res_empty.reply.lower()
+        assert "occhiali" not in res_empty.reply.lower()
+        assert "non sono presenti oggetti" in res_empty.reply.lower() or "non ho oggetti" in res_empty.reply.lower()
+
+        # 2. Ora aggiungiamo SOLO il passaporto in DB
+        item_pass = PhysicalItem(item_name="Passaporto", primary_location="Studio", thread_id="general")
+        session.add(item_pass)
+        session.commit()
+
+        # 3. La risposta DEVE contenere solo il passaporto e ZERO tenda da campeggio
+        res_one = agent.run_turn("che oggetti hai?", session, thread_id="general")
+        assert "passaporto" in res_one.reply.lower()
+        assert "tenda" not in res_one.reply.lower()
+        assert "occhiali" not in res_one.reply.lower()
+
+
+def test_llm_postprocessing_guardrail_prevents_context_hallucinations():
+    from unittest.mock import patch, MagicMock
+
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = "mock_key"
+
+        # Scenario 1: Il modello in r2 prova ad allucinare una lista di oggetti mentre il DB è vuoto
+        mock_r1 = MagicMock()
+        mock_r1.status_code = 200
+        mock_r1.json.return_value = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "tool_calls": [{
+                        "id": "call_123",
+                        "function": {
+                            "name": "list_vault_contents",
+                            "arguments": '{"target_type": "physical_items"}'
+                        }
+                    }]
+                }
+            }]
+        }
+
+        mock_r2_hallucinated = MagicMock()
+        mock_r2_hallucinated.status_code = 200
+        mock_r2_hallucinated.json.return_value = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "content": "Ecco gli oggetti trovati:\n- 📍 **Tenda da campeggio**: Garage"
+                }
+            }]
+        }
+
+        with patch("httpx.post", side_effect=[mock_r1, mock_r2_hallucinated]):
+            res = agent.run_turn("elenco oggetti", session, thread_id="general")
+            # Il guardrail DEVE bloccare l'allucinazione e riportare che il DB è vuoto
+            assert "tenda" not in res.reply.lower()
+            assert "non sono presenti oggetti" in res.reply.lower()
+
+        # Scenario 2: L'utente cerca un oggetto inesistente nel DB, il modello in r2 allucina la posizione dalla chat
+        mock_r1_search = MagicMock()
+        mock_r1_search.status_code = 200
+        mock_r1_search.json.return_value = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "tool_calls": [{
+                        "id": "call_456",
+                        "function": {
+                            "name": "search_vault",
+                            "arguments": '{"query": "tenda"}'
+                        }
+                    }]
+                }
+            }]
+        }
+
+        mock_r2_search_hallucinated = MagicMock()
+        mock_r2_search_hallucinated.status_code = 200
+        mock_r2_search_hallucinated.json.return_value = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "content": "📍 La tenda da campeggio si trova in soggiorno."
+                }
+            }]
+        }
+
+        with patch("httpx.post", side_effect=[mock_r1_search, mock_r2_search_hallucinated]):
+            res_search = agent.run_turn("dove è la tenda?", session, thread_id="general")
+            # Il guardrail DEVE bloccare l'allucinazione e comunicare che non è stata trovata nel database
+            assert "soggiorno" not in res_search.reply.lower()
+            assert "non ho trovato corrispondenze nel database" in res_search.reply.lower() or "non ho trovato" in res_search.reply.lower()
+
 
 

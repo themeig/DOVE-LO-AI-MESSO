@@ -209,6 +209,14 @@ Il tuo compito primario e la tua missione è AIUTARE GLI UTENTI:
 Hai accesso ad appositi STRUMENTI (tools) per interagire con il database SQLite del caveau. Hai piena autonomia e intelligenza per comprendere e soddisfare le richieste dell'utente in linguaggio naturale.
 
 REGOLE FERREE:
+0. PRIMATO ASSOLUTO DEL DATABASE SULLA CHAT (DATI REALI > CONTESTO):
+   - DIVIETO ASSOLUTO DI RISPONDERE A MEMORIA O DALLA CRONOLOGIA DEI MESSAGGI DELLA CHAT!
+   - I messaggi precedenti della conversazione servono ESCLUSIVAMENTE per comprendere riferimenti contestuali immediati (es. "sì", "eliminalo", "mettila lì").
+   - NON considerare MAI la cronologia come prova dell'esistenza o della posizione attuale di un documento o di un oggetto.
+   - L'UNICA E SOLA fonte di verità è il DATABASE SQLite interrogato in tempo reale tramite i tuoi strumenti (`search_vault`, `list_vault_contents`, `get_upcoming_deadlines`, `store_physical_item`).
+   - Se il database/tool restituisce una lista vuota `[]` o dice che un elemento non esiste, DEVI rispondere che l'elemento non è presente nel caveau (o che è stato rimosso). È VIETATO nel modo più categorico inventare o recuperare posizioni o elenchi dai vecchi messaggi della chat!
+   - Se il database restituisce dati, la tua risposta deve rispecchiare fedelmente solo ed esclusivamente quei dati.
+
 1. QUANDO L'UTENTE CHIEDE DI UN FILE O DOCUMENTO (es. "dammi 730", "dammi il documento del mutuo", "mostrami la bolletta", "che file è?", "trovami il certificato del tolc", "cerca la bolletta enel"):
    - DEVI SEMPRE USARE lo strumento `search_vault`!
    - NON rispondere MAI a memoria senza chiamare `search_vault`, perché la chiamata di `search_vault` è INDISPENSABILE per consentire al sistema di mostrare il widget grafico del documento (con anteprima e pulsante "Vedi") all'utente!
@@ -662,34 +670,19 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         vault_summary = [
             f"\n[DATA E ORA ATTUALE]: {date_info['formatted_italian']}, ore {date_info['current_time']} (Data ISO: {date_info['date']}, Anno: {date_info['year']})",
-            f"\n[STATO ATTUALE E MEMORIA DEL CAVEAU]:",
-            f"- Documenti archiviati nel canale: {total_docs_count}",
-            f"- Oggetti fisici memorizzati nel canale: {total_items_count}"
+            f"\n[STATO ATTUALE DEL DATABASE SQLITE]:",
+            f"- Documenti archiviati nel database per questo canale: {total_docs_count}",
+            f"- Oggetti fisici memorizzati nel database per questo canale: {total_items_count}",
+            f"- Scadenze/bollette da pagare in sospeso: {len(unpaid)}"
         ]
         if total_docs_count == 0:
-            vault_summary.append("- NOTA: Al momento ci sono 0 documenti archiviati nel caveau. Non inventare documenti inesistenti.")
+            vault_summary.append("- NOTA IMPORTANTE: Al momento ci sono 0 documenti archiviati nel database. Non inventare documenti inesistenti.")
         if total_items_count == 0:
-            vault_summary.append("- NOTA: Al momento ci sono 0 oggetti fisici memorizzati nel caveau. Non inventare oggetti inesistenti.")
+            vault_summary.append("- NOTA IMPORTANTE: Al momento ci sono 0 oggetti fisici memorizzati nel database. Non inventare oggetti inesistenti.")
 
-        if docs:
-            vault_summary.append("\nUltimi Documenti/File archiviati nel Caveau:")
-            for d in docs:
-                amt = f", importo: {d.amount:.2f} €" if d.amount else ""
-                due = f", scadenza: {d.due_date}" if d.due_date else ""
-                issuer_info = f", emittente: {d.issuer}" if d.issuer else ""
-                vault_summary.append(f"- '{d.title}' (categoria: {d.doc_type}{issuer_info}{amt}{due}) — {d.summary[:200]}")
-        else:
-            vault_summary.append("Nessun documento registrato finora.")
-
-        if items:
-            vault_summary.append("\nUltimi Oggetti fisici memorizzati:")
-            for it in items:
-                loc = it.primary_location + (f" -> {it.detailed_location}" if it.detailed_location else "")
-                vault_summary.append(f"- '{it.item_name}': {loc}")
-        else:
-            vault_summary.append("Nessun oggetto fisico memorizzato finora.")
-
-        vault_summary.append(f"\nScadenze/bollette da pagare in sospeso: {len(unpaid)}")
+        vault_summary.append("\n[REGOLA SULL'USO DEI DATI DEL DATABASE]:")
+        vault_summary.append("- Per conoscere, elencare o cercare documenti o oggetti, DEVI interrogare il database tramite gli appositi strumenti (`search_vault`, `list_vault_contents`, `get_upcoming_deadlines`).")
+        vault_summary.append("- I dati reali restituiti dai tuoi strumenti sul database SQLite prevalgono SEMPRE e CATEGORICAMENTE su qualsiasi testo o messaggio della chat precedente.")
 
         thread = db.query(ChatThread).filter(ChatThread.id == thread_id).first() if db else None
         if thread:
@@ -709,8 +702,6 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 f"- Descrizione: {thread.description or 'Generale'}\n"
                 f"Adatta le tue risposte e la memorizzazione sapendo che ti trovi in questo canale."
             )
-
-        vault_summary.append("\nIMPORTANTE: Se l'utente ti chiede 'di cosa parla il file che ti ho mandato?', 'che file è?', o cerca un documento/oggetto, consulta SUBITO la lista qui sopra o usa gli strumenti per rispondere in modo dettagliato!")
 
         return ground_truth_banner + "\n" + SYSTEM_PROMPT + "\n" + "\n".join(vault_summary)
 
@@ -1058,6 +1049,24 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             and not is_store_or_update
         )
 
+        is_listing_request = (
+            any(k in lower_t for k in [
+                "lista", "elenco", "elencami", "quali documenti", "quali oggetti",
+                "mostrami tutti", "mostrami tutte", "mostra tutti", "mostra tutte",
+                "cosa c'è nel caveau", "cosa ce nel caveau", "cosa ho nel caveau", "cosa hai nel caveau",
+                "vedere tutti", "vedere tutte", "tutti i documenti", "tutti gli oggetti", "che oggetti", "che documenti"
+            ])
+            or lower_t.strip(" !.?") in ["documenti", "oggetti", "tutti i documenti", "tutti gli oggetti", "tutto", "i miei documenti", "i miei oggetti"]
+        )
+        is_deadline_request = (
+            any(k in lower_t for k in [
+                "scadenz", "da pagare", "bollette da pagare", "tributi da pagare",
+                "cosa devo pagare", "quanto devo pagare", "prossime scadenze", "scadenze in sospeso"
+            ])
+            and not is_listing_request
+            and not is_store_or_update
+        )
+
         stored_item_result = None
         if is_store_or_update:
             item_n, loc_n = self._extract_item_and_location(user_text, last_item_in_context=last_item_name)
@@ -1102,8 +1111,8 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                         data=tool_out
                     )
 
-            if any(k in clean_test for k in ["lista", "elenco", "quali documenti"]):
-                target = "physical_items" if "oggett" in clean_test else "documents"
+            if is_listing_request or any(k in clean_test for k in ["lista", "elenco", "quali documenti", "quali oggetti"]):
+                target = "physical_items" if any(k in clean_test for k in ["oggett", "cose"]) else ("documents" if any(k in clean_test for k in ["document", "file", "bollett"]) else "all")
                 tool_out = self.execute_tool("list_vault_contents", {"target_type": target}, db=db, thread_id=thread_id)
                 if target == "physical_items":
                     items = tool_out.get("physical_items", [])
@@ -1111,9 +1120,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                         lines = [f"- 📍 **{it['item_name']}**: {it['location_str']}" for it in items]
                         rep = "Ecco gli oggetti fisici memorizzati nel caveau:\n\n" + "\n".join(lines)
                     else:
-                        rep = "Nel caveau non sono presenti oggetti fisici memorizzati al momento."
+                        rep = "Nel caveau non sono presenti oggetti fisici memorizzati al momento. Dimmi pure dove riponi i tuoi oggetti e li registrerò subito! 📍"
                     return ChatResponse(reply=rep, action="list_vault_contents", data=tool_out)
-                else:
+                elif target == "documents":
                     docs = tool_out.get("documents", [])
                     if docs:
                         lines = [f"- 📄 **{d['title']}** ({d['issuer']})" for d in docs]
@@ -1121,19 +1130,42 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                     else:
                         rep = "Nel caveau non sono presenti documenti archiviati al momento."
                     return ChatResponse(reply=rep, action="list_vault_contents", data=tool_out, documents=docs[:5])
+                else:
+                    items = tool_out.get("physical_items", [])
+                    docs = tool_out.get("documents", [])
+                    parts = []
+                    if docs:
+                        lines = [f"- 📄 **{d['title']}** ({d.get('issuer', '')})" for d in docs]
+                        parts.append("📄 **Documenti:**\n" + "\n".join(lines))
+                    if items:
+                        lines = [f"- 📍 **{it['item_name']}**: {it['location_str']}" for it in items]
+                        parts.append("📍 **Oggetti fisici:**\n" + "\n".join(lines))
+                    rep = "\n\n".join(parts) if parts else "Nel caveau non sono presenti documenti o oggetti memorizzati al momento."
+                    return ChatResponse(reply=rep, action="list_vault_contents", data=tool_out, documents=docs[:5])
+
+            if is_deadline_request:
+                t_out = self.execute_tool("get_upcoming_deadlines", {}, db, thread_id=thread_id)
+                docs = t_out.get("deadlines") or t_out.get("upcoming_documents", [])
+                if docs:
+                    lines = []
+                    for d in docs[:5]:
+                        urg = f" - ⚠️ {d['urgency_label']}" if d.get('urgency_label') else ""
+                        lines.append(f"- 📄 **{d['title']}** — {d.get('amount','?')} € scad. {d.get('due_date','?')}{urg}")
+                    return ChatResponse(reply="📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines), action="get_upcoming_deadlines", data=t_out, documents=docs)
+                return ChatResponse(reply="✅ Non ci sono scadenze o pagamenti in sospeso al momento.", action="get_upcoming_deadlines", data=t_out)
 
             ai = MockAIService()
             intent = ai.classify_and_extract_intent(user_text)
             reply = ai.generate_conversational_reply(user_text)
             return ChatResponse(reply=reply, action="REPLY")
 
-        # Recupera la cronologia recente con memoria e contesto attivo iniettato
+        # Recupera solo gli ultimi 4 messaggi per evitare inquinamento del contesto da vecchi dati
         system_content = self.build_system_prompt(db, thread_id=thread_id)
         recent_msgs = (
             db.query(ChatMessage)
             .filter(ChatMessage.thread_id == thread_id)
             .order_by(ChatMessage.id.desc())
-            .limit(8)
+            .limit(4)
             .all()
         )
         history_messages: List[Dict[str, Any]] = [{"role": "system", "content": system_content}]
@@ -1160,21 +1192,15 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         agent_model = get_app_setting(db, "ai_model", default=self.settings.OPENROUTER_MODEL) or "google/gemini-2.5-flash-lite"
 
-        is_listing_request = (
-            any(k in lower_t for k in [
-                "lista", "elenco", "elencami", "quali documenti", "quali oggetti",
-                "mostrami tutti", "mostrami tutte", "mostra tutti", "mostra tutte",
-                "cosa c'è nel caveau", "cosa ce nel caveau", "cosa ho nel caveau", "cosa hai nel caveau",
-                "vedere tutti", "vedere tutte", "tutti i documenti", "tutti gli oggetti"
-            ])
-            or lower_t.strip(" !.?") in ["documenti", "oggetti", "tutti i documenti", "tutti gli oggetti", "tutto", "i miei documenti", "i miei oggetti"]
-        )
+
         if is_listing_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "list_vault_contents"}}
         elif is_store_or_update:
             tool_choice_cfg = {"type": "function", "function": {"name": "store_physical_item"}}
         elif is_where_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "search_vault"}}
+        elif is_deadline_request:
+            tool_choice_cfg = {"type": "function", "function": {"name": "get_upcoming_deadlines"}}
         else:
             tool_choice_cfg = "auto"
 
@@ -1213,10 +1239,19 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                         tool_action = func_name
                         tool_data = tool_output
 
+                        tool_payload = {
+                            "dati_database_sqlite": tool_output,
+                            "regola_verita_assoluta": (
+                                "IMPORTANTE: Questi dati provengono DIRETTAMENTE dal database SQLite in tempo reale. "
+                                "Basa la tua risposta UNICAMENTE ed ESCLUSIVAMENTE su questi dati. "
+                                "Se una lista è vuota ([]), significa che nel database NON ci sono elementi (sono stati rimossi o mai salvati). "
+                                "È VIETATO usare la cronologia della chat per inventare o supporre oggetti, posizioni o documenti assenti da questi dati."
+                            )
+                        }
                         history_messages.append({
                             "role": "tool",
                             "tool_call_id": tc.get("id"),
-                            "content": json.dumps(tool_output, ensure_ascii=False)
+                            "content": json.dumps(tool_payload, ensure_ascii=False)
                         })
 
                     # Se l'utente ha comunicato/spostato una posizione ma il modello ha chiamato solo search_vault o altro tool,
@@ -1254,7 +1289,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                     d = docs_found[0]
                                     final_text = f"📄 Ho trovato: **{d['title']}**\n💡 {d['summary']}"
                                 else:
-                                    final_text = "Ho cercato nel caveau ma non ho trovato documenti corrispondenti."
+                                    final_text = "Ho cercato nel caveau ma non ho trovato corrispondenze nel database."
                             elif tool_action == "list_vault_contents":
                                 if (tool_data or {}).get("target_type") == "physical_items":
                                     items = (tool_data or {}).get("physical_items", [])
@@ -1263,13 +1298,24 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                         final_text = f"📍 Ecco gli oggetti fisici memorizzati nel caveau:\n\n" + "\n".join(lines)
                                     else:
                                         final_text = "Nel caveau non sono presenti oggetti fisici memorizzati al momento. Dimmi pure dove riponi i tuoi oggetti e li registrerò subito! 📍"
-                                else:
+                                elif (tool_data or {}).get("target_type") == "documents":
                                     docs = (tool_data or {}).get("documents", [])
                                     if docs:
                                         lines = [f"- 📄 **{d['title']}** ({d['issuer']})" for d in docs]
-                                        final_text = f"📄 Ecco i documenti salvati nel caveau:\n\n" + "\n".join(lines)
+                                        final_text = f"📄 Ecco i documenti archiviati nel caveau:\n\n" + "\n".join(lines)
                                     else:
                                         final_text = "Nel caveau non sono presenti documenti archiviati al momento."
+                                else:
+                                    items = (tool_data or {}).get("physical_items", [])
+                                    docs = (tool_data or {}).get("documents", [])
+                                    parts = []
+                                    if docs:
+                                        lines = [f"- 📄 **{d['title']}** ({d.get('issuer', '')})" for d in docs]
+                                        parts.append("📄 **Documenti:**\n" + "\n".join(lines))
+                                    if items:
+                                        lines = [f"- 📍 **{it['item_name']}**: {it['location_str']}" for it in items]
+                                        parts.append("📍 **Oggetti fisici:**\n" + "\n".join(lines))
+                                    final_text = "\n\n".join(parts) if parts else "Nel caveau non sono presenti documenti o oggetti memorizzati al momento."
                             elif tool_action == "get_upcoming_deadlines":
                                 up = (tool_data or {}).get("deadlines") or (tool_data or {}).get("upcoming_documents", [])
                                 if up:
@@ -1283,12 +1329,46 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             elif tool_action == "get_current_date":
                                 final_text = f"📅 Oggi è **{tool_data.get('formatted_italian')}** (ore {tool_data.get('current_time')})."
                             elif tool_action == "store_physical_item":
-                                final_text = "✅ Posizione salvata con successo nel caveau!"
+                                it_name = (tool_data or {}).get("item_name")
+                                loc_str = (tool_data or {}).get("location_str")
+                                final_text = f"✅ Memorizzato! Ho aggiornato la posizione di **{it_name}** in: {loc_str}."
                             else:
                                 final_text = "Operazione completata con successo nel caveau."
                         else:
-                            if tool_action == "store_physical_item" and "Memorizzato" not in final_text and "salvat" not in final_text.lower():
-                                final_text = f"✅ Memorizzato! {final_text}"
+                            # Validazione e ancoraggio stretto della risposta del modello al database SQLite reale:
+                            if tool_action == "list_vault_contents":
+                                target = (tool_data or {}).get("target_type")
+                                items = (tool_data or {}).get("physical_items", [])
+                                docs = (tool_data or {}).get("documents", [])
+                                if target == "physical_items" and len(items) == 0:
+                                    final_text = "Nel caveau non sono presenti oggetti fisici memorizzati al momento. Dimmi pure dove riponi i tuoi oggetti e li registrerò subito! 📍"
+                                elif target == "documents" and len(docs) == 0:
+                                    final_text = "Nel caveau non sono presenti documenti archiviati al momento."
+                                elif target == "all" and len(items) == 0 and len(docs) == 0:
+                                    final_text = "Nel caveau non sono presenti documenti o oggetti memorizzati al momento."
+
+                            elif tool_action == "search_vault":
+                                found_i = (tool_data or {}).get("found_physical_items", [])
+                                found_d = (tool_data or {}).get("found_documents", [])
+                                if not found_i and not found_d:
+                                    final_text = "Ho cercato nel caveau ma non ho trovato corrispondenze nel database. Potrebbe essere stato eliminato o non ancora memorizzato."
+                                elif found_i and not found_d:
+                                    it = found_i[0]
+                                    if it.get("primary_location", "").lower() not in final_text.lower():
+                                        final_text = f"📍 **{it['item_name']}** si trova in: {it['location_str']}."
+
+                            elif tool_action == "get_upcoming_deadlines":
+                                up = (tool_data or {}).get("deadlines") or (tool_data or {}).get("upcoming_documents", [])
+                                if len(up) == 0:
+                                    final_text = "✅ Non ci sono scadenze o pagamenti in sospeso al momento."
+
+                            elif tool_action == "store_physical_item":
+                                it_n = (tool_data or {}).get("item_name")
+                                loc_s = (tool_data or {}).get("location_str")
+                                if loc_s and (tool_data or {}).get("primary_location", "").lower() not in final_text.lower():
+                                    final_text = f"✅ Memorizzato! Ho salvato la posizione di **{it_n}** in: {loc_s}."
+                                elif "memorizzato" not in final_text.lower() and "salvat" not in final_text.lower() and "aggiornat" not in final_text.lower():
+                                    final_text = f"✅ Memorizzato! {final_text}"
 
                         filtered_docs = filter_relevant_documents(docs_found, final_text, user_text)
                         conf_box = None
@@ -1408,6 +1488,51 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             clean_rep = f"Ho cercato nel caveau, ma non ho trovato '{search_q}'. Potrebbe essere stato eliminato o non ancora registrato."
                             return ChatResponse(reply=clean_rep, action="search_vault", data=s_res)
 
+                    if is_listing_request:
+                        target = "physical_items" if any(k in lower_t for k in ["oggett", "cose"]) else ("documents" if any(k in lower_t for k in ["document", "file", "bollett", "fattur"]) else "all")
+                        l_res = self.execute_tool("list_vault_contents", {"target_type": target}, db=db, thread_id=thread_id)
+                        if target == "physical_items":
+                            items = l_res.get("physical_items", [])
+                            if items:
+                                lines = [f"- 📍 **{it['item_name']}**: {it['location_str']}" for it in items]
+                                rep = "📍 Ecco gli oggetti fisici memorizzati nel caveau:\n\n" + "\n".join(lines)
+                            else:
+                                rep = "Nel caveau non sono presenti oggetti fisici memorizzati al momento. Dimmi pure dove riponi i tuoi oggetti e li registrerò subito! 📍"
+                            return ChatResponse(reply=rep, action="list_vault_contents", data=l_res)
+                        elif target == "documents":
+                            docs = l_res.get("documents", [])
+                            if docs:
+                                lines = [f"- 📄 **{d['title']}** ({d.get('issuer', '')})" for d in docs]
+                                rep = f"📄 Ecco i {len(docs)} documenti presenti nel caveau:\n\n" + "\n".join(lines)
+                            else:
+                                rep = "Nel caveau non sono presenti documenti archiviati al momento."
+                            return ChatResponse(reply=rep, action="list_vault_contents", data=l_res, documents=docs[:5])
+                        else:
+                            items = l_res.get("physical_items", [])
+                            docs = l_res.get("documents", [])
+                            parts = []
+                            if docs:
+                                lines = [f"- 📄 **{d['title']}** ({d.get('issuer', '')})" for d in docs]
+                                parts.append("📄 **Documenti:**\n" + "\n".join(lines))
+                            if items:
+                                lines = [f"- 📍 **{it['item_name']}**: {it['location_str']}" for it in items]
+                                parts.append("📍 **Oggetti fisici:**\n" + "\n".join(lines))
+                            rep = "\n\n".join(parts) if parts else "Nel caveau non sono presenti documenti o oggetti memorizzati al momento."
+                            return ChatResponse(reply=rep, action="list_vault_contents", data=l_res, documents=docs[:5])
+
+                    if is_deadline_request:
+                        d_res = self.execute_tool("get_upcoming_deadlines", {}, db=db, thread_id=thread_id)
+                        docs = d_res.get("deadlines") or d_res.get("upcoming_documents", [])
+                        if docs:
+                            lines = []
+                            for d in docs[:5]:
+                                urg = f" - ⚠️ {d['urgency_label']}" if d.get('urgency_label') else ""
+                                lines.append(f"- 📄 **{d['title']}** — {d.get('amount','?')} € scad. {d.get('due_date','?')}{urg}")
+                            rep = "📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines)
+                        else:
+                            rep = "✅ Non ci sono scadenze o pagamenti in sospeso al momento."
+                        return ChatResponse(reply=rep, action="get_upcoming_deadlines", data=d_res, documents=docs)
+
                     # Se il modello ha risposto direttamente senza tool_calls (es. usando la cronologia chat),
                     # ma l'utente chiedeva un documento o la risposta ne cita uno, recuperiamo e alleghiamo il widget del file!
                     is_doc_intent = any(k in lower_t for k in [
@@ -1447,7 +1572,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         item_n, loc_n = self._extract_item_and_location(user_text)
         if item_n and loc_n:
             db_res = self.execute_tool("store_physical_item", {"item_name": item_n, "primary_location": loc_n}, db, thread_id=thread_id)
-            return ChatResponse(reply=f"✅ Posizione aggiornata! Ho salvato la posizione di '{item_n}' in: {loc_n}.", action="store_physical_item", data=db_res)
+            return ChatResponse(reply=f"✅ Memorizzato! Ho salvato la posizione di '{item_n}' in: {loc_n}.", action="store_physical_item", data=db_res)
 
         # 2. Data e ora odierna
         if any(k in lower_t for k in ["che giorno è", "che giorno e", "data di oggi", "quanti ne abbiamo", "che data è", "che data e", "data odierna", "che ore sono"]):
@@ -1468,6 +1593,49 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                     urg = f" - ⚠️ {d['urgency_label']}" if d.get('urgency_label') else ""
                     lines.append(f"- 📄 **{d['title']}** — {d.get('amount','?')} € scad. {d.get('due_date','?')}{urg}")
                 return ChatResponse(reply="📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines), action="get_upcoming_deadlines", data=t_out, documents=docs)
+            return ChatResponse(reply="✅ Non ci sono scadenze o pagamenti in sospeso al momento.", action="get_upcoming_deadlines", data=t_out)
+
+        # 4. Liste o elenchi del caveau
+        is_list = (
+            any(k in lower_t for k in [
+                "lista", "elenco", "elencami", "quali documenti", "quali oggetti",
+                "mostrami tutti", "mostrami tutte", "mostra tutti", "mostra tutte",
+                "cosa c'è nel caveau", "cosa ce nel caveau", "cosa ho nel caveau", "cosa hai nel caveau",
+                "vedere tutti", "vedere tutte", "tutti i documenti", "tutti gli oggetti", "che oggetti", "che documenti"
+            ])
+            or lower_t.strip(" !.?") in ["documenti", "oggetti", "tutti i documenti", "tutti gli oggetti", "tutto", "i miei documenti", "i miei oggetti"]
+        )
+        if is_list:
+            target = "physical_items" if any(k in lower_t for k in ["oggett", "cose"]) else ("documents" if any(k in lower_t for k in ["document", "file", "bollett", "fattur"]) else "all")
+            l_res = self.execute_tool("list_vault_contents", {"target_type": target}, db=db, thread_id=thread_id)
+            if target == "physical_items":
+                items = l_res.get("physical_items", [])
+                if items:
+                    lines = [f"- 📍 **{it['item_name']}**: {it['location_str']}" for it in items]
+                    rep = "📍 Ecco gli oggetti fisici memorizzati nel caveau:\n\n" + "\n".join(lines)
+                else:
+                    rep = "Nel caveau non sono presenti oggetti fisici memorizzati al momento. Dimmi pure dove riponi i tuoi oggetti e li registrerò subito! 📍"
+                return ChatResponse(reply=rep, action="list_vault_contents", data=l_res)
+            elif target == "documents":
+                docs = l_res.get("documents", [])
+                if docs:
+                    lines = [f"- 📄 **{d['title']}** ({d.get('issuer', '')})" for d in docs]
+                    rep = f"📄 Ecco i {len(docs)} documenti presenti nel caveau:\n\n" + "\n".join(lines)
+                else:
+                    rep = "Nel caveau non sono presenti documenti archiviati al momento."
+                return ChatResponse(reply=rep, action="list_vault_contents", data=l_res, documents=docs[:5])
+            else:
+                items = l_res.get("physical_items", [])
+                docs = l_res.get("documents", [])
+                parts = []
+                if docs:
+                    lines = [f"- 📄 **{d['title']}** ({d.get('issuer', '')})" for d in docs]
+                    parts.append("📄 **Documenti:**\n" + "\n".join(lines))
+                if items:
+                    lines = [f"- 📍 **{it['item_name']}**: {it['location_str']}" for it in items]
+                    parts.append("📍 **Oggetti fisici:**\n" + "\n".join(lines))
+                rep = "\n\n".join(parts) if parts else "Nel caveau non sono presenti documenti o oggetti memorizzati al momento."
+                return ChatResponse(reply=rep, action="list_vault_contents", data=l_res, documents=docs[:5])
 
         # 4. Ricerca intelligente nel caveau (oggetti fisici e documenti)
         search_q = re.sub(
