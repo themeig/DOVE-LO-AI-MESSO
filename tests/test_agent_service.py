@@ -574,5 +574,47 @@ def test_conversational_download_request_shows_card():
         assert "[Link per scaricare" not in res.reply
 
 
+def test_affirmative_response_picks_proposed_document_not_unrelated():
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        doc_mg = Document(
+            title="zip mg4",
+            file_path="uploads/mg4.png",
+            file_type="png",
+            doc_type="foto",
+            summary="File compressi e dati relativi a modelli MG4."
+        )
+        doc_pavia = Document(
+            title="Ricevuta Pre-Immatricolazione Università di Pavia",
+            file_path="uploads/pavia.pdf",
+            file_type="pdf",
+            doc_type="ricevuta",
+            summary="Ricevuta iscrizione università."
+        )
+        session.add_all([doc_mg, doc_pavia])
+
+        # L'assistente chiede se mostrare zip mg4 (esattamente come nel messaggio 1040 dello screenshot)
+        asst_msg = ChatMessage(
+            sender="assistant",
+            content='Ho nel caveau un file chiamato "**zip mg4**" che contiene informazioni relative a modelli MG4.\n\nDesideri che ti mostri i dettagli di questo file?',
+            thread_id="general"
+        )
+        session.add(asst_msg)
+        session.commit()
+
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = "" # deterministic fallback
+
+        # L'utente risponde "si"
+        res = agent.run_turn("si", session, thread_id="general")
+        assert res.documents is not None
+        assert len(res.documents) == 1
+        assert res.documents[0]["title"] == "zip mg4"
+        assert "pavia" not in res.reply.lower()
+        assert "immatricolazione" not in res.reply.lower()
+
+
+
 
 

@@ -18,7 +18,8 @@ ITALIAN_STOPWORDS = {
     "dammi", "mostra", "mostrami", "visualizza", "fammi", "vedere", "voglio", "vorrei", "prendi", "apri",
     "ho", "hai", "ha", "abbiamo", "hanno", "e", "ed", "o", "od", "se", "si", "no", "non", "mio", "mia", "miei", "mie",
     "tuo", "tua", "tuoi", "tue", "suo", "sua", "suoi", "sue", "nostro", "nostra", "nostri", "nostre", "loro",
-    "questo", "questa", "questi", "queste", "quello", "quella", "quelli", "quelle", "tutti", "tutte"
+    "questo", "questa", "questi", "queste", "quello", "quella", "quelli", "quelle", "tutti", "tutte",
+    "ora", "adesso", "allora", "invece", "poi", "bene", "anche", "pure", "esattamente"
 }
 
 GENERIC_ATTRIBUTE_TERMS = {
@@ -28,6 +29,8 @@ GENERIC_ATTRIBUTE_TERMS = {
 }
 
 CONCEPT_SYNONYMS: Dict[str, List[str]] = {
+    "mg": ["mg4", "auto", "macchina", "veicolo"],
+    "mg4": ["mg", "auto", "macchina", "veicolo"],
     "bolletta": ["bollette", "utenza", "utenze", "luce", "gas", "acqua", "energia", "fattura"],
     "bollette": ["bolletta", "utenza", "utenze", "luce", "gas", "acqua", "energia", "fattura"],
     "utenza": ["utenze", "bolletta", "bollette"],
@@ -46,8 +49,8 @@ CONCEPT_SYNONYMS: Dict[str, List[str]] = {
     "mutui": ["mutuo", "finanziamento", "prestito", "ipoteca"],
     "finanziamento": ["mutuo", "prestito", "rata", "rate", "banca"],
     "finanziamenti": ["mutuo", "prestito", "rata", "rate", "banca"],
-    "auto": ["patente", "macchina", "veicolo", "bollo", "assicurazione", "polizza", "libretto"],
-    "macchina": ["auto", "veicolo", "patente", "bollo", "assicurazione", "polizza"],
+    "auto": ["patente", "macchina", "veicolo", "bollo", "assicurazione", "polizza", "libretto", "mg", "mg4"],
+    "macchina": ["auto", "veicolo", "patente", "bollo", "assicurazione", "polizza", "mg", "mg4"],
     "moto": ["patente", "veicolo", "bollo", "assicurazione", "polizza", "scooter"],
     "assicurazione": ["auto", "moto", "veicolo", "casa", "polizza", "scadenza"],
     "polizza": ["assicurazione", "auto", "moto", "scadenza"],
@@ -92,6 +95,12 @@ def token_matches(q_tok: str, word: str) -> Tuple[bool, float]:
 
     if q_tok == word:
         return True, 1.0
+
+    # Prefisso alfanumerico per modelli/versioni (es. 'mg' <-> 'mg4', 'iphone' <-> 'iphone15')
+    if (len(q_tok) >= 2 and len(word) >= 2) and (
+        re.sub(r"\d+$", "", word) == q_tok or re.sub(r"\d+$", "", q_tok) == word
+    ):
+        return True, 0.90
 
     qs = it_stem(q_tok)
     ws = it_stem(word)
@@ -185,23 +194,34 @@ def search_vault_documents(db: Session, query: str, thread_id: str = "general") 
             elif any(token_matches(ct, sw)[0] for sw in s_words):
                 matched_core_count += 1
 
-        if matched_core_count == 0 and not (q_lower in t_l or q_lower in s_l):
+        # Phrase match sicuro: per stringhe brevi (2-3 caratteri come 'si') richiede word boundary
+        has_phrase_match = False
+        if len(q_lower) >= 4 and (q_lower in t_l or q_lower in s_l):
+            has_phrase_match = True
+        elif len(q_lower) >= 2 and (
+            bool(re.search(rf"\b{re.escape(q_lower)}\b", t_l)) or
+            bool(re.search(rf"\b{re.escape(q_lower)}\b", s_l))
+        ):
+            has_phrase_match = True
+
+        if matched_core_count == 0 and not has_phrase_match:
             continue
 
         # Per query composte da 2+ parole chiave (es. 'collana rossa'):
         # Evita falsi positivi se nessuna parola corrisponde ai metadati chiave (titolo, emittente, tipo)
         # e solo un frammento isolato compare nella descrizione/sintesi del documento.
         if len(core_tokens) >= 2:
-            if matched_key_count == 0 and q_lower not in s_l and matched_core_count < len(core_tokens):
+            if matched_key_count == 0 and not has_phrase_match and matched_core_count < len(core_tokens):
                 continue
-            if matched_core_count < max(2, int(len(core_tokens) * 0.5)) and q_lower not in t_l and q_lower not in s_l:
+            if matched_core_count < max(2, int(len(core_tokens) * 0.5)) and not has_phrase_match:
                 continue
 
         score = matched_core_count * 100
-        if q_lower and q_lower in t_l:
-            score += 150
-        elif q_lower and q_lower in s_l:
-            score += 50
+        if q_lower:
+            if (len(q_lower) >= 4 and q_lower in t_l) or bool(re.search(rf"\b{re.escape(q_lower)}\b", t_l)):
+                score += 150
+            elif (len(q_lower) >= 4 and q_lower in s_l) or bool(re.search(rf"\b{re.escape(q_lower)}\b", s_l)):
+                score += 50
 
         for ct in core_tokens:
             syns = [ct] + CONCEPT_SYNONYMS.get(ct, []) + CONCEPT_SYNONYMS.get(it_stem(ct), [])

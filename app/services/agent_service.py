@@ -805,8 +805,8 @@ class AgenticChatService:
                     top_id = matches[0]["id"]
                     doc = db.query(Document).filter(Document.id == top_id).first()
 
-            if not doc:
-                # Se non specificato o non trovato per titolo, recupera l'ultimo documento nel canale corrente
+            if not doc and not doc_id and not doc_title:
+                # Solo se non è stato specificato né ID né titolo (es. 'mostrami l'ultimo documento'), recupera l'ultimo documento
                 q = db.query(Document)
                 if thread_id and thread_id not in ["general", "all"]:
                     q = q.filter(Document.thread_id == thread_id)
@@ -1226,16 +1226,91 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 .first()
             )
             if last_asst and last_asst.content:
-                s_res = self.execute_tool("search_vault", {"query": last_asst.content}, db=db, thread_id=thread_id)
-                f_docs = s_res.get("found_documents", [])
-                if f_docs:
-                    matched = filter_relevant_documents(f_docs, last_asst.content, user_text) or [f_docs[0]]
-                    d = matched[0]
+                # 1. Cerca nomi esplicitamente citati tra virgolette o grassetto nel messaggio dell'assistente
+                cand_names = (
+                    re.findall(r"['\"]([^'\"]{2,})['\"]", last_asst.content) +
+                    re.findall(r"\*\*([^*]{2,})\*\*", last_asst.content)
+                )
+
+                matched_doc = None
+                matched_item = None
+
+                # Prova prima corrispondenza esatta o parziale dei candidati con titoli documenti o nomi oggetti
+                for cand in cand_names:
+                    c_clean = cand.strip()
+                    d = db.query(Document).filter(Document.title.ilike(c_clean)).first()
+                    if not d:
+                        d = db.query(Document).filter(Document.title.ilike(f"%{c_clean}%")).first()
+                    if d:
+                        matched_doc = d
+                        break
+                    it = db.query(PhysicalItem).filter(PhysicalItem.item_name.ilike(c_clean)).first()
+                    if not it:
+                        it = db.query(PhysicalItem).filter(PhysicalItem.item_name.ilike(f"%{c_clean}%")).first()
+                    if it:
+                        matched_item = it
+                        break
+
+                # 2. Se nessun match da virgolette/grassetto, controlla i titoli dei documenti nel DB presenti nel testo
+                if not matched_doc and not matched_item:
+                    all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
+                    for d in all_docs:
+                        if d.title and len(d.title) >= 3 and d.title.lower() in last_asst.content.lower():
+                            matched_doc = d
+                            break
+
+                # 3. Controlla gli oggetti nel DB presenti nel testo
+                if not matched_doc and not matched_item:
+                    all_items = db.query(PhysicalItem).order_by(PhysicalItem.updated_at.desc()).all()
+                    for it in all_items:
+                        if it.item_name and len(it.item_name) >= 3 and it.item_name.lower() in last_asst.content.lower():
+                            matched_item = it
+                            break
+
+                # 4. Se ancora nessun match ma abbiamo candidati, esegui ricerca mirata sui candidati
+                if not matched_doc and not matched_item and cand_names:
+                    for cand in cand_names:
+                        s_res = self.execute_tool("search_vault", {"query": cand}, db=db, thread_id=thread_id)
+                        f_docs = s_res.get("found_documents", [])
+                        f_items = s_res.get("found_physical_items", [])
+                        if f_docs:
+                            matched_doc = db.query(Document).filter(Document.id == f_docs[0]["id"]).first()
+                            break
+                        elif f_items:
+                            it_id = f_items[0].get("item_id") or f_items[0].get("id")
+                            matched_item = db.query(PhysicalItem).filter(PhysicalItem.id == it_id).first()
+                            break
+
+                if matched_doc:
+                    fn = Path(matched_doc.file_path).name if matched_doc.file_path else ""
+                    doc_info = {
+                        "id": matched_doc.id,
+                        "document_id": matched_doc.id,
+                        "thread_id": matched_doc.thread_id,
+                        "title": matched_doc.title,
+                        "issuer": matched_doc.issuer,
+                        "doc_type": matched_doc.doc_type,
+                        "amount": matched_doc.amount,
+                        "due_date": matched_doc.due_date.isoformat() if matched_doc.due_date else None,
+                        "status": matched_doc.status,
+                        "summary": matched_doc.summary,
+                        "filename": fn,
+                        "file_url": f"/uploads/{fn}" if fn else None,
+                        "download_url": f"/api/documents/{matched_doc.id}/download",
+                        "file_type": matched_doc.file_type
+                    }
                     return ChatResponse(
-                        reply=f"📄 Eccolo! Ho recuperato il documento **{d['title']}** ({d.get('issuer', 'Documento')}):\n💡 {d.get('summary', '')}",
+                        reply=f"📄 Eccolo! Ho recuperato il documento **{matched_doc.title}** ({matched_doc.issuer or matched_doc.doc_type}):\n💡 {matched_doc.summary or ''}",
+                        action="show_document_card",
+                        data={"document": doc_info, "document_id": matched_doc.id},
+                        documents=[doc_info]
+                    )
+                elif matched_item:
+                    loc_str = matched_item.primary_location + (f" ({matched_item.detailed_location})" if matched_item.detailed_location else "")
+                    return ChatResponse(
+                        reply=f"📍 Ho verificato la posizione di **{matched_item.item_name}**: si trova in **{loc_str}**.",
                         action="search_vault",
-                        data=s_res,
-                        documents=matched
+                        data={"item": {"item_id": matched_item.id, "item_name": matched_item.item_name, "location_str": loc_str}}
                     )
 
         # Rileva ultimo oggetto citato nel thread per eventuale risoluzione pronomi (es. "mettila in...")
@@ -1320,19 +1395,29 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         if not self.settings.OPENROUTER_API_KEY:
             clean_test = lower_t.replace("?", "").strip()
             if is_download_or_show:
-                last_doc_title = None
                 last_asst_msg = (
                     db.query(ChatMessage)
                     .filter(ChatMessage.thread_id == thread_id, ChatMessage.sender == "assistant")
                     .order_by(ChatMessage.id.desc())
                     .first()
                 )
+                target_doc = None
                 if last_asst_msg and last_asst_msg.content:
-                    m_title = re.search(r"(?:F24|Bolletta|Contratto|Estratto|Ricevuta|Certificato|Documento)[^\n*]+", last_asst_msg.content, re.IGNORECASE)
-                    if m_title:
-                        last_doc_title = m_title.group(0).strip(" *🏛️📄:-")
+                    all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
+                    for d in all_docs:
+                        if d.title and len(d.title) >= 3 and d.title.lower() in last_asst_msg.content.lower():
+                            target_doc = d
+                            break
+                    if not target_doc:
+                        cand_lines = [line.strip(" *🏛️📄:-") for line in last_asst_msg.content.split("\n") if any(k in line.lower() for k in ["f24", "bolletta", "ricevuta", "contratto", "estratto", "certificato"])]
+                        for cl in cand_lines:
+                            s_res = search_vault_documents(db, cl, thread_id=thread_id)
+                            if s_res:
+                                target_doc = db.query(Document).filter(Document.id == s_res[0]["id"]).first()
+                                break
 
-                tool_out = self.execute_tool("show_document_card", {"document_title": last_doc_title or ""}, db=db, thread_id=thread_id)
+                args_card = {"document_id": target_doc.id} if target_doc else {}
+                tool_out = self.execute_tool("show_document_card", args_card, db=db, thread_id=thread_id)
                 docs = tool_out.get("documents", [])
                 if docs:
                     d = docs[0]

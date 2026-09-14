@@ -187,3 +187,36 @@ def test_collana_rossa_no_f24_cross_contamination():
         # setup_test_data include "Modello F24 Agenzia delle Entrate" con 'Rossi Leo' nel riepilogo
         docs = search_vault_documents(session, "collana rossa")
         assert len(docs) == 0
+
+
+def test_search_mg_and_no_substring_accidental_match():
+    """Verifica che 'ora quello della mg' trovi 'zip mg4' e che 'si' non trovi 'università'."""
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        doc_mg = Document(
+            title="zip mg4",
+            file_path="uploads/mg4.png",
+            file_type="png",
+            doc_type="foto",
+            summary="File compressi e dati relativi a modelli MG4."
+        )
+        doc_pavia = Document(
+            title="Ricevuta Pre-Immatricolazione Università di Pavia",
+            file_path="uploads/pavia.pdf",
+            file_type="pdf",
+            doc_type="ricevuta",
+            summary="Ricevuta iscrizione università."
+        )
+        session.add_all([doc_mg, doc_pavia])
+        session.commit()
+
+        # 1. "ora quello della mg" trova direttamente "zip mg4"
+        res1 = search_vault_documents(session, "ora quello della mg")
+        assert len(res1) == 1
+        assert res1[0]["title"] == "zip mg4"
+
+        # 2. La query "si" non deve matchare "università" solo perché contiene le lettere 'si'
+        res_si = search_vault_documents(session, "si")
+        assert len(res_si) == 0
+
