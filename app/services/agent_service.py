@@ -79,14 +79,15 @@ TOOLS_DEFINITION = [
             "name": "search_vault",
             "description": (
                 "Cerca nel caveau qualsiasi informazione: sia file e documenti archiviati (es. certificati, tolc, bollette, contratti, f24) "
-                "sia posizioni fisiche di oggetti memorizzati (es. chiavi, passaporto, caricatore, scarpe, occhiali, faldoni)."
+                "sia posizioni fisiche di oggetti memorizzati (es. chiavi, passaporto, caricatore, tenda, occhiali, faldoni). "
+                "DEVI SEMPRE chiamare questo strumento quando l'utente chiede dove si trova qualcosa (es. 'dov'è la tenda?', 'dove ho messo il passaporto?')."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "La parola chiave o il nome dell'oggetto/documento da cercare (es. 'tolc', 'passaporto', 'bolletta', 'scrivania')"
+                        "description": "La parola chiave o il nome dell'oggetto/documento da cercare (es. 'tenda da campeggio', 'passaporto', 'bolletta', 'scrivania')"
                     }
                 },
                 "required": ["query"]
@@ -113,14 +114,19 @@ TOOLS_DEFINITION = [
         "type": "function",
         "function": {
             "name": "store_physical_item",
-            "description": "Memorizza o aggiorna la posizione fisica di un oggetto o documento cartaceo/fisico nel caveau (es. quando l'utente dice dove ha messo qualcosa: 'Ho messo la patente nel cassetto', 'Ho riposto il passaporto nella scrivania', 'Ho lasciato le chiavi all'ingresso').",
+            "description": (
+                "Memorizza, aggiorna, sposta o modifica la posizione fisica di un oggetto o documento cartaceo/fisico nel caveau "
+                "(es. 'Ho messo la patente nel cassetto', 'Modifica la posizione della tenda da campeggio e mettila in soggiorno', "
+                "'Sposta le chiavi all'ingresso', 'Metti il passaporto nella scrivania', 'Ora la tenda è in soggiorno'). "
+                "DEVI chiamarlo SEMPRE per aggiornare il database SQLite quando l'utente comunica dove si trova o dove sposta un oggetto."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "item_name": {"type": "string", "description": "Nome dell'oggetto o documento cartaceo (es. 'Passaporto', 'Patente', 'Chiavi di scorta')"},
-                    "primary_location": {"type": "string", "description": "Stanza o ambiente principale (es. 'Studio', 'Cucina', 'Camera')"},
-                    "detailed_location": {"type": "string", "description": "Dettaglio specifico del mobile o ripiano (es. 'Primo cassetto scrivania')"},
-                    "category": {"type": "string", "description": "Categoria dell'oggetto (es. 'documenti', 'chiavi', 'veicoli', 'elettronica')"}
+                    "item_name": {"type": "string", "description": "Nome dell'oggetto (es. 'Tenda da campeggio', 'Passaporto', 'Patente', 'Chiavi di scorta')"},
+                    "primary_location": {"type": "string", "description": "Nuova stanza o ambiente principale (es. 'Soggiorno', 'Garage', 'Studio', 'Cucina', 'Camera')"},
+                    "detailed_location": {"type": "string", "description": "Dettaglio specifico opzionale del mobile o ripiano (es. 'Primo cassetto scrivania', 'Mensola')"},
+                    "category": {"type": "string", "description": "Categoria opzionale dell'oggetto"}
                 },
                 "required": ["item_name", "primary_location"]
             }
@@ -199,7 +205,7 @@ Il tuo compito primario e la tua missione è AIUTARE GLI UTENTI:
 - Quando gli utenti cercano documenti (es. Modello 730, F24, bollette luce/gas, contratti di affitto o lavoro, ricevute sanitarie, certificati scolastici o universitari, estratti conto), il tuo dovere fondamentale è aiutarli a trovarli immediatamente nel caveau, spiegare con chiarezza tutti i dati salienti (importi, scadenze, mittenti) e metterli in condizione di visualizzarli e scaricarli facilmente sul proprio dispositivo.
 - Quando cercano oggetti fisici (es. passaporto, chiavi di casa o dell'auto, occhiali, caricabatterie), aiutali ricordando con esattezza la stanza, il mobile o il cassetto in cui sono conservati.
 - Quando chiedono scadenze o pagamenti in sospeso, aiutali a monitorare i tributi e le bollette da pagare per evitare ritardi.
-- Quando comunicano dove hanno riposto un oggetto, memorizzane subito la posizione con precisione.
+- Quando comunicano dove hanno riposto un oggetto o ne spostano/modificano la posizione, memorizzane subito la posizione con precisione nel caveau.
 Hai accesso ad appositi STRUMENTI (tools) per interagire con il database SQLite del caveau. Hai piena autonomia e intelligenza per comprendere e soddisfare le richieste dell'utente in linguaggio naturale.
 
 REGOLE FERREE:
@@ -210,12 +216,13 @@ REGOLE FERREE:
    - Se l'utente ti risponde "sì", "ok", "mostramelo" o simili, fa riferimento all'ultimo documento di cui stavate parlando: chiama subito `search_vault` per quel documento senza MAI chiedere "cosa devo cercare?"!
    - Spiega con precisione e ricchezza di dettagli tutti i dati trovati (titolo, emittente, intestatario, voti/punteggi, importi e date).
 
-2. QUANDO L'UTENTE CHIEDE DOVE SI TROVA UN OGGETTO (es. "dov'è il passaporto?", "dove ho messo le chiavi?"):
-   - USA lo strumento `search_vault` per cercarlo tra gli oggetti fisici e i documenti.
-   - Se lo trovi, indica la stanza e il mobile esatti. Se non lo trovi dopo la ricerca, invitalo gentilmente a memorizzarlo.
+2. QUANDO L'UTENTE CHIEDE DOVE SI TROVA UN OGGETTO O UN DOCUMENTO (es. "dov'è il passaporto?", "dove è la tenda da campeggio?", "dove ho messo le chiavi?"):
+   - DIVIETO ASSOLUTO DI RISPONDERE A MEMORIA O DALLA CHAT: DEVI SEMPRE USARE lo strumento `search_vault`!
+   - Non fare MAI affidamento sui messaggi precedenti della chat: la sola e unica verità è ciò che restituisce `search_vault` dal database in tempo reale! Se l'oggetto è stato eliminato o spostato, la cronologia precedente è obsoleta. Se `search_vault` non trova l'oggetto, rispondi con chiarezza che non è presente nel caveau (o che è stato rimosso) senza inventare posizioni passate!
 
-3. QUANDO L'UTENTE COMUNICA DOVE HA MESSO UN OGGETTO (es. "Ho messo il caricatore sul comodino"):
-   - USA lo strumento `store_physical_item` per registrarlo subito nel caveau.
+3. QUANDO L'UTENTE COMUNICA, MODIFICA, SPOSTA O AGGIORNA LA POSIZIONE DI UN OGGETTO (es. "Ho messo il caricatore sul comodino", "Modifica la posizione della tenda da campeggio e mettila in soggiorno", "Sposta le chiavi in cucina", "Metti la tenda in soggiorno", "Ora il passaporto si trova nello studio"):
+   - DEVI SEMPRE USARE lo strumento `store_physical_item`!
+   - DIVIETO ASSOLUTO di confermare a voce ("Ho aggiornato la posizione...") senza aver prima invocato `store_physical_item`! L'unico modo per aggiornare realmente la posizione nel caveau è chiamare `store_physical_item` passando il nome dell'oggetto e la nuova posizione principale.
 
 4. QUANDO L'UTENTE CHIEDE DELLE SCADENZE O COSA DEVE PAGARE:
    - USA lo strumento `get_upcoming_deadlines`.
@@ -331,6 +338,83 @@ class AgenticChatService:
     def __init__(self):
         self.settings = get_settings()
 
+    def _extract_item_and_location(self, text: str, last_item_in_context: Optional[str] = None) -> tuple[Optional[str], Optional[str]]:
+        """Estrae con precisione il nome dell'oggetto e la posizione (per salvataggio, modifica, spostamento)."""
+        t = text.strip()
+        low = t.lower()
+
+        # Pronomi (es. "mettila in soggiorno", "spostalo in garage")
+        m_pro = re.search(
+            r"^(?:mettila|mettilo|mettili|mettile|spostala|spostalo|spostali|spostale|posizionalo|posizionala|sistemalo|sistemala)\s+(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\s+(.+)",
+            low
+        )
+        if m_pro:
+            loc = m_pro.group(1).strip(" .?!")
+            return last_item_in_context, loc
+
+        # 1. "modifica/cambia/aggiorna la posizione di X e mettila/mettilo in Y"
+        m = re.search(
+            r"(?:modifica|cambia|aggiorna)\s+(?:la\s+posizione\s+(?:di|del|della|dei|degli|delle|d\')\s*)?(.+?)\s+(?:e\s+)?(?:mettila|mettilo|mettili|mettile|spostala|spostalo|spostali|spostale|salvala|salvalo)?\s*(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\s+(.+)",
+            low
+        )
+        if m:
+            item = m.group(1).strip()
+            loc = m.group(2).strip(" .?!")
+            item = re.sub(r"^(?:la\s+posizione\s+(?:di|del|della|dei|degli|delle|d\')\s*)", "", item).strip()
+            item = re.sub(r"^(?:il|lo|la|i|gli|le|l\'|un|uno|una|un\')\s*", "", item).strip()
+            return item, loc
+
+        # 2. "sposta/trasferisci/porta X in Y"
+        m = re.search(
+            r"(?:sposta|trasferisci|porta)\s+(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\s+(.+)",
+            low
+        )
+        if m:
+            item = m.group(1).strip()
+            loc = m.group(2).strip(" .?!")
+            return item, loc
+
+        # 3. "metti/posiziona/sistema X in Y"
+        m = re.search(
+            r"(?:metti|posiziona|sistema)\s+(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\s+(.+)",
+            low
+        )
+        if m:
+            item = m.group(1).strip()
+            loc = m.group(2).strip(" .?!")
+            return item, loc
+
+        # 4. "ho messo/riposto/salvato/lasciato/conservato/posizionato X in Y"
+        m = re.search(
+            r"(?:messo|riposto|salvato|lasciato|conservato|posizionato|sistemato)\s+(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+(?:nel|nella|nello|nei|negli|nelle|in|su|sul|sulla|sullo|sui|sugli|sulle|sotto|a|all\'|allo|alla|dentro|sopra)\s+(.+)",
+            low
+        )
+        if m:
+            item = m.group(1).strip()
+            loc = m.group(2).strip(" .?!")
+            return item, loc
+
+        # 5. "ora X si trova in Y" o "X ora è in Y"
+        m = re.search(
+            r"(?:ora|adesso)\s+(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+(?:è|e\'|si trova|sta)\s+(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\s+(.+)",
+            low
+        )
+        if m:
+            item = m.group(1).strip()
+            loc = m.group(2).strip(" .?!")
+            return item, loc
+
+        m = re.search(
+            r"(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+(?:ora|adesso)\s+(?:è|e\'|si trova|sta)\s+(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\s+(.+)",
+            low
+        )
+        if m:
+            item = m.group(1).strip()
+            loc = m.group(2).strip(" .?!")
+            return item, loc
+
+        return None, None
+
     def execute_tool(self, name: str, args: Dict[str, Any], db: Session, thread_id: str = "general") -> Dict[str, Any]:
         """Esegue uno strumento registrato contro il database SQLite locale."""
         logger.info(f"Esecuzione tool {name} con argomenti: {args} (thread: {thread_id})")
@@ -345,10 +429,8 @@ class AgenticChatService:
                 "found_physical_items": item_results[:5]
             }
 
-
         elif name == "get_recent_vault_documents":
             limit = args.get("limit", 3)
-            # Prioritize current thread if any, otherwise all
             docs = (
                 db.query(Document)
                 .order_by(Document.created_at.desc())
@@ -381,16 +463,31 @@ class AgenticChatService:
             raw_name = args.get("item_name", "Oggetto").strip()
             cleaned_name = re.sub(r"^(il|lo|la|i|gli|le|l'|un|uno|una|un')\s*", "", raw_name, flags=re.IGNORECASE).strip()
             item_name = (cleaned_name if cleaned_name else raw_name).capitalize()
-            prim_loc = args.get("primary_location", "Non specificato")
+            prim_loc = args.get("primary_location", "Non specificato").strip()
             det_loc = args.get("detailed_location")
+            if det_loc is not None:
+                det_loc = det_loc.strip() or None
             cat = args.get("category", "generico")
 
+            # 1. Cerca per nome esatto (case-insensitive)
             existing = db.query(PhysicalItem).filter(PhysicalItem.item_name.ilike(item_name)).first()
+            if not existing and thread_id:
+                existing = db.query(PhysicalItem).filter(PhysicalItem.thread_id == thread_id, PhysicalItem.item_name.ilike(item_name)).first()
+
+            # 2. Se non trovato, cerca con matching semantico/stemming (es. "Tenda" per "Tenda da campeggio")
+            if not existing:
+                candidates = search_vault_items(db, item_name, thread_id=thread_id)
+                if candidates:
+                    matched_id = candidates[0].get("item_id") or candidates[0].get("id")
+                    if matched_id:
+                        existing = db.query(PhysicalItem).filter(PhysicalItem.id == matched_id).first()
+
             if existing:
                 existing.primary_location = prim_loc
-                if det_loc:
-                    existing.detailed_location = det_loc
-                existing.thread_id = thread_id
+                # Quando si aggiorna la stanza principale, il dettaglio va aggiornato se fornito o azzerato per non ereditare vecchi mobili
+                existing.detailed_location = det_loc
+                if thread_id:
+                    existing.thread_id = thread_id
                 item = existing
             else:
                 item = PhysicalItem(
@@ -927,19 +1024,84 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                         documents=matched
                     )
 
-        # Garantisce la memorizzazione immediata nel caveau di qualsiasi posizione fisica comunicata
-        is_store_phrase = any(k in lower_t for k in ["messo", "riposto", "salvato", "lasciato", "conservato"]) and not any(k in lower_t for k in ["dov'è", "dov'e", "dove ho", "dove sono"])
+        # Rileva ultimo oggetto citato nel thread per eventuale risoluzione pronomi (es. "mettila in...")
+        last_item_name = None
+        last_asst_msg = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.thread_id == thread_id, ChatMessage.sender == "assistant")
+            .order_by(ChatMessage.id.desc())
+            .first()
+        )
+        if last_asst_msg and last_asst_msg.content:
+            m_it = re.search(r"\*\*(.+?)\*\*", last_asst_msg.content)
+            if m_it:
+                last_item_name = m_it.group(1).strip()
+
+        # Rileva intenzione di memorizzazione, modifica o spostamento posizione fisica
+        is_store_or_update = (
+            any(k in lower_t for k in [
+                "messo", "riposto", "salvato", "lasciato", "conservato", "posizionato", "sistemato",
+                "modifica la posizione", "cambia la posizione", "aggiorna la posizione",
+                "sposta", "spostato", "spostata", "spostare",
+                "mettilo", "mettila", "mettili", "mettile", "metti",
+                "ora è in", "ora si trova in", "adesso è in", "adesso si trova in"
+            ])
+            and not any(k in lower_t for k in ["dov'è", "dov'e", "dove ho", "dove si trova", "dove sono", "dove sta", "dove è"])
+        )
+
+        is_where_request = (
+            any(k in lower_t for k in [
+                "dov'è", "dov'e", "dove è", "dove sono", "dove si trova", "dove si trovano",
+                "dove ho messo", "dove ho riposto", "dove ho lasciato", "dove sta", "dove stanno",
+                "dove trovo"
+            ])
+            and not is_store_or_update
+        )
+
         stored_item_result = None
-        if is_store_phrase:
-            m_st = re.search(r"(?:messo|riposto|salvato|lasciato|conservato)\s+(?:il\s+|la\s+|le\s+|i\s+|l\')?(.+?)\s+(?:nel|nella|in|su|sul|sotto|a)\s+(.+)", lower_t)
-            if m_st:
-                item_n = m_st.group(1).strip()
-                loc_n = m_st.group(2).strip()
+        if is_store_or_update:
+            item_n, loc_n = self._extract_item_and_location(user_text, last_item_in_context=last_item_name)
+            if item_n and loc_n:
                 stored_item_result = self.execute_tool("store_physical_item", {"item_name": item_n, "primary_location": loc_n}, db=db, thread_id=thread_id)
 
         # Se non c'è chiave API, fallback deterministico per test offline
         if not self.settings.OPENROUTER_API_KEY:
             clean_test = lower_t.replace("?", "").strip()
+            if is_store_or_update and stored_item_result:
+                return ChatResponse(
+                    reply=f"✅ Memorizzato! Ho aggiornato la posizione di **{stored_item_result['item_name']}** in: {stored_item_result['location_str']}.",
+                    action="store_physical_item",
+                    data=stored_item_result
+                )
+
+            if is_where_request:
+                q = re.sub(r"^(?:dov'è|dov'e|dove è|dove sono|dove si trova|dove ho messo|dove sta|dove)\s+(?:il|lo|la|i|gli|le|l')?\s*", "", lower_t).strip(" ?.")
+                tool_out = self.execute_tool("search_vault", {"query": q}, db=db, thread_id=thread_id)
+                items = tool_out.get("found_physical_items", [])
+                docs = tool_out.get("found_documents", [])
+                if items:
+                    it = items[0]
+                    loc_desc = it.get("location_str") or (it.get("primary_location", "") + (f" ({it['detailed_location']})" if it.get("detailed_location") else ""))
+                    return ChatResponse(
+                        reply=f"📍 **{it['item_name']}** si trova in: {loc_desc}.",
+                        action="search_vault",
+                        data=tool_out
+                    )
+                elif docs:
+                    d = docs[0]
+                    return ChatResponse(
+                        reply=f"📄 Ho trovato il documento **{d['title']}** ({d.get('issuer', '')}).",
+                        action="search_vault",
+                        data=tool_out,
+                        documents=[d]
+                    )
+                else:
+                    return ChatResponse(
+                        reply=f"Ho cercato nel caveau, ma non ho trovato '{q}'. Potrebbe essere stato eliminato o non ancora memorizzato.",
+                        action="search_vault",
+                        data=tool_out
+                    )
+
             if any(k in clean_test for k in ["lista", "elenco", "quali documenti"]):
                 target = "physical_items" if "oggett" in clean_test else "documents"
                 tool_out = self.execute_tool("list_vault_contents", {"target_type": target}, db=db, thread_id=thread_id)
@@ -1007,11 +1169,14 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             ])
             or lower_t.strip(" !.?") in ["documenti", "oggetti", "tutti i documenti", "tutti gli oggetti", "tutto", "i miei documenti", "i miei oggetti"]
         )
-        tool_choice_cfg = (
-            {"type": "function", "function": {"name": "list_vault_contents"}}
-            if is_listing_request
-            else "auto"
-        )
+        if is_listing_request:
+            tool_choice_cfg = {"type": "function", "function": {"name": "list_vault_contents"}}
+        elif is_store_or_update:
+            tool_choice_cfg = {"type": "function", "function": {"name": "store_physical_item"}}
+        elif is_where_request:
+            tool_choice_cfg = {"type": "function", "function": {"name": "search_vault"}}
+        else:
+            tool_choice_cfg = "auto"
 
         try:
             r1 = httpx.post(
@@ -1054,14 +1219,11 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             "content": json.dumps(tool_output, ensure_ascii=False)
                         })
 
-                    # Se l'utente ha comunicato una posizione ma il modello ha chiamato solo search_vault,
-                    # eseguiamo anche store_physical_item per garantire la memorizzazione nel caveau
-                    is_store_phrase = any(k in lower_t for k in ["messo", "riposto", "salvato", "lasciato", "conservato"]) and not any(k in lower_t for k in ["dov'è", "dov'e", "dove ho", "dove sono"])
-                    if is_store_phrase and not any(tc.get("function", {}).get("name") == "store_physical_item" for tc in tool_calls):
-                        m_st = re.search(r"(?:messo|riposto|salvato|lasciato|conservato)\s+(?:il\s+|la\s+|le\s+|i\s+|l\')?(.+?)\s+(?:nel|nella|in|su|sul|sotto|a)\s+(.+)", lower_t)
-                        if m_st:
-                            item_n = m_st.group(1).strip()
-                            loc_n = m_st.group(2).strip()
+                    # Se l'utente ha comunicato/spostato una posizione ma il modello ha chiamato solo search_vault o altro tool,
+                    # eseguiamo anche store_physical_item per garantire la memorizzazione nel database
+                    if is_store_or_update and not any(tc.get("function", {}).get("name") == "store_physical_item" for tc in tool_calls):
+                        item_n, loc_n = self._extract_item_and_location(user_text, last_item_in_context=last_item_name)
+                        if item_n and loc_n:
                             store_out = self.execute_tool("store_physical_item", {"item_name": item_n, "primary_location": loc_n}, db=db, thread_id=thread_id)
                             tool_action = "store_physical_item"
                             tool_data = store_out
@@ -1212,14 +1374,39 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 direct_reply = strip_tool_tags(direct_reply)
 
                 if direct_reply:
-                    if is_store_phrase and stored_item_result:
-                        if "memorizzato" not in direct_reply.lower() and "salvat" not in direct_reply.lower():
-                            direct_reply = f"✅ Memorizzato! {direct_reply}"
-                        return ChatResponse(
-                            reply=direct_reply,
-                            action="store_physical_item",
-                            data=stored_item_result
-                        )
+                    if is_store_or_update:
+                        if not stored_item_result:
+                            item_n, loc_n = self._extract_item_and_location(user_text, last_item_in_context=last_item_name)
+                            if item_n and loc_n:
+                                stored_item_result = self.execute_tool("store_physical_item", {"item_name": item_n, "primary_location": loc_n}, db=db, thread_id=thread_id)
+                        if stored_item_result:
+                            if "memorizzato" not in direct_reply.lower() and "salvat" not in direct_reply.lower() and "aggiornat" not in direct_reply.lower():
+                                direct_reply = f"✅ Posizione aggiornata! {direct_reply}"
+                            return ChatResponse(
+                                reply=direct_reply,
+                                action="store_physical_item",
+                                data=stored_item_result
+                            )
+
+                    # Se l'utente chiedeva dove si trova qualcosa (is_where_request),
+                    # ancoriamo sempre la risposta al database reale SQLite (nessuna allucinazione da cronologia chat)
+                    if is_where_request:
+                        search_q = re.sub(r"^(?:dov'è|dov'e|dove è|dove sono|dove si trova|dove ho messo|dove sta|dove)\s+(?:il|lo|la|i|gli|le|l')?\s*", "", lower_t).strip(" ?.")
+                        s_res = self.execute_tool("search_vault", {"query": search_q or user_text}, db=db, thread_id=thread_id)
+                        found_items = s_res.get("found_physical_items", [])
+                        found_docs = s_res.get("found_documents", [])
+                        if found_items:
+                            it = found_items[0]
+                            loc_desc = it.get("location_str") or (it.get("primary_location", "") + (f" ({it['detailed_location']})" if it.get("detailed_location") else ""))
+                            clean_rep = f"📍 **{it['item_name']}** si trova in: {loc_desc}."
+                            return ChatResponse(reply=clean_rep, action="search_vault", data=s_res)
+                        elif found_docs:
+                            d = found_docs[0]
+                            clean_rep = f"📄 Ho trovato il documento **{d['title']}** ({d.get('issuer', '')}).\n💡 {d.get('summary', '')}"
+                            return ChatResponse(reply=clean_rep, action="search_vault", data=s_res, documents=[d])
+                        else:
+                            clean_rep = f"Ho cercato nel caveau, ma non ho trovato '{search_q}'. Potrebbe essere stato eliminato o non ancora registrato."
+                            return ChatResponse(reply=clean_rep, action="search_vault", data=s_res)
 
                     # Se il modello ha risposto direttamente senza tool_calls (es. usando la cronologia chat),
                     # ma l'utente chiedeva un documento o la risposta ne cita uno, recuperiamo e alleghiamo il widget del file!
@@ -1256,14 +1443,11 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
     def _fallback_deterministic_response(self, user_text: str, lower_t: str, db: Session, thread_id: str) -> ChatResponse:
         """Fallback locale robusto per memorizzazione, ricerca e scadenze in caso di rate-limit API o disconnessione."""
-        # 1. Memorizzazione posizione fisica
-        is_store = any(k in lower_t for k in ["messo", "riposto", "salvato", "lasciato", "conservato"]) and not any(k in lower_t for k in ["dov'è", "dov'e", "dove"])
-        if is_store:
-            m = re.search(r"(?:messo|riposto|salvato|lasciato|conservato)\s+(?:il\s+|la\s+|le\s+|i\s+|l\')?(.+?)\s+(?:nel|nella|in|su|sul|sotto|a)\s+(.+)", lower_t)
-            item = m.group(1).strip() if m else "Oggetto"
-            loc = m.group(2).strip() if m else "posto specificato"
-            db_res = self.execute_tool("store_physical_item", {"item_name": item, "primary_location": loc}, db, thread_id=thread_id)
-            return ChatResponse(reply=f"✅ Memorizzato! Ho salvato la posizione di '{item}' in: {loc}.", action="store_physical_item", data=db_res)
+        # 1. Memorizzazione o modifica posizione fisica
+        item_n, loc_n = self._extract_item_and_location(user_text)
+        if item_n and loc_n:
+            db_res = self.execute_tool("store_physical_item", {"item_name": item_n, "primary_location": loc_n}, db, thread_id=thread_id)
+            return ChatResponse(reply=f"✅ Posizione aggiornata! Ho salvato la posizione di '{item_n}' in: {loc_n}.", action="store_physical_item", data=db_res)
 
         # 2. Data e ora odierna
         if any(k in lower_t for k in ["che giorno è", "che giorno e", "data di oggi", "quanti ne abbiamo", "che data è", "che data e", "data odierna", "che ore sono"]):

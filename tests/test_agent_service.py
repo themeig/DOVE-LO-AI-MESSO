@@ -203,3 +203,126 @@ def test_list_vault_contents_tool():
         res_all = agent.execute_tool("list_vault_contents", {"target_type": "all"}, session, thread_id="general")
         assert res_all["documents_count"] == 2
         assert res_all["items_count"] == 1
+
+
+def test_extract_item_and_location():
+    agent = AgenticChatService()
+    
+    # 1. "modifica la posizione della tenda da campeggio e mettila in soggiorno"
+    item, loc = agent._extract_item_and_location("modifica la posizione della tenda da campeggio e mettila in soggiorno")
+    assert item.lower() == "tenda da campeggio"
+    assert loc.lower() == "soggiorno"
+
+    # 2. "sposta la tenda da campeggio in soggiorno"
+    item2, loc2 = agent._extract_item_and_location("sposta la tenda da campeggio in soggiorno")
+    assert item2.lower() == "tenda da campeggio"
+    assert loc2.lower() == "soggiorno"
+
+    # 3. "cambia la posizione del passaporto in studio"
+    item3, loc3 = agent._extract_item_and_location("cambia la posizione del passaporto in studio")
+    assert item3.lower() == "passaporto"
+    assert loc3.lower() == "studio"
+
+    # 4. "metti le chiavi sul comodino"
+    item4, loc4 = agent._extract_item_and_location("metti le chiavi sul comodino")
+    assert item4.lower() == "chiavi"
+    assert loc4.lower() == "comodino"
+
+    # 5. "ora la tenda da campeggio si trova in soggiorno"
+    item5, loc5 = agent._extract_item_and_location("ora la tenda da campeggio si trova in soggiorno")
+    assert item5.lower() == "tenda da campeggio"
+    assert loc5.lower() == "soggiorno"
+
+    # 6. Pronome "mettila in soggiorno" con oggetto nel contesto
+    item6, loc6 = agent._extract_item_and_location("mettila in soggiorno", last_item_in_context="Tenda da campeggio")
+    assert item6.lower() == "tenda da campeggio"
+    assert loc6.lower() == "soggiorno"
+
+
+def test_store_physical_item_updates_existing_fuzzy():
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        # 1. Salva inizialmente "Tenda da campeggio" in "Garage" con dettaglio "Scaffale in fondo"
+        item = PhysicalItem(
+            item_name="Tenda da campeggio",
+            primary_location="Garage",
+            detailed_location="Scaffale in fondo",
+            thread_id="general"
+        )
+        session.add(item)
+        session.commit()
+
+        agent = AgenticChatService()
+
+        # 2. Aggiorna usando "Tenda da campeggio" verso "Soggiorno"
+        res = agent.execute_tool(
+            "store_physical_item",
+            {"item_name": "tenda da campeggio", "primary_location": "Soggiorno"},
+            session,
+            thread_id="general"
+        )
+        assert res["success"] is True
+        assert res["primary_location"] == "Soggiorno"
+        assert res["detailed_location"] is None
+
+        # Verifica che nel DB ci sia sempre UN solo record aggiornato
+        items = session.query(PhysicalItem).all()
+        assert len(items) == 1
+        assert items[0].primary_location == "Soggiorno"
+        assert items[0].detailed_location is None
+
+        # 3. Aggiorna usando abbreviazione "Tenda" verso "Camera da letto"
+        res2 = agent.execute_tool(
+            "store_physical_item",
+            {"item_name": "Tenda", "primary_location": "Camera da letto", "detailed_location": "Armadio"},
+            session,
+            thread_id="general"
+        )
+        assert res2["success"] is True
+        assert res2["primary_location"] == "Camera da letto"
+        assert res2["detailed_location"] == "Armadio"
+
+        items = session.query(PhysicalItem).all()
+        assert len(items) == 1
+        assert items[0].primary_location == "Camera da letto"
+        assert items[0].detailed_location == "Armadio"
+
+
+def test_flow_modifica_e_query_posizione():
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = "" # offline test
+
+        # 1. Memorizza in garage
+        r1 = agent.run_turn("Ho messo la tenda da campeggio in garage", session, thread_id="casa")
+        assert "garage" in r1.reply.lower()
+
+        item_db = session.query(PhysicalItem).filter(PhysicalItem.thread_id == "casa").first()
+        assert item_db is not None
+        assert item_db.primary_location.lower() == "garage"
+
+        # 2. Modifica la posizione in soggiorno
+        r2 = agent.run_turn("modifica la posizione della tenda da campeggio e mettila in soggiorno", session, thread_id="casa")
+        assert "soggiorno" in r2.reply.lower()
+
+        session.refresh(item_db)
+        assert item_db.primary_location.lower() == "soggiorno"
+
+        # 3. Chiedi dove si trova
+        r3 = agent.run_turn("dove è la tenda da campeggio?", session, thread_id="casa")
+        assert "soggiorno" in r3.reply.lower()
+        assert "garage" not in r3.reply.lower()
+
+        # 4. Elimina la tenda
+        session.delete(item_db)
+        session.commit()
+
+        # 5. Chiedi dove si trova dopo l'eliminazione: non deve allucinare il soggiorno, deve dire non trovata
+        r4 = agent.run_turn("dove è la tenda da campeggio?", session, thread_id="casa")
+        assert "soggiorno" not in r4.reply.lower()
+        assert "non ho trovato" in r4.reply.lower()
+
+

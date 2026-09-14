@@ -276,7 +276,8 @@ def search_vault_items(db: Session, query: str, thread_id: str = "general") -> L
             "item_name": it.item_name,
             "primary_location": it.primary_location,
             "detailed_location": it.detailed_location,
-            "category": it.category
+            "category": it.category,
+            "location_str": it.primary_location + (f" ({it.detailed_location})" if it.detailed_location else "")
         } for it in items]
 
     words = [w.lower() for w in re.split(r"[^\w]+", raw_query) if len(w) > 1]
@@ -357,7 +358,8 @@ def search_vault_items(db: Session, query: str, thread_id: str = "general") -> L
                 "item_name": it.item_name,
                 "primary_location": it.primary_location,
                 "detailed_location": it.detailed_location,
-                "category": it.category
+                "category": it.category,
+                "location_str": it.primary_location + (f" ({it.detailed_location})" if it.detailed_location else "")
             }))
 
     item_scored.sort(key=lambda x: (x[1], x[0]), reverse=True)
