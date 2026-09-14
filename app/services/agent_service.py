@@ -222,6 +222,36 @@ TOOLS_DEFINITION = [
                 "required": ["new_title"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "show_document_card",
+            "description": (
+                "Mostra all'utente la scheda grafica interattiva (widget) di un documento o file con anteprima e pulsante per visualizzarlo/scaricarlo. "
+                "DEVI SEMPRE chiamare questo strumento quando l'utente chiede esplicitamente di visualizzare, vedere, aprire, consultare o scaricare un file o documento "
+                "(es. 'ok voglio scaricarla', 'scaricalo', 'fammi vedere il file', 'apri la bolletta', 'mostrami il documento'). "
+                "DIVIETO ASSOLUTO di scrivere finti link testuali markdown come [Link per scaricare...]: usa SEMPRE questo strumento!"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "document_id": {
+                        "type": "integer",
+                        "description": "ID numerico opzionale del documento da mostrare"
+                    },
+                    "document_title": {
+                        "type": "string",
+                        "description": "Titolo, nome o parola chiave del documento se l'ID non è noto (es. 'F24', 'Bolletta Enel', 'Contratto')"
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": "Termine di ricerca alternativo per individuare il documento nel caveau"
+                    }
+                },
+                "required": []
+            }
+        }
     }
 ]
 
@@ -237,15 +267,15 @@ Hai accesso ad appositi STRUMENTI (tools) per interagire con il database SQLite 
 REGOLE FERREE:
 0. PRIMATO ASSOLUTO DEL DATABASE SULLA CHAT (DATI REALI > CONTESTO):
    - Hai a disposizione l'intera cronologia della conversazione e l'inventario in tempo reale del database: usali per avere la massima consapevolezza del contesto, ricordare preferenze, richieste pregresse, spiegazioni e dettagli scambiati.
-   - Tuttavia, per quanto riguarda l'ESISTENZA e la POSIZIONE ATTUALE di un documento o di un oggetto nel caveau, la sola e unica fonte di verità sono i DATI REALI DEL DATABASE SQLite (presenti nella sezione [STATO ATTUALE DEL DATABASE SQLITE] o verificati in tempo reale tramite i tuoi strumenti `search_vault`, `list_vault_contents`, `get_upcoming_deadlines`, `store_physical_item`, `rename_vault_document`).
+   - Tuttavia, per quanto riguarda l'ESISTENZA e la POSIZIONE ATTUALE di un documento o di un oggetto nel caveau, la sola e unica fonte di verità sono i DATI REALI DEL DATABASE SQLite (presenti nella sezione [STATO ATTUALE DEL DATABASE SQLITE] o verificati in tempo reale tramite i tuoi strumenti `search_vault`, `list_vault_contents`, `get_upcoming_deadlines`, `store_physical_item`, `rename_vault_document`, `show_document_card`).
    - Se un oggetto o un documento era stato citato nella conversazione ma NON è presente nei dati del database SQLite (o lo strumento restituisce che non c'è), significa che è stato rimosso o non è archiviato nel caveau. In tal caso, rispondi chiaramente che non è presente nel caveau, senza dare per scontato che esista solo perché citato in passato.
    - Basa sempre le tue affermazioni fattuali sui dati certi del database!
 
 1. QUANDO L'UTENTE CHIEDE DI UN FILE O DOCUMENTO (es. "dammi 730", "dammi il documento del mutuo", "mostrami la bolletta", "che file è?", "trovami il certificato del tolc", "cerca la bolletta enel"):
-   - DEVI SEMPRE USARE lo strumento `search_vault`!
-   - NON rispondere MAI a memoria senza chiamare `search_vault`, perché la chiamata di `search_vault` è INDISPENSABILE per consentire al sistema di mostrare il widget grafico del documento (con anteprima e pulsante "Vedi") all'utente!
-   - DIVIETO ASSOLUTO DI CHIEDERE IL PERMESSO: Non chiedere MAI "Posso mostrarti il documento?", "Vuoi che te lo mostri?", "Desideri vederlo?", "Quale dei due desideri visualizzare?". L'utente te lo ha già chiesto! Mostra e riassumi subito le informazioni trovate, l'interfaccia allegherà automaticamente la scheda grafica con il tasto "Vedi" per aprirlo!
-   - Se l'utente ti risponde "sì", "ok", "mostramelo" o simili, fa riferimento all'ultimo documento di cui stavate parlando: chiama subito `search_vault` per quel documento senza MAI chiedere "cosa devo cercare?"!
+   - DEVI SEMPRE USARE lo strumento `search_vault` o `show_document_card`!
+   - NON rispondere MAI a memoria senza chiamare il tool!
+   - DIVIETO ASSOLUTO DI CHIEDERE IL PERMESSO: Non chiedere MAI "Posso mostrarti il documento?", "Vuoi che te lo mostri?", "Desideri vederlo?", "Quale dei due desideri visualizzare?". L'utente te lo ha già chiesto! Mostra e riassumi subito le informazioni trovate!
+   - Se l'utente ti risponde "sì", "ok", "mostramelo" o simili, fa riferimento all'ultimo documento di cui stavate parlando: chiama subito lo strumento per quel documento!
    - Spiega con precisione e ricchezza di dettagli tutti i dati trovati (titolo, emittente, intestatario, voti/punteggi, importi e date).
 
 2. QUANDO L'UTENTE CHIEDE DOVE SI TROVA UN OGGETTO O UN DOCUMENTO (es. "dov'è il passaporto?", "dove è la tenda da campeggio?", "dove ho messo le chiavi?"):
@@ -288,6 +318,11 @@ REGOLE FERREE:
 9. QUANDO L'UTENTE COMUNICA UN NOME O CHIEDE DI RINOMINARE UN FILE/FOTO (es. "chiamalo Base Volante Fanatec", "chiamala Ricevuta Visita", "rinomina il file in X", "dalle il nome Y", "salvalo come Z"):
    - DEVI SEMPRE USARE lo strumento `rename_vault_document` passando `new_title` con il nome indicato dall'utente!
    - Non rispondere mai solo a parole ("D'accordo, l'ho chiamato...") senza aver invocato `rename_vault_document`!
+
+10. QUANDO L'UTENTE CHIEDE DI SCARICARE, VEDERE, APRIRE O VISUALIZZARE UN DOCUMENTO (es. 'ok voglio scaricarla', 'scaricalo', 'fammi vedere il documento', 'apri il file', 'mandami il pdf', 'posso vederlo?'):
+    - DIVIETO ASSOLUTO DI SCRIVERE FINTI LINK TESTUALI MARKDOWN: Non scrivere MAI link finti o inventati come `[Link per scaricare F24]` o `[Scarica qui]`. Non funzionano e non esistono!
+    - DEVI SEMPRE USARE lo strumento `show_document_card`! Puoi specificare `document_id` se noto, oppure `document_title` o lasciarlo vuoto per mostrare l'ultimo documento citato nella conversazione.
+    - Chiamando `show_document_card`, l'interfaccia WhatsApp mostrerà all'utente la vera scheda grafica interattiva con anteprima, dettagli e pulsante 'Vedi' e download!
 """
 
 def strip_tool_tags(text: str) -> str:
@@ -753,6 +788,55 @@ class AgenticChatService:
                 "document": doc_info,
                 "documents": [doc_info]
             }
+        elif name == "show_document_card":
+            doc_id = args.get("document_id")
+            doc_title = (args.get("document_title") or args.get("query") or "").strip()
+
+            doc = None
+            if doc_id:
+                try:
+                    doc = db.query(Document).filter(Document.id == int(doc_id)).first()
+                except Exception:
+                    pass
+
+            if not doc and doc_title:
+                matches = search_vault_documents(db, doc_title, thread_id=thread_id)
+                if matches:
+                    top_id = matches[0]["id"]
+                    doc = db.query(Document).filter(Document.id == top_id).first()
+
+            if not doc:
+                # Se non specificato o non trovato per titolo, recupera l'ultimo documento nel canale corrente
+                q = db.query(Document)
+                if thread_id and thread_id not in ["general", "all"]:
+                    q = q.filter(Document.thread_id == thread_id)
+                doc = q.order_by(Document.id.desc()).first()
+
+            if not doc:
+                return {"error": "Nessun documento trovato nel caveau da visualizzare.", "found": False}
+
+            fn = Path(doc.file_path).name if doc.file_path else ""
+            doc_info = {
+                "id": doc.id,
+                "document_id": doc.id,
+                "title": doc.title,
+                "issuer": doc.issuer,
+                "amount": doc.amount,
+                "due_date": doc.due_date.isoformat() if doc.due_date else None,
+                "summary": doc.summary,
+                "doc_type": doc.doc_type,
+                "status": doc.status,
+                "file_url": f"/uploads/{fn}" if fn else None,
+                "download_url": f"/api/documents/{doc.id}/download",
+                "file_type": doc.file_type
+            }
+
+            return {
+                "success": True,
+                "document": doc_info,
+                "documents": [doc_info],
+                "found_documents": [doc_info]
+            }
 
         return {"error": f"Strumento non riconosciuto: {name}"}
 
@@ -1215,6 +1299,17 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             and not is_where_request
         )
 
+        is_download_or_show = (
+            any(k in lower_t for k in [
+                "scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala",
+                "apri il documento", "apri il file", "mostramelo", "mostramela",
+                "fammi vedere il file", "fammi vedere il documento", "voglio vederlo", "voglio vederla",
+                "apri il pdf", "mostra la scheda", "vedi il documento", "mandami il pdf"
+            ])
+            and not is_store_or_update
+            and not is_where_request
+        )
+
         stored_item_result = None
         if is_store_or_update:
             item_n, loc_n = self._extract_item_and_location(user_text, last_item_in_context=last_item_name)
@@ -1224,6 +1319,30 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         # Se non c'è chiave API, fallback deterministico per test offline
         if not self.settings.OPENROUTER_API_KEY:
             clean_test = lower_t.replace("?", "").strip()
+            if is_download_or_show:
+                last_doc_title = None
+                last_asst_msg = (
+                    db.query(ChatMessage)
+                    .filter(ChatMessage.thread_id == thread_id, ChatMessage.sender == "assistant")
+                    .order_by(ChatMessage.id.desc())
+                    .first()
+                )
+                if last_asst_msg and last_asst_msg.content:
+                    m_title = re.search(r"(?:F24|Bolletta|Contratto|Estratto|Ricevuta|Certificato|Documento)[^\n*]+", last_asst_msg.content, re.IGNORECASE)
+                    if m_title:
+                        last_doc_title = m_title.group(0).strip(" *🏛️📄:-")
+
+                tool_out = self.execute_tool("show_document_card", {"document_title": last_doc_title or ""}, db=db, thread_id=thread_id)
+                docs = tool_out.get("documents", [])
+                if docs:
+                    d = docs[0]
+                    return ChatResponse(
+                        reply=f"📄 Ecco la scheda per **{d['title']}**! Puoi visualizzarlo o scaricarlo direttamente con il pulsante qui sotto. ⬇️",
+                        action="show_document_card",
+                        data=tool_out,
+                        documents=docs
+                    )
+
             if is_rename_request:
                 new_title = self._extract_rename_title(user_text)
                 if new_title:
@@ -1361,6 +1480,8 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         if is_rename_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "rename_vault_document"}}
+        elif is_download_or_show:
+            tool_choice_cfg = {"type": "function", "function": {"name": "show_document_card"}}
         elif is_listing_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "list_vault_contents"}}
         elif is_store_or_update:
@@ -1390,46 +1511,28 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             if r1.status_code == 200:
                 data1 = r1.json()
                 msg1 = data1.get("choices", [{}])[0].get("message", {})
-                tool_calls = msg1.get("tool_calls")
+                tool_calls1 = msg1.get("tool_calls")
+                
+                if tool_calls1 and len(tool_calls1) > 0:
+                    call1 = tool_calls1[0]
+                    call_func = call1.get("function", {})
+                    name1 = call_func.get("name")
+                    try:
+                        args1 = json.loads(call_func.get("arguments", "{}"))
+                    except Exception:
+                        args1 = {}
 
-                if tool_calls:
+                    logger.info(f"Agentic calling tool: {name1} with args: {args1}")
+                    tool_data = self.execute_tool(name1, args1, db, thread_id=thread_id)
+                    tool_action = name1
+
                     history_messages.append(msg1)
-                    
-                    for tc in tool_calls:
-                        func_name = tc.get("function", {}).get("name")
-                        try:
-                            raw_args = tc.get("function", {}).get("arguments", "{}")
-                            func_args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
-                        except Exception:
-                            func_args = {}
-
-                        tool_output = self.execute_tool(func_name, func_args, db=db, thread_id=thread_id)
-                        tool_action = func_name
-                        tool_data = tool_output
-
-                        tool_payload = {
-                            "dati_database_sqlite": tool_output,
-                            "regola_verita_assoluta": (
-                                "IMPORTANTE: Questi dati provengono DIRETTAMENTE dal database SQLite in tempo reale. "
-                                "Basa la tua risposta UNICAMENTE ed ESCLUSIVAMENTE su questi dati. "
-                                "Se una lista è vuota ([]), significa che nel database NON ci sono elementi (sono stati rimossi o mai salvati). "
-                                "È VIETATO usare la cronologia della chat per inventare o supporre oggetti, posizioni o documenti assenti da questi dati."
-                            )
-                        }
-                        history_messages.append({
-                            "role": "tool",
-                            "tool_call_id": tc.get("id"),
-                            "content": json.dumps(tool_payload, ensure_ascii=False)
-                        })
-
-                    # Se l'utente ha comunicato/spostato una posizione ma il modello ha chiamato solo search_vault o altro tool,
-                    # eseguiamo anche store_physical_item per garantire la memorizzazione nel database
-                    if is_store_or_update and not any(tc.get("function", {}).get("name") == "store_physical_item" for tc in tool_calls):
-                        item_n, loc_n = self._extract_item_and_location(user_text, last_item_in_context=last_item_name)
-                        if item_n and loc_n:
-                            store_out = self.execute_tool("store_physical_item", {"item_name": item_n, "primary_location": loc_n}, db=db, thread_id=thread_id)
-                            tool_action = "store_physical_item"
-                            tool_data = store_out
+                    history_messages.append({
+                        "role": "tool",
+                        "tool_call_id": call1.get("id", "call_1"),
+                        "name": name1,
+                        "content": json.dumps(tool_data, ensure_ascii=False)
+                    })
 
                     r2 = httpx.post(
                         "https://openrouter.ai/api/v1/chat/completions",
@@ -1438,10 +1541,11 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             "model": agent_model,
                             "messages": history_messages,
                             "max_tokens": 1500,
-                            "temperature": 0.3
+                            "temperature": 0.2
                         },
                         timeout=30.0
                     )
+
                     if r2.status_code == 200:
                         final_msg = r2.json().get("choices", [{}])[0].get("message", {})
                         final_text = (final_msg.get("content") or "").strip()
@@ -1458,6 +1562,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                     final_text = f"📄 Ho trovato: **{d['title']}**\n💡 {d['summary']}"
                                 else:
                                     final_text = "Ho cercato nel caveau ma non ho trovato corrispondenze nel database."
+                            elif tool_action == "show_document_card":
+                                d_tit = (docs_found[0]["title"] if docs_found else "documento")
+                                final_text = f"📄 Ecco la scheda per **{d_tit}**! Puoi visualizzarlo o scaricarlo direttamente dalla scheda qui sotto. ⬇️"
                             elif tool_action == "list_vault_contents":
                                 if (tool_data or {}).get("target_type") == "physical_items":
                                     items = (tool_data or {}).get("physical_items", [])
@@ -1507,7 +1614,13 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                 final_text = "Operazione completata con successo nel caveau."
                         else:
                             # Validazione e ancoraggio stretto della risposta del modello al database SQLite reale:
-                            if tool_action == "list_vault_contents":
+                            if tool_action == "show_document_card":
+                                final_text = re.sub(r"\[(?:Link per scaricare|Scarica|Download)[^\]]*\]", "la scheda del documento allegata qui sotto", final_text, flags=re.IGNORECASE)
+                                if not final_text:
+                                    d_tit = (docs_found[0]["title"] if docs_found else "documento")
+                                    final_text = f"📄 Ecco la scheda per **{d_tit}**! Puoi visualizzarlo o scaricarlo direttamente dalla scheda qui sotto. ⬇️"
+
+                            elif tool_action == "list_vault_contents":
                                 target = (tool_data or {}).get("target_type")
                                 items = (tool_data or {}).get("physical_items", [])
                                 docs = (tool_data or {}).get("documents", [])
@@ -1546,7 +1659,11 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                 if n_title and n_title.lower() not in final_text.lower():
                                     final_text = f"✅ Ho rinominato il file in '**{n_title}**'!\n{final_text}"
 
-                        filtered_docs = filter_relevant_documents(docs_found, final_text, user_text)
+                        if tool_action == "show_document_card":
+                            filtered_docs = docs_found
+                        else:
+                            filtered_docs = filter_relevant_documents(docs_found, final_text, user_text)
+
                         conf_box = None
                         if isinstance(tool_data, dict) and "confirmation" in tool_data:
                             conf_box = tool_data["confirmation"]
@@ -1721,6 +1838,30 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             rep = "✅ Non ci sono scadenze o pagamenti in sospeso al momento."
                         return ChatResponse(reply=rep, action="get_upcoming_deadlines", data=d_res, documents=docs)
 
+                    if is_download_or_show:
+                        last_asst_msg = (
+                            db.query(ChatMessage)
+                            .filter(ChatMessage.thread_id == thread_id, ChatMessage.sender == "assistant")
+                            .order_by(ChatMessage.id.desc())
+                            .first()
+                        )
+                        target_title = None
+                        if last_asst_msg and last_asst_msg.content:
+                            m_title = re.search(r"(?:F24|Bolletta|Contratto|Estratto|Ricevuta|Certificato|Documento)[^\n*]+", last_asst_msg.content, re.IGNORECASE)
+                            if m_title:
+                                target_title = m_title.group(0).strip(" *🏛️📄:-")
+
+                        card_res = self.execute_tool("show_document_card", {"document_title": target_title or ""}, db=db, thread_id=thread_id)
+                        c_docs = card_res.get("documents", [])
+                        if c_docs:
+                            clean_reply = re.sub(r"\[(?:Link per scaricare|Scarica|Download)[^\]]*\]", "la scheda del documento allegata qui sotto", direct_reply, flags=re.IGNORECASE)
+                            return ChatResponse(
+                                reply=clean_reply,
+                                action="show_document_card",
+                                data=card_res,
+                                documents=c_docs
+                            )
+
                     # Se il modello ha risposto direttamente senza tool_calls (es. usando la cronologia chat),
                     # ma l'utente chiedeva un documento o la risposta ne cita uno, recuperiamo e alleghiamo il widget del file!
                     is_doc_intent = any(k in lower_t for k in [
@@ -1740,8 +1881,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                         if f_docs:
                             fallback_docs = filter_relevant_documents(f_docs, direct_reply, user_text)
 
+                    direct_clean = re.sub(r"\[(?:Link per scaricare|Scarica|Download)[^\]]*\]", "la scheda allegata qui sotto", direct_reply, flags=re.IGNORECASE)
                     return ChatResponse(
-                        reply=direct_reply,
+                        reply=direct_clean,
                         action="search_vault" if fallback_docs else "REPLY",
                         data=s_res if fallback_docs else None,
                         documents=fallback_docs
@@ -1756,7 +1898,32 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
     def _fallback_deterministic_response(self, user_text: str, lower_t: str, db: Session, thread_id: str) -> ChatResponse:
         """Fallback locale robusto per memorizzazione, ricerca e scadenze in caso di rate-limit API o disconnessione."""
-        # 0. Rinomina documento / foto
+        # 0. Mostra scheda documento o download
+        if any(k in lower_t for k in ["scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala", "apri il documento", "apri il file", "mostramelo", "mostramela", "fammi vedere il file", "fammi vedere il documento", "voglio vederlo", "voglio vederla", "apri il pdf", "mostra la scheda", "vedi il documento", "mandami il pdf"]):
+            last_asst_msg = (
+                db.query(ChatMessage)
+                .filter(ChatMessage.thread_id == thread_id, ChatMessage.sender == "assistant")
+                .order_by(ChatMessage.id.desc())
+                .first()
+            )
+            target_title = None
+            if last_asst_msg and last_asst_msg.content:
+                m_title = re.search(r"(?:F24|Bolletta|Contratto|Estratto|Ricevuta|Certificato|Documento)[^\n*]+", last_asst_msg.content, re.IGNORECASE)
+                if m_title:
+                    target_title = m_title.group(0).strip(" *🏛️📄:-")
+
+            card_res = self.execute_tool("show_document_card", {"document_title": target_title or ""}, db=db, thread_id=thread_id)
+            c_docs = card_res.get("documents", [])
+            if c_docs:
+                d = c_docs[0]
+                return ChatResponse(
+                    reply=f"📄 Ecco la scheda per **{d['title']}**! Puoi visualizzarlo o scaricarlo direttamente dalla scheda qui sotto. ⬇️",
+                    action="show_document_card",
+                    data=card_res,
+                    documents=c_docs
+                )
+
+        # 1. Rinomina documento / foto
         if any(k in lower_t for k in ["chiamalo", "chiamala", "rinomina", "salvalo come", "salvala come", "dagli il nome", "dalle il nome", "dai il nome"]):
             new_title = self._extract_rename_title(user_text)
             if new_title:

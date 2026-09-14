@@ -502,5 +502,77 @@ def test_conversational_rename_turn():
         assert db_doc.title == "Base Volante Fanatec"
 
 
+def test_show_document_card_tool():
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        doc = Document(
+            title="F24 Agenzia delle Entrate",
+            file_path="uploads/f24.pdf",
+            file_type="pdf",
+            doc_type="f24",
+            issuer="Agenzia delle Entrate",
+            amount=1240.00,
+            summary="Modello F24 versamento acconto imposte."
+        )
+        session.add(doc)
+        session.commit()
+
+        agent = AgenticChatService()
+
+        # Test 1: Tramite document_id
+        res1 = agent.execute_tool("show_document_card", {"document_id": doc.id}, session)
+        assert res1.get("success") is True
+        assert res1["document"]["title"] == "F24 Agenzia delle Entrate"
+        assert res1["document"]["id"] == doc.id
+        assert len(res1["documents"]) == 1
+
+        # Test 2: Tramite document_title o query
+        res2 = agent.execute_tool("show_document_card", {"document_title": "f24"}, session)
+        assert res2.get("success") is True
+        assert res2["document"]["id"] == doc.id
+
+        # Test 3: Senza parametri (recupera l'ultimo documento nel canale)
+        res3 = agent.execute_tool("show_document_card", {}, session)
+        assert res3.get("success") is True
+        assert res3["document"]["id"] == doc.id
+
+
+def test_conversational_download_request_shows_card():
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        doc = Document(
+            title="F24 Agenzia delle Entrate",
+            file_path="uploads/f24.pdf",
+            file_type="pdf",
+            doc_type="f24",
+            issuer="Agenzia delle Entrate",
+            amount=1240.00,
+            thread_id="general",
+            summary="Modello F24 versamento acconto imposte."
+        )
+        session.add(doc)
+
+        # Simula il messaggio precedente dell'assistente che cita l'F24 (esattamente come nello screenshot)
+        last_asst_msg = ChatMessage(
+            sender="assistant",
+            content="Al momento, l'unica bolletta/scadenza in sospeso che ho registrato è:\n* F24 Agenzia delle Entrate 🏛️\n* Importo: 1.240,00 €\n* Scadenza: 30 novembre 2026",
+            thread_id="general"
+        )
+        session.add(last_asst_msg)
+        session.commit()
+
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = "" # deterministic fallback
+
+        # L'utente risponde: "ok voglio scaricarla"
+        res = agent.run_turn("ok voglio scaricarla", session, thread_id="general")
+        assert res.documents is not None
+        assert len(res.documents) == 1
+        assert res.documents[0]["title"] == "F24 Agenzia delle Entrate"
+        assert "[Link per scaricare" not in res.reply
+
+
 
 
