@@ -116,6 +116,11 @@ TOOLS_DEFINITION = [
 ]
 
 SYSTEM_PROMPT = """Sei l'assistente AI per WhatsApp di 'Dove lo AI messo', un caveau intelligente per famiglie e professionisti italiani.
+Il tuo compito primario e la tua missione è AIUTARE GLI UTENTI:
+- Quando gli utenti cercano documenti (es. Modello 730, F24, bollette luce/gas, contratti di affitto o lavoro, ricevute sanitarie, certificati scolastici o universitari, estratti conto), il tuo dovere fondamentale è aiutarli a trovarli immediatamente nel caveau, spiegare con chiarezza tutti i dati salienti (importi, scadenze, mittenti) e metterli in condizione di visualizzarli e scaricarli facilmente sul proprio dispositivo.
+- Quando cercano oggetti fisici (es. passaporto, chiavi di casa o dell'auto, occhiali, caricabatterie), aiutali ricordando con esattezza la stanza, il mobile o il cassetto in cui sono conservati.
+- Quando chiedono scadenze o pagamenti in sospeso, aiutali a monitorare i tributi e le bollette da pagare per evitare ritardi.
+- Quando comunicano dove hanno riposto un oggetto, memorizzane subito la posizione con precisione.
 Hai accesso ad appositi STRUMENTI (tools) per interagire con il database SQLite del caveau. Hai piena autonomia e intelligenza per comprendere e soddisfare le richieste dell'utente in linguaggio naturale.
 
 REGOLE FERREE:
@@ -259,6 +264,7 @@ class AgenticChatService:
             return {
                 "recent_documents": [
                     {
+                        "id": d.id,
                         "document_id": d.id,
                         "thread_id": d.thread_id,
                         "title": d.title,
@@ -270,6 +276,7 @@ class AgenticChatService:
                         "summary": d.summary,
                         "filename": Path(d.file_path).name,
                         "file_url": f"/uploads/{Path(d.file_path).name}",
+                        "download_url": f"/api/documents/{d.id}/download",
                         "file_type": d.file_type
                     }
                     for d in docs
@@ -308,13 +315,17 @@ class AgenticChatService:
                 "success": True,
                 "item_id": item.id,
                 "thread_id": item.thread_id,
-                "message": f"Memorizzato con successo: '{item.item_name}' in {loc_str}"
+                "item_name": item.item_name,
+                "primary_location": item.primary_location,
+                "detailed_location": item.detailed_location,
+                "category": item.category,
+                "location_str": loc_str
             }
 
         elif name == "delete_vault_record":
-            target_type = args.get("target_type", "document")
+            target_type = args.get("target_type")
             target_id = args.get("target_id")
-            title = args.get("title", "Elemento")
+            title = args.get("title", "")
 
             details = ""
             if target_type == "physical_item":
@@ -347,12 +358,16 @@ class AgenticChatService:
                 "deadlines_count": len(docs),
                 "deadlines": [
                     {
+                        "id": d.id,
                         "document_id": d.id,
                         "title": d.title,
                         "issuer": d.issuer,
                         "amount": d.amount,
                         "due_date": d.due_date.isoformat() if d.due_date else None,
-                        "summary": d.summary
+                        "summary": d.summary,
+                        "file_url": f"/uploads/{Path(d.file_path).name}",
+                        "download_url": f"/api/documents/{d.id}/download",
+                        "file_type": d.file_type
                     }
                     for d in docs
                 ]

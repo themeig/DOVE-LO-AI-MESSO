@@ -1,3 +1,5 @@
+import re
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -96,6 +98,7 @@ async def upload_document(
         "status": doc.status,
         "chat_reply": chat_reply,
         "file_url": f"/uploads/{fn}",
+        "download_url": f"/api/documents/{doc.id}/download",
         "file_type": doc.file_type,
         "summary": doc.summary
     }
@@ -108,6 +111,27 @@ def get_document_file(document_id: int, db: Session = Depends(get_db)):
     from fastapi.responses import FileResponse
     media_type = "application/pdf" if doc.file_type == "pdf" else f"image/{doc.file_type}"
     return FileResponse(doc.file_path, media_type=media_type, filename=Path(doc.file_path).name)
+
+@router.get("/{document_id}/download")
+def download_document_file(document_id: int, db: Session = Depends(get_db)):
+    """Permette lo scaricamento immediato del file con nome pulito e Content-Disposition attachment."""
+    doc = db.query(Document).filter(Document.id == document_id).first()
+    if not doc or not Path(doc.file_path).exists():
+        raise HTTPException(status_code=404, detail="File non trovato")
+    from fastapi.responses import FileResponse
+    nfkd = unicodedata.normalize('NFKD', doc.title)
+    ascii_title = nfkd.encode('ASCII', 'ignore').decode('ASCII')
+    clean_title = re.sub(r'[^a-zA-Z0-9_\-]+', '_', ascii_title).strip('_') or f"documento_{doc.id}"
+    file_ext = Path(doc.file_path).suffix.lstrip(".") or doc.file_type or "bin"
+    if not clean_title.lower().endswith(f".{file_ext.lower()}"):
+        download_filename = f"{clean_title}.{file_ext}"
+    else:
+        download_filename = clean_title
+    return FileResponse(
+        doc.file_path,
+        media_type="application/octet-stream",
+        filename=download_filename
+    )
 
 @router.patch("/{document_id}/status")
 def update_document_status(

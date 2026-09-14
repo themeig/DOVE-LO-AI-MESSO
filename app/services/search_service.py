@@ -197,6 +197,7 @@ def search_vault_documents(db: Session, query: str, thread_id: str = "general") 
             if d.thread_id == thread_id:
                 score += 5
             doc_scored.append((score, matched_core_count, {
+                "id": d.id,
                 "document_id": d.id,
                 "thread_id": d.thread_id,
                 "title": d.title,
@@ -208,6 +209,7 @@ def search_vault_documents(db: Session, query: str, thread_id: str = "general") 
                 "summary": d.summary,
                 "filename": fn,
                 "file_url": f"/uploads/{fn}",
+                "download_url": f"/api/documents/{d.id}/download",
                 "file_type": d.file_type
             }))
 

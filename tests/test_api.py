@@ -91,3 +91,18 @@ def test_chat_delete_confirmation_intent():
     assert "patente" in data["confirmation"]["title"].lower()
     assert "Sei sicuro" in data["reply"]
 
+def test_download_document_file():
+    fake_pdf = io.BytesIO(b"%PDF-1.4 test download content")
+    upload_res = client.post("/api/documents/upload", files={"file": ("certificato_esame.pdf", fake_pdf, "application/pdf")})
+    assert upload_res.status_code == 201
+    doc_id = upload_res.json()["document_id"]
+    assert "download_url" in upload_res.json()
+    assert upload_res.json()["download_url"] == f"/api/documents/{doc_id}/download"
+
+    # Test download endpoint
+    dl_res = client.get(f"/api/documents/{doc_id}/download")
+    assert dl_res.status_code == 200
+    assert dl_res.content == b"%PDF-1.4 test download content"
+    assert "attachment;" in dl_res.headers.get("content-disposition", "")
+
+

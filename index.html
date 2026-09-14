@@ -1403,9 +1403,14 @@
                 <p class="text-[10px] text-gray-600">${formatFileSize(fileSize)} • PDF</p>
               </div>
             </div>
-            <button type="button" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', 'application/pdf')" class="shrink-0 bg-white/95 hover:bg-white text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-md shadow-2xs border border-emerald-300 transition active:scale-95 flex items-center gap-1">
-              <i class="fa-regular fa-eye text-xs"></i> Vedi
-            </button>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', 'application/pdf', '${previewUrl}')" class="bg-white/95 hover:bg-white text-emerald-800 text-xs font-semibold px-2 py-1 rounded-md shadow-2xs border border-emerald-300 transition active:scale-95 flex items-center gap-1">
+                <i class="fa-regular fa-eye text-xs"></i> Vedi
+              </button>
+              <a href="${previewUrl}" download="${escapeHtml(fileName)}" class="bg-white/95 hover:bg-white text-emerald-800 text-xs font-semibold px-2 py-1 rounded-md shadow-2xs border border-emerald-300 transition active:scale-95 flex items-center gap-1" title="Scarica file">
+                <i class="fa-solid fa-download text-xs text-emerald-700"></i>
+              </a>
+            </div>
           </div>
         `;
       } else {
@@ -1452,6 +1457,9 @@
               const summary = doc.summary || '';
               const url = doc.file_url || '';
               const fileType = doc.file_type || (isPdf ? 'application/pdf' : 'image');
+              const docId = doc.document_id || doc.id;
+              const downloadUrl = doc.download_url || (docId ? `/api/documents/${docId}/download` : url);
+              const safeDownloadName = (doc.title || 'documento').replace(/[^a-zA-Z0-9_\-]/g, '_') + (isPdf ? '.pdf' : '');
 
               let amountStr = '';
               if (doc.amount != null) {
@@ -1479,12 +1487,20 @@
                         </div>
                       </div>
                     </div>
-                    ${url ? `
-                      <button type="button" onclick="openMediaModal('${url}', '${title.replace(/'/g, "\\'")}', '${fileType}')" class="shrink-0 bg-[#075E54] hover:bg-[#128C7E] text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 active:scale-95">
-                        <i class="fa-regular fa-eye text-xs"></i>
-                        <span>Vedi</span>
-                      </button>
-                    ` : ''}
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      ${url ? `
+                        <button type="button" onclick="openMediaModal('${url}', '${title.replace(/'/g, "\\'")}', '${fileType}', '${downloadUrl}')" class="bg-[#075E54] hover:bg-[#128C7E] text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 active:scale-95" title="Visualizza anteprima">
+                          <i class="fa-regular fa-eye text-xs"></i>
+                          <span>Vedi</span>
+                        </button>
+                      ` : ''}
+                      ${downloadUrl ? `
+                        <a href="${downloadUrl}" download="${safeDownloadName}" class="bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-300 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 active:scale-95" title="Scarica documento sul tuo dispositivo">
+                          <i class="fa-solid fa-download text-xs text-emerald-700"></i>
+                          <span>Scarica</span>
+                        </a>
+                      ` : ''}
+                    </div>
                   </div>
                   ${summary ? `
                     <p class="mt-2 pt-1.5 border-t border-slate-200 text-[11px] text-slate-600 italic leading-snug line-clamp-2">
@@ -1919,10 +1935,14 @@
           if (rec.file_url) {
             const escapedUrl = escapeHtml(rec.file_url);
             const escapedType = escapeHtml(rec.file_type || 'application/pdf');
+            const downloadUrl = `/api/documents/${rec.id}/download`;
             previewBtn = `
-              <button onclick="openMediaModal('${escapedUrl}', '${escapedTitle}', '${escapedType}')" title="Anteprima documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-lg transition active:scale-95 flex items-center gap-1">
+              <button onclick="openMediaModal('${escapedUrl}', '${escapedTitle}', '${escapedType}', '${downloadUrl}')" title="Anteprima documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-lg transition active:scale-95 flex items-center gap-1">
                 <i class="fa-regular fa-eye text-xs"></i> Vedi
               </button>
+              <a href="${downloadUrl}" download title="Scarica documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-lg transition active:scale-95 flex items-center gap-1">
+                <i class="fa-solid fa-download text-xs text-emerald-700"></i> Scarica
+              </a>
             `;
           }
           let payBtn = '';
@@ -2041,7 +2061,7 @@
     }
 
     // --- Modale Viewer Documenti & Immagini ---
-    function openMediaModal(url, title, fileType = '') {
+    function openMediaModal(url, title, fileType = '', downloadUrl = '') {
       const modal = document.getElementById('mediaModal');
       const titleEl = document.getElementById('modalTitle');
       const subtitleEl = document.getElementById('modalSubtitle');
@@ -2054,8 +2074,9 @@
 
       const safeTitle = title || 'Documento';
       titleEl.textContent = safeTitle;
-      downloadBtn.href = url || '#';
-      if (url) {
+      const targetDl = downloadUrl || url || '#';
+      downloadBtn.href = targetDl;
+      if (targetDl && targetDl !== '#') {
         const safeDownloadName = safeTitle.toLowerCase().replace(/[^a-z0-9]/g, '_');
         downloadBtn.setAttribute('download', safeDownloadName);
       }
