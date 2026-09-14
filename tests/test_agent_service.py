@@ -615,6 +615,71 @@ def test_affirmative_response_picks_proposed_document_not_unrelated():
         assert "immatricolazione" not in res.reply.lower()
 
 
+def test_multi_document_affirmative_and_download_flow():
+    """Verifica il flusso completo di richiesta multipla ('si di entrambi', 'voglio fare il download', 'entrambi')."""
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        doc_ts = Document(
+            title="Tessera Sanitaria Italiana",
+            file_path="uploads/tessera.pdf",
+            file_type="pdf",
+            doc_type="sanitario",
+            summary="Dati anagrafici e codice fiscale."
+        )
+        doc_pavia = Document(
+            title="Ricevuta Pre-Immatricolazione Università di Pavia",
+            file_path="uploads/pavia.pdf",
+            file_type="pdf",
+            doc_type="ricevuta",
+            summary="Ricevuta iscrizione università."
+        )
+        session.add_all([doc_ts, doc_pavia])
+
+        # 1. L'assistente elenca entrambi i documenti come nello screenshot
+        asst_msg1 = ChatMessage(
+            sender="assistant",
+            content=(
+                "Ho trovato i seguenti documenti inerenti all'identificazione personale:\n"
+                "* 📄 Tessera Sanitaria Italiana : Contiene i tuoi dati anagrafici.\n"
+                "* 📄 Ricevuta Pre-Immatricolazione Università di Pavia : Riporta i tuoi dati anagrafici.\n\n"
+                "Desideri che ti mostri la scheda di uno di questi documenti in particolare?"
+            ),
+            thread_id="general"
+        )
+        session.add(asst_msg1)
+        session.commit()
+
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = "" # deterministic fallback
+
+        # 2. L'utente risponde: "si di entrambi"
+        res1 = agent.run_turn("si di entrambi", session, thread_id="general")
+        assert res1.documents is not None, "Le schede devono essere allegate!"
+        assert len(res1.documents) == 2, "Devono essere allegate entrambe le schede!"
+        titles1 = [d["title"] for d in res1.documents]
+        assert "Tessera Sanitaria Italiana" in titles1
+        assert "Ricevuta Pre-Immatricolazione Università di Pavia" in titles1
+        assert "singolarmente" not in res1.reply.lower()
+
+        # Salviamo la risposta nella cronologia
+        session.add(ChatMessage(sender="assistant", content=res1.reply, thread_id="general"))
+        session.commit()
+
+        # 3. L'utente risponde: "voglio fare il download"
+        res2 = agent.run_turn("voglio fare il download", session, thread_id="general")
+        assert res2.documents is not None, "Il download deve allegare le schede con pulsante!"
+        assert len(res2.documents) == 2
+        assert "singolarmente" not in res2.reply.lower()
+
+        # 4. L'utente risponde: "entrambi"
+        res3 = agent.run_turn("entrambi", session, thread_id="general")
+        assert res3.documents is not None
+        assert len(res3.documents) == 2
+        assert "singolarmente" not in res3.reply.lower()
+
+
+
 
 
 

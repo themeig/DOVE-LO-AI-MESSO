@@ -228,21 +228,32 @@ TOOLS_DEFINITION = [
         "function": {
             "name": "show_document_card",
             "description": (
-                "Mostra all'utente la scheda grafica interattiva (widget) di un documento o file con anteprima e pulsante per visualizzarlo/scaricarlo. "
-                "DEVI SEMPRE chiamare questo strumento quando l'utente chiede esplicitamente di visualizzare, vedere, aprire, consultare o scaricare un file o documento "
-                "(es. 'ok voglio scaricarla', 'scaricalo', 'fammi vedere il file', 'apri la bolletta', 'mostrami il documento'). "
-                "DIVIETO ASSOLUTO di scrivere finti link testuali markdown come [Link per scaricare...]: usa SEMPRE questo strumento!"
+                "Mostra all'utente una o più schede grafiche interattive (widget) di documenti o file con anteprima e pulsanti reali per visualizzarlo ('Vedi') e scaricarlo ('Scarica'). "
+                "DEVI SEMPRE chiamare questo strumento quando l'utente cerca documenti, chiede di visualizzare, vedere, aprire, consultare o scaricare file "
+                "(es. 'dammi i documenti di identità', 'ok voglio scaricarla', 'voglio fare il download', 'scaricali entrambi', 'entrambi', 'si di entrambi', 'apri il documento'). "
+                "Supporta l'invio simultaneo di più documenti contemporaneamente tramite 'document_ids' o 'document_titles'. "
+                "DIVIETO ASSOLUTO di scrivere che l'utente deve farlo singolarmente: questo strumento genera le card grafiche con il pulsante per scaricare ciascun file!"
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "document_ids": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "Lista di ID numerici dei documenti da mostrare (es. per 'entrambi', 'tutti' o più documenti)"
+                    },
                     "document_id": {
                         "type": "integer",
-                        "description": "ID numerico opzionale del documento da mostrare"
+                        "description": "ID numerico del singolo documento da mostrare"
+                    },
+                    "document_titles": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Lista di titoli o nomi dei documenti da mostrare (es. ['Tessera Sanitaria Italiana', 'Ricevuta Pre-Immatricolazione Università di Pavia'])"
                     },
                     "document_title": {
                         "type": "string",
-                        "description": "Titolo, nome o parola chiave del documento se l'ID non è noto (es. 'F24', 'Bolletta Enel', 'Contratto')"
+                        "description": "Titolo, nome o parola chiave del documento se l'ID non è noto (es. 'Tessera Sanitaria', 'F24')"
                     },
                     "query": {
                         "type": "string",
@@ -255,74 +266,68 @@ TOOLS_DEFINITION = [
     }
 ]
 
-SYSTEM_PROMPT = """Sei l'assistente AI per WhatsApp di 'Dove lo AI messo', un caveau intelligente per famiglie e professionisti italiani.
-Il tuo compito primario e la tua missione è AIUTARE GLI UTENTI:
-- Quando gli utenti cercano documenti (es. Modello 730, F24, bollette luce/gas, contratti di affitto o lavoro, ricevute sanitarie, certificati scolastici o universitari, estratti conto), il tuo dovere fondamentale è aiutarli a trovarli immediatamente nel caveau, spiegare con chiarezza tutti i dati salienti (importi, scadenze, mittenti) e metterli in condizione di visualizzarli e scaricarli facilmente sul proprio dispositivo.
-- Quando cercano oggetti fisici (es. passaporto, chiavi di casa o dell'auto, occhiali, caricabatterie), aiutali ricordando con esattezza la stanza, il mobile o il cassetto in cui sono conservati.
-- Quando chiedono scadenze o pagamenti in sospeso, aiutali a monitorare i tributi e le bollette da pagare per evitare ritardi.
-- Quando comunicano dove hanno riposto un oggetto o ne spostano/modificano la posizione, memorizzane subito la posizione con precisione nel caveau.
-- Quando indicano come chiamare o rinominare un file/foto appena caricato (es. 'chiamalo Base Volante'), rinominalo subito con precisione nel caveau.
-Hai accesso ad appositi STRUMENTI (tools) per interagire con il database SQLite del caveau. Hai piena autonomia e intelligenza per comprendere e soddisfare le richieste dell'utente in linguaggio naturale.
+SYSTEM_PROMPT = """================================================================================
+IDENTITÀ, AMBIENTE OPERATIVO E INTERFACCIA UTENTE (DOVE SEI E COME FUNZIONI):
+================================================================================
+1. DOVE TI TROVI:
+   - Sei l'assistente AI nativo integrato nell'applicazione web "Dove lo AI messo", un caveau intelligente per famiglie e professionisti.
+   - Sei in dialogo diretto con l'utente all'interno di un'interfaccia fedele a WhatsApp Web (con bolle di chat e dashboard).
+   - I documenti memorizzati nel database SQLite sono file reali (PDF e immagini) salvati sul server locale (`/uploads/...`) pronti per essere aperti o scaricati.
 
-REGOLE FERREE:
+2. COME FUNZIONANO LE SCHEDE DOCUMENTO E I DOWNLOAD:
+   - Quando chiami lo strumento `show_document_card` o restituisci documenti nel campo `documents`, la chat di WhatsApp genera automaticamente sotto la tua bolla di testo delle VERE SCHEDE GRAFICHE INTERATTIVE (widget arrotondati).
+   - Ciascuna scheda mostra: icona del file (PDF rosso o immagine blu), titolo, mittente, importo, data di scadenza e DUE PULSANTI REALI:
+     * [👁️ Vedi]: apre l'anteprima istantanea a schermo intero del documento.
+     * [⬇️ Scarica]: scarica direttamente il file originale sul dispositivo (computer o smartphone) dell'utente.
+
+3. COSA DEVI FARE (OBBLIGHI E REGOLE TASSATIVE):
+   - QUANDO L'UTENTE CHIEDE DOCUMENTI, VUOLE VEDERLI O SCARICARLI (es. "dammi i documenti inerenti all'identificazione", "mostrami la tessera", "voglio fare il download", "scarica", "entrambi"):
+     DEVI SEMPRE E SUBITO INVOCARE `show_document_card`!
+   - DIVIETO ASSOLUTO DI RISPONDERE SOLO A PAROLE: l'utente NON può cliccare sulle tue frasi per scaricare un file. Ha bisogno della CARD GRAFICA con il pulsante [Scarica]!
+   - DIVIETO ASSOLUTO DI DIRE "dovrai farlo singolarmente": l'interfaccia supporta nativamente l'invio contemporaneo di 2, 3 o più schede contemporaneamente! Puoi passare più documenti a `show_document_card(document_ids=[...])` o elencarli.
+   - DIVIETO ASSOLUTO DI CHIEDERE IL PERMESSO ("Vuoi che ti mostri la scheda?", "Desideri che ti mostri la scheda di uno in particolare?", "Quale desideri scaricare?"): se l'utente ha chiesto i documenti o il download, fornisci SUBITO le schede di TUTTI i documenti rilevanti senza fare domande superflue!
+   - GESTIONE DI "ENTRAMBI", "TUTTI E DUE", "TUTTI", "SI DI ENTRAMBI": se ci sono più documenti pertinenti e l'utente dice "entrambi", "si di entrambi", "tutti e due", "download", invia le schede per TUTTI i documenti contemporaneamente!
+
+REGOLE OPERATIVE:
 0. PRIMATO ASSOLUTO DEL DATABASE SULLA CHAT (DATI REALI > CONTESTO):
-   - Hai a disposizione l'intera cronologia della conversazione e l'inventario in tempo reale del database: usali per avere la massima consapevolezza del contesto, ricordare preferenze, richieste pregresse, spiegazioni e dettagli scambiati.
-   - Tuttavia, per quanto riguarda l'ESISTENZA e la POSIZIONE ATTUALE di un documento o di un oggetto nel caveau, la sola e unica fonte di verità sono i DATI REALI DEL DATABASE SQLite (presenti nella sezione [STATO ATTUALE DEL DATABASE SQLITE] o verificati in tempo reale tramite i tuoi strumenti `search_vault`, `list_vault_contents`, `get_upcoming_deadlines`, `store_physical_item`, `rename_vault_document`, `show_document_card`).
-   - Se un oggetto o un documento era stato citato nella conversazione ma NON è presente nei dati del database SQLite (o lo strumento restituisce che non c'è), significa che è stato rimosso o non è archiviato nel caveau. In tal caso, rispondi chiaramente che non è presente nel caveau, senza dare per scontato che esista solo perché citato in passato.
-   - Basa sempre le tue affermazioni fattuali sui dati certi del database!
+   - Hai a disposizione l'intera cronologia della conversazione e l'inventario in tempo reale del database: usali per comprendere il contesto, ricordare preferenze e richieste pregresse.
+   - Per quanto riguarda l'ESISTENZA e la POSIZIONE ATTUALE di un documento o di un oggetto, la sola fonte di verità sono i DATI REALI DEL DATABASE SQLite. Se un elemento non è nel database, dichiara chiaramente che non è presente nel caveau.
 
-1. QUANDO L'UTENTE CHIEDE DI UN FILE O DOCUMENTO (es. "dammi 730", "dammi il documento del mutuo", "mostrami la bolletta", "che file è?", "trovami il certificato del tolc", "cerca la bolletta enel"):
-   - DEVI SEMPRE USARE lo strumento `search_vault` o `show_document_card`!
-   - NON rispondere MAI a memoria senza chiamare il tool!
-   - DIVIETO ASSOLUTO DI CHIEDERE IL PERMESSO: Non chiedere MAI "Posso mostrarti il documento?", "Vuoi che te lo mostri?", "Desideri vederlo?", "Quale dei due desideri visualizzare?". L'utente te lo ha già chiesto! Mostra e riassumi subito le informazioni trovate!
-   - Se l'utente ti risponde "sì", "ok", "mostramelo" o simili, fa riferimento all'ultimo documento di cui stavate parlando: chiama subito lo strumento per quel documento!
-   - Spiega con precisione e ricchezza di dettagli tutti i dati trovati (titolo, emittente, intestatario, voti/punteggi, importi e date).
+1. QUANDO L'UTENTE CHIEDE DI UN FILE O DOCUMENTO (es. "dammi 730", "dammi i documenti di identità", "mostrami la bolletta", "cerca il certificato"):
+   - DEVI SEMPRE USARE `search_vault` o `show_document_card`!
+   - Mostra e riassumi subito le informazioni trovate e allega SEMPRE le relative schede documento!
+   - Se ci sono più documenti pertinenti (es. Tessera Sanitaria e Ricevuta Pavia per l'identificazione), mostrali e fornisci le schede per entrambi!
 
-2. QUANDO L'UTENTE CHIEDE DOVE SI TROVA UN OGGETTO O UN DOCUMENTO (es. "dov'è il passaporto?", "dove è la tenda da campeggio?", "dove ho messo le chiavi?"):
-   - DIVIETO ASSOLUTO DI RISPONDERE A MEMORIA O DALLA CHAT: DEVI SEMPRE USARE lo strumento `search_vault`!
-   - Non fare MAI affidamento sui messaggi precedenti della chat: la sola e unica verità è ciò che restituisce `search_vault` dal database in tempo reale! Se l'oggetto è stato eliminato o spostato, la cronologia precedente è obsoleta. Se `search_vault` non trova l'oggetto, rispondi con chiarezza che non è presente nel caveau (o che è stato rimosso) senza inventare posizioni passate!
+2. QUANDO L'UTENTE CHIEDE DOVE SI TROVA UN OGGETTO (es. "dov'è il passaporto?", "dove ho messo le chiavi?"):
+   - DEVI SEMPRE USARE lo strumento `search_vault`!
+   - Basa la risposta solo su ciò che restituisce `search_vault` dal database in tempo reale.
 
-3. QUANDO L'UTENTE COMUNICA, MODIFICA, SPOSTA O AGGIORNA LA POSIZIONE DI UN OGGETTO (es. "Ho messo il caricatore sul comodino", "Modifica la posizione della tenda da campeggio e mettila in soggiorno", "Sposta le chiavi in cucina", "Metti la tenda in soggiorno", "Ora il passaporto si trova nello studio"):
+3. QUANDO L'UTENTE COMUNICA, MODIFICA, SPOSTA O AGGIORNA LA POSIZIONE DI UN OGGETTO:
    - DEVI SEMPRE USARE lo strumento `store_physical_item`!
-   - DIVIETO ASSOLUTO di confermare a voce ("Ho aggiornato la posizione...") senza aver prima invocato `store_physical_item`! L'unico modo per aggiornare realmente la posizione nel caveau è chiamare `store_physical_item` passando il nome dell'oggetto e la nuova posizione principale.
 
 4. QUANDO L'UTENTE CHIEDE DELLE SCADENZE O COSA DEVE PAGARE:
    - USA lo strumento `get_upcoming_deadlines`.
 
-5. QUANDO L'UTENTE CHIEDE DI ELIMINARE O CANCELLARE UN DOCUMENTO O UN OGGETTO (es. "elimina la bolletta", "cancella il passaporto", "elimina i documenti delle bollette"):
-   - Usa SEMPRE `search_vault` per cercare i documenti o gli oggetti pertinenti nel caveau.
-   - Se trovi l'elemento da eliminare, chiama `delete_vault_record` con `target_type`, `target_id` e `title` per attivare il pulsante di conferma interattivo.
-   - Nel tuo messaggio di testo chiedi sempre conferma con cortesia: "⚠️ Sei sicuro di voler eliminare [Titolo/Oggetto] dal caveau?".
-   - Se ci sono più elementi corrispondenti (es. più bollette), puoi elencare cosa hai trovato e predisporre l'eliminazione per guidare l'utente.
+5. QUANDO L'UTENTE CHIEDE DI ELIMINARE O CANCELLARE UN DOCUMENTO O UN OGGETTO:
+   - Usa `search_vault` e chiama `delete_vault_record` per mostrare la card di conferma.
 
-6. STILE DI RISPOSTA E COMUNICAZIONE (FONDAMENTALE):
-   - Rispondi sempre in italiano naturale, cortese, chiaro e conciso nello stile autentico di una chat WhatsApp (puoi usare emoji pertinenti come 📄, 📍, 💡, ✅).
-   - NON INCLUDERE MAI identificativi tecnici di database (come "ID", "ID 83", "chiave primaria" o etichette meccaniche come "Sintesi:"). L'utente è una persona reale che legge su WhatsApp e desidera informazioni umane, pulite ed eleganti (es. "- 📄 **Bolletta Enel Energia** (64,20 € - scadenza 28/10/2026)").
-   - Se l'utente ti chiede "elencami i documenti che hai", "quali documenti ci sono?", "cosa hai nel caveau?", elenca i documenti archiviati con un formato leggibile a punti elenco evidenziando il titolo in grassetto e le informazioni essenziali (importo, scadenza, emittente), senza mai mostrare ID numerici o campi tecnici interni!
+6. STILE DI RISPOSTA:
+   - Italiano naturale, cortese, chiaro e conciso in stile WhatsApp (emoji 📄, 📍, 💡, ✅).
+   - MAI identificativi tecnici di database (come "ID 83", "chiave primaria").
 
 7. DATA ODIERNA E CONTESTO TEMPORALE:
-   - Conosci sempre con esattezza la data odierna iniettata nel contesto e puoi usare il tool `get_current_date` se necessario.
-   - Quando l'utente ti chiede "che giorno è oggi?", "quanti ne abbiamo?", "cosa scade oggi?", "cosa scade questa settimana?" o "è scaduta la bolletta?", calcola con precisione la differenza rispetto alla data odierna.
-   - Per le scadenze in ritardo (scadute nel passato), segnalalo con urgenza (es. "⚠️ SCADUTA DA X GIORNI"). Per quelle odierne, evidenzia "⏰ SCADE OGGI!". Per quelle imminenti, indica i giorni rimanenti (es. "In scadenza tra X giorni").
+   - Conosci sempre la data odierna iniettata nel contesto e calcola con precisione giorni rimanenti o ritardi.
 
-8. QUANDO L'UTENTE CHIEDE LA LISTA O L'ELENCO DI DOCUMENTI O OGGETTI (DISTINZIONE ESSENZIALE):
-   - Distingui con la massima attenzione tra DOCUMENTI (file, bollette, certificati, F24) e OGGETTI FISICI (chiavi, occhiali, passaporto, caricabatterie):
-     * Se chiede la lista di DOCUMENTI (es. "fai la lista di tutti i documenti", "quali documenti hai?", "mostrami i file"): chiama `list_vault_contents` con `target_type: "documents"`.
-     * Se chiede la lista di OGGETTI (es. "fai la lista di tutti gli oggetti", "quali oggetti hai?", "dove sono le mie cose?"): chiama `list_vault_contents` con `target_type: "physical_items"`. NON parlare di documenti se ha chiesto gli oggetti!
-     * Se chiede genericamente "cosa c'è nel caveau?" o "mostrami tutto": chiama `list_vault_contents` con `target_type: "all"`.
-   - Se il tool restituisce 0 elementi:
-     * Per documenti: rispondi cortesemente che al momento non ci sono documenti archiviati nel caveau e che è possibile caricarli con l'icona della graffetta 📎 o della fotocamera 📷.
-     * Per oggetti fisici: rispondi cortesemente che al momento non ci sono oggetti fisici memorizzati nel caveau (es. "Al momento non ho oggetti registrati. Se vuoi, dimmi dove hai riposto qualcosa e lo memorizzerò! 📍").
-   - Se il tool restituisce elementi, presentali in modo pulito ed elegante con punti elenco su WhatsApp.
+8. DISTINZIONE ESSENZIALE LISTA DOCUMENTI VS OGGETTI FISICI:
+   - Se chiede lista documenti: `list_vault_contents(target_type="documents")`.
+   - Se chiede lista oggetti fisici: `list_vault_contents(target_type="physical_items")`.
 
-9. QUANDO L'UTENTE COMUNICA UN NOME O CHIEDE DI RINOMINARE UN FILE/FOTO (es. "chiamalo Base Volante Fanatec", "chiamala Ricevuta Visita", "rinomina il file in X", "dalle il nome Y", "salvalo come Z"):
-   - DEVI SEMPRE USARE lo strumento `rename_vault_document` passando `new_title` con il nome indicato dall'utente!
-   - Non rispondere mai solo a parole ("D'accordo, l'ho chiamato...") senza aver invocato `rename_vault_document`!
+9. QUANDO L'UTENTE CHIEDE DI RINOMINARE UN FILE/FOTO:
+   - Chiama `rename_vault_document(new_title=...)`.
 
-10. QUANDO L'UTENTE CHIEDE DI SCARICARE, VEDERE, APRIRE O VISUALIZZARE UN DOCUMENTO (es. 'ok voglio scaricarla', 'scaricalo', 'fammi vedere il documento', 'apri il file', 'mandami il pdf', 'posso vederlo?'):
-    - DIVIETO ASSOLUTO DI SCRIVERE FINTI LINK TESTUALI MARKDOWN: Non scrivere MAI link finti o inventati come `[Link per scaricare F24]` o `[Scarica qui]`. Non funzionano e non esistono!
-    - DEVI SEMPRE USARE lo strumento `show_document_card`! Puoi specificare `document_id` se noto, oppure `document_title` o lasciarlo vuoto per mostrare l'ultimo documento citato nella conversazione.
-    - Chiamando `show_document_card`, l'interfaccia WhatsApp mostrerà all'utente la vera scheda grafica interattiva con anteprima, dettagli e pulsante 'Vedi' e download!
+10. QUANDO L'UTENTE CHIEDE DI SCARICARE O VEDERE UN DOCUMENTO:
+    - DIVIETO ASSOLUTO DI SCRIVERE FINTI LINK MARKDOWN (es. `[Link per scaricare...]`).
+    - CHIAMA SEMPRE `show_document_card`! L'interfaccia WhatsApp mostrerà all'utente la scheda interattiva con il pulsante reale di visualizzazione e download!
 """
 
 def strip_tool_tags(text: str) -> str:
@@ -790,52 +795,85 @@ class AgenticChatService:
             }
         elif name == "show_document_card":
             doc_id = args.get("document_id")
+            doc_ids = args.get("document_ids") or []
             doc_title = (args.get("document_title") or args.get("query") or "").strip()
+            doc_titles = args.get("document_titles") or []
 
-            doc = None
-            if doc_id:
+            docs = []
+            # 1. Raccogli per document_ids
+            if doc_ids:
+                for did in doc_ids:
+                    try:
+                        d = db.query(Document).filter(Document.id == int(did)).first()
+                        if d and d not in docs:
+                            docs.append(d)
+                    except Exception:
+                        pass
+
+            # 2. Raccogli per document_titles
+            if doc_titles:
+                for dt in doc_titles:
+                    matches = search_vault_documents(db, str(dt).strip(), thread_id=thread_id)
+                    if matches:
+                        top_id = matches[0]["id"]
+                        d = db.query(Document).filter(Document.id == top_id).first()
+                        if d and d not in docs:
+                            docs.append(d)
+
+            # 3. Singolo ID
+            if not docs and doc_id:
                 try:
-                    doc = db.query(Document).filter(Document.id == int(doc_id)).first()
+                    d = db.query(Document).filter(Document.id == int(doc_id)).first()
+                    if d:
+                        docs.append(d)
                 except Exception:
                     pass
 
-            if not doc and doc_title:
+            # 4. Singolo titolo
+            if not docs and doc_title:
                 matches = search_vault_documents(db, doc_title, thread_id=thread_id)
                 if matches:
                     top_id = matches[0]["id"]
-                    doc = db.query(Document).filter(Document.id == top_id).first()
+                    d = db.query(Document).filter(Document.id == top_id).first()
+                    if d:
+                        docs.append(d)
 
-            if not doc and not doc_id and not doc_title:
-                # Solo se non è stato specificato né ID né titolo (es. 'mostrami l'ultimo documento'), recupera l'ultimo documento
+            # 5. Se nessun parametro, prendi l'ultimo documento
+            if not docs and not doc_id and not doc_ids and not doc_title and not doc_titles:
                 q = db.query(Document)
                 if thread_id and thread_id not in ["general", "all"]:
                     q = q.filter(Document.thread_id == thread_id)
-                doc = q.order_by(Document.id.desc()).first()
+                last_d = q.order_by(Document.id.desc()).first()
+                if last_d:
+                    docs.append(last_d)
 
-            if not doc:
+            if not docs:
                 return {"error": "Nessun documento trovato nel caveau da visualizzare.", "found": False}
 
-            fn = Path(doc.file_path).name if doc.file_path else ""
-            doc_info = {
-                "id": doc.id,
-                "document_id": doc.id,
-                "title": doc.title,
-                "issuer": doc.issuer,
-                "amount": doc.amount,
-                "due_date": doc.due_date.isoformat() if doc.due_date else None,
-                "summary": doc.summary,
-                "doc_type": doc.doc_type,
-                "status": doc.status,
-                "file_url": f"/uploads/{fn}" if fn else None,
-                "download_url": f"/api/documents/{doc.id}/download",
-                "file_type": doc.file_type
-            }
+            docs_info = []
+            for d in docs:
+                fn = Path(d.file_path).name if d.file_path else ""
+                docs_info.append({
+                    "id": d.id,
+                    "document_id": d.id,
+                    "thread_id": d.thread_id,
+                    "title": d.title,
+                    "issuer": d.issuer,
+                    "amount": d.amount,
+                    "due_date": d.due_date.isoformat() if d.due_date else None,
+                    "summary": d.summary,
+                    "doc_type": d.doc_type,
+                    "status": d.status,
+                    "file_url": f"/uploads/{fn}" if fn else None,
+                    "download_url": f"/api/documents/{d.id}/download",
+                    "file_type": d.file_type
+                })
 
             return {
                 "success": True,
-                "document": doc_info,
-                "documents": [doc_info],
-                "found_documents": [doc_info]
+                "document": docs_info[0],
+                "documents": docs_info,
+                "found_documents": docs_info
             }
 
         return {"error": f"Strumento non riconosciuto: {name}"}
@@ -1216,8 +1254,37 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         if temp_resp:
             return temp_resp
 
-        # Intercetta risposte affermative a una proposta precedente dell'assistente ("si", "sì", "ok", "mostramelo", "certo")
-        is_affirmative = lower_t.strip(" !.?") in ["si", "sì", "ok", "va bene", "certo", "mostramelo", "mostrameli", "fammi vedere", "apri", "yes", "vai"]
+        # Rileva se si tratta di una richiesta esplicita di lista o elenco
+        is_listing_phrase = any(k in lower_t for k in [
+            "lista", "elenco", "elencami", "quali documenti", "quali oggetti",
+            "cosa c'è", "cosa ce", "cosa ho", "cosa hai", "che documenti", "che oggetti"
+        ])
+
+        # Intercetta risposte affermative, selezioni multiple ("entrambi", "tutti e due", "si di entrambi") e richieste di download
+        is_download_intent = any(k in lower_t for k in [
+            "download", "scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala", "scaricarli", "scaricali", "scaricare",
+            "fare il download", "voglio scaricare", "voglio il download", "voglio fare il download"
+        ])
+        is_multi_select = (
+            lower_t.strip(" !.?") in [
+                "entrambi", "entrambe", "tutti", "tutte", "tutti e due", "tutte e due", "tutti quanti",
+                "si di entrambi", "sì di entrambi", "si entrambi", "sì entrambi"
+            ]
+            or any(k in lower_t for k in [
+                "entrambi", "entrambe", "tutti e due", "tutte e due", "tutti e 2", "tutte e 2",
+                "mostrameli tutti", "scarica tutti", "scarica entrambi", "si di entrambi", "sì di entrambi"
+            ])
+        ) and not is_listing_phrase
+
+        is_affirmative = (
+            lower_t.strip(" !.?") in [
+                "si", "sì", "ok", "va bene", "certo", "mostramelo", "mostrameli", "fammi vedere",
+                "apri", "yes", "vai", "entrambi", "entrambe", "tutti e due", "tutte e due",
+                "si di entrambi", "sì di entrambi", "si entrambi", "sì entrambi", "tutti", "tutte"
+            ]
+            or is_multi_select
+            or (is_download_intent and len(lower_t.split()) <= 6)
+        ) and not is_listing_phrase
         if is_affirmative:
             last_asst = (
                 db.query(ChatMessage)
@@ -1226,85 +1293,80 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 .first()
             )
             if last_asst and last_asst.content:
-                # 1. Cerca nomi esplicitamente citati tra virgolette o grassetto nel messaggio dell'assistente
+                all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
+                matched_docs = []
+
+                # 1. Trova documenti il cui titolo compare direttamente nel testo del messaggio precedente
+                for d in all_docs:
+                    if d.title and len(d.title) >= 3 and d.title.lower() in last_asst.content.lower():
+                        if d not in matched_docs:
+                            matched_docs.append(d)
+
+                # 2. Cerca nomi esplicitamente citati tra virgolette, grassetto o punti elenco (* 📄 Titolo)
                 cand_names = (
                     re.findall(r"['\"]([^'\"]{2,})['\"]", last_asst.content) +
-                    re.findall(r"\*\*([^*]{2,})\*\*", last_asst.content)
+                    re.findall(r"\*\*([^*]{2,})\*\*", last_asst.content) +
+                    re.findall(r"[*•-]\s*(?:📄\s*)?([^\n:]+?)(?:\s*:|\s*—|\s*\(|$)", last_asst.content)
                 )
 
-                matched_doc = None
-                matched_item = None
-
-                # Prova prima corrispondenza esatta o parziale dei candidati con titoli documenti o nomi oggetti
                 for cand in cand_names:
-                    c_clean = cand.strip()
-                    d = db.query(Document).filter(Document.title.ilike(c_clean)).first()
-                    if not d:
-                        d = db.query(Document).filter(Document.title.ilike(f"%{c_clean}%")).first()
-                    if d:
-                        matched_doc = d
-                        break
-                    it = db.query(PhysicalItem).filter(PhysicalItem.item_name.ilike(c_clean)).first()
-                    if not it:
-                        it = db.query(PhysicalItem).filter(PhysicalItem.item_name.ilike(f"%{c_clean}%")).first()
-                    if it:
-                        matched_item = it
-                        break
+                    c_clean = cand.strip(" *📄\"'")
+                    if c_clean and len(c_clean) >= 3:
+                        for d in all_docs:
+                            if d.title and (d.title.lower() == c_clean.lower() or c_clean.lower() in d.title.lower()):
+                                if d not in matched_docs:
+                                    matched_docs.append(d)
 
-                # 2. Se nessun match da virgolette/grassetto, controlla i titoli dei documenti nel DB presenti nel testo
-                if not matched_doc and not matched_item:
-                    all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
-                    for d in all_docs:
-                        if d.title and len(d.title) >= 3 and d.title.lower() in last_asst.content.lower():
-                            matched_doc = d
-                            break
-
-                # 3. Controlla gli oggetti nel DB presenti nel testo
-                if not matched_doc and not matched_item:
+                # 3. Controlla se fa riferimento a un oggetto fisico
+                matched_item = None
+                if not matched_docs:
                     all_items = db.query(PhysicalItem).order_by(PhysicalItem.updated_at.desc()).all()
                     for it in all_items:
                         if it.item_name and len(it.item_name) >= 3 and it.item_name.lower() in last_asst.content.lower():
                             matched_item = it
                             break
+                    if not matched_item and cand_names:
+                        for cand in cand_names:
+                            c_clean = cand.strip(" *📄\"'")
+                            for it in all_items:
+                                if it.item_name and (it.item_name.lower() == c_clean.lower() or c_clean.lower() in it.item_name.lower()):
+                                    matched_item = it
+                                    break
 
-                # 4. Se ancora nessun match ma abbiamo candidati, esegui ricerca mirata sui candidati
-                if not matched_doc and not matched_item and cand_names:
-                    for cand in cand_names:
-                        s_res = self.execute_tool("search_vault", {"query": cand}, db=db, thread_id=thread_id)
-                        f_docs = s_res.get("found_documents", [])
-                        f_items = s_res.get("found_physical_items", [])
-                        if f_docs:
-                            matched_doc = db.query(Document).filter(Document.id == f_docs[0]["id"]).first()
-                            break
-                        elif f_items:
-                            it_id = f_items[0].get("item_id") or f_items[0].get("id")
-                            matched_item = db.query(PhysicalItem).filter(PhysicalItem.id == it_id).first()
-                            break
+                # Se ci sono documenti trovati:
+                if matched_docs:
+                    # Se l'utente non ha chiesto 'entrambi' o 'tutti' e ha specificato parole di uno solo:
+                    specific_doc = None
+                    if not is_multi_select and not any(k in lower_t for k in ["entrambi", "tutti", "tutte"]):
+                        for d in matched_docs:
+                            d_words = [w for w in re.split(r"[^\w]+", d.title.lower()) if len(w) > 2 and w not in ITALIAN_STOPWORDS]
+                            if any(w in lower_t for w in d_words):
+                                specific_doc = d
+                                break
 
-                if matched_doc:
-                    fn = Path(matched_doc.file_path).name if matched_doc.file_path else ""
-                    doc_info = {
-                        "id": matched_doc.id,
-                        "document_id": matched_doc.id,
-                        "thread_id": matched_doc.thread_id,
-                        "title": matched_doc.title,
-                        "issuer": matched_doc.issuer,
-                        "doc_type": matched_doc.doc_type,
-                        "amount": matched_doc.amount,
-                        "due_date": matched_doc.due_date.isoformat() if matched_doc.due_date else None,
-                        "status": matched_doc.status,
-                        "summary": matched_doc.summary,
-                        "filename": fn,
-                        "file_url": f"/uploads/{fn}" if fn else None,
-                        "download_url": f"/api/documents/{matched_doc.id}/download",
-                        "file_type": matched_doc.file_type
-                    }
-                    return ChatResponse(
-                        reply=f"📄 Eccolo! Ho recuperato il documento **{matched_doc.title}** ({matched_doc.issuer or matched_doc.doc_type}):\n💡 {matched_doc.summary or ''}",
-                        action="show_document_card",
-                        data={"document": doc_info, "document_id": matched_doc.id},
-                        documents=[doc_info]
-                    )
+                    docs_to_show = [specific_doc] if specific_doc else matched_docs
+                    doc_ids_to_call = [d.id for d in docs_to_show]
+                    card_res = self.execute_tool("show_document_card", {"document_ids": doc_ids_to_call}, db=db, thread_id=thread_id)
+                    docs_info = card_res.get("documents") or []
+                    if docs_info:
+                        if len(docs_info) > 1:
+                            lines = [f"- 📄 **{d['title']}** ({d.get('issuer') or d.get('doc_type', '')})" for d in docs_info]
+                            reply_text = (
+                                f"📄 Certamente! Ecco le schede per i {len(docs_info)} documenti:\n\n" +
+                                "\n".join(lines) +
+                                "\n\nPuoi visualizzarli con il pulsante 'Vedi' o scaricarli direttamente con il pulsante 'Scarica' nelle rispettive schede qui sotto! ⬇️"
+                            )
+                        else:
+                            d = docs_info[0]
+                            reply_text = f"📄 Eccolo! Ho recuperato il documento **{d['title']}** ({d.get('issuer') or d.get('doc_type', '')}):\n💡 {d.get('summary', '')}"
+
+                        return ChatResponse(
+                            reply=reply_text,
+                            action="show_document_card",
+                            data=card_res,
+                            documents=docs_info
+                        )
+
                 elif matched_item:
                     loc_str = matched_item.primary_location + (f" ({matched_item.detailed_location})" if matched_item.detailed_location else "")
                     return ChatResponse(
@@ -1376,9 +1438,10 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         is_download_or_show = (
             any(k in lower_t for k in [
-                "scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala",
-                "apri il documento", "apri il file", "mostramelo", "mostramela",
-                "fammi vedere il file", "fammi vedere il documento", "voglio vederlo", "voglio vederla",
+                "scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala", "scaricarli", "scaricali", "scaricare",
+                "download", "fare il download", "voglio scaricare", "voglio il download", "voglio fare il download",
+                "apri il documento", "apri il file", "mostramelo", "mostramela", "mostrameli", "mostra le schede", "mostrami le schede",
+                "fammi vedere il file", "fammi vedere il documento", "voglio vederlo", "voglio vederla", "voglio vederli",
                 "apri il pdf", "mostra la scheda", "vedi il documento", "mandami il pdf"
             ])
             and not is_store_or_update
@@ -1401,28 +1464,40 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                     .order_by(ChatMessage.id.desc())
                     .first()
                 )
-                target_doc = None
+                target_docs = []
                 if last_asst_msg and last_asst_msg.content:
                     all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
                     for d in all_docs:
                         if d.title and len(d.title) >= 3 and d.title.lower() in last_asst_msg.content.lower():
-                            target_doc = d
-                            break
-                    if not target_doc:
-                        cand_lines = [line.strip(" *🏛️📄:-") for line in last_asst_msg.content.split("\n") if any(k in line.lower() for k in ["f24", "bolletta", "ricevuta", "contratto", "estratto", "certificato"])]
+                            if d not in target_docs:
+                                target_docs.append(d)
+                    if not target_docs:
+                        cand_lines = [line.strip(" *🏛️📄:-") for line in last_asst_msg.content.split("\n") if any(k in line.lower() for k in ["f24", "bolletta", "ricevuta", "contratto", "estratto", "certificato", "tessera"])]
                         for cl in cand_lines:
                             s_res = search_vault_documents(db, cl, thread_id=thread_id)
                             if s_res:
-                                target_doc = db.query(Document).filter(Document.id == s_res[0]["id"]).first()
-                                break
+                                td = db.query(Document).filter(Document.id == s_res[0]["id"]).first()
+                                if td and td not in target_docs:
+                                    target_docs.append(td)
 
-                args_card = {"document_id": target_doc.id} if target_doc else {}
+                # Se l'utente specifica uno in particolare
+                if len(target_docs) > 1 and not any(k in lower_t for k in ["entrambi", "tutti", "tutte", "download", "scarica"]):
+                    for d in target_docs:
+                        d_words = [w for w in re.split(r"[^\w]+", d.title.lower()) if len(w) > 2 and w not in ITALIAN_STOPWORDS]
+                        if any(w in lower_t for w in d_words):
+                            target_docs = [d]
+                            break
+
+                args_card = {"document_ids": [d.id for d in target_docs]} if target_docs else {}
                 tool_out = self.execute_tool("show_document_card", args_card, db=db, thread_id=thread_id)
                 docs = tool_out.get("documents", [])
                 if docs:
-                    d = docs[0]
+                    if len(docs) > 1:
+                        rep = f"📄 Ecco le schede per i documenti richiesti! Puoi visualizzarli con 'Vedi' o scaricarli direttamente con il pulsante 'Scarica' qui sotto. ⬇️"
+                    else:
+                        rep = f"📄 Ecco la scheda per **{docs[0]['title']}**! Puoi visualizzarlo o scaricarlo direttamente con il pulsante qui sotto. ⬇️"
                     return ChatResponse(
-                        reply=f"📄 Ecco la scheda per **{d['title']}**! Puoi visualizzarlo o scaricarlo direttamente con il pulsante qui sotto. ⬇️",
+                        reply=rep,
                         action="show_document_card",
                         data=tool_out,
                         documents=docs
@@ -1930,16 +2005,35 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             .order_by(ChatMessage.id.desc())
                             .first()
                         )
-                        target_title = None
+                        target_docs = []
                         if last_asst_msg and last_asst_msg.content:
-                            m_title = re.search(r"(?:F24|Bolletta|Contratto|Estratto|Ricevuta|Certificato|Documento)[^\n*]+", last_asst_msg.content, re.IGNORECASE)
-                            if m_title:
-                                target_title = m_title.group(0).strip(" *🏛️📄:-")
+                            all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
+                            for d in all_docs:
+                                if d.title and len(d.title) >= 3 and d.title.lower() in last_asst_msg.content.lower():
+                                    if d not in target_docs:
+                                        target_docs.append(d)
+                            if not target_docs:
+                                cand_lines = [line.strip(" *🏛️📄:-") for line in last_asst_msg.content.split("\n") if any(k in line.lower() for k in ["f24", "bolletta", "ricevuta", "contratto", "estratto", "certificato", "tessera"])]
+                                for cl in cand_lines:
+                                    s_res = search_vault_documents(db, cl, thread_id=thread_id)
+                                    if s_res:
+                                        td = db.query(Document).filter(Document.id == s_res[0]["id"]).first()
+                                        if td and td not in target_docs:
+                                            target_docs.append(td)
 
-                        card_res = self.execute_tool("show_document_card", {"document_title": target_title or ""}, db=db, thread_id=thread_id)
+                        if len(target_docs) > 1 and not any(k in lower_t for k in ["entrambi", "tutti", "tutte", "download", "scarica"]):
+                            for d in target_docs:
+                                d_words = [w for w in re.split(r"[^\w]+", d.title.lower()) if len(w) > 2 and w not in ITALIAN_STOPWORDS]
+                                if any(w in lower_t for w in d_words):
+                                    target_docs = [d]
+                                    break
+
+                        args_card = {"document_ids": [d.id for d in target_docs]} if target_docs else {}
+                        card_res = self.execute_tool("show_document_card", args_card, db=db, thread_id=thread_id)
                         c_docs = card_res.get("documents", [])
                         if c_docs:
                             clean_reply = re.sub(r"\[(?:Link per scaricare|Scarica|Download)[^\]]*\]", "la scheda del documento allegata qui sotto", direct_reply, flags=re.IGNORECASE)
+                            clean_reply = re.sub(r"per scaricare entrambi i documenti,?\s*dovrai farlo singolarmente\.?", "", clean_reply, flags=re.IGNORECASE).strip()
                             return ChatResponse(
                                 reply=clean_reply,
                                 action="show_document_card",
@@ -1966,7 +2060,26 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                         if f_docs:
                             fallback_docs = filter_relevant_documents(f_docs, direct_reply, user_text)
 
+                    # Auto-attachment: se la risposta cita documenti presenti nel DB e documents è vuoto o incompleto
+                    if not fallback_docs and (is_doc_intent or is_download_or_show):
+                        all_d = db.query(Document).order_by(Document.created_at.desc()).all()
+                        found_in_text = []
+                        for d in all_d:
+                            if d.title and len(d.title) >= 3 and d.title.lower() in direct_reply.lower():
+                                fn = Path(d.file_path).name if d.file_path else ""
+                                found_in_text.append({
+                                    "id": d.id, "document_id": d.id, "thread_id": d.thread_id,
+                                    "title": d.title, "issuer": d.issuer, "amount": d.amount,
+                                    "due_date": d.due_date.isoformat() if d.due_date else None,
+                                    "summary": d.summary, "doc_type": d.doc_type, "status": d.status,
+                                    "file_url": f"/uploads/{fn}" if fn else None,
+                                    "download_url": f"/api/documents/{d.id}/download", "file_type": d.file_type
+                                })
+                        if found_in_text:
+                            fallback_docs = found_in_text
+
                     direct_clean = re.sub(r"\[(?:Link per scaricare|Scarica|Download)[^\]]*\]", "la scheda allegata qui sotto", direct_reply, flags=re.IGNORECASE)
+                    direct_clean = re.sub(r"per scaricare entrambi i documenti,?\s*dovrai farlo singolarmente\.?", "", direct_clean, flags=re.IGNORECASE).strip()
                     return ChatResponse(
                         reply=direct_clean,
                         action="search_vault" if fallback_docs else "REPLY",
@@ -1984,25 +2097,52 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
     def _fallback_deterministic_response(self, user_text: str, lower_t: str, db: Session, thread_id: str) -> ChatResponse:
         """Fallback locale robusto per memorizzazione, ricerca e scadenze in caso di rate-limit API o disconnessione."""
         # 0. Mostra scheda documento o download
-        if any(k in lower_t for k in ["scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala", "apri il documento", "apri il file", "mostramelo", "mostramela", "fammi vedere il file", "fammi vedere il documento", "voglio vederlo", "voglio vederla", "apri il pdf", "mostra la scheda", "vedi il documento", "mandami il pdf"]):
+        if any(k in lower_t for k in [
+            "scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala", "scaricarli", "scaricali", "scaricare",
+            "download", "fare il download", "voglio scaricare", "voglio il download", "voglio fare il download",
+            "apri il documento", "apri il file", "mostramelo", "mostramela", "mostrameli", "fammi vedere il file",
+            "fammi vedere il documento", "voglio vederlo", "voglio vederla", "apri il pdf", "mostra la scheda",
+            "vedi il documento", "mandami il pdf"
+        ]):
             last_asst_msg = (
                 db.query(ChatMessage)
                 .filter(ChatMessage.thread_id == thread_id, ChatMessage.sender == "assistant")
                 .order_by(ChatMessage.id.desc())
                 .first()
             )
-            target_title = None
+            target_docs = []
             if last_asst_msg and last_asst_msg.content:
-                m_title = re.search(r"(?:F24|Bolletta|Contratto|Estratto|Ricevuta|Certificato|Documento)[^\n*]+", last_asst_msg.content, re.IGNORECASE)
-                if m_title:
-                    target_title = m_title.group(0).strip(" *🏛️📄:-")
+                all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
+                for d in all_docs:
+                    if d.title and len(d.title) >= 3 and d.title.lower() in last_asst_msg.content.lower():
+                        if d not in target_docs:
+                            target_docs.append(d)
+                if not target_docs:
+                    cand_lines = [line.strip(" *🏛️📄:-") for line in last_asst_msg.content.split("\n") if any(k in line.lower() for k in ["f24", "bolletta", "ricevuta", "contratto", "estratto", "certificato", "tessera"])]
+                    for cl in cand_lines:
+                        s_res = search_vault_documents(db, cl, thread_id=thread_id)
+                        if s_res:
+                            td = db.query(Document).filter(Document.id == s_res[0]["id"]).first()
+                            if td and td not in target_docs:
+                                target_docs.append(td)
 
-            card_res = self.execute_tool("show_document_card", {"document_title": target_title or ""}, db=db, thread_id=thread_id)
+            if len(target_docs) > 1 and not any(k in lower_t for k in ["entrambi", "tutti", "tutte", "download", "scarica"]):
+                for d in target_docs:
+                    d_words = [w for w in re.split(r"[^\w]+", d.title.lower()) if len(w) > 2 and w not in ITALIAN_STOPWORDS]
+                    if any(w in lower_t for w in d_words):
+                        target_docs = [d]
+                        break
+
+            args_card = {"document_ids": [d.id for d in target_docs]} if target_docs else {}
+            card_res = self.execute_tool("show_document_card", args_card, db=db, thread_id=thread_id)
             c_docs = card_res.get("documents", [])
             if c_docs:
-                d = c_docs[0]
+                if len(c_docs) > 1:
+                    rep = f"📄 Ecco le schede per i documenti richiesti! Puoi visualizzarli con 'Vedi' o scaricarli direttamente con il pulsante 'Scarica' qui sotto. ⬇️"
+                else:
+                    rep = f"📄 Ecco la scheda per **{c_docs[0]['title']}**! Puoi visualizzarlo o scaricarlo direttamente dalla scheda qui sotto. ⬇️"
                 return ChatResponse(
-                    reply=f"📄 Ecco la scheda per **{d['title']}**! Puoi visualizzarlo o scaricarlo direttamente dalla scheda qui sotto. ⬇️",
+                    reply=rep,
                     action="show_document_card",
                     data=card_res,
                     documents=c_docs
