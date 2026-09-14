@@ -40,7 +40,7 @@ CONCEPT_SYNONYMS: Dict[str, List[str]] = {
     "tributi": ["tributo", "tassa", "tasse", "f24", "imposta", "fisco"],
     "fisco": ["f24", "tributi", "irpef", "730", "tasse"],
     "f24": ["tasse", "tributi", "irpef", "fisco", "imposte", "acconto"],
-    "730": ["redditi", "dichiarazione", "fisco", "tasse", "agenzia"],
+    "730": ["dichiarazione", "precompilato", "redditi", "irpef"],
     "mutuo": ["mutui", "finanziamento", "prestito", "ipoteca"],
     "mutui": ["mutuo", "finanziamento", "prestito", "ipoteca"],
     "finanziamento": ["mutuo", "prestito", "rata", "rate", "banca"],

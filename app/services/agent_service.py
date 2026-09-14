@@ -63,11 +63,11 @@ TOOLS_DEFINITION = [
         "type": "function",
         "function": {
             "name": "store_physical_item",
-            "description": "Memorizza o aggiorna la posizione fisica di un oggetto nel caveau (es. quando l'utente dice dove ha messo qualcosa).",
+            "description": "Memorizza o aggiorna la posizione fisica di un oggetto o documento cartaceo/fisico nel caveau (es. quando l'utente dice dove ha messo qualcosa: 'Ho messo la patente nel cassetto', 'Ho riposto il passaporto nella scrivania', 'Ho lasciato le chiavi all'ingresso').",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "item_name": {"type": "string", "description": "Nome dell'oggetto (es. 'Passaporto', 'Chiavi di scorta')"},
+                    "item_name": {"type": "string", "description": "Nome dell'oggetto o documento cartaceo (es. 'Passaporto', 'Patente', 'Chiavi di scorta')"},
                     "primary_location": {"type": "string", "description": "Stanza o ambiente principale (es. 'Studio', 'Cucina', 'Camera')"},
                     "detailed_location": {"type": "string", "description": "Dettaglio specifico del mobile o ripiano (es. 'Primo cassetto scrivania')"},
                     "category": {"type": "string", "description": "Categoria dell'oggetto (es. 'documenti', 'chiavi', 'veicoli', 'elettronica')"}
@@ -119,9 +119,11 @@ SYSTEM_PROMPT = """Sei l'assistente AI per WhatsApp di 'Dove lo AI messo', un ca
 Hai accesso ad appositi STRUMENTI (tools) per interagire con il database SQLite del caveau. Hai piena autonomia e intelligenza per comprendere e soddisfare le richieste dell'utente in linguaggio naturale.
 
 REGOLE FERREE:
-1. QUANDO L'UTENTE CHIEDE DI UN FILE O DOCUMENTO (es. "dammi il documento del mutuo", "mostrami la bolletta", "che file è?", "trovami il certificato del tolc", "cerca la bolletta enel"):
+1. QUANDO L'UTENTE CHIEDE DI UN FILE O DOCUMENTO (es. "dammi 730", "dammi il documento del mutuo", "mostrami la bolletta", "che file è?", "trovami il certificato del tolc", "cerca la bolletta enel"):
    - DEVI SEMPRE USARE lo strumento `search_vault`!
    - NON rispondere MAI a memoria senza chiamare `search_vault`, perché la chiamata di `search_vault` è INDISPENSABILE per consentire al sistema di mostrare il widget grafico del documento (con anteprima e pulsante "Vedi") all'utente!
+   - DIVIETO ASSOLUTO DI CHIEDERE IL PERMESSO: Non chiedere MAI "Posso mostrarti il documento?", "Vuoi che te lo mostri?", "Desideri vederlo?", "Quale dei due desideri visualizzare?". L'utente te lo ha già chiesto! Mostra e riassumi subito le informazioni trovate, l'interfaccia allegherà automaticamente la scheda grafica con il tasto "Vedi" per aprirlo!
+   - Se l'utente ti risponde "sì", "ok", "mostramelo" o simili, fa riferimento all'ultimo documento di cui stavate parlando: chiama subito `search_vault` per quel documento senza MAI chiedere "cosa devo cercare?"!
    - Spiega con precisione e ricchezza di dettagli tutti i dati trovati (titolo, emittente, intestatario, voti/punteggi, importi e date).
 
 2. QUANDO L'UTENTE CHIEDE DOVE SI TROVA UN OGGETTO (es. "dov'è il passaporto?", "dove ho messo le chiavi?"):
@@ -168,20 +170,35 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
     user_lower = user_text.lower() if user_text else ""
 
     # 1. Verifica quali documenti sono esplicitamente citati nel testo della risposta dell'assistente
-    mentioned = []
+    title_matches = []
+    issuer_matches = []
     for d in docs:
         title = (d.get("title") or "").strip().lower()
         issuer = (d.get("issuer") or "").strip().lower()
         title_words = [w for w in re.split(r"[^\w]+", title) if len(w) > 3 and w not in ITALIAN_STOPWORDS]
         title_match = (title and title in asst_lower) or (title_words and sum(1 for w in title_words if w in asst_lower) >= max(1, len(title_words) * 0.6))
+        # Supporta numeri/acronimi specifici nel titolo (es. "730", "f24")
+        acronyms = [w for w in re.split(r"[^\w]+", title) if re.search(r"\d+", w) or len(w) in (2, 3)]
+        if not title_match and acronyms:
+            title_match = any(a in asst_lower for a in acronyms if len(a) >= 2)
+
         issuer_match = bool(issuer and len(issuer) > 3 and (issuer in asst_lower))
-        if title_match or issuer_match:
-            mentioned.append(d)
+        if title_match:
+            title_matches.append(d)
+        elif issuer_match:
+            issuer_matches.append(d)
 
-    if mentioned:
-        return mentioned
+    if title_matches:
+        return title_matches
+    if issuer_matches:
+        return issuer_matches
 
-    # 2. Se l'utente ha chiesto un elenco generico, non forzare l'allegato di un widget singolo arbitrario
+    # 2. Se l'utente ha memorizzato una posizione fisica, non allegare documenti
+    is_store_phrase = any(k in user_lower for k in ["messo", "riposto", "salvato", "lasciato", "conservato"])
+    if is_store_phrase:
+        return None
+
+    # 3. Se l'utente ha chiesto un elenco generico, non forzare l'allegato di un widget singolo arbitrario
     is_list_request = any(
         re.search(rf"\b{w}\b", user_lower)
         for w in ["elenco", "elencami", "lista", "tutti", "tutte", "quali", "cosa hai", "cosa c'è", "archivio"]
@@ -189,7 +206,7 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
     if is_list_request:
         return None
 
-    # 3. Se l'utente ha chiesto un singolo elemento ("il documento", "la bolletta", ecc.), restituisci solo il top match
+    # 4. Se l'utente ha chiesto un singolo elemento ("il documento", "la bolletta", ecc.), restituisci solo il top match se rilevante
     is_singular_request = any(
         re.search(rf"\b{w}\b", user_lower)
         for w in ["il", "lo", "la", "l'", "un", "uno", "una", "un'"]
@@ -198,9 +215,14 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
         for w in ["i", "gli", "le", "tutti", "tutte", "elenco", "elencami", "lista", "quali"]
     )
     if is_singular_request and len(docs) > 0:
-        return [docs[0]]
+        top_title = (docs[0].get("title") or "").lower()
+        top_words = [w for w in re.split(r"[^\w]+", top_title) if len(w) > 3 and w not in ITALIAN_STOPWORDS]
+        user_asks_doc = any(k in user_lower for k in ["document", "file", "bollett", "fattur", "contratt", "certificat", "ricevut", "cedolin", "patente", "carta"])
+        user_mentions_title = any(w in user_lower for w in top_words)
+        if user_mentions_title or user_asks_doc:
+            return [docs[0]]
 
-    if len(docs) == 1:
+    if len(docs) == 1 and not is_store_phrase:
         return docs
 
     return None
@@ -477,6 +499,38 @@ class AgenticChatService:
         if del_resp:
             return del_resp
 
+        # Intercetta risposte affermative a una proposta precedente dell'assistente ("si", "sì", "ok", "mostramelo", "certo")
+        is_affirmative = lower_t.strip(" !.?") in ["si", "sì", "ok", "va bene", "certo", "mostramelo", "mostrameli", "fammi vedere", "apri", "yes", "vai"]
+        if is_affirmative:
+            last_asst = (
+                db.query(ChatMessage)
+                .filter(ChatMessage.thread_id == thread_id, ChatMessage.sender == "assistant")
+                .order_by(ChatMessage.id.desc())
+                .first()
+            )
+            if last_asst and last_asst.content:
+                s_res = self.execute_tool("search_vault", {"query": last_asst.content}, db=db, thread_id=thread_id)
+                f_docs = s_res.get("found_documents", [])
+                if f_docs:
+                    matched = filter_relevant_documents(f_docs, last_asst.content, user_text) or [f_docs[0]]
+                    d = matched[0]
+                    return ChatResponse(
+                        reply=f"📄 Eccolo! Ho recuperato il documento **{d['title']}** ({d.get('issuer', 'Documento')}):\n💡 {d.get('summary', '')}",
+                        action="search_vault",
+                        data=s_res,
+                        documents=matched
+                    )
+
+        # Garantisce la memorizzazione immediata nel caveau di qualsiasi posizione fisica comunicata
+        is_store_phrase = any(k in lower_t for k in ["messo", "riposto", "salvato", "lasciato", "conservato"]) and not any(k in lower_t for k in ["dov'è", "dov'e", "dove ho", "dove sono"])
+        stored_item_result = None
+        if is_store_phrase:
+            m_st = re.search(r"(?:messo|riposto|salvato|lasciato|conservato)\s+(?:il\s+|la\s+|le\s+|i\s+|l\')?(.+?)\s+(?:nel|nella|in|su|sul|sotto|a)\s+(.+)", lower_t)
+            if m_st:
+                item_n = m_st.group(1).strip()
+                loc_n = m_st.group(2).strip()
+                stored_item_result = self.execute_tool("store_physical_item", {"item_name": item_n, "primary_location": loc_n}, db=db, thread_id=thread_id)
+
         # Se non c'è chiave API, fallback deterministico
         if not self.settings.OPENROUTER_API_KEY:
             ai = MockAIService()
@@ -557,6 +611,18 @@ class AgenticChatService:
                             "tool_call_id": tc.get("id"),
                             "content": json.dumps(tool_output, ensure_ascii=False)
                         })
+
+                    # Se l'utente ha comunicato una posizione ma il modello ha chiamato solo search_vault,
+                    # eseguiamo anche store_physical_item per garantire la memorizzazione nel caveau
+                    is_store_phrase = any(k in lower_t for k in ["messo", "riposto", "salvato", "lasciato", "conservato"]) and not any(k in lower_t for k in ["dov'è", "dov'e", "dove ho", "dove sono"])
+                    if is_store_phrase and not any(tc.get("function", {}).get("name") == "store_physical_item" for tc in tool_calls):
+                        m_st = re.search(r"(?:messo|riposto|salvato|lasciato|conservato)\s+(?:il\s+|la\s+|le\s+|i\s+|l\')?(.+?)\s+(?:nel|nella|in|su|sul|sotto|a)\s+(.+)", lower_t)
+                        if m_st:
+                            item_n = m_st.group(1).strip()
+                            loc_n = m_st.group(2).strip()
+                            store_out = self.execute_tool("store_physical_item", {"item_name": item_n, "primary_location": loc_n}, db=db, thread_id=thread_id)
+                            tool_action = "store_physical_item"
+                            tool_data = store_out
 
                     r2 = httpx.post(
                         "https://openrouter.ai/api/v1/chat/completions",
@@ -673,13 +739,23 @@ class AgenticChatService:
                 direct_reply = strip_tool_tags(direct_reply)
 
                 if direct_reply:
+                    if is_store_phrase and stored_item_result:
+                        if "memorizzato" not in direct_reply.lower() and "salvat" not in direct_reply.lower():
+                            direct_reply = f"✅ Memorizzato! {direct_reply}"
+                        return ChatResponse(
+                            reply=direct_reply,
+                            action="store_physical_item",
+                            data=stored_item_result
+                        )
+
                     # Se il modello ha risposto direttamente senza tool_calls (es. usando la cronologia chat),
                     # ma l'utente chiedeva un documento o la risposta ne cita uno, recuperiamo e alleghiamo il widget del file!
                     is_doc_intent = any(k in lower_t for k in [
                         "document", "file", "mutuo", "bollett", "fattur", "contratt", "certificat",
-                        "f24", "ricevut", "cedolin", "busta paga", "patente", "carta", "estratto"
+                        "f24", "730", "dichiarazion", "ricevut", "cedolin", "busta paga", "patente", "carta", "estratto",
+                        "dammi", "mostra", "apri", "fammi vedere", "scarica", "vedi", "prendi"
                     ]) or any(k in direct_reply.lower() for k in [
-                        "documento:", "estratto conto", "bolletta", "fattura", "certificato", "allegato"
+                        "documento", "estratto conto", "bolletta", "fattura", "certificato", "allegato", "730", "f24"
                     ])
 
                     fallback_docs = None
@@ -707,6 +783,7 @@ class AgenticChatService:
 
     def _fallback_deterministic_response(self, user_text: str, lower_t: str, db: Session, thread_id: str) -> ChatResponse:
         """Fallback locale robusto per memorizzazione, ricerca e scadenze in caso di rate-limit API o disconnessione."""
+        # 1. Memorizzazione posizione fisica
         is_store = any(k in lower_t for k in ["messo", "riposto", "salvato", "lasciato", "conservato"]) and not any(k in lower_t for k in ["dov'è", "dov'e", "dove"])
         if is_store:
             m = re.search(r"(?:messo|riposto|salvato|lasciato|conservato)\s+(?:il\s+|la\s+|le\s+|i\s+|l\')?(.+?)\s+(?:nel|nella|in|su|sul|sotto|a)\s+(.+)", lower_t)
@@ -715,27 +792,40 @@ class AgenticChatService:
             db_res = self.execute_tool("store_physical_item", {"item_name": item, "primary_location": loc}, db, thread_id=thread_id)
             return ChatResponse(reply=f"✅ Memorizzato! Ho salvato la posizione di '{item}' in: {loc}.", action="store_physical_item", data=db_res)
 
-        if any(k in lower_t for k in ["dov'è", "dov'e", "dove ho", "dove sono", "trovami", "cerca"]):
-            search_q = re.sub(r"^(?:dov'è|dov'e|dove ho messo|dove sono|dove|cerca|trovami)\s*(?:il|la|lo|le|i|l'|un|una|uno)?\s*", "", lower_t).strip(" ?.")
-            s_res = self.execute_tool("search_vault", {"query": search_q or user_text}, db, thread_id=thread_id)
-            f_docs = s_res.get("found_documents", [])
-            f_items = s_res.get("found_physical_items", [])
-            if f_items:
-                it = f_items[0]
-                loc = it['primary_location'] + (f" ({it['detailed_location']})" if it.get('detailed_location') else "")
-                return ChatResponse(reply=f"📍 Il tuo {it['item_name']} si trova in: {loc}.", action="search_vault", data=s_res)
-            if f_docs:
-                d = f_docs[0]
-                return ChatResponse(reply=f"📄 Ho trovato: **{d['title']}**\n💡 {d['summary']}", action="search_vault", data=s_res, documents=[d])
-
-        if any(k in lower_t for k in ["scadenz", "bollett", "da pagare", "f24"]):
+        # 2. Scadenze in sospeso
+        if any(k in lower_t for k in ["scadenz", "da pagare", "quanto devo pagare"]):
             t_out = self.execute_tool("get_upcoming_deadlines", {}, db, thread_id=thread_id)
             docs = t_out.get("upcoming_documents", [])
             if docs:
                 lines = [f"- 📄 **{d['title']}** — {d.get('amount','?')} € scad. {d.get('due_date','?')}" for d in docs[:5]]
                 return ChatResponse(reply="📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines), action="get_upcoming_deadlines", data=t_out, documents=docs)
 
+        # 3. Ricerca intelligente nel caveau (oggetti fisici e documenti)
+        search_q = re.sub(
+            r"^(?:dov'è|dov'e|dove ho messo|dove sono|dove|cerca|trovami|trova|dammi|mostrami|apri|visualizza|prendi)\s*(?:il|la|lo|le|i|l'|un|una|uno)?\s*",
+            "", lower_t
+        ).strip(" ?.")
+        clean_q = search_q or user_text
+        if len(clean_q) >= 2:
+            s_res = self.execute_tool("search_vault", {"query": clean_q}, db=db, thread_id=thread_id)
+            f_docs = s_res.get("found_documents", [])
+            f_items = s_res.get("found_physical_items", [])
+            if f_docs:
+                d = f_docs[0]
+                amt_str = f" ({d['amount']:.2f} €)" if d.get('amount') else ""
+                due_str = f" - scadenza: {d['due_date']}" if d.get('due_date') else ""
+                return ChatResponse(
+                    reply=f"📄 Ho trovato il documento **{d['title']}**{amt_str}{due_str}:\n💡 {d.get('summary', '')}",
+                    action="search_vault",
+                    data=s_res,
+                    documents=[d]
+                )
+            if f_items:
+                it = f_items[0]
+                loc = it['primary_location'] + (f" ({it['detailed_location']})" if it.get('detailed_location') else "")
+                return ChatResponse(reply=f"📍 Il tuo {it['item_name']} si trova in: {loc}.", action="search_vault", data=s_res)
+
         return ChatResponse(
-            reply="Non sono riuscito a elaborare la richiesta con il motore AI. Puoi chiedermi dove si trova un oggetto, cercare un documento o verificare le scadenze!",
+            reply=f"Non ho trovato nessun documento o oggetto corrispondente a '{user_text}' nel tuo caveau. Puoi chiedermi dove si trova un oggetto, cercare un documento o verificare le scadenze!",
             action="REPLY"
         )
