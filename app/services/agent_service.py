@@ -236,12 +236,10 @@ Hai accesso ad appositi STRUMENTI (tools) per interagire con il database SQLite 
 
 REGOLE FERREE:
 0. PRIMATO ASSOLUTO DEL DATABASE SULLA CHAT (DATI REALI > CONTESTO):
-   - DIVIETO ASSOLUTO DI RISPONDERE A MEMORIA O DALLA CRONOLOGIA DEI MESSAGGI DELLA CHAT!
-   - I messaggi precedenti della conversazione servono ESCLUSIVAMENTE per comprendere riferimenti contestuali immediati (es. "sì", "eliminalo", "mettila lì", "chiamalo X").
-   - NON considerare MAI la cronologia come prova dell'esistenza o della posizione attuale di un documento o di un oggetto.
-   - L'UNICA E SOLA fonte di verità è il DATABASE SQLite interrogato in tempo reale tramite i tuoi strumenti (`search_vault`, `list_vault_contents`, `get_upcoming_deadlines`, `store_physical_item`, `rename_vault_document`).
-   - Se il database/tool restituisce una lista vuota `[]` o dice che un elemento non esiste, DEVI rispondere che l'elemento non è presente nel caveau (o che è stato rimosso). È VIETATO nel modo più categorico inventare o recuperare posizioni o elenchi dai vecchi messaggi della chat!
-   - Se il database restituisce dati, la tua risposta deve rispecchiare fedelmente solo ed esclusivamente quei dati.
+   - Hai a disposizione l'intera cronologia della conversazione e l'inventario in tempo reale del database: usali per avere la massima consapevolezza del contesto, ricordare preferenze, richieste pregresse, spiegazioni e dettagli scambiati.
+   - Tuttavia, per quanto riguarda l'ESISTENZA e la POSIZIONE ATTUALE di un documento o di un oggetto nel caveau, la sola e unica fonte di verità sono i DATI REALI DEL DATABASE SQLite (presenti nella sezione [STATO ATTUALE DEL DATABASE SQLITE] o verificati in tempo reale tramite i tuoi strumenti `search_vault`, `list_vault_contents`, `get_upcoming_deadlines`, `store_physical_item`, `rename_vault_document`).
+   - Se un oggetto o un documento era stato citato nella conversazione ma NON è presente nei dati del database SQLite (o lo strumento restituisce che non c'è), significa che è stato rimosso o non è archiviato nel caveau. In tal caso, rispondi chiaramente che non è presente nel caveau, senza dare per scontato che esista solo perché citato in passato.
+   - Basa sempre le tue affermazioni fattuali sui dati certi del database!
 
 1. QUANDO L'UTENTE CHIEDE DI UN FILE O DOCUMENTO (es. "dammi 730", "dammi il documento del mutuo", "mostrami la bolletta", "che file è?", "trovami il certificato del tolc", "cerca la bolletta enel"):
    - DEVI SEMPRE USARE lo strumento `search_vault`!
@@ -765,8 +763,8 @@ class AgenticChatService:
         total_docs_count = q_docs.count()
         total_items_count = q_items.count()
 
-        docs = q_docs.order_by(Document.id.desc()).limit(4).all()
-        items = q_items.order_by(PhysicalItem.id.desc()).limit(6).all()
+        docs = q_docs.order_by(Document.id.desc()).limit(25).all()
+        items = q_items.order_by(PhysicalItem.id.desc()).limit(30).all()
         unpaid = db.query(Document).filter(Document.status == "da_pagare").all()
 
         today = date.today()
@@ -795,6 +793,26 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             vault_summary.append("- NOTA IMPORTANTE: Al momento ci sono 0 documenti archiviati nel database. Non inventare documenti inesistenti.")
         if total_items_count == 0:
             vault_summary.append("- NOTA IMPORTANTE: Al momento ci sono 0 oggetti fisici memorizzati nel database. Non inventare oggetti inesistenti.")
+
+        if items:
+            vault_summary.append(f"\n[INVENTARIO OGGETTI FISICI MEMORIZZATI ({len(items)})]:")
+            for it in items:
+                loc = it.primary_location + (f" ({it.detailed_location})" if it.detailed_location else "")
+                vault_summary.append(f"- 📍 {it.item_name}: {loc}")
+
+        if docs:
+            vault_summary.append(f"\n[INVENTARIO DOCUMENTI ARCHIVIATI ({len(docs)})]:")
+            for d in docs:
+                amt = f" ({d.amount:.2f} €)" if d.amount is not None else ""
+                due = f" [scadenza {d.due_date.strftime('%d/%m/%Y')}]" if d.due_date else ""
+                vault_summary.append(f"- 📄 {d.title}{amt}{due} (stato: {d.status})")
+
+        if unpaid:
+            vault_summary.append(f"\n[PAGAMENTI/SCADENZE IN SOSPESO ({len(unpaid)})]:")
+            for u in unpaid[:10]:
+                amt = f"{u.amount:.2f} €" if u.amount is not None else "importo non specificato"
+                due = u.due_date.strftime('%d/%m/%Y') if u.due_date else "senza data"
+                vault_summary.append(f"- ⏰ {u.title}: {amt} entro {due}")
 
         vault_summary.append("\n[REGOLA SULL'USO DEI DATI DEL DATABASE]:")
         vault_summary.append("- Per conoscere, elencare o cercare documenti o oggetti, DEVI interrogare il database tramite gli appositi strumenti (`search_vault`, `list_vault_contents`, `get_upcoming_deadlines`).")
@@ -1302,13 +1320,13 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             reply = ai.generate_conversational_reply(user_text)
             return ChatResponse(reply=reply, action="REPLY")
 
-        # Recupera solo gli ultimi 4 messaggi per evitare inquinamento del contesto da vecchi dati
+        # Recupera la cronologia recente della chat (fino a 50 messaggi) per massima consapevolezza conversazionale e contesto continuo
         system_content = self.build_system_prompt(db, thread_id=thread_id)
         recent_msgs = (
             db.query(ChatMessage)
             .filter(ChatMessage.thread_id == thread_id)
             .order_by(ChatMessage.id.desc())
-            .limit(4)
+            .limit(50)
             .all()
         )
         history_messages: List[Dict[str, Any]] = [{"role": "system", "content": system_content}]

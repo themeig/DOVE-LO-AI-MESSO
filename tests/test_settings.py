@@ -25,3 +25,9 @@ def test_get_and_update_ai_model_setting():
     assert back_res.status_code == 200
     assert back_res.json()['current_model'] == 'google/gemini-2.5-flash-lite'
     assert back_res.json()['is_free'] is False
+
+    # 4. Switch to thinking model (Gemini 2.5 Pro)
+    pro_res = client.post('/api/settings/ai-model', json={'model_id': 'google/gemini-2.5-pro'})
+    assert pro_res.status_code == 200
+    assert pro_res.json()['current_model'] == 'google/gemini-2.5-pro'
+    assert pro_res.json()['current_info']['is_thinking'] is True

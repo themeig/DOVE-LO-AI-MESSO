@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from typing import Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -18,8 +18,19 @@ AVAILABLE_MODELS = [
         "tag": "⚡ Consigliato",
         "tier": "paid",
         "is_free": False,
+        "is_thinking": False,
         "cost_info": "~0,0001 € / msg (.10 / 1M in, .40 / 1M out)",
         "features": "Visione multimodale ad alta precisione + Tool Calling ultra-rapido."
+    },
+    {
+        "id": "google/gemini-2.5-pro",
+        "name": "Google Gemini 2.5 Pro (Thinking)",
+        "tag": "🧠 Modello che Pensa",
+        "tier": "paid",
+        "is_free": False,
+        "is_thinking": True,
+        "cost_info": "Ragionamento profondo (~$1.25 / 1M in, $5.00 / 1M out)",
+        "features": "Thinking Process nativo con ragionamento logico profondo prima di rispondere, visione e tool calling."
     },
     {
         "id": "nex-agi/nex-n2.5-pro:free",
@@ -27,6 +38,7 @@ AVAILABLE_MODELS = [
         "tag": "🆓 100% Gratuito",
         "tier": "free",
         "is_free": True,
+        "is_thinking": False,
         "cost_info": "0,00 € (Nessun addebito)",
         "features": "Modello open gratuito con supporto a visione e tool calling."
     }

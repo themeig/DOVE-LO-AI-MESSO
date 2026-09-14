@@ -508,7 +508,29 @@
           </div>
         </div>
 
-        <!-- Opzione 2: Nex-AGI Nex-N2.5-Pro (Free) -->
+        <!-- Opzione 2: Google Gemini 2.5 Pro (Thinking / Ragionamento) -->
+        <div 
+          id="modelCard_thinking"
+          onclick="selectAiModel('google/gemini-2.5-pro')" 
+          class="p-3.5 rounded-xl border-2 border-slate-200 cursor-pointer transition relative hover:border-[#128C7E] flex flex-col gap-1.5 bg-white"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-brain text-purple-600 text-sm"></i>
+              <span class="font-bold text-xs text-slate-800">Google Gemini 2.5 Pro (Thinking)</span>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">🧠 Modello che Pensa</span>
+          </div>
+          <p class="text-[11px] text-slate-500 leading-snug">
+            Processo di pensiero attivo (*Thinking Process*): ragiona e riflette prima di formulare risposte, ideale per deduzioni logiche e documenti complessi.
+          </p>
+          <div class="flex items-center justify-between pt-1.5 text-[10px] text-slate-400 border-t border-slate-100">
+            <span>Costo: <strong>Pay-as-you-go</strong> (Ragionamento profondo)</span>
+            <span id="check_thinking" class="text-emerald-600 font-bold hidden"><i class="fa-solid fa-circle-check"></i> Attivo</span>
+          </div>
+        </div>
+
+        <!-- Opzione 3: Nex-AGI Nex-N2.5-Pro (Free) -->
         <div 
           id="modelCard_nex"
           onclick="selectAiModel('nex-agi/nex-n2.5-pro:free')" 
@@ -1235,6 +1257,7 @@
     }
 
     function updateAiModelUI(data) {
+      const isThinking = (currentAiModel || '').includes('gemini-2.5-pro');
       const isFree = data.is_free || (currentAiModel.includes(':free'));
       const headerLabel = document.getElementById('aiModelHeaderLabel');
       const headerIcon = document.getElementById('aiModelHeaderIcon');
@@ -1246,38 +1269,57 @@
       }
 
       if (headerLabel) {
-        headerLabel.textContent = isFree ? 'Nex-AGI (Free)' : 'Gemini 2.5 Lite';
+        if (isThinking) {
+          headerLabel.textContent = 'Gemini 2.5 Pro (Thinking)';
+        } else if (isFree) {
+          headerLabel.textContent = 'Nex-AGI (Free)';
+        } else {
+          headerLabel.textContent = 'Gemini 2.5 Lite';
+        }
       }
       if (headerIcon) {
-        headerIcon.className = isFree ? 'fa-solid fa-gift text-emerald-300 text-[11px]' : 'fa-solid fa-bolt text-amber-300 text-[11px]';
+        if (isThinking) {
+          headerIcon.className = 'fa-solid fa-brain text-purple-300 text-[11px]';
+        } else if (isFree) {
+          headerIcon.className = 'fa-solid fa-gift text-emerald-300 text-[11px]';
+        } else {
+          headerIcon.className = 'fa-solid fa-bolt text-amber-300 text-[11px]';
+        }
       }
       if (statusDot) {
-        statusDot.className = isFree ? 'w-2 h-2 rounded-full bg-emerald-400' : 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+        if (isThinking) {
+          statusDot.className = 'w-2 h-2 rounded-full bg-purple-400 animate-pulse';
+        } else if (isFree) {
+          statusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        } else {
+          statusDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+        }
       }
 
       // Aggiorna le card nel modale
       const cardGemini = document.getElementById('modelCard_gemini');
+      const cardThinking = document.getElementById('modelCard_thinking');
       const cardNex = document.getElementById('modelCard_nex');
       const checkGemini = document.getElementById('check_gemini');
+      const checkThinking = document.getElementById('check_thinking');
       const checkNex = document.getElementById('check_nex');
 
-      if (cardGemini && cardNex) {
-        if (!isFree) {
-          cardGemini.classList.add('border-[#128C7E]', 'bg-emerald-50/20');
-          cardGemini.classList.remove('border-slate-200');
-          cardNex.classList.remove('border-[#128C7E]', 'bg-emerald-50/20');
-          cardNex.classList.add('border-slate-200');
-          if (checkGemini) checkGemini.classList.remove('hidden');
-          if (checkNex) checkNex.classList.add('hidden');
+      [
+        { card: cardGemini, check: checkGemini, active: !isThinking && !isFree },
+        { card: cardThinking, check: checkThinking, active: isThinking },
+        { card: cardNex, check: checkNex, active: isFree }
+      ].forEach(item => {
+        if (!item.card) return;
+        if (item.active) {
+          item.card.classList.add('border-[#128C7E]', 'bg-emerald-50/20');
+          item.card.classList.remove('border-slate-200');
+          if (item.check) item.check.classList.remove('hidden');
         } else {
-          cardNex.classList.add('border-[#128C7E]', 'bg-emerald-50/20');
-          cardNex.classList.remove('border-slate-200');
-          cardGemini.classList.remove('border-[#128C7E]', 'bg-emerald-50/20');
-          cardGemini.classList.add('border-slate-200');
-          if (checkNex) checkNex.classList.remove('hidden');
-          if (checkGemini) checkGemini.classList.add('hidden');
+          item.card.classList.remove('border-[#128C7E]', 'bg-emerald-50/20');
+          item.card.classList.add('border-slate-200');
+          if (item.check) item.check.classList.add('hidden');
         }
-      }
+      });
     }
 
     function openAiSettingsModal() {
