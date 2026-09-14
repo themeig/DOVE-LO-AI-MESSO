@@ -176,3 +176,14 @@ def test_stemming_and_fuzzy_physical_items():
         res4 = search_vault_items(session, "caricatori")
         assert len(res4) == 1
         assert res4[0]["item_name"] == "Caricatore iPhone"
+
+
+def test_collana_rossa_no_f24_cross_contamination():
+    """Verifica che cercare 'collana rossa' non restituisca per errore F24 con cognome 'Rossi' nella sintesi."""
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        setup_test_data(session)
+        # setup_test_data include "Modello F24 Agenzia delle Entrate" con 'Rossi Leo' nel riepilogo
+        docs = search_vault_documents(session, "collana rossa")
+        assert len(docs) == 0

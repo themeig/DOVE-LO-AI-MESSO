@@ -140,6 +140,13 @@ def test_filter_relevant_documents():
     filtered4 = filter_relevant_documents(docs, text4, "elencami i documenti che hai")
     assert filtered4 is None
 
+    # Scenario 5: Richiesta posizione oggetto fisico ("dove è la collana rossa?") con risposta su oggetto ("La 'Collana rossa' si trova in soggiorno. 📍")
+    # Non deve MAI allegare documenti non correlati
+    docs_unrelated = [{"title": "F24 AGENZIA DELLE ENTRATE", "issuer": "AGENZIA DELLE ENTRATE"}]
+    text5 = "La 'Collana rossa' si trova in soggiorno. 📍"
+    filtered5 = filter_relevant_documents(docs_unrelated, text5, "dove è la collana rossa?")
+    assert filtered5 is None
+
 
 def test_agent_service_bulk_deletion_intent():
     engine = get_engine("sqlite:///:memory:")

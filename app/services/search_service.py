@@ -23,7 +23,8 @@ ITALIAN_STOPWORDS = {
 
 GENERIC_ATTRIBUTE_TERMS = {
     "documento", "documenti", "file", "allegato", "allegati", "copia", "archivio",
-    "modulo", "moduli", "modello", "modelli", "pdf"
+    "modulo", "moduli", "modello", "modelli", "pdf",
+    "scadenza", "scadenze", "rata", "rate", "importo", "costo", "quando"
 }
 
 CONCEPT_SYNONYMS: Dict[str, List[str]] = {
@@ -175,15 +176,26 @@ def search_vault_documents(db: Session, query: str, thread_id: str = "general") 
         key_words = t_words + i_words + dt_words + f_words
 
         matched_core_count = 0
+        matched_key_count = 0
         for ct in core_tokens:
             syns = [ct] + CONCEPT_SYNONYMS.get(ct, []) + CONCEPT_SYNONYMS.get(it_stem(ct), [])
             if any(token_matches(tok, kw)[0] for tok in syns for kw in key_words):
                 matched_core_count += 1
+                matched_key_count += 1
             elif any(token_matches(ct, sw)[0] for sw in s_words):
                 matched_core_count += 1
 
         if matched_core_count == 0 and not (q_lower in t_l or q_lower in s_l):
             continue
+
+        # Per query composte da 2+ parole chiave (es. 'collana rossa'):
+        # Evita falsi positivi se nessuna parola corrisponde ai metadati chiave (titolo, emittente, tipo)
+        # e solo un frammento isolato compare nella descrizione/sintesi del documento.
+        if len(core_tokens) >= 2:
+            if matched_key_count == 0 and q_lower not in s_l and matched_core_count < len(core_tokens):
+                continue
+            if matched_core_count < max(2, int(len(core_tokens) * 0.5)) and q_lower not in t_l and q_lower not in s_l:
+                continue
 
         score = matched_core_count * 100
         if q_lower and q_lower in t_l:

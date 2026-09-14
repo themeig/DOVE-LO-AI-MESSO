@@ -335,9 +335,12 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
     if issuer_matches:
         return issuer_matches
 
-    # 2. Se l'utente ha memorizzato una posizione fisica, non allegare documenti
-    is_store_phrase = any(k in user_lower for k in ["messo", "riposto", "salvato", "lasciato", "conservato"])
-    if is_store_phrase:
+    # 2. Se l'utente ha memorizzato una posizione fisica o ha chiesto dove si trova un oggetto,
+    # oppure se l'assistente risponde indicando una posizione fisica (📍 o 'si trova in'), non allegare documenti!
+    is_store_phrase = any(k in user_lower for k in ["messo", "riposto", "salvato", "lasciato", "conservato", "posizionato"])
+    is_where_phrase = any(k in user_lower for k in ["dov'è", "dov'e", "dove è", "dove si trova", "dove sono", "dove sta"])
+    is_item_answer = "📍" in asst_lower or "si trova in" in asst_lower or "si trovano in" in asst_lower or "è in " in asst_lower
+    if is_store_phrase or (is_where_phrase and is_item_answer) or (is_item_answer and not any(k in user_lower for k in ["document", "bollett", "fattur", "f24", "730", "file"])):
         return None
 
     # 3. Se l'utente ha chiesto un elenco generico, non forzare l'allegato di un widget singolo arbitrario
@@ -348,7 +351,7 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
     if is_list_request:
         return None
 
-    # 4. Se l'utente ha chiesto un singolo elemento ("il documento", "la bolletta", ecc.), restituisci solo il top match se rilevante
+    # 4. Se l'utente ha chiesto un singolo elemento o documento specifico
     is_singular_request = any(
         re.search(rf"\b{w}\b", user_lower)
         for w in ["il", "lo", "la", "l'", "un", "uno", "una", "un'"]
@@ -359,13 +362,15 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
     if is_singular_request and len(docs) > 0:
         top_title = (docs[0].get("title") or "").lower()
         top_words = [w for w in re.split(r"[^\w]+", top_title) if len(w) > 3 and w not in ITALIAN_STOPWORDS]
-        user_asks_doc = any(k in user_lower for k in ["document", "file", "bollett", "fattur", "contratt", "certificat", "ricevut", "cedolin", "patente", "carta"])
+        user_asks_doc = any(k in user_lower for k in ["document", "file", "bollett", "fattur", "contratt", "certificat", "ricevut", "cedolin", "patente", "carta", "f24", "730", "estratto"])
         user_mentions_title = any(w in user_lower for w in top_words)
         if user_mentions_title or user_asks_doc:
             return [docs[0]]
 
-    if len(docs) == 1 and not is_store_phrase:
-        return docs
+    # 5. Se l'utente ha esplicitamente richiesto un documento
+    user_asks_doc = any(k in user_lower for k in ["document", "file", "bollett", "fattur", "contratt", "certificat", "ricevut", "cedolin", "patente", "carta", "f24", "730", "mostrami", "visualizza", "apri", "scarica"])
+    if user_asks_doc and len(docs) > 0:
+        return [docs[0]]
 
     return None
 
