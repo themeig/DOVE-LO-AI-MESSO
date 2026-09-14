@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy.orm import Session
 
 from app.models.database import get_db, Document, ChatMessage
-from app.models.schemas import DocumentStatusUpdate
+from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDeleteResponse
 from app.services.ai_service import get_ai_service
 from app.services.document_service import save_uploaded_file
 
@@ -154,6 +154,37 @@ def update_document_status(
         "amount": doc.amount,
         "due_date": doc.due_date.isoformat() if doc.due_date else None,
         "status": doc.status
+    }
+
+@router.delete("/bulk", response_model=BulkDeleteResponse)
+def delete_documents_bulk(payload: BulkDeleteRequest, db: Session = Depends(get_db)):
+    """Elimina in blocco una lista di documenti o tutti i documenti di un canale/caveau dal database e dal disco."""
+    query = db.query(Document)
+    if payload.document_ids:
+        query = query.filter(Document.id.in_(payload.document_ids))
+    elif payload.thread_id and payload.thread_id != "all":
+        query = query.filter(Document.thread_id == payload.thread_id)
+
+    docs = query.all()
+    count = len(docs)
+    deleted_ids = []
+    for doc in docs:
+        deleted_ids.append(doc.id)
+        if doc.file_path:
+            try:
+                p = Path(doc.file_path)
+                if p.exists():
+                    p.unlink(missing_ok=True)
+            except Exception:
+                pass
+        db.delete(doc)
+    db.commit()
+
+    return {
+        "success": True,
+        "count": count,
+        "message": f"{count} {'documento eliminato' if count == 1 else 'documenti eliminati'} con successo dal caveau.",
+        "deleted_ids": deleted_ids
     }
 
 @router.delete("/{document_id}")

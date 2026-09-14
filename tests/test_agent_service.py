@@ -139,3 +139,36 @@ def test_filter_relevant_documents():
     text4 = "Ecco l'elenco dei documenti salvati nel caveau."
     filtered4 = filter_relevant_documents(docs, text4, "elencami i documenti che hai")
     assert filtered4 is None
+
+
+def test_agent_service_bulk_deletion_intent():
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        d1 = Document(title="Bolletta Enel", file_path="uploads/enel.pdf", file_type="pdf", doc_type="bolletta", thread_id="t1", summary="bolletta")
+        d2 = Document(title="Bolletta A2A", file_path="uploads/a2a.pdf", file_type="pdf", doc_type="bolletta", thread_id="t1", summary="bolletta")
+        d3 = Document(title="Contratto Lavoro", file_path="uploads/contratto.pdf", file_type="pdf", doc_type="contratto", thread_id="t1", summary="contratto")
+        session.add_all([d1, d2, d3])
+        session.commit()
+
+        agent = AgenticChatService()
+
+        # 1. "elimina tutti i documenti che hai"
+        resp_all = agent._handle_deletion_intent("elimina tutti i documenti che hai", "elimina tutti i documenti che hai", session, thread_id="t1")
+        assert resp_all is not None
+        assert resp_all.action == "REQUEST_DELETE"
+        assert resp_all.confirmation["target_type"] == "bulk_documents"
+        assert len(resp_all.confirmation["target_ids"]) == 3
+
+        # 2. "elimina tutte le bollette" -> filtra solo bollette
+        resp_bollette = agent._handle_deletion_intent("elimina tutte le bollette", "elimina tutte le bollette", session, thread_id="t1")
+        assert resp_bollette is not None
+        assert resp_bollette.action == "REQUEST_DELETE"
+        assert resp_bollette.confirmation["target_type"] == "bulk_documents"
+        assert len(resp_bollette.confirmation["target_ids"]) == 2
+
+        # 3. "eliminali" (plural)
+        resp_plural = agent._handle_deletion_intent("eliminali", "eliminali", session, thread_id="t1")
+        assert resp_plural is not None
+        assert resp_plural.action == "REQUEST_DELETE"
+        assert resp_plural.confirmation["target_type"] == "bulk_documents"

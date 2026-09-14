@@ -105,4 +105,49 @@ def test_download_document_file():
     assert dl_res.content == b"%PDF-1.4 test download content"
     assert "attachment;" in dl_res.headers.get("content-disposition", "")
 
+def test_delete_documents_bulk():
+    # Carica 2 documenti di test
+    p1 = io.BytesIO(b"%PDF-1.4 bulk doc 1")
+    p2 = io.BytesIO(b"%PDF-1.4 bulk doc 2")
+    u1 = client.post("/api/documents/upload", files={"file": ("doc_bulk_1.pdf", p1, "application/pdf")}).json()
+    u2 = client.post("/api/documents/upload", files={"file": ("doc_bulk_2.pdf", p2, "application/pdf")}).json()
+    
+    doc1_id = u1["document_id"]
+    doc2_id = u2["document_id"]
+    
+    del_res = client.request("DELETE", "/api/documents/bulk", json={"document_ids": [doc1_id, doc2_id]})
+    assert del_res.status_code == 200
+    data = del_res.json()
+    assert data["success"] is True
+    assert data["count"] == 2
+    assert doc1_id in data["deleted_ids"]
+    assert doc2_id in data["deleted_ids"]
+    
+    # Verifica che ora sono stati cancellati
+    check1 = client.get(f"/api/documents/{doc1_id}/file")
+    assert check1.status_code == 404
+
+def test_chat_listing_and_bulk_delete_intents():
+    # 1. Carica un documento
+    p = io.BytesIO(b"%PDF-1.4 test listing")
+    u = client.post("/api/documents/upload", files={"file": ("fattura_test.pdf", p, "application/pdf")}).json()
+    doc_id = u["document_id"]
+    
+    # 2. Chiedi la lista di tutti i documenti
+    list_res = client.post("/api/chat", json={"message": "fai la lista di tutti i documenti che hai"})
+    assert list_res.status_code == 200
+    list_data = list_res.json()
+    assert list_data["action"] == "list_documents"
+    assert "elenco completo" in list_data["reply"].lower() or "documenti" in list_data["reply"].lower()
+    assert any(d["document_id"] == doc_id for d in list_data["data"]["documents"])
+    
+    # 3. Chiedi di eliminarli tutti
+    del_res = client.post("/api/chat", json={"message": "elimina tutti i documenti che hai"})
+    assert del_res.status_code == 200
+    del_data = del_res.json()
+    assert del_data["action"] == "REQUEST_DELETE"
+    assert del_data["confirmation"] is not None
+    assert del_data["confirmation"]["target_type"] == "bulk_documents"
+    assert doc_id in del_data["confirmation"]["target_ids"]
+
 

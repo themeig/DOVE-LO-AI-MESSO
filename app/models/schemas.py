@@ -108,3 +108,14 @@ class DeadlineAlertsResponse(BaseModel):
     today: str
     alerts: List[DeadlineAlertItem]
 
+class BulkDeleteRequest(BaseModel):
+    document_ids: Optional[List[int]] = None
+    thread_id: Optional[str] = None
+    delete_all: bool = False
+
+class BulkDeleteResponse(BaseModel):
+    success: bool
+    count: int
+    message: str
+    deleted_ids: List[int]
+

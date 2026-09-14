@@ -1584,22 +1584,26 @@
       if (confirmation && confirmation.type === 'delete_confirmation') {
         const confTitle = escapeHtml(confirmation.title || 'elemento');
         const targetType = escapeHtml(confirmation.target_type || 'document');
-        const targetId = confirmation.target_id;
-        const details = escapeHtml(confirmation.details || '');
+        const targetId = confirmation.target_id || 0;
+        const targetIds = confirmation.target_ids ? JSON.stringify(confirmation.target_ids) : 'null';
+        const details = confirmation.details ? escapeHtml(confirmation.details) : '';
+        const isBulk = targetType === 'bulk_documents';
+        const btnLabel = isBulk ? (confirmation.target_ids ? `Sì, elimina tutti (${confirmation.target_ids.length})` : 'Sì, elimina tutti') : 'Sì, elimina';
+
         confHtml = `
           <div id="conf-box-${targetType}-${targetId}" class="mt-3 bg-red-50/90 border border-red-200/90 rounded-xl p-3 shadow-2xs text-left">
             <div class="flex items-center gap-2 text-red-800 font-bold text-xs mb-1">
               <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
-              <span>Conferma eliminazione</span>
+              <span>${isBulk ? 'Conferma eliminazione multipla' : 'Conferma eliminazione'}</span>
             </div>
             <p class="text-xs text-slate-700 leading-snug">
               Sei sicuro di voler eliminare definitivamente <strong>"${confTitle}"</strong>?
               ${details ? `<br><span class="text-[11px] text-slate-500 italic">${details}</span>` : ''}
             </p>
             <div class="flex items-center gap-2 mt-2.5">
-              <button type="button" onclick="executeDelete('${targetType}', ${targetId}, this)" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-2xs transition active:scale-95 flex items-center gap-1.5">
+              <button type="button" onclick="executeDelete('${targetType}', ${targetId}, this, ${targetIds})" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-2xs transition active:scale-95 flex items-center gap-1.5">
                 <i class="fa-solid fa-trash-can text-[11px]"></i>
-                <span>Sì, elimina</span>
+                <span>${btnLabel}</span>
               </button>
               <button type="button" onclick="cancelDelete(this)" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-lg transition active:scale-95">
                 No, annulla
@@ -1622,7 +1626,7 @@
     }
 
     // --- Eliminazione Sicura: Documenti & Posizioni ---
-    async function executeDelete(targetType, targetId, btnEl) {
+    async function executeDelete(targetType, targetId, btnEl, targetIds = null) {
       const confBox = btnEl ? btnEl.closest('[id^="conf-box-"]') : null;
       if (confBox) {
         confBox.innerHTML = `
@@ -1634,8 +1638,18 @@
       }
 
       try {
-        const url = targetType === 'physical_item' ? `/api/items/${targetId}` : `/api/documents/${targetId}`;
-        const res = await fetch(url, { method: 'DELETE' });
+        let res;
+        if (targetType === 'bulk_documents') {
+          res = await fetch('/api/documents/bulk', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ document_ids: targetIds || [targetId] })
+          });
+        } else if (targetType === 'physical_item') {
+          res = await fetch(`/api/items/${targetId}`, { method: 'DELETE' });
+        } else {
+          res = await fetch(`/api/documents/${targetId}`, { method: 'DELETE' });
+        }
         if (!res.ok) throw new Error("Errore durante l'eliminazione");
         const data = await res.json();
 

@@ -588,16 +588,143 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         return None
 
+    def _handle_listing_intent(self, user_text: str, lower_t: str, db: Session, thread_id: str = "general") -> Optional[ChatResponse]:
+        """Restituisce l'elenco reale, veritiero e aggiornato dei documenti presenti nel database, eliminando allucinazioni."""
+        clean = re.sub(r"[?!.,;]", " ", lower_t)
+        clean = re.sub(r"\s+", " ", clean).strip()
+
+        is_listing = (
+            any(k in clean for k in [
+                "fai la lista", "fammi la lista", "fai una lista", "fai prima la lista",
+                "elenca tutti", "elencami tutti", "elenca i documenti", "elencami i documenti",
+                "elenco documenti", "elenco dei documenti", "lista documenti", "lista dei documenti",
+                "quali documenti hai", "quali documenti ci sono", "cosa hai nel caveau",
+                "cosa c'è nel caveau", "cosa ce nel caveau", "mostrami tutti i documenti",
+                "mostra tutti i documenti", "vedere tutti i documenti", "cosa hai archiviato",
+                "cosa c'è di archiviato", "tutti i documenti che hai"
+            ])
+            or clean in ["documenti", "i miei documenti", "tutti i documenti", "elenco", "lista"]
+        )
+        if not is_listing:
+            return None
+
+        query = db.query(Document)
+        if thread_id and thread_id != "general" and thread_id != "all":
+            query = query.filter(Document.thread_id == thread_id)
+        docs = query.order_by(Document.id.desc()).all()
+
+        if not docs:
+            return ChatResponse(
+                reply="Nel caveau non sono presenti documenti archiviati al momento.",
+                action="list_documents",
+                data={"count": 0, "documents": []}
+            )
+
+        lines = []
+        doc_items = []
+        for d in docs:
+            amt = f" - {d.amount:.2f} €" if d.amount is not None else ""
+            due = f" - Scadenza: {d.due_date.strftime('%d/%m/%Y')}" if d.due_date else ""
+            iss = f" ({d.issuer}{amt}{due})" if (d.issuer or amt or due) else ""
+            lines.append(f"- 📄 **{d.title}**{iss}")
+            fn = Path(d.file_path).name if d.file_path else ""
+            doc_items.append({
+                "document_id": d.id,
+                "title": d.title,
+                "issuer": d.issuer,
+                "amount": d.amount,
+                "due_date": d.due_date.isoformat() if d.due_date else None,
+                "summary": d.summary,
+                "file_url": f"/uploads/{fn}" if fn else None,
+                "download_url": f"/api/documents/{d.id}/download",
+                "file_type": d.file_type
+            })
+
+        reply = f"Certo! Ecco l'elenco completo dei **{len(docs)} documenti** attualmente presenti nel caveau:\n\n" + "\n".join(lines)
+        return ChatResponse(
+            reply=reply,
+            action="list_documents",
+            data={"count": len(docs), "documents": doc_items},
+            documents=doc_items[:5]
+        )
+
     def _handle_deletion_intent(self, user_text: str, lower_t: str, db: Session, thread_id: str = "general") -> Optional[ChatResponse]:
-        """Gestisce in modo sicuro le richieste di eliminazione chiedendo conferma prima di qualsiasi azione."""
+        """Gestisce in modo sicuro le richieste di eliminazione (singola o multipla/totale) chiedendo conferma prima di qualsiasi azione."""
         is_deletion = any(k in lower_t for k in [
             "elimina", "cancella", "rimuovi", "eliminarlo", "cancellarlo", 
-            "rimuoverlo", "butta", "cancellami", "eliminami"
+            "rimuoverlo", "butta", "cancellami", "eliminami", "eliminali", "cancellali", "rimuovili"
         ])
         if not is_deletion:
             return None
 
-        # Estrai il testo di ricerca rimuovendo le parole di comando e filler
+        clean_prompt = re.sub(r"[?!.,;]", " ", lower_t)
+        clean_prompt = re.sub(r"\s+", " ", clean_prompt).strip()
+
+        # 1. Rileva eliminazione multipla o totale
+        is_bulk = (
+            any(k in clean_prompt for k in [
+                "elimina tutti", "elimina tutte", "cancella tutti", "cancella tutte",
+                "rimuovi tutti", "rimuovi tutte", "svuota", "elimina tutto", "cancella tutto",
+                "eliminali tutti", "cancellali tutti", "rimuovili tutti"
+            ])
+            or clean_prompt in ["eliminali", "cancellali", "rimuovili", "elimina tutto", "cancella tutto", "elimina tutti", "cancella tutti"]
+        )
+
+        if is_bulk:
+            query = db.query(Document)
+            if thread_id and thread_id != "general" and thread_id != "all":
+                query = query.filter(Document.thread_id == thread_id)
+
+            cat_name = "tutti i documenti"
+            if "bollett" in clean_prompt:
+                query = query.filter(or_(Document.doc_type == "bolletta", Document.title.ilike("%bollett%")))
+                cat_name = "tutte le bollette"
+            elif "f24" in clean_prompt or "tribut" in clean_prompt:
+                query = query.filter(or_(Document.doc_type.ilike("%f24%"), Document.title.ilike("%f24%")))
+                cat_name = "tutti i modelli F24"
+
+            docs_to_delete = query.all()
+            if not docs_to_delete:
+                return ChatResponse(
+                    reply=f"Non ho trovato documenti da eliminare nel caveau ({cat_name}).",
+                    action="REPLY"
+                )
+
+            doc_ids = [d.id for d in docs_to_delete]
+            doc_titles = [d.title for d in docs_to_delete]
+
+            conf = {
+                "type": "delete_confirmation",
+                "target_type": "bulk_documents",
+                "target_id": doc_ids[0],
+                "target_ids": doc_ids,
+                "title": f"TUTTI i {len(doc_ids)} documenti ({cat_name})" if len(doc_ids) > 1 else doc_titles[0],
+                "details": f"Verranno eliminati definitivamente {len(doc_ids)} file dal caveau."
+            }
+
+            list_preview = "\n".join([f"- 📄 **{t}**" for t in doc_titles[:6]])
+            if len(doc_titles) > 6:
+                list_preview += f"\n- ... e altri {len(doc_titles) - 6} documenti"
+
+            return ChatResponse(
+                reply=f"⚠️ Stai per eliminare definitivamente **{len(doc_ids)} documenti** ({cat_name}):\n\n{list_preview}\n\nSei sicuro di voler procedere?",
+                action="REQUEST_DELETE",
+                data={"target_type": "bulk_documents", "document_ids": doc_ids},
+                confirmation=conf,
+                documents=[{
+                    "document_id": d.id,
+                    "title": d.title,
+                    "issuer": d.issuer,
+                    "amount": d.amount,
+                    "due_date": d.due_date.isoformat() if d.due_date else None,
+                    "summary": d.summary,
+                    "file_url": f"/uploads/{Path(d.file_path).name}" if d.file_path else None,
+                    "download_url": f"/api/documents/{d.id}/download",
+                    "file_type": d.file_type
+                } for d in docs_to_delete[:4]]
+            )
+
+        # 2. Eliminazione di un singolo documento o oggetto specifico
         target_query = re.sub(
             r"^(?:per favore|puoi|vorrei|potresti|ti prego di|elimina|cancella|rimuovi|cancellami|eliminami|butta)\s*(?:il|la|lo|le|i|l'|un|una|uno)?\s*",
             "", lower_t
@@ -665,17 +792,21 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 confirmation=conf
             )
         else:
-            # Se non troviamo una corrispondenza diretta, lasciamo piena libertà all'AI di dialogare
             return None
 
     def run_turn(self, user_text: str, db: Session, thread_id: str = "general") -> ChatResponse:
         """Esegue un turno conversazionale con tool-calling dell'agente."""
         lower_t = user_text.lower()
 
-        # Intercetta le richieste di eliminazione sicura
+        # Intercetta le richieste di eliminazione sicura (singola o multipla)
         del_resp = self._handle_deletion_intent(user_text, lower_t, db, thread_id=thread_id)
         if del_resp:
             return del_resp
+
+        # Intercetta richieste di elenco/lista completa documenti direttamente dal DB (zero allucinazioni)
+        list_resp = self._handle_listing_intent(user_text, lower_t, db, thread_id=thread_id)
+        if list_resp:
+            return list_resp
 
         # Intercetta immediatamente domande sulla data/ora odierna, ieri o domani con calcolo istantaneo esatto
         temp_resp = self._handle_temporal_intent(user_text, lower_t)
