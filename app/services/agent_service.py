@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from datetime import datetime, date, timedelta
 from pathlib import Path
 import httpx
 from typing import Optional, Dict, Any, List
@@ -21,6 +22,55 @@ from app.services.search_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+WEEKDAYS_IT = ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"]
+MONTHS_IT = [
+    "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+    "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
+]
+
+def get_current_date_info() -> Dict[str, Any]:
+    """Restituisce informazioni dettagliate sulla data e l'ora attuale in formato ISO e in lingua italiana."""
+    now = datetime.now()
+    weekday = WEEKDAYS_IT[now.weekday()]
+    month = MONTHS_IT[now.month - 1]
+    formatted = f"{weekday} {now.day} {month} {now.year}"
+    return {
+        "date": now.date().isoformat(),
+        "formatted_italian": formatted,
+        "weekday": weekday,
+        "day": now.day,
+        "month": month,
+        "year": now.year,
+        "time": now.strftime("%H:%M:%S"),
+        "current_time": now.strftime("%H:%M")
+    }
+
+def categorize_deadline(due_date: Optional[date], today: Optional[date] = None) -> Dict[str, Any]:
+    """Calcola i giorni rimanenti e la categoria di urgenza per una scadenza."""
+    if today is None:
+        today = date.today()
+    if not due_date:
+        return {
+            "days_remaining": None,
+            "urgency": "unknown",
+            "urgency_label": "DATA NON SPECIFICATA"
+        }
+    days = (due_date - today).days
+    if days < 0:
+        abs_d = abs(days)
+        label = f"SCADUTA DA {abs_d} {'GIORNO' if abs_d == 1 else 'GIORNI'}"
+        return {"days_remaining": days, "urgency": "overdue", "urgency_label": label}
+    elif days == 0:
+        return {"days_remaining": 0, "urgency": "today", "urgency_label": "SCADE OGGI!"}
+    elif days <= 3:
+        label = f"SCADE TRA {days} {'GIORNO' if days == 1 else 'GIORNI'}"
+        return {"days_remaining": days, "urgency": "urgent", "urgency_label": label}
+    elif days <= 7:
+        return {"days_remaining": days, "urgency": "soon", "urgency_label": f"IN SCADENZA TRA {days} GIORNI"}
+    else:
+        return {"days_remaining": days, "urgency": "future", "urgency_label": f"FUTURA (TRA {days} GIORNI)"}
+
 
 TOOLS_DEFINITION = [
     {
@@ -81,6 +131,17 @@ TOOLS_DEFINITION = [
         "function": {
             "name": "get_upcoming_deadlines",
             "description": "Recupera l'elenco delle bollette, tributi o scadenze ancora da pagare registrate nel caveau.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_date",
+            "description": "Fornisce la data, l'ora, il giorno della settimana e l'anno corrente (es. 'che giorno è oggi?', 'quanti ne abbiamo?', 'che data è?'). Utilissimo per verificare le scadenze e sapere quanti giorni mancano.",
             "parameters": {
                 "type": "object",
                 "properties": {}
@@ -151,6 +212,11 @@ REGOLE FERREE:
    - Rispondi sempre in italiano naturale, cortese, chiaro e conciso nello stile autentico di una chat WhatsApp (puoi usare emoji pertinenti come 📄, 📍, 💡, ✅).
    - NON INCLUDERE MAI identificativi tecnici di database (come "ID", "ID 83", "chiave primaria" o etichette meccaniche come "Sintesi:"). L'utente è una persona reale che legge su WhatsApp e desidera informazioni umane, pulite ed eleganti (es. "- 📄 **Bolletta Enel Energia** (64,20 € - scadenza 28/10/2026)").
    - Se l'utente ti chiede "elencami i documenti che hai", "quali documenti ci sono?", "cosa hai nel caveau?", elenca i documenti archiviati con un formato leggibile a punti elenco evidenziando il titolo in grassetto e le informazioni essenziali (importo, scadenza, emittente), senza mai mostrare ID numerici o campi tecnici interni!
+
+7. DATA ODIERNA E CONTESTO TEMPORALE:
+   - Conosci sempre con esattezza la data odierna iniettata nel contesto e puoi usare il tool `get_current_date` se necessario.
+   - Quando l'utente ti chiede "che giorno è oggi?", "quanti ne abbiamo?", "cosa scade oggi?", "cosa scade questa settimana?" o "è scaduta la bolletta?", calcola con precisione la differenza rispetto alla data odierna.
+   - Per le scadenze in ritardo (scadute nel passato), segnalalo con urgenza (es. "⚠️ SCADUTA DA X GIORNI"). Per quelle odierne, evidenzia "⏰ SCADE OGGI!". Per quelle imminenti, indica i giorni rimanenti (es. "In scadenza tra X giorni").
 """
 
 def strip_tool_tags(text: str) -> str:
@@ -352,36 +418,65 @@ class AgenticChatService:
                 "title": title
             }
 
+        elif name == "get_current_date":
+            return get_current_date_info()
+
         elif name == "get_upcoming_deadlines":
             docs = db.query(Document).filter(Document.status == "da_pagare").order_by(Document.due_date.asc().nulls_last()).all()
+            today = date.today()
+            deadlines_list = []
+            for d in docs:
+                cat = categorize_deadline(d.due_date, today)
+                deadlines_list.append({
+                    "id": d.id,
+                    "document_id": d.id,
+                    "title": d.title,
+                    "issuer": d.issuer,
+                    "amount": d.amount,
+                    "due_date": d.due_date.isoformat() if d.due_date else None,
+                    "days_remaining": cat["days_remaining"],
+                    "urgency": cat["urgency"],
+                    "urgency_label": cat["urgency_label"],
+                    "summary": d.summary,
+                    "file_url": f"/uploads/{Path(d.file_path).name}",
+                    "download_url": f"/api/documents/{d.id}/download",
+                    "file_type": d.file_type
+                })
             return {
-                "deadlines_count": len(docs),
-                "deadlines": [
-                    {
-                        "id": d.id,
-                        "document_id": d.id,
-                        "title": d.title,
-                        "issuer": d.issuer,
-                        "amount": d.amount,
-                        "due_date": d.due_date.isoformat() if d.due_date else None,
-                        "summary": d.summary,
-                        "file_url": f"/uploads/{Path(d.file_path).name}",
-                        "download_url": f"/api/documents/{d.id}/download",
-                        "file_type": d.file_type
-                    }
-                    for d in docs
-                ]
+                "today": today.isoformat(),
+                "deadlines_count": len(deadlines_list),
+                "deadlines": deadlines_list,
+                "upcoming_documents": deadlines_list
             }
 
         return {"error": f"Strumento non riconosciuto: {name}"}
 
     def build_system_prompt(self, db: Session, thread_id: str = "general") -> str:
-        """Costruisce il prompt di sistema iniettando la memoria attiva e il contesto del Caveau (RAG)."""
+        """Costruisce il prompt di sistema iniettando la data odierna, la memoria attiva e il contesto del Caveau (RAG)."""
+        date_info = get_current_date_info()
         docs = db.query(Document).order_by(Document.id.desc()).limit(4).all()
         items = db.query(PhysicalItem).order_by(PhysicalItem.id.desc()).limit(6).all()
         unpaid = db.query(Document).filter(Document.status == "da_pagare").all()
 
-        vault_summary = ["\n[STATO ATTUALE E MEMORIA DEL CAVEAU]:"]
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+        tomorrow = today + timedelta(days=1)
+        yesterday_str = f"{WEEKDAYS_IT[yesterday.weekday()]} {yesterday.day} {MONTHS_IT[yesterday.month - 1]} {yesterday.year}"
+        tomorrow_str = f"{WEEKDAYS_IT[tomorrow.weekday()]} {tomorrow.day} {MONTHS_IT[tomorrow.month - 1]} {tomorrow.year}"
+
+        ground_truth_banner = f"""[GROUND TRUTH - CALENDARIO E TEMPO REALE]:
+- OGGI È: {date_info['formatted_italian']} (ore {date_info['current_time']})
+- DATA ISO: {date_info['date']}
+- ANNO REALE ATTUALE: {date_info['year']}
+- IERI ERA: {yesterday_str}
+- DOMANI SARÀ: {tomorrow_str}
+DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci già la data e l'ora attuale. Quando ti viene chiesta la data, l'ora, ieri o domani, rispondi SEMPRE e SOLO usando queste informazioni esatte senza MAI inventare date del passato né citare il 2024!
+"""
+
+        vault_summary = [
+            f"\n[DATA E ORA ATTUALE]: {date_info['formatted_italian']}, ore {date_info['current_time']} (Data ISO: {date_info['date']}, Anno: {date_info['year']})",
+            "\n[STATO ATTUALE E MEMORIA DEL CAVEAU]:"
+        ]
         if docs:
             vault_summary.append("Ultimi Documenti/File archiviati nel Caveau:")
             for d in docs:
@@ -423,7 +518,75 @@ class AgenticChatService:
 
         vault_summary.append("\nIMPORTANTE: Se l'utente ti chiede 'di cosa parla il file che ti ho mandato?', 'che file è?', o cerca un documento/oggetto, consulta SUBITO la lista qui sopra o usa gli strumenti per rispondere in modo dettagliato!")
 
-        return SYSTEM_PROMPT + "\n" + "\n".join(vault_summary)
+        return ground_truth_banner + "\n" + SYSTEM_PROMPT + "\n" + "\n".join(vault_summary)
+
+    def _handle_temporal_intent(self, user_text: str, lower_t: str) -> Optional[ChatResponse]:
+        """Risponde istantaneamente e con certezza matematica alle domande sulla data e l'ora attuale, ieri o domani."""
+        # Se la domanda riguarda scadenze o documenti specifici, lascia che proceda con i tool di ricerca
+        if any(k in lower_t for k in ["scadenz", "da pagare", "bollett", "f24", "document", "cosa scade"]):
+            return None
+
+        # Normalizza accenti uniti (es. "giornoè" -> "giorno è", "dataè" -> "data è", "oraè" -> "ora è")
+        normalized = re.sub(r"([a-z])(è|e'|é)", r"\1 \2", lower_t)
+        clean = re.sub(r"[?!.,;]", " ", normalized)
+        clean = re.sub(r"\s+", " ", clean).strip()
+
+        # 1. Domani
+        is_tomorrow = any(k in clean for k in ["domani", "prossimo giorno"]) and any(k in clean for k in ["che giorno", "che data", "quanti ne abbiamo", "sarà", "sara", "quando è", "quando e"])
+        if is_tomorrow or clean in [
+            "domani che giorno è", "domani che giorno e", "che giorno è domani", "che giorno e domani",
+            "che giorno sara domani", "che giorno sarà domani", "domani che data è", "domani che data e",
+            "domani quanti ne abbiamo"
+        ]:
+            tomorrow = date.today() + timedelta(days=1)
+            weekday = WEEKDAYS_IT[tomorrow.weekday()]
+            month = MONTHS_IT[tomorrow.month - 1]
+            formatted = f"{weekday} {tomorrow.day} {month} {tomorrow.year}"
+            return ChatResponse(
+                reply=f"📅 Domani sarà **{formatted}**.",
+                action="get_current_date",
+                data={"date": tomorrow.isoformat(), "formatted_italian": formatted, "target": "tomorrow"}
+            )
+
+        # 2. Ieri
+        is_yesterday = any(k in clean for k in ["ieri", "giorno prima"]) and any(k in clean for k in ["che giorno", "che data", "quanti ne avevamo", "era", "quando era"])
+        if is_yesterday or clean in [
+            "ieri che giorno era", "che giorno era ieri", "ieri che data era", "ieri quanti ne avevamo",
+            "che data era ieri"
+        ]:
+            yesterday = date.today() - timedelta(days=1)
+            weekday = WEEKDAYS_IT[yesterday.weekday()]
+            month = MONTHS_IT[yesterday.month - 1]
+            formatted = f"{weekday} {yesterday.day} {month} {yesterday.year}"
+            return ChatResponse(
+                reply=f"📅 Ieri era **{formatted}**.",
+                action="get_current_date",
+                data={"date": yesterday.isoformat(), "formatted_italian": formatted, "target": "yesterday"}
+            )
+
+        # 3. Oggi / Data attuale / Giorno attuale / Ora attuale
+        is_today = (
+            any(k in clean for k in [
+                "che giorno è", "che giorno e", "che data è", "che data e",
+                "data di oggi", "data odierna", "quanti ne abbiamo", "giorno odierno",
+                "che ore sono", "ora attuale", "ora esatta", "orario attuale",
+                "dimmi che giorno è", "dimmi che giorno e", "dimmi la data", "dimmi l'ora"
+            ])
+            or clean in [
+                "che giorno è", "che giorno e", "che data è", "che data e", "data oggi",
+                "quanti ne abbiamo oggi", "quanti ne abbiamo", "che ora è", "che ora e",
+                "oggi che giorno è", "oggi che giorno e", "oggi"
+            ]
+        )
+        if is_today:
+            d_info = get_current_date_info()
+            return ChatResponse(
+                reply=f"📅 Oggi è **{d_info['formatted_italian']}** (ore {d_info['current_time']}).",
+                action="get_current_date",
+                data=d_info
+            )
+
+        return None
 
     def _handle_deletion_intent(self, user_text: str, lower_t: str, db: Session, thread_id: str = "general") -> Optional[ChatResponse]:
         """Gestisce in modo sicuro le richieste di eliminazione chiedendo conferma prima di qualsiasi azione."""
@@ -513,6 +676,11 @@ class AgenticChatService:
         del_resp = self._handle_deletion_intent(user_text, lower_t, db, thread_id=thread_id)
         if del_resp:
             return del_resp
+
+        # Intercetta immediatamente domande sulla data/ora odierna, ieri o domani con calcolo istantaneo esatto
+        temp_resp = self._handle_temporal_intent(user_text, lower_t)
+        if temp_resp:
+            return temp_resp
 
         # Intercetta risposte affermative a una proposta precedente dell'assistente ("si", "sì", "ok", "mostramelo", "certo")
         is_affirmative = lower_t.strip(" !.?") in ["si", "sì", "ok", "va bene", "certo", "mostramelo", "mostrameli", "fammi vedere", "apri", "yes", "vai"]
@@ -667,12 +835,17 @@ class AgenticChatService:
                                 else:
                                     final_text = "Ho cercato nel caveau ma non ho trovato documenti corrispondenti."
                             elif tool_action == "get_upcoming_deadlines":
-                                up = (tool_data or {}).get("upcoming_documents", [])
+                                up = (tool_data or {}).get("deadlines") or (tool_data or {}).get("upcoming_documents", [])
                                 if up:
-                                    lines = [f"- 📄 **{d['title']}**: {d.get('amount', '?')} € (scad. {d.get('due_date', '?')})" for d in up[:5]]
+                                    lines = []
+                                    for d in up[:5]:
+                                        urg = f" - ⚠️ {d['urgency_label']}" if d.get('urgency_label') else ""
+                                        lines.append(f"- 📄 **{d['title']}**: {d.get('amount', '?')} € (scad. {d.get('due_date', '?')}{urg})")
                                     final_text = "📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines)
                                 else:
                                     final_text = "✅ Non ci sono scadenze o pagamenti in sospeso al momento."
+                            elif tool_action == "get_current_date":
+                                final_text = f"📅 Oggi è **{tool_data.get('formatted_italian')}** (ore {tool_data.get('current_time')})."
                             elif tool_action == "store_physical_item":
                                 final_text = "✅ Posizione salvata con successo nel caveau!"
                             else:
@@ -711,13 +884,24 @@ class AgenticChatService:
                         db_res = self.execute_tool("store_physical_item", {"item_name": item, "primary_location": loc}, db, thread_id=thread_id)
                         return ChatResponse(reply=f"✅ Memorizzato! Ho salvato la posizione di '{item}' in: {loc}.", action="store_physical_item", data=db_res)
 
-                    # Per tutti gli altri tool call testuali (search_vault, get_upcoming_deadlines, ecc.)
+                    # Per tutti gli altri tool call testuali (search_vault, get_upcoming_deadlines, get_current_date, ecc.)
                     # esegui la ricerca più appropriata in base al contenuto
+                    if "get_current_date" in raw_tc:
+                        d_info = self.execute_tool("get_current_date", {}, db, thread_id=thread_id)
+                        return ChatResponse(
+                            reply=f"📅 Oggi è **{d_info['formatted_italian']}** (ore {d_info['current_time']}).",
+                            action="get_current_date",
+                            data=d_info
+                        )
+
                     if "get_upcoming_deadlines" in raw_tc:
                         t_out = self.execute_tool("get_upcoming_deadlines", {}, db, thread_id=thread_id)
-                        docs = t_out.get("upcoming_documents", [])
+                        docs = t_out.get("deadlines") or t_out.get("upcoming_documents", [])
                         if docs:
-                            lines = [f"- 📄 **{d['title']}** — {d.get('amount','?')} € scad. {d.get('due_date','?')}" for d in docs[:5]]
+                            lines = []
+                            for d in docs[:5]:
+                                urg = f" - ⚠️ {d['urgency_label']}" if d.get('urgency_label') else ""
+                                lines.append(f"- 📄 **{d['title']}** — {d.get('amount','?')} € scad. {d.get('due_date','?')}{urg}")
                             return ChatResponse(reply="📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines), action="get_upcoming_deadlines", data=t_out, documents=docs)
 
                     # search_vault o qualsiasi altro caso: cerca col termine estratto o con il testo utente
@@ -807,15 +991,27 @@ class AgenticChatService:
             db_res = self.execute_tool("store_physical_item", {"item_name": item, "primary_location": loc}, db, thread_id=thread_id)
             return ChatResponse(reply=f"✅ Memorizzato! Ho salvato la posizione di '{item}' in: {loc}.", action="store_physical_item", data=db_res)
 
-        # 2. Scadenze in sospeso
-        if any(k in lower_t for k in ["scadenz", "da pagare", "quanto devo pagare"]):
+        # 2. Data e ora odierna
+        if any(k in lower_t for k in ["che giorno è", "che giorno e", "data di oggi", "quanti ne abbiamo", "che data è", "che data e", "data odierna", "che ore sono"]):
+            d_info = get_current_date_info()
+            return ChatResponse(
+                reply=f"📅 Oggi è **{d_info['formatted_italian']}** (ore {d_info['current_time']}).",
+                action="get_current_date",
+                data=d_info
+            )
+
+        # 3. Scadenze in sospeso
+        if any(k in lower_t for k in ["scadenz", "da pagare", "quanto devo pagare", "cosa scade"]):
             t_out = self.execute_tool("get_upcoming_deadlines", {}, db, thread_id=thread_id)
-            docs = t_out.get("upcoming_documents", [])
+            docs = t_out.get("deadlines") or t_out.get("upcoming_documents", [])
             if docs:
-                lines = [f"- 📄 **{d['title']}** — {d.get('amount','?')} € scad. {d.get('due_date','?')}" for d in docs[:5]]
+                lines = []
+                for d in docs[:5]:
+                    urg = f" - ⚠️ {d['urgency_label']}" if d.get('urgency_label') else ""
+                    lines.append(f"- 📄 **{d['title']}** — {d.get('amount','?')} € scad. {d.get('due_date','?')}{urg}")
                 return ChatResponse(reply="📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines), action="get_upcoming_deadlines", data=t_out, documents=docs)
 
-        # 3. Ricerca intelligente nel caveau (oggetti fisici e documenti)
+        # 4. Ricerca intelligente nel caveau (oggetti fisici e documenti)
         search_q = re.sub(
             r"^(?:dov'è|dov'e|dove ho messo|dove sono|dove|cerca|trovami|trova|dammi|mostrami|apri|visualizza|prendi)\s*(?:il|la|lo|le|i|l'|un|una|uno)?\s*",
             "", lower_t

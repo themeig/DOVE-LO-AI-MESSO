@@ -5,10 +5,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
+from datetime import date
 from mcp.server.mcpserver import MCPServer
 from sqlalchemy.orm import Session
 from app.models.database import get_db, init_db, Document, PhysicalItem
 from app.services.search_service import search_vault_documents, search_vault_items
+from app.services.agent_service import get_current_date_info, categorize_deadline
 
 AGENT_ROLE_AND_INSTRUCTIONS = """Sei l'assistente AI intelligente di 'Dove lo AI messo', un caveau digitale e inventario fisico per famiglie e professionisti italiani.
 
@@ -51,18 +53,30 @@ def vault_assistant_instructions() -> str:
     return AGENT_ROLE_AND_INSTRUCTIONS
 
 @mcp.tool()
+def get_current_date() -> str:
+    """Restituisce la data, l'ora, il giorno della settimana e l'anno corrente (es. 'Lunedì 14 Settembre 2026'). Utile per verificare le scadenze."""
+    info = get_current_date_info()
+    return f"Oggi è {info['formatted_italian']} (Data ISO: {info['date']}, ore {info['current_time']})."
+
+@mcp.tool()
 def get_vault_context() -> str:
-    """Restituisce il ruolo e le istruzioni dell'agente, insieme al contesto completo e aggiornato del Caveau (ultimi documenti, oggetti e scadenze)."""
+    """Restituisce il ruolo e le istruzioni dell'agente, insieme al contesto completo e aggiornato del Caveau (data odierna, ultimi documenti, oggetti e scadenze)."""
     db = _get_db_session()
+    date_info = get_current_date_info()
     docs = db.query(Document).order_by(Document.id.desc()).limit(6).all()
     items = db.query(PhysicalItem).order_by(PhysicalItem.id.desc()).limit(10).all()
     unpaid = db.query(Document).filter(Document.status == "da_pagare").all()
 
+    today = date.today()
+    overdue_count = sum(1 for d in unpaid if d.due_date and (d.due_date - today).days < 0)
+    due_soon_count = sum(1 for d in unpaid if d.due_date and 0 <= (d.due_date - today).days <= 7)
+
     output = [
         "=== RUOLO E COMPITI DELL'AGENTE (DOVE LO AI MESSO) ===",
+        f"DATA E ORA ATTUALE: {date_info['formatted_italian']}, ore {date_info['current_time']} (ISO: {date_info['date']})",
         "Sei l'assistente AI dedicato del Caveau. Il tuo compito primario è aiutare gli utenti a:",
         "1. TROVARE I DOCUMENTI: Quando gli utenti cercano documenti (730, F24, bollette, contratti, ricevute), devi aiutarli individuando subito il file corretto, esponendo i dati chiave e permettendo loro di visualizzarli e scaricarli.",
-        "2. MONITORARE LE SCADENZE: Aiutali a non dimenticare bollette e tributi in scadenza.",
+        "2. MONITORARE LE SCADENZE: Aiutali a non dimenticare bollette e tributi in scadenza, distinguendo tra pagamenti scaduti e in scadenza.",
         "3. RITROVARE OGGETTI FISICI: Ricorda e indica con esattezza dove sono stati messi gli oggetti memorizzati (stanze, mobili, cassetti).",
         "4. MEMORIZZARE: Salva con prontezza le posizioni comunicate dagli utenti.",
         "",
@@ -88,7 +102,12 @@ def get_vault_context() -> str:
     else:
         output.append("Nessun oggetto fisico registrato.")
 
-    output.append(f"\n## Scadenze da pagare: {len(unpaid)} in sospeso.")
+    deadlines_summary = f"\n## Scadenze da pagare: {len(unpaid)} in totale"
+    if overdue_count > 0 or due_soon_count > 0:
+        deadlines_summary += f" (⚠️ {overdue_count} scadute, {due_soon_count} in scadenza entro 7 giorni)."
+    else:
+        deadlines_summary += " (nessuna scadenza critica immediata)."
+    output.append(deadlines_summary)
     return "\n".join(output)
 
 @mcp.tool()
@@ -150,16 +169,22 @@ def store_physical_item(item_name: str, primary_location: str, detailed_location
 
 @mcp.tool()
 def get_upcoming_deadlines() -> str:
-    """Recupera le scadenze e bollette da pagare con link di download per i rispettivi documenti."""
+    """Recupera le scadenze e bollette da pagare con conteggio dei giorni rimanenti, categoria di urgenza e link di download."""
     db = _get_db_session()
     unpaid = db.query(Document).filter(Document.status == "da_pagare").order_by(Document.due_date.asc().nulls_last()).all()
     if not unpaid:
         return "Non ci sono scadenze o bollette in sospeso nel caveau. Tutti i pagamenti risultano quietanzati!"
-    lines = [
-        f"- **{d.title}**: {d.amount or 0:.2f} € entro il {d.due_date or 'data non definita'} | Download: /api/documents/{d.id}/download" 
-        for d in unpaid
-    ]
-    return "Scadenze e bollette da pagare in sospeso:\n" + "\n".join(lines)
+    
+    today = date.today()
+    lines = []
+    for d in unpaid:
+        cat = categorize_deadline(d.due_date, today)
+        urg_tag = f" — ⚠️ {cat['urgency_label']}" if d.due_date else ""
+        lines.append(
+            f"- **{d.title}**: {d.amount or 0:.2f} € entro il {d.due_date or 'data non definita'}{urg_tag} | Download: /api/documents/{d.id}/download"
+        )
+    date_info = get_current_date_info()
+    return f"Scadenze e bollette da pagare in sospeso (Oggi: {date_info['formatted_italian']}):\n" + "\n".join(lines)
 
 if __name__ == "__main__":
     mcp.run()

@@ -203,6 +203,20 @@
             <span id="aiModelHeaderLabel" class="text-[11px] font-semibold">Gemini 2.5 Lite</span>
           </button>
 
+          <!-- Campanella Notifiche Scadenze con Badge Dinamico -->
+          <button 
+            id="deadlinesBellBtn" 
+            onclick="openDashboard('deadlines')" 
+            class="relative text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-full transition cursor-pointer" 
+            title="Avvisi Scadenze e Bollette"
+          >
+            <i class="fa-solid fa-bell text-sm"></i>
+            <span 
+              id="deadlinesBellBadge" 
+              class="hidden absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] bg-red-500 text-white text-[10px] font-bold rounded-full px-1 flex items-center justify-center border-2 border-[#075E54] shadow-xs"
+            >0</span>
+          </button>
+
           <!-- Pulsante Apri Dashboard -->
           <button 
             onclick="openDashboard()" 
@@ -223,6 +237,52 @@
           </button>
         </div>
       </header>
+
+      <!-- Banner Avviso Scadenze Automatico WhatsApp -->
+      <div 
+        id="deadlinesBanner" 
+        class="hidden bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-b border-amber-200 px-3.5 py-2 text-xs text-amber-950 flex items-center justify-between shadow-2xs z-10 select-none animate-fade-in"
+      >
+        <div class="flex items-center gap-2.5 min-w-0 pr-2">
+          <div id="deadlinesBannerIconBox" class="w-7 h-7 rounded-lg bg-amber-200 text-amber-800 flex items-center justify-center shrink-0 text-xs">
+            <i id="deadlinesBannerIcon" class="fa-solid fa-bell"></i>
+          </div>
+          <div class="min-w-0">
+            <span id="deadlinesBannerText" class="font-semibold text-xs leading-snug line-clamp-1 text-slate-800">
+              <!-- Riassunto scadenze -->
+            </span>
+            <span id="deadlinesBannerSubtext" class="text-[10px] text-amber-800/80 block">
+              <!-- Dettaglio importo e scadenze -->
+            </span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button 
+            onclick="openDashboard('deadlines')" 
+            class="bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg shadow-2xs transition active:scale-95 flex items-center gap-1 cursor-pointer"
+            title="Apri scadenzario nella dashboard"
+          >
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+            <span>Visualizza</span>
+          </button>
+          <button 
+            onclick="askAssistantAboutDeadlines()" 
+            class="bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-amber-200 shadow-2xs transition active:scale-95 hidden sm:flex items-center gap-1 cursor-pointer"
+            title="Chiedi dettagli all'assistente in chat"
+          >
+            <i class="fa-solid fa-robot text-[10px] text-emerald-600"></i>
+            <span>Chiedi</span>
+          </button>
+          <button 
+            onclick="dismissDeadlinesBanner()" 
+            class="text-amber-800/60 hover:text-amber-900 p-1 hover:bg-amber-100/60 rounded-md transition cursor-pointer"
+            title="Chiudi avviso"
+          >
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
+        </div>
+      </div>
 
       <!-- Feed Messaggi WhatsApp -->
       <section id="chatFeed" class="flex-1 wa-wallpaper p-3.5 overflow-y-auto space-y-3 custom-scroll">
@@ -683,11 +743,15 @@
     let currentRecords = [];
 
     // --- Apertura e Chiusura Dashboard ---
-    function openDashboard() {
+    function openDashboard(filter = null) {
       chatView.classList.add('hidden');
       dashboardView.classList.remove('hidden');
       dashboardView.classList.add('flex');
-      loadDashboard(currentFilter);
+      if (filter) {
+        filterTable(filter);
+      } else {
+        loadDashboard(currentFilter);
+      }
     }
 
     function closeDashboard() {
@@ -797,12 +861,14 @@
 
     async function switchThread(threadId, fetchMessages = true) {
       currentThreadId = threadId;
+      deadlineBannerDismissed = false;
       const thread = threadsCache.find(t => t.id === threadId);
       if (thread) {
         updateActiveThreadHeader(thread);
       }
       renderThreadsList();
       showConversation();
+      checkDeadlineAlerts(threadId);
 
       if (fetchMessages) {
         await loadThreadMessages(threadId);
@@ -1897,13 +1963,58 @@
           amountHtml = `${rec.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
         }
 
-        // Scadenza formattata
+        // Scadenza formattata con countdown dinamico
         let dueDateHtml = '<span class="text-slate-400">-</span>';
         if (rec.due_date) {
           const parts = rec.due_date.split('-');
           const formatted = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : rec.due_date;
           if (rec.status === 'da_pagare') {
-            dueDateHtml = `<span class="font-medium text-amber-700">${formatted}</span>`;
+            let days = rec.days_remaining;
+            if (days == null) {
+              const dDate = new Date(rec.due_date + 'T00:00:00');
+              const todayObj = new Date();
+              todayObj.setHours(0, 0, 0, 0);
+              days = Math.round((dDate - todayObj) / (1000 * 60 * 60 * 24));
+            }
+
+            let countdownBadge = '';
+            if (days < 0) {
+              const absD = Math.abs(days);
+              countdownBadge = `
+                <span class="inline-flex items-center gap-1 bg-red-100 text-red-800 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap mt-1">
+                  <i class="fa-solid fa-fire text-red-600"></i> Scaduta da ${absD} ${absD === 1 ? 'giorno' : 'giorni'}
+                </span>
+              `;
+              dueDateHtml = `<div class="flex flex-col"><span class="font-bold text-red-700">${formatted}</span>${countdownBadge}</div>`;
+            } else if (days === 0) {
+              countdownBadge = `
+                <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap mt-1 animate-pulse">
+                  <i class="fa-solid fa-clock text-amber-700"></i> Scade oggi!
+                </span>
+              `;
+              dueDateHtml = `<div class="flex flex-col"><span class="font-bold text-amber-800">${formatted}</span>${countdownBadge}</div>`;
+            } else if (days <= 3) {
+              countdownBadge = `
+                <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap mt-1">
+                  <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Scade tra ${days} ${days === 1 ? 'giorno' : 'giorni'}
+                </span>
+              `;
+              dueDateHtml = `<div class="flex flex-col"><span class="font-semibold text-amber-800">${formatted}</span>${countdownBadge}</div>`;
+            } else if (days <= 7) {
+              countdownBadge = `
+                <span class="inline-flex items-center gap-1 bg-yellow-50 text-yellow-800 border border-yellow-200 text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap mt-1">
+                  <i class="fa-regular fa-clock text-yellow-600"></i> In scadenza (${days} gg)
+                </span>
+              `;
+              dueDateHtml = `<div class="flex flex-col"><span class="font-medium text-slate-700">${formatted}</span>${countdownBadge}</div>`;
+            } else {
+              countdownBadge = `
+                <span class="inline-flex items-center gap-1 bg-slate-50 text-slate-600 border border-slate-200 text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap mt-1">
+                  Tra ${days} gg
+                </span>
+              `;
+              dueDateHtml = `<div class="flex flex-col"><span class="text-slate-600">${formatted}</span>${countdownBadge}</div>`;
+            }
           } else {
             dueDateHtml = `<span class="text-slate-500">${formatted}</span>`;
           }
@@ -2027,10 +2138,94 @@
         });
         if (!res.ok) throw new Error("Impossibile aggiornare lo stato");
         await loadDashboard(currentFilter);
+        await checkDeadlineAlerts(currentThreadId);
       } catch (err) {
         console.error("Errore markAsPaid:", err);
         alert("Errore nell'aggiornamento dello stato del documento.");
       }
+    }
+
+    // --- Sistema Avvisi Automatici Scadenze & Bollette ---
+    let deadlineAlertsCache = null;
+    let deadlineBannerDismissed = false;
+
+    async function checkDeadlineAlerts(threadId = null) {
+      try {
+        const targetThread = threadId || currentThreadId || 'all';
+        const url = `/api/deadlines/alerts?thread_id=${encodeURIComponent(targetThread)}&days_ahead=7`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const data = await res.json();
+        deadlineAlertsCache = data;
+        updateDeadlineAlertsUI(data);
+      } catch (err) {
+        console.warn("Impossibile recuperare avvisi scadenze:", err);
+      }
+    }
+
+    function updateDeadlineAlertsUI(data) {
+      const banner = document.getElementById('deadlinesBanner');
+      const bannerText = document.getElementById('deadlinesBannerText');
+      const bannerSubtext = document.getElementById('deadlinesBannerSubtext');
+      const bannerIcon = document.getElementById('deadlinesBannerIcon');
+      const bannerIconBox = document.getElementById('deadlinesBannerIconBox');
+      const bellBadge = document.getElementById('deadlinesBellBadge');
+
+      if (!data) return;
+
+      // 1. Aggiorna Campanella Notifiche nell'Header
+      if (bellBadge) {
+        if (data.has_alerts && data.total_alerts > 0) {
+          bellBadge.textContent = data.total_alerts > 9 ? '9+' : data.total_alerts;
+          bellBadge.classList.remove('hidden');
+          if (data.overdue_count > 0) {
+            bellBadge.className = 'absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] bg-red-600 text-white text-[10px] font-bold rounded-full px-1 flex items-center justify-center border-2 border-[#075E54] shadow-xs animate-pulse';
+          } else {
+            bellBadge.className = 'absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] bg-amber-500 text-white text-[10px] font-bold rounded-full px-1 flex items-center justify-center border-2 border-[#075E54] shadow-xs';
+          }
+        } else {
+          bellBadge.classList.add('hidden');
+        }
+      }
+
+      // 2. Aggiorna Banner Notifica WhatsApp
+      if (banner && bannerText && bannerSubtext) {
+        if (data.has_alerts && !deadlineBannerDismissed) {
+          banner.classList.remove('hidden');
+
+          if (data.overdue_count > 0) {
+            // Allerta per scadenze già passate
+            if (bannerIcon) bannerIcon.className = 'fa-solid fa-triangle-exclamation text-red-700';
+            if (bannerIconBox) bannerIconBox.className = 'w-7 h-7 rounded-lg bg-red-100 text-red-700 flex items-center justify-center shrink-0 text-xs';
+            bannerText.innerHTML = `⚠️ <strong class="text-red-700 font-bold">${data.overdue_count} scadenza/e passata/e</strong> richiedono attenzione immediata!`;
+          } else {
+            // Avviso per scadenze imminenti entro 7 giorni
+            if (bannerIcon) bannerIcon.className = 'fa-solid fa-clock text-amber-800';
+            if (bannerIconBox) bannerIconBox.className = 'w-7 h-7 rounded-lg bg-amber-200 text-amber-800 flex items-center justify-center shrink-0 text-xs';
+            bannerText.innerHTML = `⏰ Hai <strong>${data.due_soon_count} pagamento/i in scadenza</strong> nei prossimi 7 giorni.`;
+          }
+
+          const amtStr = data.total_amount > 0 ? `Totale da saldare: <strong>${data.total_amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</strong>` : 'Verifica i dettagli nel caveau';
+          bannerSubtext.innerHTML = amtStr;
+        } else {
+          banner.classList.add('hidden');
+        }
+      }
+    }
+
+    function dismissDeadlinesBanner() {
+      deadlineBannerDismissed = true;
+      const banner = document.getElementById('deadlinesBanner');
+      if (banner) banner.classList.add('hidden');
+    }
+
+    function askAssistantAboutDeadlines() {
+      if (!input) return;
+      input.value = "Cosa ho in scadenza o scaduto da pagare?";
+      micBtn.classList.add('hidden');
+      sendBtn.classList.remove('hidden');
+      sendBtn.classList.add('flex');
+      handleSend(new Event('submit'));
     }
 
     // --- Esportazione Report CSV ---
@@ -2140,12 +2335,14 @@
       loadAiModelSetting();
       loadThreads();
       loadDashboard('all');
+      checkDeadlineAlerts();
     });
     // Chiamata immediata per sicurezza nel caso il DOM sia già pronto
     applyLayout();
     loadAiModelSetting();
     loadThreads();
     loadDashboard('all');
+    checkDeadlineAlerts();
   </script>
 
   <!-- ================================================================= -->

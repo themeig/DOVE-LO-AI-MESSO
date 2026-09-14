@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models.database import get_db, Document, PhysicalItem, ChatThread
 from app.models.schemas import DashboardResponse, DashboardKPI, RecordItem
+from app.services.agent_service import categorize_deadline
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -55,6 +56,7 @@ def get_dashboard(
 
             badge_color = "amber" if doc.status == "da_pagare" else "emerald"
             fn = Path(doc.file_path).name
+            cat = categorize_deadline(doc.due_date) if doc.status == "da_pagare" else None
             records.append(
                 RecordItem(
                     id=doc.id,
@@ -69,7 +71,10 @@ def get_dashboard(
                     file_url=f"/uploads/{fn}",
                     file_type=doc.file_type,
                     thread_id=doc.thread_id,
-                    thread_name=thread_map.get(doc.thread_id, "Principale")
+                    thread_name=thread_map.get(doc.thread_id, "Principale"),
+                    days_remaining=cat["days_remaining"] if cat else None,
+                    urgency=cat["urgency"] if cat else None,
+                    urgency_label=cat["urgency_label"] if cat else None
                 )
             )
 

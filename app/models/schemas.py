@@ -69,6 +69,9 @@ class RecordItem(BaseModel):
     file_type: Optional[str] = None
     thread_id: Optional[str] = None
     thread_name: Optional[str] = None
+    days_remaining: Optional[int] = None
+    urgency: Optional[str] = None
+    urgency_label: Optional[str] = None
 
 class DashboardKPI(BaseModel):
     total_upcoming_amount: float
@@ -79,3 +82,29 @@ class DashboardKPI(BaseModel):
 class DashboardResponse(BaseModel):
     kpi: DashboardKPI
     records: List[RecordItem]
+
+class DeadlineAlertItem(BaseModel):
+    id: int
+    document_id: int
+    title: str
+    issuer: Optional[str] = None
+    amount: Optional[float] = None
+    due_date: str
+    days_remaining: int
+    urgency: str  # 'overdue', 'today', 'urgent', 'soon', 'future'
+    urgency_label: str
+    file_url: Optional[str] = None
+    download_url: str
+    file_type: Optional[str] = None
+    thread_id: Optional[str] = None
+
+class DeadlineAlertsResponse(BaseModel):
+    has_alerts: bool
+    overdue_count: int
+    due_soon_count: int
+    total_alerts: int
+    total_amount: float
+    summary_message: str
+    today: str
+    alerts: List[DeadlineAlertItem]
+
