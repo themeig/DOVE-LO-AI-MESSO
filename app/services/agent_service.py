@@ -768,8 +768,8 @@ class AgenticChatService:
         total_docs_count = q_docs.count()
         total_items_count = q_items.count()
 
-        docs = q_docs.order_by(Document.id.desc()).limit(25).all()
-        items = q_items.order_by(PhysicalItem.id.desc()).limit(30).all()
+        docs = q_docs.order_by(Document.id.desc()).limit(50).all()
+        items = q_items.order_by(PhysicalItem.id.desc()).limit(60).all()
         unpaid = db.query(Document).filter(Document.status == "da_pagare").all()
 
         today = date.today()
@@ -1325,13 +1325,13 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             reply = ai.generate_conversational_reply(user_text)
             return ChatResponse(reply=reply, action="REPLY")
 
-        # Recupera la cronologia recente della chat (fino a 50 messaggi) per massima consapevolezza conversazionale e contesto continuo
+        # Recupera la cronologia recente della chat (fino a 100 messaggi) per massima consapevolezza conversazionale e contesto continuo
         system_content = self.build_system_prompt(db, thread_id=thread_id)
         recent_msgs = (
             db.query(ChatMessage)
             .filter(ChatMessage.thread_id == thread_id)
             .order_by(ChatMessage.id.desc())
-            .limit(50)
+            .limit(100)
             .all()
         )
         history_messages: List[Dict[str, Any]] = [{"role": "system", "content": system_content}]
