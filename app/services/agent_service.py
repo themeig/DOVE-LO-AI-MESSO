@@ -197,6 +197,31 @@ TOOLS_DEFINITION = [
                 "required": ["target_type"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "rename_vault_document",
+            "description": (
+                "Rinomina un documento o file/foto salvato nel caveau, assegnandogli un nuovo titolo personalizzato scelto dall'utente "
+                "(es. 'chiamalo Base Volante Fanatec', 'rinomina l'ultimo file in Ricevuta Dentista', 'salvalo come Certificato Medico'). "
+                "Usalo SEMPRE quando l'utente specifica o cambia il nome di un file o foto."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "new_title": {
+                        "type": "string",
+                        "description": "Il nuovo titolo/nome da assegnare al documento o foto (es. 'Base Volante Fanatec', 'Ricevuta Dentista')"
+                    },
+                    "document_id": {
+                        "type": "integer",
+                        "description": "ID numerico opzionale del documento da rinominare. Se non fornito, fa riferimento all'ultimo documento caricato nel canale."
+                    }
+                },
+                "required": ["new_title"]
+            }
+        }
     }
 ]
 
@@ -206,14 +231,15 @@ Il tuo compito primario e la tua missione è AIUTARE GLI UTENTI:
 - Quando cercano oggetti fisici (es. passaporto, chiavi di casa o dell'auto, occhiali, caricabatterie), aiutali ricordando con esattezza la stanza, il mobile o il cassetto in cui sono conservati.
 - Quando chiedono scadenze o pagamenti in sospeso, aiutali a monitorare i tributi e le bollette da pagare per evitare ritardi.
 - Quando comunicano dove hanno riposto un oggetto o ne spostano/modificano la posizione, memorizzane subito la posizione con precisione nel caveau.
+- Quando indicano come chiamare o rinominare un file/foto appena caricato (es. 'chiamalo Base Volante'), rinominalo subito con precisione nel caveau.
 Hai accesso ad appositi STRUMENTI (tools) per interagire con il database SQLite del caveau. Hai piena autonomia e intelligenza per comprendere e soddisfare le richieste dell'utente in linguaggio naturale.
 
 REGOLE FERREE:
 0. PRIMATO ASSOLUTO DEL DATABASE SULLA CHAT (DATI REALI > CONTESTO):
    - DIVIETO ASSOLUTO DI RISPONDERE A MEMORIA O DALLA CRONOLOGIA DEI MESSAGGI DELLA CHAT!
-   - I messaggi precedenti della conversazione servono ESCLUSIVAMENTE per comprendere riferimenti contestuali immediati (es. "sì", "eliminalo", "mettila lì").
+   - I messaggi precedenti della conversazione servono ESCLUSIVAMENTE per comprendere riferimenti contestuali immediati (es. "sì", "eliminalo", "mettila lì", "chiamalo X").
    - NON considerare MAI la cronologia come prova dell'esistenza o della posizione attuale di un documento o di un oggetto.
-   - L'UNICA E SOLA fonte di verità è il DATABASE SQLite interrogato in tempo reale tramite i tuoi strumenti (`search_vault`, `list_vault_contents`, `get_upcoming_deadlines`, `store_physical_item`).
+   - L'UNICA E SOLA fonte di verità è il DATABASE SQLite interrogato in tempo reale tramite i tuoi strumenti (`search_vault`, `list_vault_contents`, `get_upcoming_deadlines`, `store_physical_item`, `rename_vault_document`).
    - Se il database/tool restituisce una lista vuota `[]` o dice che un elemento non esiste, DEVI rispondere che l'elemento non è presente nel caveau (o che è stato rimosso). È VIETATO nel modo più categorico inventare o recuperare posizioni o elenchi dai vecchi messaggi della chat!
    - Se il database restituisce dati, la tua risposta deve rispecchiare fedelmente solo ed esclusivamente quei dati.
 
@@ -260,6 +286,10 @@ REGOLE FERREE:
      * Per documenti: rispondi cortesemente che al momento non ci sono documenti archiviati nel caveau e che è possibile caricarli con l'icona della graffetta 📎 o della fotocamera 📷.
      * Per oggetti fisici: rispondi cortesemente che al momento non ci sono oggetti fisici memorizzati nel caveau (es. "Al momento non ho oggetti registrati. Se vuoi, dimmi dove hai riposto qualcosa e lo memorizzerò! 📍").
    - Se il tool restituisce elementi, presentali in modo pulito ed elegante con punti elenco su WhatsApp.
+
+9. QUANDO L'UTENTE COMUNICA UN NOME O CHIEDE DI RINOMINARE UN FILE/FOTO (es. "chiamalo Base Volante Fanatec", "chiamala Ricevuta Visita", "rinomina il file in X", "dalle il nome Y", "salvalo come Z"):
+   - DEVI SEMPRE USARE lo strumento `rename_vault_document` passando `new_title` con il nome indicato dall'utente!
+   - Non rispondere mai solo a parole ("D'accordo, l'ho chiamato...") senza aver invocato `rename_vault_document`!
 """
 
 def strip_tool_tags(text: str) -> str:
@@ -346,6 +376,22 @@ class AgenticChatService:
     def __init__(self):
         self.settings = get_settings()
 
+    def _extract_rename_title(self, text: str) -> Optional[str]:
+        """Estrae il nuovo titolo da espressioni dell'utente per rinominare documenti o foto."""
+        t = text.strip()
+        clean = re.sub(r"[.!?,;]+$", "", t).strip()
+        m = re.search(
+            r"^(?:sì|si|ok|perfetto|d'accordo|va bene)?[,\s]*(?:puoi\s+)?(?:per\s+favore\s+)?(?:chiamalo|chiamala|chiamali|chiamale|rinominalo|rinominala|rinomina(?:\s+l'ultimo\s+(?:file|documento|foto|allegato))?|salvalo\s+come|salvala\s+come|dagli\s+il\s+nome|dalle\s+il\s+nome|dai\s+il\s+nome|assegna\s+il\s+nome)\s+(?:in\s+|come\s+)?[\"']?(.+?)[\"']?$",
+            clean,
+            re.IGNORECASE
+        )
+        if m:
+            extracted = m.group(1).strip()
+            extracted = re.sub(r"^(?:in|come)\s+", "", extracted, flags=re.IGNORECASE).strip(" '\"")
+            if extracted:
+                return extracted
+        return None
+
     def _extract_item_and_location(self, text: str, last_item_in_context: Optional[str] = None) -> tuple[Optional[str], Optional[str]]:
         """Estrae con precisione il nome dell'oggetto e la posizione (per salvataggio, modifica, spostamento)."""
         t = text.strip()
@@ -422,6 +468,28 @@ class AgenticChatService:
             return item, loc
 
         return None, None
+
+    def _extract_rename_title(self, text: str) -> Optional[str]:
+        """Estrae il nuovo titolo per un documento da una richiesta naturale dell'utente."""
+        clean = text.strip()
+        # Rimuovi prefissi di cortesia/assenso
+        clean = re.sub(r"^(?:sì|si|ok|perfetto|d'accordo|va bene)[,\s]+", "", clean, flags=re.IGNORECASE).strip()
+
+        patterns = [
+            r"^(?:chiamalo|chiamala|chiamami)\s+(?:in\s+|come\s+)?[\"']?(.+?)[\"']?$",
+            r"^(?:rinominalo|rinominala|rinomina(?:\s+il\s+file|\s+la\s+foto|\s+l'ultimo\s+file|\s+l'ultima\s+foto)?)\s+(?:in\s+|come\s+)?[\"']?(.+?)[\"']?$",
+            r"^(?:salvalo|salvala)\s+(?:in\s+|come\s+)[\"']?(.+?)[\"']?$",
+            r"^(?:dagli|dalle|dai)\s+(?:il\s+nome|come\s+nome)\s+(?:di\s+|in\s+)?[\"']?(.+?)[\"']?$",
+            r"^(?:assegna(?:\s+il)?\s+nome)\s+[\"']?(.+?)[\"']?$",
+            r"^(?:imposta\s+(?:il\s+)?nome(?:\s+in|\s+come)?)\s+[\"']?(.+?)[\"']?$",
+        ]
+        for p in patterns:
+            m = re.search(p, clean, flags=re.IGNORECASE)
+            if m:
+                title = m.group(1).strip(" .?!\"'")
+                if title and len(title) >= 2:
+                    return title
+        return None
 
     def execute_tool(self, name: str, args: Dict[str, Any], db: Session, thread_id: str = "general") -> Dict[str, Any]:
         """Esegue uno strumento registrato contro il database SQLite locale."""
@@ -633,6 +701,54 @@ class AgenticChatService:
                 "found_documents": doc_items,
                 "physical_items": item_items,
                 "found_physical_items": item_items
+            }
+        elif name == "rename_vault_document":
+            new_title = (args.get("new_title") or "").strip()
+            doc_id = args.get("document_id")
+            if not new_title:
+                return {"error": "Specificare un nuovo titolo valido per il documento."}
+
+            doc = None
+            if doc_id:
+                doc = db.query(Document).filter(Document.id == doc_id).first()
+            if not doc:
+                # Se non è specificato l'ID, cerca l'ultimo documento caricato nel canale corrente
+                q = db.query(Document)
+                if thread_id and thread_id not in ["general", "all"]:
+                    q = q.filter(Document.thread_id == thread_id)
+                doc = q.order_by(Document.id.desc()).first()
+
+            if not doc:
+                return {"error": "Nessun documento trovato nel caveau da rinominare."}
+
+            old_title = doc.title
+            doc.title = new_title
+            db.commit()
+            db.refresh(doc)
+
+            fn = Path(doc.file_path).name if doc.file_path else ""
+            doc_info = {
+                "id": doc.id,
+                "document_id": doc.id,
+                "title": doc.title,
+                "issuer": doc.issuer,
+                "amount": doc.amount,
+                "due_date": doc.due_date.isoformat() if doc.due_date else None,
+                "summary": doc.summary,
+                "doc_type": doc.doc_type,
+                "status": doc.status,
+                "file_url": f"/uploads/{fn}" if fn else None,
+                "download_url": f"/api/documents/{doc.id}/download",
+                "file_type": doc.file_type
+            }
+
+            return {
+                "success": True,
+                "document_id": doc.id,
+                "old_title": old_title,
+                "new_title": doc.title,
+                "document": doc_info,
+                "documents": [doc_info]
             }
 
         return {"error": f"Strumento non riconosciuto: {name}"}
@@ -1067,6 +1183,15 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             and not is_store_or_update
         )
 
+        is_rename_request = (
+            any(k in lower_t for k in [
+                "chiamalo", "chiamala", "rinominalo", "rinominala", "rinomina",
+                "salvalo come", "salvala come", "dagli il nome", "dalle il nome", "dai il nome", "dagli come nome", "dalle come nome"
+            ])
+            and not is_store_or_update
+            and not is_where_request
+        )
+
         stored_item_result = None
         if is_store_or_update:
             item_n, loc_n = self._extract_item_and_location(user_text, last_item_in_context=last_item_name)
@@ -1076,6 +1201,24 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         # Se non c'è chiave API, fallback deterministico per test offline
         if not self.settings.OPENROUTER_API_KEY:
             clean_test = lower_t.replace("?", "").strip()
+            if is_rename_request:
+                new_title = self._extract_rename_title(user_text)
+                if new_title:
+                    tool_out = self.execute_tool("rename_vault_document", {"new_title": new_title}, db=db, thread_id=thread_id)
+                    if tool_out.get("success"):
+                        return ChatResponse(
+                            reply=f"✅ Ho rinominato il file in '**{tool_out['new_title']}**'!",
+                            action="rename_vault_document",
+                            data=tool_out,
+                            documents=tool_out.get("documents")
+                        )
+                    else:
+                        return ChatResponse(
+                            reply=tool_out.get("error", "Non sono riuscito a rinominare il file."),
+                            action="rename_vault_document",
+                            data=tool_out
+                        )
+
             if is_store_or_update and stored_item_result:
                 return ChatResponse(
                     reply=f"✅ Memorizzato! Ho aggiornato la posizione di **{stored_item_result['item_name']}** in: {stored_item_result['location_str']}.",
@@ -1193,7 +1336,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         agent_model = get_app_setting(db, "ai_model", default=self.settings.OPENROUTER_MODEL) or "google/gemini-2.5-flash-lite"
 
 
-        if is_listing_request:
+        if is_rename_request:
+            tool_choice_cfg = {"type": "function", "function": {"name": "rename_vault_document"}}
+        elif is_listing_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "list_vault_contents"}}
         elif is_store_or_update:
             tool_choice_cfg = {"type": "function", "function": {"name": "store_physical_item"}}
@@ -1332,6 +1477,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                 it_name = (tool_data or {}).get("item_name")
                                 loc_str = (tool_data or {}).get("location_str")
                                 final_text = f"✅ Memorizzato! Ho aggiornato la posizione di **{it_name}** in: {loc_str}."
+                            elif tool_action == "rename_vault_document":
+                                n_title = (tool_data or {}).get("new_title", "nuovo nome")
+                                final_text = f"✅ Ho rinominato il file in '**{n_title}**'!"
                             else:
                                 final_text = "Operazione completata con successo nel caveau."
                         else:
@@ -1369,6 +1517,11 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                     final_text = f"✅ Memorizzato! Ho salvato la posizione di **{it_n}** in: {loc_s}."
                                 elif "memorizzato" not in final_text.lower() and "salvat" not in final_text.lower() and "aggiornat" not in final_text.lower():
                                     final_text = f"✅ Memorizzato! {final_text}"
+
+                            elif tool_action == "rename_vault_document":
+                                n_title = (tool_data or {}).get("new_title")
+                                if n_title and n_title.lower() not in final_text.lower():
+                                    final_text = f"✅ Ho rinominato il file in '**{n_title}**'!\n{final_text}"
 
                         filtered_docs = filter_relevant_documents(docs_found, final_text, user_text)
                         conf_box = None
@@ -1454,6 +1607,18 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 direct_reply = strip_tool_tags(direct_reply)
 
                 if direct_reply:
+                    if is_rename_request:
+                        new_title = self._extract_rename_title(user_text)
+                        if new_title:
+                            r_out = self.execute_tool("rename_vault_document", {"new_title": new_title}, db=db, thread_id=thread_id)
+                            if r_out.get("success"):
+                                return ChatResponse(
+                                    reply=f"✅ Ho rinominato il file in '**{r_out['new_title']}**'!",
+                                    action="rename_vault_document",
+                                    data=r_out,
+                                    documents=r_out.get("documents")
+                                )
+
                     if is_store_or_update:
                         if not stored_item_result:
                             item_n, loc_n = self._extract_item_and_location(user_text, last_item_in_context=last_item_name)
@@ -1568,6 +1733,19 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
     def _fallback_deterministic_response(self, user_text: str, lower_t: str, db: Session, thread_id: str) -> ChatResponse:
         """Fallback locale robusto per memorizzazione, ricerca e scadenze in caso di rate-limit API o disconnessione."""
+        # 0. Rinomina documento / foto
+        if any(k in lower_t for k in ["chiamalo", "chiamala", "rinomina", "salvalo come", "salvala come", "dagli il nome", "dalle il nome", "dai il nome"]):
+            new_title = self._extract_rename_title(user_text)
+            if new_title:
+                r_out = self.execute_tool("rename_vault_document", {"new_title": new_title}, db=db, thread_id=thread_id)
+                if r_out.get("success"):
+                    return ChatResponse(
+                        reply=f"✅ Ho rinominato il file in '**{r_out['new_title']}**'!",
+                        action="rename_vault_document",
+                        data=r_out,
+                        documents=r_out.get("documents")
+                    )
+
         # 1. Memorizzazione o modifica posizione fisica
         item_n, loc_n = self._extract_item_and_location(user_text)
         if item_n and loc_n:

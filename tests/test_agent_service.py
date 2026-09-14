@@ -445,4 +445,55 @@ def test_llm_postprocessing_guardrail_prevents_context_hallucinations():
             assert "non ho trovato corrispondenze nel database" in res_search.reply.lower() or "non ho trovato" in res_search.reply.lower()
 
 
+def test_rename_vault_document_tool():
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        doc = Document(
+            title="Foto generica volante",
+            file_path="uploads/volante.jpg",
+            file_type="jpeg",
+            doc_type="foto_oggetto",
+            summary="Base volante rapido"
+        )
+        session.add(doc)
+        session.commit()
+
+        agent = AgenticChatService()
+        res = agent.execute_tool("rename_vault_document", {"new_title": "Base Volante Fanatec"}, session)
+        assert res.get("success") is True
+        assert res.get("new_title") == "Base Volante Fanatec"
+
+        # Verifica aggiornamento su database
+        db_doc = session.query(Document).filter(Document.id == doc.id).first()
+        assert db_doc.title == "Base Volante Fanatec"
+
+
+def test_conversational_rename_turn():
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        doc = Document(
+            title="Immagine sconosciuta",
+            file_path="uploads/img.jpg",
+            file_type="jpeg",
+            doc_type="foto",
+            summary="Dispositivo meccanico"
+        )
+        session.add(doc)
+        session.commit()
+
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = "" # Test deterministic/offline fallback flow
+
+        res = agent.run_turn("chiamalo Base Volante Fanatec", session)
+        assert res.action == "rename_vault_document"
+        assert "Base Volante Fanatec" in res.reply
+
+        # Verifica DB
+        db_doc = session.query(Document).filter(Document.id == doc.id).first()
+        assert db_doc.title == "Base Volante Fanatec"
+
+
+
 

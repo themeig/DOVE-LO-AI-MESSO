@@ -2,12 +2,14 @@ from typing import Literal, Optional, List
 from pydantic import BaseModel, Field
 
 class ExtractedDocument(BaseModel):
+    title: Optional[str] = Field(default=None, description="Titolo sintetico descrittivo del file o documento")
     doc_type: str = Field(default="generico", description="Tipo documento")
-    issuer: str = Field(default="Sconosciuto", description="Ente o fornitore")
+    issuer: Optional[str] = Field(default=None, description="Ente, azienda o fornitore")
     amount: Optional[float] = Field(default=None, description="Importo in euro")
     due_date: Optional[str] = Field(default=None, description="Data scadenza YYYY-MM-DD")
     summary: str = Field(default="", description="Spiegazione semplice del documento")
     tags: List[str] = Field(default_factory=list)
+    suggest_rename: bool = Field(default=False, description="True se è utile chiedere all'utente se vuole dare un nome personalizzato")
 
 class MessageIntent(BaseModel):
     intent: Literal["STORE_LOCATION", "QUERY_LOCATION", "QUERY_DEADLINES", "GENERAL"]

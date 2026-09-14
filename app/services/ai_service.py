@@ -5,6 +5,7 @@ import base64
 import logging
 import httpx
 import pypdf
+from pathlib import Path
 from typing import Protocol, Optional
 from app.models.schemas import ExtractedDocument, MessageIntent
 from app.config import get_settings
@@ -54,40 +55,50 @@ class MockAIService:
         fn = filename.lower()
         if "tolc" in fn or "certificate" in fn or "certificat" in fn:
             return ExtractedDocument(
+                title="Certificato Test TOLC-E CISIA",
                 doc_type="certificato",
                 issuer="CISIA / Università degli Studi di Milano",
                 amount=None,
                 due_date=None,
                 summary="Certificato ufficiale esiti del test TOLC-E svolto da Riccardo Maggi. Punteggio totale: 22.5.",
-                tags=["tolc", "università", "esame", "cisia"]
+                tags=["tolc", "università", "esame", "cisia"],
+                suggest_rename=False
             )
         if "f24" in fn or "tribut" in fn:
             return ExtractedDocument(
+                title="Modello F24 Versamento IVA",
                 doc_type="f24",
                 issuer="Agenzia delle Entrate",
                 amount=2450.00,
                 due_date="2026-09-16",
                 summary="Modello F24 versamento IVA trimestrale.",
-                tags=["f24", "fisco", "iva"]
+                tags=["f24", "fisco", "iva"],
+                suggest_rename=False
             )
         if "bollett" in fn or "enel" in fn or "luce" in fn or "gas" in fn:
             return ExtractedDocument(
+                title="Bolletta Enel Energia",
                 doc_type="bolletta",
                 issuer="Enel Energia",
                 amount=64.20,
                 due_date="2026-10-28",
                 summary="Bolletta Enel Luce bimestre agosto-settembre.",
-                tags=["luce", "energia", "utenze"]
+                tags=["luce", "energia", "utenze"],
+                suggest_rename=False
             )
         # Per foto, screenshot o altri allegati non fiscali
         is_screen = any(k in fn for k in [".png", "screen", "cattura", "screenshot"])
+        clean_name = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
+        guessed_title = f"Screenshot {clean_name}" if is_screen else f"Foto {clean_name or 'Oggetto'}"
         return ExtractedDocument(
-            doc_type="screenshot" if is_screen else "generico",
-            issuer="File Utente",
+            title=guessed_title,
+            doc_type="screenshot" if is_screen else "foto",
+            issuer=None,
             amount=None,
             due_date=None,
             summary=f"Immagine/allegato '{filename}' salvato in archivio.",
-            tags=["allegato", "foto" if not is_screen else "screenshot"]
+            tags=["allegato", "screenshot" if is_screen else "foto"],
+            suggest_rename=True
         )
 
     def classify_and_extract_intent(self, text: str) -> MessageIntent:
@@ -200,19 +211,23 @@ class OpenRouterAIService:
 ---
 
 Identifica con la massima precisione:
-1. Che documento è (es. certificato, bolletta, f24, contratto, ricevuta, dichiarazione, patente, ecc.)
-2. Chi è l'emittente/università o fornitore e chi è l'intestatario/soggetto
-3. Se è una bolletta o tributo da pagare con scadenza, estrai l'importo e la data. Se NON è una bolletta da pagare, imposta amount=null e due_date=null!
-4. Nel campo 'summary', scrivi una spiegazione chiara e completa di 2-3 frasi in italiano che riassume tutti i dettagli (punteggi, codici, esiti, intestatario, date).
+1. 'title': un titolo chiaro, elegante e sintetico per il documento (es. 'Certificato TOLC-E CISIA', 'Bolletta Enel Energia Luce', 'Modello F24 IVA')
+2. 'doc_type': tipo documento (certificato, bolletta, f24, contratto, ricevuta, fattura, generico)
+3. 'issuer': nome ente, università, azienda o fornitore (oppure null)
+4. Se è una bolletta o tributo da pagare con scadenza, estrai 'amount' e 'due_date'. Se NON è una bolletta da pagare, imposta amount=null e due_date=null!
+5. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano che riassume tutti i dettagli (punteggi, codici, esiti, intestatario, date).
+6. 'suggest_rename': false (i documenti formali hanno già un titolo chiaro).
 
 Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
 {{
+  "title": "titolo chiaro ed elegante",
   "doc_type": "certificato" | "bolletta" | "f24" | "contratto" | "ricevuta" | "fattura" | "generico",
-  "issuer": "nome ente o università o fornitore",
+  "issuer": "nome ente o fornitore" o null,
   "amount": null oppure numero decimale,
   "due_date": null oppure "YYYY-MM-DD",
   "summary": "riassunto dettagliato in 2-3 frasi in italiano",
-  "tags": ["tag1", "tag2", "tag3"]
+  "tags": ["tag1", "tag2", "tag3"],
+  "suggest_rename": false
 }}
 """
                     messages = [{"role": "user", "content": pdf_prompt}]
@@ -225,17 +240,26 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
             data_url = f"data:{mt or 'image/jpeg'};base64,{b64_img}"
 
             prompt = (
-                "Sei l'assistente 'Dove lo AI messo'. Analizza con precisione questa immagine caricata dall'utente.\n"
-                "1. Se è una bolletta, F24, fattura o ricevuta con scadenza/pagamento, estrai ente, importo da pagare e data di scadenza.\n"
-                "2. Se NON è un documento fiscale o bolletta da pagare (es. è uno screenshot di un sito o app, una foto di un oggetto, una schermata web, un meme, ecc.), NON inventare dati! Imposta amount=null e due_date=null, e descrivi fedelmente cosa vedi nel campo 'summary'.\n\n"
-                "Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura:\n"
+                "Sei l'assistente 'Dove lo AI messo'. Analizza con precisione visiva questa immagine caricata dall'utente.\n\n"
+                "Istruzioni:\n"
+                "1. 'title': genera un titolo sintetico e descrittivo (massimo 4-6 parole) di ciò che vedi nell'immagine. "
+                "Ad esempio se vedi un volante o quick release scrivi 'Base Volante con attacco rapido', se vedi delle chiavi scrivi 'Mazzo chiavi con telecomando', se vedi una bolletta scrivi 'Bolletta Enel Energia', se vedi una patente scrivi 'Patente di Guida'. "
+                "NON usare MAI 'Generico File Utente' o nomi anonimi!\n"
+                "2. 'doc_type': scegli tra 'bolletta', 'f24', 'ricevuta', 'fattura', 'patente', 'documento_identita', 'foto', 'screenshot', 'oggetto_fisico', 'generico'.\n"
+                "3. 'issuer': se riconosci un ente, azienda o marchio visibile (es. 'Enel', 'Fanatec', 'Apple', 'Bosch', 'INPS'), indicalo; altrimenti imposta null.\n"
+                "4. Se è una bolletta, fattura o tributo con scadenza di pagamento reale, estrai 'amount' e 'due_date' (YYYY-MM-DD). Altrimenti imposta rigorosamente amount=null e due_date=null.\n"
+                "5. 'summary': descrizione ricca ed accurata in 1-2 frasi in italiano di ciò che si vede visivamente nell'immagine (colori, forme, dettagli, marchi o testi visibili).\n"
+                "6. 'suggest_rename': imposta true se si tratta della foto di un oggetto fisico, componente, dispositivo, screenshot o allegato non formale per cui è opportuno chiedere all'utente se desidera assegnargli un nome specifico o dove lo ripone. Imposta false per bollette ed F24 con mittente certo.\n\n"
+                "Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:\n"
                 "{\n"
-                '  "doc_type": "bolletta" | "f24" | "ricevuta" | "fattura" | "screenshot" | "foto" | "generico",\n'
-                '  "issuer": "nome ente, sito o applicazione riconosciuta",\n'
+                '  "title": "Titolo descrittivo intelligente",\n'
+                '  "doc_type": "bolletta" | "f24" | "ricevuta" | "foto" | "screenshot" | "oggetto_fisico" | "generico",\n'
+                '  "issuer": "marchio/ente oppure null",\n'
                 '  "amount": null oppure numero decimale,\n'
                 '  "due_date": null oppure "YYYY-MM-DD",\n'
-                '  "summary": "descrizione reale in 1-2 frasi in italiano di cosa si vede",\n'
-                '  "tags": ["tag1", "tag2"]\n'
+                '  "summary": "descrizione accurata in italiano di cosa si vede",\n'
+                '  "tags": ["tag1", "tag2"],\n'
+                '  "suggest_rename": true\n'
                 "}"
             )
 
@@ -250,6 +274,9 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
             ]
             response_text = self._call_openrouter(messages, max_tokens=1600, model_override=self.vision_model, temperature=0.1)
             parsed = _extract_json_object(response_text)
+            if not parsed.get("title"):
+                clean_name = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
+                parsed["title"] = f"Foto {clean_name}" if "foto" in parsed.get("doc_type", "") else (clean_name or "Documento")
             return ExtractedDocument(**parsed)
         except Exception as e:
             logger.error(f"Errore OpenRouter extract_document: {e}. Uso fallback Mock.")

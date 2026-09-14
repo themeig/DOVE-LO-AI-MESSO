@@ -38,9 +38,13 @@ async def upload_document(
 
     # 4. Determine file type and title
     file_ext = Path(filename).suffix.lstrip(".").lower() or "bin"
-    title = f"{extracted.doc_type.capitalize()} {extracted.issuer}".strip()
+    title = (extracted.title or "").strip()
     if not title:
-        title = filename
+        if extracted.issuer:
+            title = f"{extracted.doc_type.capitalize()} {extracted.issuer}".strip()
+        else:
+            clean_stem = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
+            title = f"Foto {clean_stem}" if file_ext in ["jpg", "jpeg", "png", "webp"] else (clean_stem or filename)
 
     # 5. Save Document in DB
     is_payable = (extracted.amount is not None) and (extracted.doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"])
@@ -68,7 +72,15 @@ async def upload_document(
         due_str = f" con scadenza {doc.due_date.strftime('%d/%m/%Y')}" if doc.due_date else ""
         chat_reply = f"📄 Ho registrato la bolletta/scadenza: {doc.title}{amount_str}{due_str}."
     else:
-        chat_reply = f"📸 Ho analizzato e archiviato il file: {doc.title}.\n💡 {doc.summary}"
+        should_ask_rename = extracted.suggest_rename or extracted.doc_type in ["foto", "foto_oggetto", "oggetto_fisico", "screenshot", "generico"]
+        if should_ask_rename:
+            chat_reply = (
+                f"📸 Ho analizzato e salvato il file nel caveau come: **{doc.title}**.\n"
+                f"💡 {doc.summary}\n\n"
+                f"*Desideri dargli un nome specifico o dirmi dove lo conservi?* (es. 'Chiamalo Base Volante' oppure 'Mettilo nello studio')"
+            )
+        else:
+            chat_reply = f"📸 Ho analizzato e archiviato il file: {doc.title}.\n💡 {doc.summary}"
 
     user_msg = ChatMessage(
         thread_id=thread_id,
