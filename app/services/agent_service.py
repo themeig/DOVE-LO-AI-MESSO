@@ -173,6 +173,24 @@ TOOLS_DEFINITION = [
                 "required": ["target_type", "target_id", "title"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_vault_contents",
+            "description": "Recupera l'elenco completo o filtrato di tutti i documenti o di tutti gli oggetti fisici memorizzati nel caveau per il canale attivo. Usalo SEMPRE quando l'utente chiede la lista, l'elenco, o cosa c'è salvato (es. 'fai la lista di tutti i documenti', 'fai la lista di tutti gli oggetti', 'cosa c'è nel caveau?', 'mostrami tutti i file', 'elenco documenti', 'elenco oggetti').",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target_type": {
+                        "type": "string",
+                        "enum": ["all", "documents", "physical_items"],
+                        "description": "Specifica cosa recuperare: 'documents' per documenti/file, 'physical_items' per soli oggetti fisici, 'all' per entrambi."
+                    }
+                },
+                "required": ["target_type"]
+            }
+        }
     }
 ]
 
@@ -217,6 +235,16 @@ REGOLE FERREE:
    - Conosci sempre con esattezza la data odierna iniettata nel contesto e puoi usare il tool `get_current_date` se necessario.
    - Quando l'utente ti chiede "che giorno è oggi?", "quanti ne abbiamo?", "cosa scade oggi?", "cosa scade questa settimana?" o "è scaduta la bolletta?", calcola con precisione la differenza rispetto alla data odierna.
    - Per le scadenze in ritardo (scadute nel passato), segnalalo con urgenza (es. "⚠️ SCADUTA DA X GIORNI"). Per quelle odierne, evidenzia "⏰ SCADE OGGI!". Per quelle imminenti, indica i giorni rimanenti (es. "In scadenza tra X giorni").
+
+8. QUANDO L'UTENTE CHIEDE LA LISTA O L'ELENCO DI DOCUMENTI O OGGETTI (DISTINZIONE ESSENZIALE):
+   - Distingui con la massima attenzione tra DOCUMENTI (file, bollette, certificati, F24) e OGGETTI FISICI (chiavi, occhiali, passaporto, caricabatterie):
+     * Se chiede la lista di DOCUMENTI (es. "fai la lista di tutti i documenti", "quali documenti hai?", "mostrami i file"): chiama `list_vault_contents` con `target_type: "documents"`.
+     * Se chiede la lista di OGGETTI (es. "fai la lista di tutti gli oggetti", "quali oggetti hai?", "dove sono le mie cose?"): chiama `list_vault_contents` con `target_type: "physical_items"`. NON parlare di documenti se ha chiesto gli oggetti!
+     * Se chiede genericamente "cosa c'è nel caveau?" o "mostrami tutto": chiama `list_vault_contents` con `target_type: "all"`.
+   - Se il tool restituisce 0 elementi:
+     * Per documenti: rispondi cortesemente che al momento non ci sono documenti archiviati nel caveau e che è possibile caricarli con l'icona della graffetta 📎 o della fotocamera 📷.
+     * Per oggetti fisici: rispondi cortesemente che al momento non ci sono oggetti fisici memorizzati nel caveau (es. "Al momento non ho oggetti registrati. Se vuoi, dimmi dove hai riposto qualcosa e lo memorizzerò! 📍").
+   - Se il tool restituisce elementi, presentali in modo pulito ed elegante con punti elenco su WhatsApp.
 """
 
 def strip_tool_tags(text: str) -> str:
@@ -449,13 +477,75 @@ class AgenticChatService:
                 "upcoming_documents": deadlines_list
             }
 
+        elif name == "list_vault_contents":
+            target_type = args.get("target_type", "all")
+            doc_items = []
+            item_items = []
+
+            if target_type in ["all", "documents"]:
+                query_docs = db.query(Document)
+                if thread_id and thread_id != "general" and thread_id != "all":
+                    query_docs = query_docs.filter(Document.thread_id == thread_id)
+                docs = query_docs.order_by(Document.created_at.desc()).all()
+                for d in docs:
+                    fn = Path(d.file_path).name if d.file_path else ""
+                    doc_items.append({
+                        "id": d.id,
+                        "document_id": d.id,
+                        "title": d.title,
+                        "issuer": d.issuer,
+                        "amount": d.amount,
+                        "due_date": d.due_date.isoformat() if d.due_date else None,
+                        "summary": d.summary,
+                        "doc_type": d.doc_type,
+                        "status": d.status,
+                        "file_url": f"/uploads/{fn}" if fn else None,
+                        "download_url": f"/api/documents/{d.id}/download",
+                        "file_type": d.file_type
+                    })
+
+            if target_type in ["all", "physical_items"]:
+                query_items = db.query(PhysicalItem)
+                if thread_id and thread_id != "general" and thread_id != "all":
+                    query_items = query_items.filter(PhysicalItem.thread_id == thread_id)
+                items = query_items.order_by(PhysicalItem.updated_at.desc()).all()
+                for it in items:
+                    loc = it.primary_location + (f" ({it.detailed_location})" if it.detailed_location else "")
+                    item_items.append({
+                        "item_id": it.id,
+                        "item_name": it.item_name,
+                        "primary_location": it.primary_location,
+                        "detailed_location": it.detailed_location,
+                        "location_str": loc,
+                        "category": it.category
+                    })
+
+            return {
+                "target_type": target_type,
+                "documents_count": len(doc_items),
+                "items_count": len(item_items),
+                "documents": doc_items,
+                "found_documents": doc_items,
+                "physical_items": item_items,
+                "found_physical_items": item_items
+            }
+
         return {"error": f"Strumento non riconosciuto: {name}"}
 
     def build_system_prompt(self, db: Session, thread_id: str = "general") -> str:
         """Costruisce il prompt di sistema iniettando la data odierna, la memoria attiva e il contesto del Caveau (RAG)."""
         date_info = get_current_date_info()
-        docs = db.query(Document).order_by(Document.id.desc()).limit(4).all()
-        items = db.query(PhysicalItem).order_by(PhysicalItem.id.desc()).limit(6).all()
+        q_docs = db.query(Document)
+        q_items = db.query(PhysicalItem)
+        if thread_id and thread_id != "general" and thread_id != "all":
+            q_docs = q_docs.filter(Document.thread_id == thread_id)
+            q_items = q_items.filter(PhysicalItem.thread_id == thread_id)
+
+        total_docs_count = q_docs.count()
+        total_items_count = q_items.count()
+
+        docs = q_docs.order_by(Document.id.desc()).limit(4).all()
+        items = q_items.order_by(PhysicalItem.id.desc()).limit(6).all()
         unpaid = db.query(Document).filter(Document.status == "da_pagare").all()
 
         today = date.today()
@@ -475,10 +565,17 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         vault_summary = [
             f"\n[DATA E ORA ATTUALE]: {date_info['formatted_italian']}, ore {date_info['current_time']} (Data ISO: {date_info['date']}, Anno: {date_info['year']})",
-            "\n[STATO ATTUALE E MEMORIA DEL CAVEAU]:"
+            f"\n[STATO ATTUALE E MEMORIA DEL CAVEAU]:",
+            f"- Documenti archiviati nel canale: {total_docs_count}",
+            f"- Oggetti fisici memorizzati nel canale: {total_items_count}"
         ]
+        if total_docs_count == 0:
+            vault_summary.append("- NOTA: Al momento ci sono 0 documenti archiviati nel caveau. Non inventare documenti inesistenti.")
+        if total_items_count == 0:
+            vault_summary.append("- NOTA: Al momento ci sono 0 oggetti fisici memorizzati nel caveau. Non inventare oggetti inesistenti.")
+
         if docs:
-            vault_summary.append("Ultimi Documenti/File archiviati nel Caveau:")
+            vault_summary.append("\nUltimi Documenti/File archiviati nel Caveau:")
             for d in docs:
                 amt = f", importo: {d.amount:.2f} €" if d.amount else ""
                 due = f", scadenza: {d.due_date}" if d.due_date else ""
@@ -803,11 +900,6 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         if del_resp:
             return del_resp
 
-        # Intercetta richieste di elenco/lista completa documenti direttamente dal DB (zero allucinazioni)
-        list_resp = self._handle_listing_intent(user_text, lower_t, db, thread_id=thread_id)
-        if list_resp:
-            return list_resp
-
         # Intercetta immediatamente domande sulla data/ora odierna, ieri o domani con calcolo istantaneo esatto
         temp_resp = self._handle_temporal_intent(user_text, lower_t)
         if temp_resp:
@@ -845,8 +937,29 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 loc_n = m_st.group(2).strip()
                 stored_item_result = self.execute_tool("store_physical_item", {"item_name": item_n, "primary_location": loc_n}, db=db, thread_id=thread_id)
 
-        # Se non c'è chiave API, fallback deterministico
+        # Se non c'è chiave API, fallback deterministico per test offline
         if not self.settings.OPENROUTER_API_KEY:
+            clean_test = lower_t.replace("?", "").strip()
+            if any(k in clean_test for k in ["lista", "elenco", "quali documenti"]):
+                target = "physical_items" if "oggett" in clean_test else "documents"
+                tool_out = self.execute_tool("list_vault_contents", {"target_type": target}, db=db, thread_id=thread_id)
+                if target == "physical_items":
+                    items = tool_out.get("physical_items", [])
+                    if items:
+                        lines = [f"- 📍 **{it['item_name']}**: {it['location_str']}" for it in items]
+                        rep = "Ecco gli oggetti fisici memorizzati nel caveau:\n\n" + "\n".join(lines)
+                    else:
+                        rep = "Nel caveau non sono presenti oggetti fisici memorizzati al momento."
+                    return ChatResponse(reply=rep, action="list_vault_contents", data=tool_out)
+                else:
+                    docs = tool_out.get("documents", [])
+                    if docs:
+                        lines = [f"- 📄 **{d['title']}** ({d['issuer']})" for d in docs]
+                        rep = f"Ecco l'elenco dei {len(docs)} documenti presenti nel caveau:\n\n" + "\n".join(lines)
+                    else:
+                        rep = "Nel caveau non sono presenti documenti archiviati al momento."
+                    return ChatResponse(reply=rep, action="list_vault_contents", data=tool_out, documents=docs[:5])
+
             ai = MockAIService()
             intent = ai.classify_and_extract_intent(user_text)
             reply = ai.generate_conversational_reply(user_text)
@@ -885,6 +998,21 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         agent_model = get_app_setting(db, "ai_model", default=self.settings.OPENROUTER_MODEL) or "google/gemini-2.5-flash-lite"
 
+        is_listing_request = (
+            any(k in lower_t for k in [
+                "lista", "elenco", "elencami", "quali documenti", "quali oggetti",
+                "mostrami tutti", "mostrami tutte", "mostra tutti", "mostra tutte",
+                "cosa c'è nel caveau", "cosa ce nel caveau", "cosa ho nel caveau", "cosa hai nel caveau",
+                "vedere tutti", "vedere tutte", "tutti i documenti", "tutti gli oggetti"
+            ])
+            or lower_t.strip(" !.?") in ["documenti", "oggetti", "tutti i documenti", "tutti gli oggetti", "tutto", "i miei documenti", "i miei oggetti"]
+        )
+        tool_choice_cfg = (
+            {"type": "function", "function": {"name": "list_vault_contents"}}
+            if is_listing_request
+            else "auto"
+        )
+
         try:
             r1 = httpx.post(
                 "https://openrouter.ai/api/v1/chat/completions",
@@ -893,7 +1021,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                     "model": agent_model,
                     "messages": history_messages,
                     "tools": TOOLS_DEFINITION,
-                    "tool_choice": "auto",
+                    "tool_choice": tool_choice_cfg,
                     "max_tokens": 1500,
                     "temperature": 0.2
                 },
@@ -956,7 +1084,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
                         docs_found = None
                         if isinstance(tool_data, dict):
-                            docs_found = tool_data.get("found_documents") or tool_data.get("recent_documents")
+                            docs_found = tool_data.get("found_documents") or tool_data.get("recent_documents") or tool_data.get("documents")
 
                         if not final_text:
                             if tool_action == "search_vault":
@@ -965,6 +1093,21 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                     final_text = f"📄 Ho trovato: **{d['title']}**\n💡 {d['summary']}"
                                 else:
                                     final_text = "Ho cercato nel caveau ma non ho trovato documenti corrispondenti."
+                            elif tool_action == "list_vault_contents":
+                                if (tool_data or {}).get("target_type") == "physical_items":
+                                    items = (tool_data or {}).get("physical_items", [])
+                                    if items:
+                                        lines = [f"- 📍 **{it['item_name']}**: {it['location_str']}" for it in items]
+                                        final_text = f"📍 Ecco gli oggetti fisici memorizzati nel caveau:\n\n" + "\n".join(lines)
+                                    else:
+                                        final_text = "Nel caveau non sono presenti oggetti fisici memorizzati al momento. Dimmi pure dove riponi i tuoi oggetti e li registrerò subito! 📍"
+                                else:
+                                    docs = (tool_data or {}).get("documents", [])
+                                    if docs:
+                                        lines = [f"- 📄 **{d['title']}** ({d['issuer']})" for d in docs]
+                                        final_text = f"📄 Ecco i documenti salvati nel caveau:\n\n" + "\n".join(lines)
+                                    else:
+                                        final_text = "Nel caveau non sono presenti documenti archiviati al momento."
                             elif tool_action == "get_upcoming_deadlines":
                                 up = (tool_data or {}).get("deadlines") or (tool_data or {}).get("upcoming_documents", [])
                                 if up:

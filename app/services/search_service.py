@@ -121,6 +121,30 @@ def search_vault_documents(db: Session, query: str, thread_id: str = "general") 
     - Scoring e discriminazione automatica dei risultati
     """
     raw_query = query.strip()
+    clean_q = re.sub(r"[^\w]+", " ", raw_query.lower()).strip()
+    broad_doc_queries = {"", "*", "tutti", "tutte", "tutti i documenti", "tutti i file", "documenti", "i documenti", "elenco", "lista", "elenco documenti", "lista documenti", "archivio"}
+    if clean_q in broad_doc_queries:
+        q_docs = db.query(Document)
+        if thread_id and thread_id != "general" and thread_id != "all":
+            q_docs = q_docs.filter(Document.thread_id == thread_id)
+        docs = q_docs.order_by(Document.created_at.desc()).all()
+        return [{
+            "id": d.id,
+            "document_id": d.id,
+            "thread_id": d.thread_id,
+            "title": d.title,
+            "issuer": d.issuer,
+            "doc_type": d.doc_type,
+            "amount": d.amount,
+            "due_date": d.due_date.isoformat() if d.due_date else None,
+            "status": d.status,
+            "summary": d.summary,
+            "filename": Path(d.file_path).name if d.file_path else "",
+            "file_url": f"/uploads/{Path(d.file_path).name}" if d.file_path else None,
+            "download_url": f"/api/documents/{d.id}/download",
+            "file_type": d.file_type
+        } for d in docs]
+
     words = [w.lower() for w in re.split(r"[^\w]+", raw_query) if len(w) > 1]
     q_tokens = [w for w in words if w not in ITALIAN_STOPWORDS]
     if not q_tokens and words:
@@ -239,6 +263,22 @@ def search_vault_items(db: Session, query: str, thread_id: str = "general") -> L
     Esegue una ricerca intelligente, contestuale e tollerante sui record degli oggetti fisici nel caveau.
     """
     raw_query = query.strip()
+    clean_q = re.sub(r"[^\w]+", " ", raw_query.lower()).strip()
+    broad_item_queries = {"", "*", "tutti", "tutte", "tutti gli oggetti", "oggetti", "gli oggetti", "oggetto", "elenco", "lista", "elenco oggetti", "lista oggetti", "posizioni", "le mie cose", "mie cose", "cose"}
+    if clean_q in broad_item_queries:
+        q_items = db.query(PhysicalItem)
+        if thread_id and thread_id != "general" and thread_id != "all":
+            q_items = q_items.filter(PhysicalItem.thread_id == thread_id)
+        items = q_items.order_by(PhysicalItem.updated_at.desc()).all()
+        return [{
+            "item_id": it.id,
+            "thread_id": it.thread_id,
+            "item_name": it.item_name,
+            "primary_location": it.primary_location,
+            "detailed_location": it.detailed_location,
+            "category": it.category
+        } for it in items]
+
     words = [w.lower() for w in re.split(r"[^\w]+", raw_query) if len(w) > 1]
     q_tokens = [w for w in words if w not in ITALIAN_STOPWORDS]
     if not q_tokens and words:

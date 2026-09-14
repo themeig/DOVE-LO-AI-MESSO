@@ -172,3 +172,34 @@ def test_agent_service_bulk_deletion_intent():
         assert resp_plural is not None
         assert resp_plural.action == "REQUEST_DELETE"
         assert resp_plural.confirmation["target_type"] == "bulk_documents"
+
+
+def test_list_vault_contents_tool():
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        # Aggiungi 2 documenti e 1 oggetto fisico
+        d1 = Document(title="Bolletta Enel", file_path="uploads/enel.pdf", file_type="pdf", doc_type="bolletta", thread_id="general", summary="bolletta luce")
+        d2 = Document(title="F24 Tributi", file_path="uploads/f24.pdf", file_type="pdf", doc_type="f24", thread_id="general", summary="f24")
+        item1 = PhysicalItem(item_name="Passaporto", primary_location="Studio", detailed_location="Cassetto 1", thread_id="general")
+        session.add_all([d1, d2, item1])
+        session.commit()
+
+        agent = AgenticChatService()
+
+        # 1. Recupera solo documenti
+        res_docs = agent.execute_tool("list_vault_contents", {"target_type": "documents"}, session, thread_id="general")
+        assert res_docs["documents_count"] == 2
+        assert res_docs["items_count"] == 0
+        assert len(res_docs["documents"]) == 2
+
+        # 2. Recupera solo oggetti fisici
+        res_items = agent.execute_tool("list_vault_contents", {"target_type": "physical_items"}, session, thread_id="general")
+        assert res_items["documents_count"] == 0
+        assert res_items["items_count"] == 1
+        assert res_items["physical_items"][0]["item_name"] == "Passaporto"
+
+        # 3. Recupera all
+        res_all = agent.execute_tool("list_vault_contents", {"target_type": "all"}, session, thread_id="general")
+        assert res_all["documents_count"] == 2
+        assert res_all["items_count"] == 1

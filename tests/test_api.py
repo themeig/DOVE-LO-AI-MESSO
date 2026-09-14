@@ -137,9 +137,10 @@ def test_chat_listing_and_bulk_delete_intents():
     list_res = client.post("/api/chat", json={"message": "fai la lista di tutti i documenti che hai"})
     assert list_res.status_code == 200
     list_data = list_res.json()
-    assert list_data["action"] == "list_documents"
-    assert "elenco completo" in list_data["reply"].lower() or "documenti" in list_data["reply"].lower()
-    assert any(d["document_id"] == doc_id for d in list_data["data"]["documents"])
+    assert list_data["action"] in ["list_vault_contents", "list_documents"]
+    assert "elenco" in list_data["reply"].lower() or "documenti" in list_data["reply"].lower()
+    docs_returned = list_data.get("data", {}).get("documents", []) or list_data.get("documents", [])
+    assert any(d.get("document_id") == doc_id or d.get("id") == doc_id for d in docs_returned)
     
     # 3. Chiedi di eliminarli tutti
     del_res = client.post("/api/chat", json={"message": "elimina tutti i documenti che hai"})
