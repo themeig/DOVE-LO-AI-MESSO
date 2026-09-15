@@ -158,25 +158,34 @@ TOOLS_DEFINITION = [
         "type": "function",
         "function": {
             "name": "delete_vault_record",
-            "description": "Predispone il widget di conferma interattivo per eliminare un documento o un oggetto dal caveau. Cerca prima con `search_vault` per ricavare target_type, target_id e title.",
+            "description": "Predispone il widget di conferma interattivo per eliminare uno o più documenti o oggetti dal caveau (anche eliminazione multipla o totale, come 'elimina tutti i documenti', 'cancella tutte le bollette', 'elimina tutti', 'elimina il file X'). Richiede sempre la conferma dell'utente prima di cancellare.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "target_type": {
                         "type": "string",
-                        "enum": ["document", "physical_item"],
-                        "description": "Tipo di record: 'document' per file e ricevute, 'physical_item' per posizioni di oggetti"
+                        "enum": ["document", "physical_item", "bulk_documents"],
+                        "description": "Tipo di record: 'document' per singolo file, 'physical_item' per singola posizione, 'bulk_documents' per cancellare più o tutti i documenti."
                     },
                     "target_id": {
                         "type": "integer",
-                        "description": "ID numerico del documento o dell'oggetto da eliminare"
+                        "description": "ID numerico dell'elemento (se singolo)"
+                    },
+                    "target_ids": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "Lista opzionale di ID dei documenti da eliminare in blocco"
                     },
                     "title": {
                         "type": "string",
-                        "description": "Nome o titolo dell'elemento"
+                        "description": "Titolo dell'elemento o descrizione del gruppo (es. 'Tutti i documenti', 'Tutte le bollette', 'Bolletta Enel')"
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Filtro categoria opzionale per eliminazione multipla (es. 'bolletta', 'f24', 'all')"
                     }
                 },
-                "required": ["target_type", "target_id", "title"]
+                "required": ["target_type", "title"]
             }
         }
     },
@@ -308,8 +317,10 @@ REGOLE OPERATIVE:
 4. QUANDO L'UTENTE CHIEDE DELLE SCADENZE O COSA DEVE PAGARE:
    - USA lo strumento `get_upcoming_deadlines`.
 
-5. QUANDO L'UTENTE CHIEDE DI ELIMINARE O CANCELLARE UN DOCUMENTO O UN OGGETTO:
-   - Usa `search_vault` e chiama `delete_vault_record` per mostrare la card di conferma.
+5. QUANDO L'UTENTE CHIEDE DI ELIMINARE O CANCELLARE (es. 'elimina tutti i documenti', 'cancella tutte le bollette', 'elimina tutti', 'elimina la bolletta Enel', 'cancella il passaporto'):
+   - Per eliminare un singolo elemento: cerca con `search_vault` e chiama `delete_vault_record(target_type='document' o 'physical_item', target_id=..., title=...)`.
+   - Per eliminare tutti i documenti o una categoria in blocco (es. 'elimina tutti', 'elimina tutti i documenti', 'cancella tutte le bollette'): chiama `delete_vault_record(target_type='bulk_documents', title='Tutti i documenti' o 'Tutte le bollette')`.
+   - Questo genera l'apposita card di conferma interattiva con i pulsanti per confermare o annullare l'eliminazione in sicurezza!
 
 6. STILE DI RISPOSTA:
    - Italiano naturale, cortese, chiaro e conciso in stile WhatsApp (emoji 📄, 📍, 💡, ✅).
@@ -636,30 +647,105 @@ class AgenticChatService:
             target_type = args.get("target_type")
             target_id = args.get("target_id")
             title = args.get("title", "")
+            target_ids = args.get("target_ids") or []
+            category = args.get("category")
+
+            is_bulk = (
+                target_type == "bulk_documents"
+                or (target_type not in ["document", "physical_item"] and any(k in (title or "").lower() for k in ["tutt", "tutte"]))
+                or bool(target_ids and len(target_ids) > 1)
+            )
+
+            if is_bulk:
+                target_type = "bulk_documents"
+                query = db.query(Document)
+                if thread_id and thread_id != "general" and thread_id != "all":
+                    query = query.filter(Document.thread_id == thread_id)
+
+                cat_name = "tutti i documenti"
+                clean_ref = f"{title or ''} {category or ''}".lower()
+                if "bollett" in clean_ref:
+                    query = query.filter(or_(Document.doc_type == "bolletta", Document.title.ilike("%bollett%")))
+                    cat_name = "tutte le bollette"
+                elif "f24" in clean_ref or "tribut" in clean_ref:
+                    query = query.filter(or_(Document.doc_type.ilike("%f24%"), Document.title.ilike("%f24%")))
+                    cat_name = "tutti i modelli F24"
+
+                if target_ids:
+                    query = query.filter(Document.id.in_(target_ids))
+
+                docs_to_delete = query.all()
+                if not docs_to_delete:
+                    return {
+                        "error": f"Nessun documento trovato da eliminare nel caveau ({cat_name}).",
+                        "status": "not_found"
+                    }
+
+                doc_ids = [d.id for d in docs_to_delete]
+                doc_titles = [d.title for d in docs_to_delete]
+                conf_title = title if (title and "tutt" in title.lower()) else (f"TUTTI i {len(doc_ids)} documenti ({cat_name})" if len(doc_ids) > 1 else doc_titles[0])
+                conf = {
+                    "type": "delete_confirmation",
+                    "target_type": "bulk_documents",
+                    "target_id": doc_ids[0],
+                    "target_ids": doc_ids,
+                    "title": conf_title,
+                    "details": f"Verranno eliminati definitivamente {len(doc_ids)} file dal caveau."
+                }
+                return {
+                    "confirmation": conf,
+                    "status": "pending_confirmation",
+                    "target_type": "bulk_documents",
+                    "target_id": doc_ids[0],
+                    "target_ids": doc_ids,
+                    "title": conf_title,
+                    "documents": [{
+                        "document_id": d.id,
+                        "title": d.title,
+                        "issuer": d.issuer,
+                        "amount": d.amount,
+                        "due_date": d.due_date.isoformat() if d.due_date else None,
+                        "summary": d.summary,
+                        "file_url": f"/uploads/{Path(d.file_path).name}" if d.file_path else None,
+                        "download_url": f"/api/documents/{d.id}/download",
+                        "file_type": d.file_type
+                    } for d in docs_to_delete[:4]]
+                }
 
             details = ""
             if target_type == "physical_item":
-                rec = db.query(PhysicalItem).filter(PhysicalItem.id == target_id).first()
+                rec = db.query(PhysicalItem).filter(PhysicalItem.id == target_id).first() if target_id else None
+                if not rec and title:
+                    rec = db.query(PhysicalItem).filter(PhysicalItem.item_name.ilike(f"%{title}%")).first()
                 if rec:
+                    target_id = rec.id
+                    title = rec.item_name
                     details = f"Posizione: {rec.primary_location}" + (f" ({rec.detailed_location})" if rec.detailed_location else "")
             else:
-                rec = db.query(Document).filter(Document.id == target_id).first()
+                target_type = "document"
+                rec = db.query(Document).filter(Document.id == target_id).first() if target_id else None
+                if not rec and title:
+                    s_res = search_vault_documents(db, title, thread_id=thread_id)
+                    if s_res:
+                        rec = db.query(Document).filter(Document.id == s_res[0]["id"]).first()
                 if rec:
+                    target_id = rec.id
+                    title = rec.title
                     details = rec.summary or rec.issuer or ""
 
             conf = {
                 "type": "delete_confirmation",
-                "target_type": target_type,
-                "target_id": target_id,
-                "title": title,
+                "target_type": target_type or "document",
+                "target_id": target_id or 0,
+                "title": title or "elemento",
                 "details": details
             }
             return {
                 "confirmation": conf,
                 "status": "pending_confirmation",
-                "target_type": target_type,
-                "target_id": target_id,
-                "title": title
+                "target_type": target_type or "document",
+                "target_id": target_id or 0,
+                "title": title or "elemento"
             }
 
         elif name == "get_current_date":
@@ -1244,11 +1330,6 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         """Esegue un turno conversazionale con tool-calling dell'agente."""
         lower_t = user_text.lower()
 
-        # Intercetta le richieste di eliminazione sicura (singola o multipla)
-        del_resp = self._handle_deletion_intent(user_text, lower_t, db, thread_id=thread_id)
-        if del_resp:
-            return del_resp
-
         # Intercetta immediatamente domande sulla data/ora odierna, ieri o domani con calcolo istantaneo esatto
         temp_resp = self._handle_temporal_intent(user_text, lower_t)
         if temp_resp:
@@ -1448,6 +1529,10 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             and not is_where_request
         )
 
+        is_delete_request = any(k in lower_t for k in [
+            "elimina", "cancella", "rimuovi", "butta", "eliminami", "cancellami", "svuota", "eliminali", "cancellali", "rimuovili"
+        ])
+
         stored_item_result = None
         if is_store_or_update:
             item_n, loc_n = self._extract_item_and_location(user_text, last_item_in_context=last_item_name)
@@ -1456,6 +1541,11 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         # Se non c'è chiave API, fallback deterministico per test offline
         if not self.settings.OPENROUTER_API_KEY:
+            # Fallback deterministico per richieste di eliminazione nei test offline
+            del_resp = self._handle_deletion_intent(user_text, lower_t, db, thread_id=thread_id)
+            if del_resp:
+                return del_resp
+
             clean_test = lower_t.replace("?", "").strip()
             if is_download_or_show:
                 last_asst_msg = (
@@ -1638,7 +1728,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         agent_model = get_app_setting(db, "ai_model", default=self.settings.OPENROUTER_MODEL) or "google/gemini-2.5-flash-lite"
 
 
-        if is_rename_request:
+        if is_delete_request:
+            tool_choice_cfg = {"type": "function", "function": {"name": "delete_vault_record"}}
+        elif is_rename_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "rename_vault_document"}}
         elif is_download_or_show:
             tool_choice_cfg = {"type": "function", "function": {"name": "show_document_card"}}
@@ -1770,6 +1862,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             elif tool_action == "rename_vault_document":
                                 n_title = (tool_data or {}).get("new_title", "nuovo nome")
                                 final_text = f"✅ Ho rinominato il file in '**{n_title}**'!"
+                            elif tool_action == "delete_vault_record":
+                                t_tit = (tool_data or {}).get("title") or "elemento"
+                                final_text = f"⚠️ Ho preparato la richiesta per eliminare **{t_tit}** dal caveau. Clicca sul pulsante qui sotto per confermare o annullare l'operazione."
                             else:
                                 final_text = "Operazione completata con successo nel caveau."
                         else:
@@ -1907,6 +2002,18 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 direct_reply = strip_tool_tags(direct_reply)
 
                 if direct_reply:
+                    if is_delete_request:
+                        del_tool_res = self.execute_tool("delete_vault_record", {"target_type": "bulk_documents", "title": user_text}, db=db, thread_id=thread_id)
+                        conf_b = del_tool_res.get("confirmation")
+                        c_docs = del_tool_res.get("documents")
+                        return ChatResponse(
+                            reply=direct_reply,
+                            action="REQUEST_DELETE" if conf_b else "REPLY",
+                            data=del_tool_res,
+                            documents=c_docs,
+                            confirmation=conf_b
+                        )
+
                     if is_rename_request:
                         new_title = self._extract_rename_title(user_text)
                         if new_title:

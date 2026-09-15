@@ -679,6 +679,44 @@ def test_multi_document_affirmative_and_download_flow():
         assert "singolarmente" not in res3.reply.lower()
 
 
+def test_delete_vault_record_tool_bulk_and_single():
+    """Verifica che il tool delete_vault_record supporti sia eliminazioni singole che in blocco (es. bulk_documents)."""
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        d1 = Document(title="Bolletta Enel", file_path="uploads/enel.pdf", file_type="pdf", doc_type="bolletta", summary="Bolletta luce")
+        d2 = Document(title="Bolletta A2A", file_path="uploads/a2a.pdf", file_type="pdf", doc_type="bolletta", summary="Bolletta gas")
+        d3 = Document(title="Ricevuta IMU F24", file_path="uploads/f24.pdf", file_type="pdf", doc_type="f24", summary="Tributo IMU")
+        session.add_all([d1, d2, d3])
+        session.commit()
+
+        agent = AgenticChatService()
+
+        # 1. Eliminazione totale ("bulk_documents")
+        res_all = agent.execute_tool("delete_vault_record", {"target_type": "bulk_documents", "title": "Tutti i documenti"}, session)
+        assert res_all["status"] == "pending_confirmation"
+        assert res_all["confirmation"]["target_type"] == "bulk_documents"
+        assert len(res_all["confirmation"]["target_ids"]) == 3
+        assert d1.id in res_all["confirmation"]["target_ids"]
+        assert d2.id in res_all["confirmation"]["target_ids"]
+        assert d3.id in res_all["confirmation"]["target_ids"]
+
+        # 2. Eliminazione categoria ("bolletta")
+        res_bollette = agent.execute_tool("delete_vault_record", {"target_type": "bulk_documents", "title": "Tutte le bollette", "category": "bolletta"}, session)
+        assert res_bollette["status"] == "pending_confirmation"
+        assert len(res_bollette["confirmation"]["target_ids"]) == 2
+        assert d1.id in res_bollette["confirmation"]["target_ids"]
+        assert d2.id in res_bollette["confirmation"]["target_ids"]
+        assert d3.id not in res_bollette["confirmation"]["target_ids"]
+
+        # 3. Eliminazione singolo documento per titolo
+        res_single = agent.execute_tool("delete_vault_record", {"target_type": "document", "title": "Ricevuta IMU F24"}, session)
+        assert res_single["status"] == "pending_confirmation"
+        assert res_single["confirmation"]["target_type"] == "document"
+        assert res_single["confirmation"]["target_id"] == d3.id
+
+
+
 
 
 
