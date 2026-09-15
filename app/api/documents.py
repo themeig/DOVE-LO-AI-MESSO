@@ -155,9 +155,10 @@ async def upload_documents_batch(
         saved_docs.append(doc)
         file_names.append(clean_filename)
 
+    doc_ids = [d.id for d in saved_docs if d.id]
     db.commit()
-    for d in saved_docs:
-        db.refresh(d)
+    if doc_ids:
+        saved_docs = db.query(Document).filter(Document.id.in_(doc_ids)).all()
 
     total_count = len(saved_docs)
     payable_docs = [d for d in saved_docs if d.amount is not None and d.status == "da_pagare"]

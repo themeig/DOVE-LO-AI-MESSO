@@ -30,11 +30,13 @@ class EncryptedString(types.TypeDecorator):
             return None
         mgr = get_vault_manager()
         key = mgr.get_active_key()
-        if key:
-            try:
-                return decrypt_str(value, key)
-            except Exception:
-                return value
+        if isinstance(value, str) and value.startswith("gAAAAAB"):
+            if key:
+                try:
+                    return decrypt_str(value, key)
+                except Exception:
+                    return ""
+            return ""
         return value
 
 
@@ -60,11 +62,13 @@ class EncryptedText(types.TypeDecorator):
             return None
         mgr = get_vault_manager()
         key = mgr.get_active_key()
-        if key:
-            try:
-                return decrypt_str(value, key)
-            except Exception:
-                return value
+        if isinstance(value, str) and value.startswith("gAAAAAB"):
+            if key:
+                try:
+                    return decrypt_str(value, key)
+                except Exception:
+                    return ""
+            return ""
         return value
 
 
