@@ -97,40 +97,47 @@
       }
     }
 
-    /* Typing indicator WhatsApp style */
+    /* Typing indicator WhatsApp style & Action feedback */
     .typing-indicator {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 10px 14px;
+      display: inline-flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 14px;
       background: #FFFFFF;
       border-radius: 18px 18px 18px 4px;
       width: fit-content;
-      max-width: 80px;
+      max-width: 90%;
+      min-width: 60px;
       margin: 2px 0 6px 8px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+      box-shadow: 0 1px 2px rgba(11,20,26,.13);
+      transition: all 0.2s ease-in-out;
     }
-    .typing-indicator span {
-      width: 8px;
-      height: 8px;
+    .typing-dots {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .typing-dots span {
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background: #90949c;
       display: block;
       animation: typing-bounce 1.4s infinite ease-in-out;
     }
-    .typing-indicator span:nth-child(1) { animation-delay: 0s; }
-    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    .typing-dots span:nth-child(1) { animation-delay: 0s; }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
     @keyframes typing-bounce {
       0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-      30% { transform: translateY(-6px); opacity: 1; }
+      30% { transform: translateY(-5px); opacity: 1; }
     }
   </style>
 </head>
 <body class="h-screen flex flex-col bg-[#d1d7db] text-slate-800">
 
-  <!-- Invisible file input for real uploads (multi-file support) -->
-  <input type="file" id="realFileInput" accept="image/*,application/pdf" multiple style="display:none">
+  <!-- Invisible file input for real uploads (multi-file & office & archive support) -->
+  <input type="file" id="realFileInput" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.tsv,.txt,.json,.zip,.rar,.7z" multiple style="display:none">
   <!-- Invisible input for uploading an entire folder -->
   <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none">
   <!-- Invisible input per foto/fotocamera per la posizione degli oggetti -->
@@ -393,7 +400,7 @@
               </div>
               <div class="text-left">
                 <div class="text-slate-800 font-semibold">Documenti / File</div>
-                <div class="text-[10px] text-slate-400 font-normal">PDF, Immagini (anche multipli)</div>
+                <div class="text-[10px] text-slate-400 font-normal">PDF, Immagini, Word, Excel, ZIP</div>
               </div>
             </button>
             <button type="button" onclick="triggerFolderInput()" class="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer">
@@ -2002,18 +2009,86 @@
       }
     }
 
-    // --- Indicatori UI Chat ---
-    function showTypingIndicator() {
+    // --- Indicatori UI Chat & Feedback Strumenti ---
+    function showTypingIndicator(statusText = "", progressPercent = null) {
+      const existing = document.getElementById('typingIndicator');
+      if (existing) {
+        updateTypingIndicator(statusText, progressPercent);
+        return existing;
+      }
+
       const indicator = document.createElement('div');
       indicator.id = 'typingIndicator';
+      indicator.className = 'flex justify-start';
+
+      const showProgress = (progressPercent !== null && progressPercent !== undefined && !isNaN(progressPercent));
+      const percentVal = showProgress ? Math.min(100, Math.max(0, Math.round(progressPercent))) : 0;
+
       indicator.innerHTML = `
         <div class="typing-indicator">
-          <span></span><span></span><span></span>
+          <div class="flex items-center gap-2.5">
+            <div class="typing-dots shrink-0">
+              <span></span><span></span><span></span>
+            </div>
+            ${statusText ? `<span id="typingStatusText" class="text-xs font-medium text-slate-700 select-none">${escapeHtml(statusText)}</span>` : `<span id="typingStatusText" class="text-xs font-medium text-slate-700 select-none hidden"></span>`}
+          </div>
+          <div id="typingProgressContainer" class="${showProgress ? '' : 'hidden'} w-48 sm:w-60 pt-1">
+            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+              <div id="typingProgressBar" class="bg-[#25D366] h-full rounded-full transition-all duration-300" style="width: ${percentVal}%"></div>
+            </div>
+            <div class="flex justify-between items-center text-[10px] text-slate-500 font-medium mt-1 select-none">
+              <span id="typingProgressSub">In elaborazione...</span>
+              <span id="typingProgressPercent">${percentVal}%</span>
+            </div>
+          </div>
         </div>
       `;
       chatFeed.appendChild(indicator);
       scrollBottom();
       return indicator;
+    }
+
+    function updateTypingIndicator(statusText = "", progressPercent = null) {
+      const indicator = document.getElementById('typingIndicator');
+      if (!indicator) {
+        return showTypingIndicator(statusText, progressPercent);
+      }
+
+      const textEl = document.getElementById('typingStatusText');
+      if (textEl) {
+        if (statusText) {
+          textEl.textContent = statusText;
+          textEl.classList.remove('hidden');
+        } else {
+          textEl.textContent = '';
+          textEl.classList.add('hidden');
+        }
+      }
+
+      const progContainer = document.getElementById('typingProgressContainer');
+      const progBar = document.getElementById('typingProgressBar');
+      const progPercentEl = document.getElementById('typingProgressPercent');
+      const progSubEl = document.getElementById('typingProgressSub');
+
+      if (progressPercent !== null && progressPercent !== undefined && !isNaN(progressPercent)) {
+        const percentVal = Math.min(100, Math.max(0, Math.round(progressPercent)));
+        if (progContainer) progContainer.classList.remove('hidden');
+        if (progBar) progBar.style.width = `${percentVal}%`;
+        if (progPercentEl) progPercentEl.textContent = `${percentVal}%`;
+        if (progSubEl) {
+          if (percentVal >= 100) progSubEl.textContent = 'Completato';
+          else if (percentVal > 0) progSubEl.textContent = 'Elaborazione in corso...';
+        }
+      } else {
+        if (progContainer) progContainer.classList.add('hidden');
+      }
+      scrollBottom();
+      return indicator;
+    }
+
+    function hideTypingIndicator() {
+      const el = document.getElementById('typingIndicator');
+      if (el) el.remove();
     }
 
     function appendUserBubble(text) {
@@ -2041,6 +2116,10 @@
       const userBubble = document.createElement('div');
       userBubble.className = 'flex justify-end';
 
+      const lowerName = (fileName || '').toLowerCase();
+      const isOffice = lowerName.endsWith('.docx') || lowerName.endsWith('.doc') || lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls') || lowerName.endsWith('.csv') || lowerName.endsWith('.tsv');
+      const isZip = lowerName.endsWith('.zip') || lowerName.endsWith('.rar') || lowerName.endsWith('.7z') || lowerName.endsWith('.tar') || lowerName.endsWith('.gz');
+
       let previewContent = '';
       if (isImage && previewUrl) {
         previewContent = `
@@ -2057,22 +2136,46 @@
             </div>
           </div>
         `;
-      } else if (isPdf && previewUrl) {
+      } else if (previewUrl) {
+        let iconHtml = '<i class="fa-solid fa-file-lines text-lg text-slate-600"></i>';
+        let bgStyle = 'bg-slate-100 text-slate-600';
+        let badgeText = 'FILE';
+
+        if (isPdf) {
+          iconHtml = '<i class="fa-solid fa-file-pdf text-lg text-red-600"></i>';
+          bgStyle = 'bg-red-100 text-red-600';
+          badgeText = 'PDF';
+        } else if (lowerName.endsWith('.docx') || lowerName.endsWith('.doc')) {
+          iconHtml = '<i class="fa-solid fa-file-word text-lg text-blue-600"></i>';
+          bgStyle = 'bg-blue-100 text-blue-600';
+          badgeText = 'WORD';
+        } else if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls') || lowerName.endsWith('.csv')) {
+          iconHtml = '<i class="fa-solid fa-file-excel text-lg text-emerald-600"></i>';
+          bgStyle = 'bg-emerald-100 text-emerald-600';
+          badgeText = 'EXCEL';
+        } else if (isZip) {
+          iconHtml = '<i class="fa-solid fa-file-zipper text-lg text-amber-600"></i>';
+          bgStyle = 'bg-amber-100 text-amber-600';
+          badgeText = 'ZIP';
+        }
+
         previewContent = `
           <div class="bg-[#d4f2c5] p-2.5 rounded-lg flex items-center justify-between gap-3 mb-1 border border-emerald-200/70">
             <div class="flex items-center gap-2.5 min-w-0">
-              <div class="w-9 h-9 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0 shadow-2xs">
-                <i class="fa-solid fa-file-pdf text-lg"></i>
+              <div class="w-9 h-9 rounded-lg ${bgStyle} flex items-center justify-center shrink-0 shadow-2xs">
+                ${iconHtml}
               </div>
               <div class="text-xs min-w-0">
                 <p class="font-bold text-gray-900 truncate max-w-[140px]">${escapeHtml(fileName)}</p>
-                <p class="text-[10px] text-gray-600">${formatFileSize(fileSize)} • PDF</p>
+                <p class="text-[10px] text-gray-600">${formatFileSize(fileSize)} • ${badgeText}</p>
               </div>
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
-              <button type="button" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', 'application/pdf', '${previewUrl}')" class="bg-white/95 hover:bg-white text-emerald-800 text-xs font-semibold px-2 py-1 rounded-md shadow-2xs border border-emerald-300 transition active:scale-95 flex items-center gap-1">
-                <i class="fa-regular fa-eye text-xs"></i> Vedi
-              </button>
+              ${isPdf ? `
+                <button type="button" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', 'application/pdf', '${previewUrl}')" class="bg-white/95 hover:bg-white text-emerald-800 text-xs font-semibold px-2 py-1 rounded-md shadow-2xs border border-emerald-300 transition active:scale-95 flex items-center gap-1">
+                  <i class="fa-regular fa-eye text-xs"></i> Vedi
+                </button>
+              ` : ''}
               <a href="${previewUrl}" download="${escapeHtml(fileName)}" class="bg-white/95 hover:bg-white text-emerald-800 text-xs font-semibold px-2 py-1 rounded-md shadow-2xs border border-emerald-300 transition active:scale-95 flex items-center gap-1" title="Scarica file">
                 <i class="fa-solid fa-download text-xs text-emerald-700"></i>
               </a>
@@ -2080,7 +2183,7 @@
           </div>
         `;
       } else {
-        const iconClass = isPdf ? 'fa-solid fa-file-pdf text-red-700' : 'fa-solid fa-file-image text-emerald-800';
+        let iconClass = isPdf ? 'fa-solid fa-file-pdf text-red-700' : (isZip ? 'fa-solid fa-file-zipper text-amber-700' : 'fa-solid fa-file-lines text-slate-700');
         previewContent = `
           <div class="bg-[#d4f2c5] p-2 rounded-md flex items-center gap-2 mb-1">
             <i class="${iconClass} text-xl shrink-0"></i>
@@ -2380,7 +2483,26 @@
       input.dispatchEvent(new Event('input'));
       scrollBottom();
 
-      const indicator = showTypingIndicator();
+      // Riconoscimento intelligente dell'azione per feedback dinamico
+      const lower = text.toLowerCase();
+      let statusFeedback = "";
+      if (lower.includes('zip') || lower.includes('comprimi') || lower.includes('archivio zip') || lower.includes('crea zip')) {
+        statusFeedback = "Sto creando l'archivio ZIP...";
+      } else if (lower.includes('unzip') || lower.includes('scompatta') || lower.includes('estrai') || lower.includes('estrazione')) {
+        statusFeedback = "Sto estraendo l'archivio e analizzando i file...";
+      } else if (lower.includes('scansiona') || lower.includes('indicizza') || lower.includes('cartell') || lower.includes('sincronizza') || lower.includes('monitora')) {
+        statusFeedback = "Scansione e sincronizzazione cartelle in corso...";
+      } else if (lower.includes('dov\'è') || lower.includes('dove si trova') || lower.includes('dove ho messo') || lower.includes('dove sono') || lower.includes('cerca') || lower.includes('trova')) {
+        statusFeedback = "Ricerca nel caveau e tra gli oggetti...";
+      } else if (lower.includes('scadenz') || lower.includes('bollett') || lower.includes('f24') || lower.includes('da pagare') || lower.includes('quanto devo')) {
+        statusFeedback = "Controllo scadenze e pagamenti...";
+      } else if (lower.includes('esporta') || lower.includes('backup')) {
+        statusFeedback = "Preparazione backup ed esportazione...";
+      } else if (lower.includes('elimina') || lower.includes('cancella') || lower.includes('rimuovi')) {
+        statusFeedback = "Aggiornamento caveau...";
+      }
+
+      const indicator = showTypingIndicator(statusFeedback);
 
       try {
         const res = await fetch('/api/chat', {
@@ -2487,11 +2609,25 @@
                name.endsWith('.webp') ||
                name.endsWith('.gif') ||
                name.endsWith('.bmp') ||
-               name.endsWith('.tiff');
+               name.endsWith('.tiff') ||
+               name.endsWith('.docx') ||
+               name.endsWith('.doc') ||
+               name.endsWith('.xlsx') ||
+               name.endsWith('.xls') ||
+               name.endsWith('.csv') ||
+               name.endsWith('.tsv') ||
+               name.endsWith('.txt') ||
+               name.endsWith('.json') ||
+               name.endsWith('.md') ||
+               name.endsWith('.zip') ||
+               name.endsWith('.rar') ||
+               name.endsWith('.7z') ||
+               name.endsWith('.tar') ||
+               name.endsWith('.gz');
       });
 
       if (validFiles.length === 0) {
-        alert('Nessun file compatibile trovato. Formati supportati: PDF e immagini (PNG, JPG, WEBP, BMP, TIFF).');
+        alert('Nessun file compatibile trovato. Formati supportati: PDF, immagini, Word (.docx), Excel (.xlsx, .csv), archivi ZIP e testi.');
         return;
       }
 
@@ -2503,7 +2639,7 @@
         const blobUrl = URL.createObjectURL(file);
 
         appendUserFileBubble(file.name, file.size, blobUrl, isImage, isPdf);
-        const indicator = showTypingIndicator();
+        const indicator = showTypingIndicator(`Analisi intelligente di ${file.name}...`);
 
         const formData = new FormData();
         formData.append('file', file);
@@ -2538,33 +2674,93 @@
           appendAssistantBubble("⚠️ Errore durante il caricamento del documento.");
         }
       } else {
-        // Upload Multiplo / Cartella in batch
+        // Upload Multiplo o Cartella
+        const totalCount = validFiles.length;
         const totalSize = validFiles.reduce((acc, f) => acc + (f.size || 0), 0);
-        const userSummaryText = `📁 Caricamento di ${validFiles.length} file... (${formatBytes(totalSize)})`;
+        const userSummaryText = `📁 Caricamento di ${totalCount} file... (${formatBytes(totalSize)})`;
         appendUserBubble(userSummaryText);
-        const indicator = showTypingIndicator();
 
-        const formData = new FormData();
-        for (const f of validFiles) {
-          formData.append('files', f);
-        }
-        formData.append('thread_id', currentThreadId);
+        const indicator = showTypingIndicator(`Elaborazione batch di ${totalCount} file...`, 0);
 
         try {
-          const res = await fetch('/api/documents/upload-batch', {
-            method: 'POST',
-            headers: authHeaders(),
-            body: formData
-          });
-          if (indicator) indicator.remove();
-          if (!res.ok) throw new Error('Errore durante il caricamento batch');
-          const data = await res.json();
-          
-          appendAssistantBubble(data.chat_reply || `📁 ${validFiles.length} documenti archiviati con successo!`, data.documents);
-          loadDashboard(currentFilter);
+          if (totalCount <= 8) {
+            // Elaborazione sequenziale con avanzamento preciso file per file
+            const uploadedDocs = [];
+            for (let i = 0; i < totalCount; i++) {
+              const file = validFiles[i];
+              const pct = Math.round((i / totalCount) * 100);
+              updateTypingIndicator(`Elaborazione ${i + 1} di ${totalCount}: ${file.name}...`, pct);
+
+              const formData = new FormData();
+              formData.append('file', file);
+              formData.append('thread_id', currentThreadId);
+
+              const res = await fetch('/api/documents/upload', {
+                method: 'POST',
+                headers: authHeaders(),
+                body: formData
+              });
+
+              if (res.ok) {
+                const data = await res.json();
+                uploadedDocs.push({
+                  id: data.document_id,
+                  title: data.title,
+                  issuer: data.issuer,
+                  amount: data.amount,
+                  due_date: data.due_date,
+                  status: data.status,
+                  summary: data.summary,
+                  file_url: data.file_url,
+                  download_url: data.download_url,
+                  file_type: data.file_type
+                });
+              }
+              updateTypingIndicator(`Completato ${i + 1} di ${totalCount}`, Math.round(((i + 1) / totalCount) * 100));
+            }
+            if (indicator) indicator.remove();
+            appendAssistantBubble(`📁 ${uploadedDocs.length} di ${totalCount} file archiviati e catalogati con successo!`, uploadedDocs);
+            loadDashboard(currentFilter);
+          } else {
+            // Cartelle grandi o molti file: endpoint batch con barra di progresso e animazione a fasi
+            updateTypingIndicator(`Invio al server di ${totalCount} file in corso...`, 15);
+
+            const formData = new FormData();
+            for (const f of validFiles) {
+              formData.append('files', f);
+            }
+            formData.append('thread_id', currentThreadId);
+
+            let currentPct = 20;
+            const progressTimer = setInterval(() => {
+              if (currentPct < 85) {
+                currentPct += Math.floor(Math.random() * 8) + 4;
+                updateTypingIndicator(`Analisi AI e catalogazione di ${totalCount} file in corso...`, currentPct);
+              }
+            }, 800);
+
+            const res = await fetch('/api/documents/upload-batch', {
+              method: 'POST',
+              headers: authHeaders(),
+              body: formData
+            });
+
+            clearInterval(progressTimer);
+            updateTypingIndicator("Finalizzazione archivio crittografato...", 95);
+
+            if (!res.ok) throw new Error('Errore durante il caricamento batch');
+            const data = await res.json();
+            updateTypingIndicator("Completato!", 100);
+
+            setTimeout(() => {
+              if (indicator) indicator.remove();
+              appendAssistantBubble(data.chat_reply || `📁 ${validFiles.length} documenti archiviati con successo!`, data.documents);
+              loadDashboard(currentFilter);
+            }, 400);
+          }
         } catch (err) {
           if (indicator) indicator.remove();
-          console.error('Errore /api/documents/upload-batch:', err);
+          console.error('Errore durante il caricamento batch:', err);
           appendAssistantBubble("⚠️ Errore durante il caricamento multiplo dei documenti.");
         }
       }
