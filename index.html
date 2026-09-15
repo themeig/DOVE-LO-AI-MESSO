@@ -2926,10 +2926,10 @@
       // Riconoscimento intelligente dell'azione per feedback dinamico
       const lower = text.toLowerCase();
       let statusFeedback = "";
-      if (lower.includes('zip') || lower.includes('comprimi') || lower.includes('archivio zip') || lower.includes('crea zip')) {
+      if (lower.includes('unzip') || lower.includes('scompatta') || lower.includes('estrai') || lower.includes('estrazione') || lower.includes('decomprim')) {
+        statusFeedback = "Sto estraendo l'archivio ZIP e catalogando i file...";
+      } else if (lower.includes('comprimi') || lower.includes('archivio zip') || lower.includes('crea zip') || lower.includes('creami uno zip') || lower.includes('fai uno zip') || (lower.includes('zip') && !lower.includes('unzip'))) {
         statusFeedback = "Sto creando l'archivio ZIP...";
-      } else if (lower.includes('unzip') || lower.includes('scompatta') || lower.includes('estrai') || lower.includes('estrazione')) {
-        statusFeedback = "Sto estraendo l'archivio e analizzando i file...";
       } else if (lower.includes('scansiona') || lower.includes('indicizza') || lower.includes('cartell') || lower.includes('sincronizza') || lower.includes('monitora')) {
         statusFeedback = "Scansione e sincronizzazione cartelle in corso...";
       } else if (lower.includes('dov\'è') || lower.includes('dove si trova') || lower.includes('dove ho messo') || lower.includes('dove sono') || lower.includes('cerca') || lower.includes('trova')) {

@@ -1,4 +1,5 @@
 import io
+import re
 import csv
 import json
 import zipfile
@@ -11,8 +12,10 @@ from sqlalchemy import or_
 
 import docx
 import openpyxl
+import pypdf
 
 from app.models.database import Document
+from app.models.schemas import ExtractedDocument
 from app.services.document_service import save_uploaded_file, read_decrypted_file
 from app.services.ai_service import get_ai_service
 
@@ -237,6 +240,213 @@ def unzip_document_to_vault(
         ).all()
         doc = next((d for d in all_zips if term in (d.title or "").lower() or term in (d.summary or "").lower()), None)
 
+def fast_extract_document_metadata(file_bytes: bytes, filename: str, mime_type: str = "") -> ExtractedDocument:
+    """
+    Estrazione ad altissima velocità e zero latenza di metadati, testo, importi e scadenze
+    per documenti PDF, Office e immagini estratti da archivi o batch.
+    """
+    fn = (filename or "").lower()
+    clean_stem = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
+
+    # 1. Estrazione testo reale
+    text = ""
+    if "pdf" in (mime_type or "") or fn.endswith(".pdf") or file_bytes.startswith(b"%PDF"):
+        try:
+            reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+            for p in reader.pages[:4]:
+                t = p.extract_text()
+                if t:
+                    text += t + "\n"
+        except Exception:
+            pass
+    elif any(fn.endswith(ext) for ext in [".docx", ".doc", ".xlsx", ".xls", ".csv", ".tsv", ".txt", ".json", ".md"]):
+        text = extract_text_from_office_file(file_bytes, filename)
+
+    text_lower = text.lower() if text else ""
+    combo = f"{fn} {text_lower}"
+
+    doc_type = "generico"
+    issuer = None
+    amount = None
+    due_date = None
+    tags = []
+
+    # Classificazione per tipo ed emittente
+    if any(k in combo for k in ["bolletta", "fattura energia", "servizio elettrico", "luce", "gas", "acqua", "utenza", "enel", "a2a", "eni", "iren", "hera", "sorgenia", "acea", "edison", "tim", "vodafone", "wind", "iliad", "fastweb"]):
+        doc_type = "bolletta"
+        tags.extend(["bolletta", "utenza", "energia"])
+        if "enel" in combo:
+            issuer = "Enel Energia"
+        elif "a2a" in combo:
+            issuer = "A2A"
+        elif "eni" in combo or "plenitude" in combo:
+            issuer = "Eni Plenitude"
+        elif "iren" in combo:
+            issuer = "Iren"
+        elif "hera" in combo:
+            issuer = "Hera"
+        elif "sorgenia" in combo:
+            issuer = "Sorgenia"
+        elif "acea" in combo:
+            issuer = "Acea"
+        elif "tim" in combo:
+            issuer = "TIM"
+        elif "vodafone" in combo:
+            issuer = "Vodafone"
+        elif "wind" in combo:
+            issuer = "WindTre"
+        elif "iliad" in combo:
+            issuer = "Iliad"
+        elif "fastweb" in combo:
+            issuer = "Fastweb"
+
+    elif any(k in combo for k in ["f24", "agenzia delle entrate", "modello f24", "tributo", "versamento unificato", "imu", "tari", "irpef", "iva"]):
+        doc_type = "f24"
+        issuer = "Agenzia delle Entrate"
+        tags.extend(["f24", "fisco", "tributi", "tasse"])
+
+    elif any(k in combo for k in ["730", "dichiarazione dei redditi", "modello 730", "redditi pf", "certificazione unica", "cu 20"]):
+        doc_type = "dichiarazione_redditi"
+        issuer = "Agenzia delle Entrate"
+        tags.extend(["730", "fisco", "redditi", "fiscale"])
+
+    elif any(k in combo for k in ["trenitalia", "italo", "biglietto", "ticket", "boarding pass", "carta imbarco", "volo", "ryanair", "easyjet", "ita airways"]):
+        doc_type = "biglietto"
+        if "trenitalia" in combo or "frecciarossa" in combo:
+            issuer = "Trenitalia"
+        elif "italo" in combo:
+            issuer = "Italo NTV"
+        elif "ryanair" in combo:
+            issuer = "Ryanair"
+        elif "easyjet" in combo:
+            issuer = "EasyJet"
+        elif "ita airways" in combo or "alitalia" in combo:
+            issuer = "ITA Airways"
+        tags.extend(["viaggio", "trasporti", "biglietto"])
+
+    elif any(k in combo for k in ["certificato", "tolc", "cisia", "attestato", "laurea", "diploma", "esame", "iscrizione", "universit"]):
+        doc_type = "certificato"
+        if "cisia" in combo or "tolc" in combo:
+            issuer = "CISIA"
+        elif "universit" in combo:
+            issuer = "Università"
+        tags.extend(["certificato", "studio", "formazione"])
+
+    elif any(k in combo for k in ["contratto", "accordo", "locazione", "affitto", "assunzione", "consulenza"]):
+        doc_type = "contratto"
+        tags.extend(["contratto", "legale", "accordo"])
+
+    elif any(k in combo for k in ["ricevuta", "scontrino", "pos", "fattura", "quietanza", "pagamento"]):
+        doc_type = "ricevuta"
+        tags.extend(["ricevuta", "spese", "pagamento"])
+
+    elif any(fn.endswith(ext) for ext in [".xlsx", ".xls", ".csv", ".tsv"]):
+        doc_type = "foglio_calcolo"
+        tags.extend(["excel", "tabelle", "dati"])
+
+    elif any(fn.endswith(ext) for ext in [".docx", ".doc"]):
+        doc_type = "documento_word"
+        tags.extend(["word", "documento"])
+
+    elif any(fn.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"]):
+        if any(k in fn for k in ["screen", "cattura", "screenshot"]):
+            doc_type = "screenshot"
+            tags.append("screenshot")
+        else:
+            doc_type = "foto"
+            tags.append("foto")
+
+    # Estrazione importo (da testo o pattern)
+    amount_matches = re.findall(r'(?:totale|importo|da pagare|euro|eur|€)?\s*[:\s]?\s*(?:€|eur)?\s*(\d{1,5}[,\.]\d{2})\s*(?:€|eur|\b)', text, re.IGNORECASE)
+    if amount_matches:
+        try:
+            val_str = amount_matches[0].replace(',', '.')
+            parsed_amt = float(val_str)
+            if 0.5 <= parsed_amt <= 50000.0:
+                amount = parsed_amt
+        except Exception:
+            pass
+
+    # Estrazione data scadenza (da testo o pattern)
+    date_patterns = [
+        r'(?:scadenza|entro il|scade il|termine|data scadenza)[:\s]+(\d{1,2})[/\.-](\d{1,2})[/\.-](\d{2,4})',
+        r'(\d{4})-(\d{2})-(\d{2})'
+    ]
+    for pat in date_patterns:
+        m = re.search(pat, text, re.IGNORECASE)
+        if m:
+            try:
+                if len(m.groups()) == 3 and len(m.group(3)) in [2, 4]:
+                    d, month, y = m.group(1), m.group(2), m.group(3)
+                    if len(y) == 2:
+                        y = f"20{y}"
+                    due_date = f"{int(y):04d}-{int(month):02d}-{int(d):02d}"
+                    break
+                elif len(m.groups()) == 3:
+                    due_date = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+                    break
+            except Exception:
+                pass
+
+    # Titolo pulito e comprensibile
+    title_parts = []
+    if doc_type != "generico":
+        title_parts.append(doc_type.replace("_", " ").capitalize())
+    if issuer:
+        title_parts.append(issuer)
+
+    words = [w.capitalize() for w in re.split(r'[_\-\s]+', clean_stem) if w.lower() not in ["pdf", "doc", "docx", "file", "documento", "archivio", "test", "dataset"]]
+    if words:
+        extra = [w for w in words if w.lower() not in (issuer or "").lower() and w.lower() not in doc_type]
+        if extra:
+            title = f"{' '.join(title_parts)} {' '.join(extra[:3])}".strip() if title_parts else " ".join(words)
+        else:
+            title = " ".join(title_parts) if title_parts else " ".join(words)
+    else:
+        title = " ".join(title_parts) if title_parts else clean_stem.capitalize()
+
+    # Riassunto conciso
+    sum_parts = [f"Documento '{filename}' catalogato come {doc_type}."]
+    if issuer:
+        sum_parts.append(f"Emittente: {issuer}.")
+    if amount is not None:
+        sum_parts.append(f"Importo: € {amount:.2f}.")
+    if due_date:
+        sum_parts.append(f"Scadenza: {due_date}.")
+    summary = " ".join(sum_parts)
+
+    return ExtractedDocument(
+        title=title or clean_stem.capitalize() or filename,
+        doc_type=doc_type,
+        issuer=issuer,
+        amount=amount,
+        due_date=due_date,
+        summary=summary,
+        tags=tags or ["archivio", "documento"],
+        suggest_rename=False
+    )
+
+
+def unzip_document_to_vault(
+    db: Session,
+    document_id: Optional[int] = None,
+    document_title: Optional[str] = None,
+    thread_id: str = "general"
+) -> List[Document]:
+    """
+    Estrae tutti i file contenuti all'interno di un documento ZIP del caveau,
+    analizza istantaneamente ciascun file con parser ad altissima velocità e registra i nuovi documenti nel database.
+    """
+    doc = None
+    if document_id:
+        doc = db.query(Document).filter(Document.id == document_id).first()
+    elif document_title:
+        term = document_title.strip().lower()
+        all_zips = db.query(Document).filter(
+            or_(Document.file_type == "zip", Document.doc_type == "archivio_zip")
+        ).all()
+        doc = next((d for d in all_zips if term in (d.title or "").lower() or term in (d.summary or "").lower()), None)
+
     if not doc:
         # Cerca l'ultimo zip caricato
         doc = db.query(Document).filter(
@@ -254,7 +464,6 @@ def unzip_document_to_vault(
 
     zip_bytes = read_decrypted_file(fp)
     extracted_docs: List[Document] = []
-    ai_service = get_ai_service()
 
     try:
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zf:
@@ -273,13 +482,13 @@ def unzip_document_to_vault(
                 inner_filename = Path(info.filename).name
                 saved_path = save_uploaded_file(raw_inner_bytes, inner_filename)
 
-                # Estrazione dati tramite AI o parser office
                 file_ext = Path(inner_filename).suffix.lstrip(".").lower() or "bin"
                 mime = "application/pdf" if file_ext == "pdf" else (
                     f"image/{file_ext}" if file_ext in ["jpg", "jpeg", "png", "webp"] else "application/octet-stream"
                 )
-                
-                extracted = ai_service.extract_document(raw_inner_bytes, mime, filename=inner_filename)
+
+                # Estrazione immediata ad altissima velocità
+                extracted = fast_extract_document_metadata(raw_inner_bytes, inner_filename, mime)
 
                 due_date_obj = None
                 if extracted.due_date:
