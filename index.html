@@ -194,6 +194,15 @@
           >
             <i class="fa-solid fa-sliders text-sm"></i>
           </button>
+
+          <!-- White Paper Tecnico & Funzionalità -->
+          <button 
+            onclick="openWhitePaperModal()" 
+            class="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-full transition" 
+            title="White Paper & Documentazione Completa"
+          >
+            <i class="fa-solid fa-book-open text-sm"></i>
+          </button>
         </div>
       </div>
 
@@ -684,6 +693,367 @@
     </div>
   </div>
 
+  <!-- ================================================================= -->
+  <!-- MODAL WHITE PAPER TECNICO & FUNZIONALITÀ                          -->
+  <!-- ================================================================= -->
+  <div id="whitePaperModal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-3 sm:p-6 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] shadow-2xl flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Top Bar Modal -->
+      <div class="px-6 py-4 border-b border-slate-200/80 flex items-center justify-between shrink-0 bg-slate-50/90 select-none">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#075E54] to-[#128C7E] text-white flex items-center justify-center shadow-xs">
+            <i class="fa-solid fa-book-open text-base"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="font-bold text-slate-900 text-base leading-tight">White Paper: Dove lo AI messo</h3>
+              <span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">v2.0 (2026)</span>
+            </div>
+            <p class="text-[11px] text-slate-500">Architettura, Crittografia a Riposo, Multimodalità & Strumenti Agentici</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Download Raw Markdown -->
+          <button 
+            type="button" 
+            onclick="downloadWhitePaperMarkdown()" 
+            class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold px-3 py-1.5 rounded-xl shadow-2xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
+            title="Scarica il White Paper in formato Markdown (.md)"
+          >
+            <i class="fa-solid fa-download text-emerald-600 text-xs"></i>
+            <span class="hidden sm:inline">Scarica .md</span>
+          </button>
+
+          <!-- Chiudi Modal -->
+          <button 
+            type="button" 
+            onclick="closeWhitePaperModal()" 
+            class="text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 p-2 rounded-xl transition cursor-pointer"
+            title="Chiudi"
+          >
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Navigation Pills & Search Bar -->
+      <div class="px-6 py-2.5 bg-white border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 shrink-0 select-none">
+        <div class="flex flex-wrap items-center gap-1.5 text-xs">
+          <button type="button" onclick="scrollWhitePaperSection('wp-vision')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition cursor-pointer">🎯 Visione</button>
+          <button type="button" onclick="scrollWhitePaperSection('wp-arch')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition cursor-pointer">🏗️ Architettura</button>
+          <button type="button" onclick="scrollWhitePaperSection('wp-crypto')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition cursor-pointer">🛡️ Sicurezza AES</button>
+          <button type="button" onclick="scrollWhitePaperSection('wp-formats')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition cursor-pointer">📑 Multimodale</button>
+          <button type="button" onclick="scrollWhitePaperSection('wp-agent')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition cursor-pointer">🧠 Strumenti AI</button>
+          <button type="button" onclick="scrollWhitePaperSection('wp-deadlines')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition cursor-pointer">⏳ Scadenzario</button>
+          <button type="button" onclick="scrollWhitePaperSection('wp-summary')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition cursor-pointer">📊 Tabella Sintesi</button>
+        </div>
+        <div class="relative min-w-[190px]">
+          <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+          <input 
+            type="text" 
+            id="wpSearchInput" 
+            oninput="filterWhitePaperContent(this.value)" 
+            placeholder="Cerca nel White Paper..." 
+            class="w-full pl-7 pr-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#128C7E]"
+          >
+        </div>
+      </div>
+
+      <!-- Contenuto Scorrevole White Paper -->
+      <div id="whitePaperContent" class="p-6 sm:p-8 overflow-y-auto custom-scroll space-y-8 text-slate-700 text-xs sm:text-sm leading-relaxed bg-[#FDFDFD]">
+        
+        <!-- SEZIONE 1: VISIONE -->
+        <section id="wp-vision" class="space-y-3">
+          <div class="flex items-center gap-2 text-slate-900 font-bold text-sm sm:text-base border-b border-slate-200/80 pb-2">
+            <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">1</span>
+            <h4>Executive Summary & Visione di Progetto</h4>
+          </div>
+          <p>
+            <strong>"Dove lo AI messo"</strong> è un assistente personale intelligente e caveau documentale crittografico locale, sviluppato per risolvere in modo definitivo il disordine e la dispersione delle scadenze fiscali, delle bollette e degli oggetti quotidiani.
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+            <div class="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-1.5">
+              <div class="font-bold text-emerald-900 flex items-center gap-2">
+                <i class="fa-brands fa-whatsapp text-emerald-600 text-base"></i>
+                <span>Chat Conversazionale WhatsApp (100%)</span>
+              </div>
+              <p class="text-xs text-emerald-800">
+                Look & feel identico all'applicazione WhatsApp originale per azzerare la curva d'apprendimento. Invia foto, PDF, documenti Word/Excel, messaggi vocali e chiedi all'assistente come faresti con un contatto reale.
+              </p>
+            </div>
+            <div class="p-4 rounded-2xl bg-slate-100/90 border border-slate-200/80 space-y-1.5">
+              <div class="font-bold text-slate-900 flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-blue-600 text-base"></i>
+                <span>Executive Bento Dashboard</span>
+              </div>
+              <p class="text-xs text-slate-600">
+                Superficie di controllo SaaS/Fintech moderna ispirata a Linear e Stripe. Visualizza KPI aggregati, countdown scadenze, stato dei pagamenti, inventario oggetti e gestisci le cartelle del computer.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- SEZIONE 2: ARCHITETTURA -->
+        <section id="wp-arch" class="space-y-3">
+          <div class="flex items-center gap-2 text-slate-900 font-bold text-sm sm:text-base border-b border-slate-200/80 pb-2">
+            <span class="w-7 h-7 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center text-xs font-bold">2</span>
+            <h4>Architettura del Sistema</h4>
+          </div>
+          <p>
+            L'applicazione adotta un'architettura <strong>SPA + FastAPI</strong> ad alte prestazioni con storage completamente locale e decifratura in memoria RAM:
+          </p>
+          <div class="bg-slate-900 text-slate-100 p-4 rounded-2xl font-mono text-xs overflow-x-auto">
+            <pre class="leading-relaxed">
+┌────────────────────────────────────────────────────────────────────────┐
+│                  FRONTEND SPA (HTML5 / Tailwind CSS)                   │
+│   ├─ 💬 Chat WhatsApp (100% Authentic)                                │
+│   ├─ 📊 Executive Bento Dashboard (SaaS Modern)                        │
+│   └─ 📄 White Paper & Viewer Modals                                    │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ HTTP / REST API
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                   BACKEND FASTAPI (Python 3.12+)                       │
+│   ├─ /api/chat (Agentic Router & Guardrails)                           │
+│   ├─ /api/documents (Upload Single & Batch)                            │
+│   ├─ /api/dashboard (Bento Feed & Aggregates)                          │
+│   ├─ /api/folders (Local Folder Watcher & Explorer)                    │
+│   └─ /api/auth (Zero-Knowledge Login & Session Lock)                   │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ In-Memory Pipeline
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                      CORE SERVICES & AGENT ENGINE                      │
+│   ├─ 🧠 Agent Service (Autonomous Tool Loop)                           │
+│   ├─ 🔍 Search Engine (Stemming, Synonyms, Levenshtein Fuzzy)          │
+│   ├─ 🗄️ Archive & Office Service (Zip, Unzip, Docx, Xlsx, CSV)         │
+│   ├─ ⚡ Multimodal AI Engine (OpenRouter / Deterministic Fallback)      │
+│   └─ 🛡️ Crypto Service (AES-128 Fernet + PBKDF2 600k iterations)       │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ Crittografia Trasparente
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                       SECURE STORAGE LAYER                             │
+│   ├─ 🗃️ SQLite Locale (Encrypted Columns TypeDecorator)                │
+│   └─ 🔒 Storage Uploads (File cifrati a blocchi su disco)              │
+└────────────────────────────────────────────────────────────────────────┘</pre>
+          </div>
+        </section>
+
+        <!-- SEZIONE 3: CRITTOGRAFIA & SICUREZZA -->
+        <section id="wp-crypto" class="space-y-3">
+          <div class="flex items-center gap-2 text-slate-900 font-bold text-sm sm:text-base border-b border-slate-200/80 pb-2">
+            <span class="w-7 h-7 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center text-xs font-bold">3</span>
+            <h4>Sicurezza & Crittografia a Riposo</h4>
+          </div>
+          <p>
+            Il sistema implementa il paradigma <strong>Zero-Knowledge Locale</strong>: nessun dato o file risiede in chiaro sul disco del dispositivo.
+          </p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
+              <thead class="bg-slate-100 text-slate-800 font-semibold">
+                <tr>
+                  <th class="p-2.5 border-b border-slate-200">Componente</th>
+                  <th class="p-2.5 border-b border-slate-200">Algoritmo</th>
+                  <th class="p-2.5 border-b border-slate-200">Dettaglio Implementativo</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr class="hover:bg-slate-50">
+                  <td class="p-2.5 font-semibold text-slate-800">Cifratura Campi DB</td>
+                  <td class="p-2.5 font-mono text-purple-700">AES-128 / Fernet (CBC + HMAC-SHA256)</td>
+                  <td class="p-2.5">Titoli, riassunti, enti, importi, note e messaggi cifrati su SQLite tramite TypeDecorator SQLAlchemy.</td>
+                </tr>
+                <tr class="hover:bg-slate-50">
+                  <td class="p-2.5 font-semibold text-slate-800">Derivazione Chiave</td>
+                  <td class="p-2.5 font-mono text-purple-700">PBKDF2-HMAC-SHA256 (600.000 iterazioni)</td>
+                  <td class="p-2.5">Chiave simmetrica generata in memoria RAM a partire dalla Master Password e da un Salt casuale a 16 byte.</td>
+                </tr>
+                <tr class="hover:bg-slate-50">
+                  <td class="p-2.5 font-semibold text-slate-800">Storage File Binari</td>
+                  <td class="p-2.5 font-mono text-purple-700">File-level AES Encryption</td>
+                  <td class="p-2.5">Tutti i PDF, immagini e documenti in <code class="bg-slate-100 px-1 py-0.5 rounded">storage/uploads/</code> sono cifrati a byte.</td>
+                </tr>
+                <tr class="hover:bg-slate-50">
+                  <td class="p-2.5 font-semibold text-slate-800">Sessione & Blocco</td>
+                  <td class="p-2.5 font-mono text-purple-700">Token 32-byte ad alta entropia</td>
+                  <td class="p-2.5">Nessuna password in memoria. Pulsante di blocco istantaneo che cancella le chiavi attive in RAM.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- SEZIONE 4: MULTIMODALE & FORMATI -->
+        <section id="wp-formats" class="space-y-3">
+          <div class="flex items-center gap-2 text-slate-900 font-bold text-sm sm:text-base border-b border-slate-200/80 pb-2">
+            <span class="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center text-xs font-bold">4</span>
+            <h4>Supporto Formati & Pipeline di Estrazione Multimodale</h4>
+          </div>
+          <p>
+            Il motore multimodale estrae automaticamente metadati strutturati da qualsiasi tipologia di file caricato dall'utente:
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+            <div class="p-3 bg-red-50/70 border border-red-200 rounded-xl space-y-1">
+              <div class="font-bold text-red-900 flex items-center gap-1.5"><i class="fa-solid fa-file-pdf text-red-600"></i> PDF (.pdf)</div>
+              <p class="text-[11px] text-red-800">Estrazione testo reale con pypdf, riconoscimento date, importi, scadenze e riassunto contestuale.</p>
+            </div>
+            <div class="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1">
+              <div class="font-bold text-blue-900 flex items-center gap-1.5"><i class="fa-solid fa-file-word text-blue-600"></i> Word (.docx, .doc)</div>
+              <p class="text-[11px] text-blue-800">Parsing strutturato di paragrafi, intestazioni e tabelle contrattuali con python-docx.</p>
+            </div>
+            <div class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1">
+              <div class="font-bold text-emerald-900 flex items-center gap-1.5"><i class="fa-solid fa-file-excel text-emerald-600"></i> Excel & CSV (.xlsx, .csv)</div>
+              <p class="text-[11px] text-emerald-800">Lettura multi-foglio con openpyxl, decodifica tabelle spese, colonne e totali contabili.</p>
+            </div>
+            <div class="p-3 bg-purple-50/70 border border-purple-200 rounded-xl space-y-1">
+              <div class="font-bold text-purple-900 flex items-center gap-1.5"><i class="fa-solid fa-file-image text-purple-600"></i> Immagini (.jpg, .png, .webp)</div>
+              <p class="text-[11px] text-purple-800">OCR visivo e classificazione foto oggetti fisici e stanze tramite Multimodal Vision.</p>
+            </div>
+            <div class="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1">
+              <div class="font-bold text-amber-900 flex items-center gap-1.5"><i class="fa-solid fa-file-zipper text-amber-600"></i> Archivi ZIP (.zip, .rar)</div>
+              <p class="text-[11px] text-amber-800">Creazione e scompattamento autonomo con estrazione e catalogazione di ogni file interno.</p>
+            </div>
+            <div class="p-3 bg-slate-100 border border-slate-200 rounded-xl space-y-1">
+              <div class="font-bold text-slate-900 flex items-center gap-1.5"><i class="fa-solid fa-folder-open text-slate-600"></i> Cartelle PC</div>
+              <p class="text-[11px] text-slate-700">Caricamento batch ricorsivo di intere directory locali con barra di avanzamento reale.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- SEZIONE 5: STRUMENTI AGENTICI -->
+        <section id="wp-agent" class="space-y-3">
+          <div class="flex items-center gap-2 text-slate-900 font-bold text-sm sm:text-base border-b border-slate-200/80 pb-2">
+            <span class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center text-xs font-bold">5</span>
+            <h4>Strumenti Agentici & Funzionalità Autonome</h4>
+          </div>
+          <p>
+            L'assistente esegue decisioni e azioni conversazionali intelligenti dotate di tool specializzati:
+          </p>
+          <div class="space-y-2.5">
+            <div class="p-3 rounded-xl border border-slate-200 bg-white space-y-1">
+              <div class="font-bold text-slate-900 flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[11px] font-mono">create_zip_archive</span>
+                <span class="text-xs text-slate-600">Comprime documenti in uno ZIP scaricabile</span>
+              </div>
+              <p class="text-xs text-slate-500">Consente richieste come: <em>"creami uno zip con tutte le bollette"</em> o <em>"fai uno zip dei documenti del 2026"</em>. Genera un file indice e una card interattiva di download.</p>
+            </div>
+            <div class="p-3 rounded-xl border border-slate-200 bg-white space-y-1">
+              <div class="font-bold text-slate-900 flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[11px] font-mono">unzip_vault_archive</span>
+                <span class="text-xs text-slate-600">Decompressione e catalogazione automatica</span>
+              </div>
+              <p class="text-xs text-slate-500">Estrae archivi ZIP caricati nel caveau e analizza/cataloga automaticamente ogni documento interno.</p>
+            </div>
+            <div class="p-3 rounded-xl border border-slate-200 bg-white space-y-1">
+              <div class="font-bold text-slate-900 flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[11px] font-mono">Fuzzy & Stemming Search</span>
+                <span class="text-xs text-slate-600">Motore di ricerca semantico-lessicale avanzato</span>
+              </div>
+              <p class="text-xs text-slate-500">Include stemming per singolari/plurali italiani, sinonimi concettuali (luce/enel, gas/a2a, f24/tributi) e tolleranza ai refusi (distanza di Levenshtein &le; 2) con zero contaminazioni incrociate.</p>
+            </div>
+            <div class="p-3 rounded-xl border border-slate-200 bg-white space-y-1">
+              <div class="font-bold text-slate-900 flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 text-[11px] font-mono">delete_vault_record & rollback</span>
+                <span class="text-xs text-slate-600">Eliminazione mirata protetta</span>
+              </div>
+              <p class="text-xs text-slate-500">Riconosce conferme e annullamenti dell'utente, eliminando solo i documenti target senza toccare il resto del caveau.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- SEZIONE 6: SCADENZARIO FISCALE -->
+        <section id="wp-deadlines" class="space-y-3">
+          <div class="flex items-center gap-2 text-slate-900 font-bold text-sm sm:text-base border-b border-slate-200/80 pb-2">
+            <span class="w-7 h-7 rounded-lg bg-rose-100 text-rose-800 flex items-center justify-center text-xs font-bold">6</span>
+            <h4>Scadenzario Fiscale Deterministico & Countdown</h4>
+          </div>
+          <p>
+            Le scadenze vengono calcolate in modo matematicamente deterministico rispetto alla data corrente:
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-center">
+            <div class="p-3 rounded-xl bg-red-50 border border-red-200 space-y-1">
+              <div class="font-bold text-red-700 text-xs">🔴 Urgente (0 - 3 giorni)</div>
+              <p class="text-[11px] text-red-600">Notifiche prioritarie e conteggio giorni esatto (es. "Scade tra 2 giorni").</p>
+            </div>
+            <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-1">
+              <div class="font-bold text-amber-700 text-xs">🟡 Medio (4 - 10 giorni)</div>
+              <p class="text-[11px] text-amber-600">Pianificazione dei pagamenti settimanali e promemoria anticipati.</p>
+            </div>
+            <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 space-y-1">
+              <div class="font-bold text-emerald-700 text-xs">🟢 Tranquillo (> 10 giorni)</div>
+              <p class="text-[11px] text-emerald-600">Visualizzazione ordinata nel calendario delle spese mensili.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- SEZIONE 7: TABELLA DI SINTESI -->
+        <section id="wp-summary" class="space-y-3">
+          <div class="flex items-center gap-2 text-slate-900 font-bold text-sm sm:text-base border-b border-slate-200/80 pb-2">
+            <span class="w-7 h-7 rounded-lg bg-slate-200 text-slate-800 flex items-center justify-center text-xs font-bold">7</span>
+            <h4>Tabella di Sintesi delle Funzionalità</h4>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
+              <thead class="bg-slate-100 text-slate-800 font-semibold">
+                <tr>
+                  <th class="p-2 border-b border-slate-200">Categoria</th>
+                  <th class="p-2 border-b border-slate-200">Funzionalità</th>
+                  <th class="p-2 border-b border-slate-200">Dettagli</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr>
+                  <td class="p-2 font-semibold text-slate-800">Interfaccia Duale</td>
+                  <td class="p-2">WhatsApp + Bento Dashboard</td>
+                  <td class="p-2 text-slate-600">Chat WhatsApp autentica al 100% e console KPI moderna.</td>
+                </tr>
+                <tr>
+                  <td class="p-2 font-semibold text-slate-800">Feedback Dinamico</td>
+                  <td class="p-2">Stato azioni & Progress Bar</td>
+                  <td class="p-2 text-slate-600">Avanzamento in tempo reale per ZIP, scansioni e upload cartelle.</td>
+                </tr>
+                <tr>
+                  <td class="p-2 font-semibold text-slate-800">Sicurezza</td>
+                  <td class="p-2">AES-128 Fernet + PBKDF2 600k</td>
+                  <td class="p-2 text-slate-600">Crittografia totale a riposo su database e file.</td>
+                </tr>
+                <tr>
+                  <td class="p-2 font-semibold text-slate-800">Documenti</td>
+                  <td class="p-2">PDF, Word, Excel, CSV, ZIP</td>
+                  <td class="p-2 text-slate-600">Estrazione dati contabili, contratti, importi e scadenze.</td>
+                </tr>
+                <tr>
+                  <td class="p-2 font-semibold text-slate-800">Strumenti AI</td>
+                  <td class="p-2">Zip/Unzip & Fuzzy Search</td>
+                  <td class="p-2 text-slate-600">Compressione automatica con indice e ricerca tollerante ai refusi.</td>
+                </tr>
+                <tr>
+                  <td class="p-2 font-semibold text-slate-800">Oggetti Fisici</td>
+                  <td class="p-2">Localizzatore con foto</td>
+                  <td class="p-2 text-slate-600">Memorizzazione stanza/cassetto con card fotografiche.</td>
+                </tr>
+                <tr>
+                  <td class="p-2 font-semibold text-slate-800">Integrazione PC</td>
+                  <td class="p-2">Cartelle PC & Windows Explorer</td>
+                  <td class="p-2 text-slate-600">Monitoraggio cartelle e apertura fisica in Esplora File.</td>
+                </tr>
+                <tr>
+                  <td class="p-2 font-semibold text-slate-800">Desktop</td>
+                  <td class="p-2">PyWebView Native Launcher</td>
+                  <td class="p-2 text-slate-600">Finestra desktop Windows autonoma senza bisogno del browser.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
 
   <!-- ================================================================= -->
   <!-- 2. VISTA DASHBOARD (ULTRA-MODERNA SAAS / FINTECH STYLE)           -->
@@ -718,6 +1088,16 @@
 
       <!-- Azioni Rapide & Cifratura -->
       <div class="flex items-center space-x-2.5">
+        <button 
+          onclick="openWhitePaperModal()" 
+          class="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 px-3 py-2 rounded-xl text-xs font-semibold transition active:scale-95 cursor-pointer shadow-2xs"
+          title="Consulta il White Paper Tecnico & Funzionale completo"
+        >
+          <i class="fa-solid fa-book-bookmark text-indigo-600 text-[11px]"></i>
+          <span class="hidden md:inline">White Paper</span>
+          <span class="md:hidden">Doc</span>
+        </button>
+
         <button 
           onclick="lockVault()" 
           class="flex items-center gap-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200 px-3 py-2 rounded-xl text-xs text-slate-700 transition active:scale-95 cursor-pointer"
@@ -1800,6 +2180,66 @@
       if (modal) {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
+      }
+    }
+
+    // --- White Paper Modal Handlers ---
+    function openWhitePaperModal() {
+      const modal = document.getElementById('whitePaperModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        const searchInput = document.getElementById('wpSearchInput');
+        if (searchInput) {
+          searchInput.value = '';
+          filterWhitePaperContent('');
+        }
+      }
+    }
+
+    function closeWhitePaperModal() {
+      const modal = document.getElementById('whitePaperModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function scrollWhitePaperSection(sectionId) {
+      const el = document.getElementById(sectionId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function filterWhitePaperContent(query) {
+      const q = (query || '').toLowerCase().trim();
+      const sections = document.querySelectorAll('#whitePaperContent section');
+      sections.forEach(sec => {
+        if (!q || sec.textContent.toLowerCase().includes(q)) {
+          sec.style.display = '';
+        } else {
+          sec.style.display = 'none';
+        }
+      });
+    }
+
+    async function downloadWhitePaperMarkdown() {
+      try {
+        const res = await fetch('/api/whitepaper');
+        if (!res.ok) throw new Error('Errore nel recupero del White Paper');
+        const text = await res.text();
+        const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'WHITE_PAPER_DOVE_LO_AI_MESSO.md';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('Errore download White Paper: ' + err.message);
       }
     }
 

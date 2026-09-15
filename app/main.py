@@ -88,6 +88,17 @@ def get_uploaded_file(filename: str):
 def get_api_file(filename: str):
     return _serve_decrypted_file(filename)
 
+# Endpoint White Paper
+@app.get("/api/whitepaper")
+def get_whitepaper():
+    wp_file = settings.BASE_DIR / "WHITE_PAPER.md"
+    if not wp_file.exists():
+        raise HTTPException(status_code=404, detail="White Paper non trovato")
+    return Response(
+        content=wp_file.read_text(encoding="utf-8"),
+        media_type="text/markdown; charset=utf-8"
+    )
+
 # Root endpoint serving index.html
 @app.get("/")
 def serve_index():
