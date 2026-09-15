@@ -2076,6 +2076,7 @@
       // --- SEZIONE 1: DOCUMENTI PER CATEGORIA ---
       if (docs.length > 0) {
         const docSection = document.createElement('div');
+        docSection.id = 'docSection';
         docSection.className = 'space-y-4';
 
         docSection.innerHTML = `
@@ -2085,7 +2086,11 @@
               <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Documenti Raggruppati per Categoria</h3>
               <span class="text-xs bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200/50">${docs.length}</span>
             </div>
-            <span class="text-[11px] text-slate-400 font-medium">Utenze, Fisco, Contratti, Identità & Spese</span>
+            <div class="flex items-center gap-2 text-[11px]">
+              <button onclick="toggleAllAccordions('docSection', true)" class="text-slate-400 hover:text-emerald-700 font-medium transition cursor-pointer">Espandi tutti</button>
+              <span class="text-slate-300">|</span>
+              <button onclick="toggleAllAccordions('docSection', false)" class="text-slate-400 hover:text-slate-700 font-medium transition cursor-pointer">Comprimi tutti</button>
+            </div>
           </div>
         `;
 
@@ -2145,7 +2150,7 @@
           else if (group.categoryKey === 'sanita') iconColor = 'bg-rose-100 text-rose-700';
 
           const detailsEl = document.createElement('details');
-          detailsEl.open = true;
+          detailsEl.open = false;
           detailsEl.className = 'group bg-white border border-slate-200/90 rounded-2xl shadow-2xs transition-all overflow-hidden';
 
           let unpaidBadge = '';
@@ -2294,6 +2299,7 @@
       // --- SEZIONE 2: OGGETTI PER AMBIENTE / STANZA ---
       if (items.length > 0) {
         const itemSection = document.createElement('div');
+        itemSection.id = 'itemSection';
         itemSection.className = 'space-y-4 pt-2';
 
         itemSection.innerHTML = `
@@ -2303,7 +2309,11 @@
               <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Oggetti & Cespiti per Ambiente / Stanza</h3>
               <span class="text-xs bg-purple-50 text-purple-700 font-bold px-2 py-0.5 rounded-full border border-purple-200/50">${items.length}</span>
             </div>
-            <span class="text-[11px] text-slate-400 font-medium">Studio, Camera, Cucina, Salotto, Garage & Altri</span>
+            <div class="flex items-center gap-2 text-[11px]">
+              <button onclick="toggleAllAccordions('itemSection', true)" class="text-slate-400 hover:text-purple-700 font-medium transition cursor-pointer">Espandi tutti</button>
+              <span class="text-slate-300">|</span>
+              <button onclick="toggleAllAccordions('itemSection', false)" class="text-slate-400 hover:text-slate-700 font-medium transition cursor-pointer">Comprimi tutti</button>
+            </div>
           </div>
         `;
 
@@ -2332,7 +2342,7 @@
           const style = roomStyles[roomName] || { icon: "fa-location-dot", color: "bg-slate-100 text-slate-700" };
 
           const detailsEl = document.createElement('details');
-          detailsEl.open = true;
+          detailsEl.open = false;
           detailsEl.className = 'group bg-white border border-slate-200/90 rounded-2xl shadow-2xs transition-all overflow-hidden';
 
           let itemCardsHtml = '';
@@ -2432,6 +2442,14 @@
 
         container.appendChild(itemSection);
       }
+    }
+
+    // --- Helper Espandi / Comprimi Tutti gli Accordion di Categoria ---
+    function toggleAllAccordions(sectionId, openState) {
+      const section = document.getElementById(sectionId) || document.getElementById('dashboardGroupedContainer');
+      if (!section) return;
+      const detailsList = section.querySelectorAll('details');
+      detailsList.forEach(d => { d.open = openState; });
     }
 
     // --- Rendering Righe Tabella con Design Moderno ---
