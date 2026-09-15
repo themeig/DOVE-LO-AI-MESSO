@@ -120,6 +120,18 @@ class ChatMessage(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
 
 
+class UIEvent(Base):
+    __tablename__ = "ui_events"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    thread_id = Column(String(50), nullable=False, default="general", index=True)
+    event_type = Column(String(50), nullable=False)  # 'CARD_RENDER_ERROR', 'FILE_DOWNLOAD_ERROR', 'MEDIA_PREVIEW_ERROR', 'BUTTON_NOT_VISIBLE'
+    target_type = Column(String(50), nullable=True)  # 'document', 'physical_item'
+    target_id = Column(Integer, nullable=True)
+    title = Column(String(255), nullable=True)
+    error_details = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class AppSetting(Base):
     __tablename__ = "app_settings"
     key = Column(String(50), primary_key=True)

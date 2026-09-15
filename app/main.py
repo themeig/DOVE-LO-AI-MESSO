@@ -17,6 +17,7 @@ from app.api.items import router as items_router
 from app.api.threads import router as threads_router
 from app.api.settings import router as settings_router
 from app.api.deadlines import router as deadlines_router
+from app.api.telemetry import router as telemetry_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -52,6 +53,7 @@ app.include_router(items_router)
 app.include_router(threads_router)
 app.include_router(settings_router)
 app.include_router(deadlines_router)
+app.include_router(telemetry_router)
 
 settings = get_settings()
 

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from app.config import get_settings
-from app.models.database import Document, PhysicalItem, ChatMessage, ChatThread, get_app_setting
+from app.models.database import Document, PhysicalItem, ChatMessage, ChatThread, get_app_setting, UIEvent
 from app.models.schemas import ChatResponse
 from app.services.ai_service import get_ai_service, MockAIService
 from app.services.search_service import (
@@ -337,8 +337,8 @@ REGOLE OPERATIVE:
    - Chiama `rename_vault_document(new_title=...)`.
 
 10. QUANDO L'UTENTE CHIEDE DI SCARICARE O VEDERE UN DOCUMENTO:
-    - DIVIETO ASSOLUTO DI SCRIVERE FINTI LINK MARKDOWN (es. `[Link per scaricare...]`).
-    - CHIAMA SEMPRE `show_document_card`! L'interfaccia WhatsApp mostrerà all'utente la scheda interattiva con il pulsante reale di visualizzazione e download!
+    - Di norma, DIVIETO DI SCRIVERE FINTI LINK MARKDOWN e CHIAMA SEMPRE `show_document_card`! L'interfaccia WhatsApp mostrerà all'utente la scheda interattiva con i pulsanti [👁️ Vedi] e [⬇️ Scarica].
+    - GESTIONE RESILIENTE SEGNALAZIONI UI: Se la telemetria UI del client segnala un errore di visualizzazione o se l'utente riferisce esplicitamente di non vedere il pulsante/scheda, riconosci l'inconveniente tecnico e fornisci come riserva il percorso/link di download diretto reale di sistema (es. `/api/documents/{id}/download`).
 """
 
 def strip_tool_tags(text: str) -> str:
@@ -431,6 +431,54 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
 class AgenticChatService:
     def __init__(self):
         self.settings = get_settings()
+
+    def get_recent_ui_events(self, db: Session, thread_id: str = "general", minutes: int = 10) -> List[UIEvent]:
+        """Recupera gli ultimi eventi di telemetria UI per il thread specificato."""
+        try:
+            cutoff = datetime.utcnow() - timedelta(minutes=minutes)
+            events = (
+                db.query(UIEvent)
+                .filter(UIEvent.thread_id == thread_id)
+                .filter(UIEvent.created_at >= cutoff)
+                .order_by(UIEvent.id.desc())
+                .limit(5)
+                .all()
+            )
+            return events
+        except Exception as e:
+            logger.warning(f"Errore recupero eventi UI recenti: {e}")
+            return []
+
+    def _build_ui_telemetry_prompt_note(self, db: Session, thread_id: str = "general") -> Optional[str]:
+        """Genera un blocco di istruzioni contestuali basate sullo stato di salute e telemetria del client."""
+        events = self.get_recent_ui_events(db, thread_id=thread_id, minutes=10)
+        if not events:
+            return None
+
+        lines = []
+        for ev in events:
+            doc_id = ev.target_id
+            doc_title = ev.title or "Documento"
+            dl_path = f"/api/documents/{doc_id}/download" if doc_id else "/api/dashboard"
+            lines.append(
+                f"- Evento: {ev.event_type} per '{doc_title}' (ID: {doc_id or 'N/D'}). "
+                f"Dettaglio: {ev.error_details or 'Errore rendering client'}. "
+                f"Link di download diretto reale: {dl_path}"
+            )
+
+        note = (
+            "================================================================================\n"
+            "STATO TELEMETRIA UI CLIENT IN TEMPO REALE (FEEDBACK DAL FRONTEND):\n"
+            "================================================================================\n"
+            "L'interfaccia client ha registrato i seguenti eventi o errori tecnici recenti:\n"
+            + "\n".join(lines) + "\n\n"
+            "ISTRUZIONE RESILIENTE:\n"
+            "- Se l'utente ti dice che non vede il pulsante, non vede la scheda o non riesce ad aprire/scaricare il file:\n"
+            "  1. Riconosci cortesemente che si è verificato un inconveniente temporaneo di visualizzazione nella chat.\n"
+            "  2. Fornisci SUBITO il link diretto di download alternativo (es. `/api/documents/{id}/download` o pulsante nella Dashboard).\n"
+            "  3. Non limitarti a ripetere frasi generiche o a riprovare alla cieca senza fornire il link diretto di salvataggio!"
+        )
+        return note
 
     def _extract_rename_title(self, text: str) -> Optional[str]:
         """Estrae il nuovo titolo da espressioni dell'utente per rinominare documenti o foto."""
@@ -1728,6 +1776,12 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                     "role": "assistant" if m.sender == "assistant" else "user",
                     "content": m.content
                 })
+
+        # Iniezione telemetria UI client (se ci sono stati errori recenti di visualizzazione o download)
+        ui_telemetry_note = self._build_ui_telemetry_prompt_note(db, thread_id=thread_id)
+        if ui_telemetry_note:
+            history_messages.append({"role": "system", "content": ui_telemetry_note})
+
         history_messages.append({"role": "user", "content": user_text})
 
         headers = {
@@ -2383,3 +2437,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             reply=f"Non ho trovato nessun documento o oggetto corrispondente a '{user_text}' nel tuo caveau. Puoi chiedermi dove si trova un oggetto, cercare un documento o verificare le scadenze!",
             action="REPLY"
         )
+
+
+AgentService = AgenticChatService
+

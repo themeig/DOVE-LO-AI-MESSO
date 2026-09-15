@@ -126,3 +126,29 @@ class BulkDeleteResponse(BaseModel):
     message: str
     deleted_ids: List[int]
 
+class UIEventCreate(BaseModel):
+    thread_id: Optional[str] = "general"
+    event_type: str
+    target_type: Optional[str] = None
+    target_id: Optional[int] = None
+    title: Optional[str] = None
+    error_details: Optional[str] = None
+
+class UIEventItem(BaseModel):
+    id: int
+    thread_id: str
+    event_type: str
+    target_type: Optional[str] = None
+    target_id: Optional[int] = None
+    title: Optional[str] = None
+    error_details: Optional[str] = None
+    created_at: Optional[str] = None
+
+class UIEventResponse(BaseModel):
+    status: str = "ok"
+    event_id: int
+
+class UIEventsListResponse(BaseModel):
+    events: List[UIEventItem]
+
+
