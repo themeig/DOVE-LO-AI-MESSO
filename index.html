@@ -3114,94 +3114,96 @@
           appendAssistantBubble("⚠️ Errore durante il caricamento del documento.");
         }
       } else {
-        // Upload Multiplo o Cartella
+        // Upload Multiplo o Cartella con avanzamento reale al 100%
         const totalCount = validFiles.length;
         const totalSize = validFiles.reduce((acc, f) => acc + (f.size || 0), 0);
         const userSummaryText = `📁 Caricamento di ${totalCount} file... (${formatBytes(totalSize)})`;
         appendUserBubble(userSummaryText);
 
-        const indicator = showTypingIndicator(`Elaborazione batch di ${totalCount} file...`, 0);
+        const indicator = showTypingIndicator(`Avvio elaborazione di ${totalCount} file...`, 0);
 
         try {
-          if (totalCount <= 8) {
-            // Elaborazione sequenziale con avanzamento preciso file per file
-            const uploadedDocs = [];
-            for (let i = 0; i < totalCount; i++) {
-              const file = validFiles[i];
-              const pct = Math.round((i / totalCount) * 100);
-              updateTypingIndicator(`Elaborazione ${i + 1} di ${totalCount}: ${file.name}...`, pct);
+          const uploadedDocs = [];
+          const errors = [];
+          let completedCount = 0;
+          let fileIndex = 0;
+
+          // Esecuzione concorrente controllata (3 richieste parallele) per massima velocità e feedback in tempo reale
+          const CONCURRENCY = Math.min(3, totalCount);
+
+          const uploadWorker = async () => {
+            while (fileIndex < totalCount) {
+              const currentIdx = fileIndex++;
+              const file = validFiles[currentIdx];
+              
+              updateTypingIndicator(`[${completedCount + 1}/${totalCount}] Analisi AI: ${file.name}`, Math.round((completedCount / totalCount) * 100));
 
               const formData = new FormData();
               formData.append('file', file);
               formData.append('thread_id', currentThreadId);
 
-              const res = await fetch('/api/documents/upload', {
-                method: 'POST',
-                headers: authHeaders(),
-                body: formData
-              });
-
-              if (res.ok) {
-                const data = await res.json();
-                uploadedDocs.push({
-                  id: data.document_id,
-                  title: data.title,
-                  issuer: data.issuer,
-                  amount: data.amount,
-                  due_date: data.due_date,
-                  status: data.status,
-                  summary: data.summary,
-                  file_url: data.file_url,
-                  download_url: data.download_url,
-                  file_type: data.file_type
+              try {
+                const res = await fetch('/api/documents/upload', {
+                  method: 'POST',
+                  headers: authHeaders(),
+                  body: formData
                 });
+
+                if (res.ok) {
+                  const data = await res.json();
+                  uploadedDocs.push({
+                    id: data.document_id,
+                    title: data.title,
+                    issuer: data.issuer,
+                    amount: data.amount,
+                    due_date: data.due_date,
+                    status: data.status,
+                    summary: data.summary,
+                    file_url: data.file_url,
+                    download_url: data.download_url,
+                    file_type: data.file_type
+                  });
+                } else {
+                  console.warn(`Errore upload per ${file.name}: status ${res.status}`);
+                  errors.push(file.name);
+                }
+              } catch (err) {
+                console.error(`Errore rete upload per ${file.name}:`, err);
+                errors.push(file.name);
+              } finally {
+                completedCount++;
+                const realPct = Math.round((completedCount / totalCount) * 100);
+                updateTypingIndicator(`Elaborati ${completedCount} di ${totalCount} file (${realPct}%)...`, realPct);
               }
-              updateTypingIndicator(`Completato ${i + 1} di ${totalCount}`, Math.round(((i + 1) / totalCount) * 100));
             }
-            if (indicator) indicator.remove();
-            appendAssistantBubble(`📁 ${uploadedDocs.length} di ${totalCount} file archiviati e catalogati con successo!`, uploadedDocs);
+          };
+
+          // Avvia i worker concorrenti
+          const workers = [];
+          for (let w = 0; w < CONCURRENCY; w++) {
+            workers.push(uploadWorker());
+          }
+          await Promise.all(workers);
+
+          updateTypingIndicator("Completato!", 100);
+          await new Promise(r => setTimeout(r, 300));
+
+          if (indicator) indicator.remove();
+
+          if (uploadedDocs.length > 0) {
+            let replyText = `📁 **${uploadedDocs.length} di ${totalCount}** file archiviati e catalogati nel caveau con successo!`;
+            if (errors.length > 0) {
+              replyText += `\n⚠️ *Attenzione: ${errors.length} file non sono stati elaborati.*`;
+            }
+            appendAssistantBubble(replyText, uploadedDocs);
             loadDashboard(currentFilter);
           } else {
-            // Cartelle grandi o molti file: endpoint batch con barra di progresso e animazione a fasi
-            updateTypingIndicator(`Invio al server di ${totalCount} file in corso...`, 15);
-
-            const formData = new FormData();
-            for (const f of validFiles) {
-              formData.append('files', f);
-            }
-            formData.append('thread_id', currentThreadId);
-
-            let currentPct = 20;
-            const progressTimer = setInterval(() => {
-              if (currentPct < 85) {
-                currentPct += Math.floor(Math.random() * 8) + 4;
-                updateTypingIndicator(`Analisi AI e catalogazione di ${totalCount} file in corso...`, currentPct);
-              }
-            }, 800);
-
-            const res = await fetch('/api/documents/upload-batch', {
-              method: 'POST',
-              headers: authHeaders(),
-              body: formData
-            });
-
-            clearInterval(progressTimer);
-            updateTypingIndicator("Finalizzazione archivio crittografato...", 95);
-
-            if (!res.ok) throw new Error('Errore durante il caricamento batch');
-            const data = await res.json();
-            updateTypingIndicator("Completato!", 100);
-
-            setTimeout(() => {
-              if (indicator) indicator.remove();
-              appendAssistantBubble(data.chat_reply || `📁 ${validFiles.length} documenti archiviati con successo!`, data.documents);
-              loadDashboard(currentFilter);
-            }, 400);
+            appendAssistantBubble("⚠️ Nessun file è stato elaborato con successo. Verifica i formati o la connessione.");
           }
         } catch (err) {
           if (indicator) indicator.remove();
           console.error('Errore durante il caricamento batch:', err);
-          appendAssistantBubble("⚠️ Errore durante il caricamento multiplo dei documenti.");
+          appendAssistantBubble("⚠️ Errore imprevisto durante il caricamento multiplo dei documenti.");
         }
       }
     }

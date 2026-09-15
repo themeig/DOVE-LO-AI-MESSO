@@ -486,6 +486,14 @@ REGOLE OPERATIVE:
 
 13. APERTURA DI FILE IN ESPLORA RISORSE DI WINDOWS:
     - Se l'utente chiede di aprire la cartella originale o il file su Windows (es. 'apri il contratto su Windows', 'mostrami la cartella in esplora risorse'): USA `open_local_file_in_explorer(document_title=...)`.
+
+14. CREAZIONE ARCHIVI ZIP COMPRESSI (create_zip_archive):
+    - Se l'utente chiede di creare un file zip, comprimere documenti, raggruppare bollette, fatture, ricevute o documenti in un unico archivio (es. 'creami uno zip con tutte le bollette', 'fai uno zip dei documenti 2026', 'puoi zippare i file?', 'comprimi le fatture'): DEVI SEMPRE USARE LO STRUMENTO `create_zip_archive(query=..., category=..., archive_name=...)`!
+    - NON DIRE MAI che non hai la funzionalità di creare zip: possiedi lo strumento nativo `create_zip_archive` integrato!
+
+15. ESTRAZIONE E DECOMPRESSIONE ARCHIVI (unzip_vault_archive):
+    - Se l'utente chiede di estrarre, scompattare o fare l'unzip di un file .zip presente nel caveau (es. 'scompatta il file zip che ho caricato', 'estrai l'archivio fatture.zip', 'fai l'unzip dello zip', 'estrai tutti i file'): DEVI SEMPRE USARE LO STRUMENTO `unzip_vault_archive(document_title=..., document_id=...)`!
+    - Tutti i file estratti (PDF, immagini, documenti Word, fogli Excel) verranno analizzati con l'AI e catalogati automaticamente nel caveau.
 """
 
 def strip_tool_tags(text: str) -> str:
