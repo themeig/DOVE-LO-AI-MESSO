@@ -40,6 +40,33 @@
       border-radius: 10px 0 10px 10px;
       box-shadow: 0 1px 0.5px rgba(11,20,26,.13);
     }
+    /* Selezione testo abilitata per bolle di chat e contenuti */
+    .wa-bubble-in, .wa-bubble-out, .selectable-text {
+      user-select: text !important;
+      -webkit-user-select: text !important;
+      -moz-user-select: text !important;
+      -ms-user-select: text !important;
+    }
+    .wa-bubble-in *, .wa-bubble-out * {
+      user-select: text !important;
+      -webkit-user-select: text !important;
+    }
+    /* Pulsante copia messaggio */
+    .copy-msg-btn {
+      opacity: 0;
+      transition: opacity 0.15s ease, transform 0.1s ease, color 0.15s ease;
+      cursor: pointer;
+    }
+    .group\/msg:hover .copy-msg-btn,
+    .copy-msg-btn:focus,
+    .copy-msg-btn:active {
+      opacity: 1;
+    }
+    @media (hover: none) {
+      .copy-msg-btn {
+        opacity: 0.7;
+      }
+    }
     /* Scrollbar moderna per dashboard */
     .custom-scroll::-webkit-scrollbar {
       width: 6px;
@@ -71,7 +98,7 @@
     }
   </style>
 </head>
-<body class="h-screen flex flex-col bg-[#d1d7db] text-slate-800 select-none">
+<body class="h-screen flex flex-col bg-[#d1d7db] text-slate-800">
 
   <!-- Invisible file input for real uploads -->
   <input type="file" id="realFileInput" accept="image/*,application/pdf" style="display:none">
@@ -1756,6 +1783,60 @@
       return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
+    // --- Funzioni Copia Testo & Appunti ---
+    function copyMessageText(btnEl) {
+      if (!btnEl) return;
+      const bubble = btnEl.closest('.wa-bubble-in, .wa-bubble-out');
+      if (!bubble) return;
+      const bodyEl = bubble.querySelector('.message-body') || bubble.querySelector('p');
+      const textToCopy = (bodyEl ? (bodyEl.innerText || bodyEl.textContent) : (bubble.innerText || bubble.textContent)) || '';
+      copyTextToClipboard(textToCopy, btnEl);
+    }
+
+    function copyTextToClipboard(text, btnEl = null) {
+      if (!text) return;
+      const clean = text.trim();
+
+      const showFeedback = () => {
+        if (btnEl) {
+          const icon = btnEl.querySelector('i') || btnEl;
+          const oldClass = icon.className;
+          icon.className = 'fa-solid fa-check text-emerald-600';
+          btnEl.classList.add('text-emerald-600');
+          setTimeout(() => {
+            icon.className = oldClass;
+            btnEl.classList.remove('text-emerald-600');
+          }, 1600);
+        }
+      };
+
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(clean).then(showFeedback).catch(() => {
+          fallbackCopyText(clean, showFeedback);
+        });
+      } else {
+        fallbackCopyText(clean, showFeedback);
+      }
+    }
+
+    function fallbackCopyText(text, callback) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.top = '-9999px';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (callback) callback();
+      } catch (err) {
+        console.error('Errore fallback copy:', err);
+      }
+    }
+
     // --- Indicatori UI Chat ---
     function showTypingIndicator() {
       const indicator = document.createElement('div');
@@ -1778,9 +1859,14 @@
       const userBubble = document.createElement('div');
       userBubble.className = 'flex justify-end';
       userBubble.innerHTML = `
-        <div class="wa-bubble-out p-2.5 max-w-[85%] text-sm text-gray-800 leading-snug">
-          <p>${formatMessageText(text)}</p>
-          <div class="flex justify-end items-center gap-1 mt-0.5">
+        <div class="wa-bubble-out p-2.5 max-w-[85%] text-sm text-gray-800 leading-snug relative group/msg select-text">
+          <div class="message-body selectable-text break-words">
+            <p>${formatMessageText(text)}</p>
+          </div>
+          <div class="flex justify-end items-center gap-1.5 mt-0.5 select-none">
+            <button type="button" onclick="copyMessageText(this)" class="copy-msg-btn hover:text-slate-900 text-slate-500 text-[11px] p-0.5 rounded transition cursor-pointer" title="Copia testo">
+              <i class="fa-regular fa-copy"></i>
+            </button>
             <span class="text-[10px] text-gray-500">${getTime()}</span>
             <i class="fa-solid fa-check-double text-[11px] text-[#53bdeb]"></i>
           </div>
@@ -1846,9 +1932,12 @@
       }
 
       userBubble.innerHTML = `
-        <div class="wa-bubble-out p-2 max-w-[85%] text-sm text-gray-800">
+        <div class="wa-bubble-out p-2 max-w-[85%] text-sm text-gray-800 select-text">
           ${previewContent}
-          <div class="flex justify-end items-center gap-1 mt-0.5">
+          <div class="flex justify-end items-center gap-1.5 mt-0.5 select-none">
+            <button type="button" onclick="copyTextToClipboard('${escapeHtml(fileName).replace(/'/g, "\\'")}', this)" class="copy-msg-btn hover:text-slate-900 text-slate-500 text-[11px] p-0.5 rounded transition cursor-pointer" title="Copia nome file">
+              <i class="fa-regular fa-copy"></i>
+            </button>
             <span class="text-[10px] text-gray-500">${getTime()}</span>
             <i class="fa-solid fa-check-double text-[11px] text-[#53bdeb]"></i>
           </div>
@@ -1998,16 +2087,27 @@
       }
 
       aiBubble.innerHTML = `
-        <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug max-w-full">
-          <p>${formattedHtml}</p>
+        <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug max-w-full relative group/msg select-text">
+          <div class="flex items-start justify-between gap-2">
+            <div class="message-body selectable-text min-w-0 flex-1 break-words">
+              <p>${formattedHtml}</p>
+            </div>
+            <button type="button" onclick="copyMessageText(this)" class="copy-msg-btn hover:text-slate-900 text-slate-400 hover:bg-slate-100 text-xs p-1 rounded transition shrink-0 cursor-pointer self-start -mt-0.5 -mr-0.5" title="Copia testo">
+              <i class="fa-regular fa-copy"></i>
+            </button>
+          </div>
           ${photoHtml}
           ${docsHtml}
           ${confHtml}
           ${storeItemHtml}
-          <span class="block text-[10px] text-gray-400 text-right mt-1">${getTime()}</span>
+          <div class="flex items-center justify-end gap-1.5 mt-1 select-none">
+            <span class="text-[10px] text-gray-400">${getTime()}</span>
+          </div>
         </div>
       `;
       chatFeed.appendChild(aiBubble);
+      scrollBottom();
+    }
       scrollBottom();
     }
 
