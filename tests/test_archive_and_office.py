@@ -1,0 +1,180 @@
+"""Test per gli strumenti Zip, Unzip e lettura file Word (.docx) ed Excel (.xlsx, .csv)."""
+import io
+import json
+import zipfile
+import pytest
+import docx
+import openpyxl
+from fastapi.testclient import TestClient
+
+from app.main import app
+from app.models.database import init_db, Document, get_session_maker, get_engine
+from app.services.ai_service import get_ai_service, MockAIService
+from app.services.archive_service import (
+    create_zip_from_documents,
+    unzip_document_to_vault,
+    extract_text_from_office_file
+)
+from app.services.agent_service import AgenticChatService
+from app.services.crypto_service import get_vault_manager
+
+client = TestClient(app)
+
+def setup_module():
+    init_db()
+    mgr = get_vault_manager()
+    mgr.initialize_if_needed("1234")
+
+
+def create_dummy_docx() -> bytes:
+    doc = docx.Document()
+    doc.add_heading("Contratto di Consulenza Software", 0)
+    doc.add_paragraph("Il presente contratto e stipulato tra Azienda Alfa e Professionista Mario Rossi.")
+    doc.add_paragraph("Compenso pattuito: 3.500,00 Euro con scadenza pagamento 2026-12-31.")
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+def create_dummy_xlsx() -> bytes:
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Spese e Scadenze"
+    ws.append(["Descrizione", "Fornitore", "Importo Euro", "Data Scadenza"])
+    ws.append(["Bolletta Fibra Ottica", "TIM Business", 120.50, "2026-11-15"])
+    ws.append(["Assicurazione Ufficio", "Generali Assicurazioni", 450.00, "2026-12-01"])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def create_dummy_csv() -> bytes:
+    content = "Fornitore,Tipo,Importo,Scadenza\nA2A Energia,Bolletta Luce,85.20,2026-10-30\nAcquedotto,Acqua,42.00,2026-11-05\n"
+    return content.encode("utf-8")
+
+
+def test_office_extraction_docx():
+    """Test estrazione testo da documento Word (.docx)."""
+    docx_bytes = create_dummy_docx()
+    text = extract_text_from_office_file(docx_bytes, "contratto.docx")
+    assert "Contratto di Consulenza" in text
+    assert "Mario Rossi" in text
+    assert "3.500" in text
+
+    # Estrazione AI da file docx
+    ai = MockAIService()
+    ext = ai.extract_document(docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", filename="contratto_consulenza.docx")
+    assert ext.doc_type in ["contratto", "documento_word", "generico"]
+    assert ext.title
+
+
+def test_office_extraction_xlsx():
+    """Test estrazione testo/tabelle da foglio Excel (.xlsx)."""
+    xlsx_bytes = create_dummy_xlsx()
+    text = extract_text_from_office_file(xlsx_bytes, "spese_2026.xlsx")
+    assert "TIM Business" in text
+    assert "120.5" in text
+    assert "Generali Assicurazioni" in text
+
+    # Estrazione AI da file xlsx
+    ai = MockAIService()
+    ext = ai.extract_document(xlsx_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename="spese_aziendali.xlsx")
+    assert ext.doc_type in ["foglio_calcolo", "spese", "fattura", "generico"]
+    assert ext.title
+
+
+def test_office_extraction_csv():
+    """Test estrazione dati da file CSV."""
+    csv_bytes = create_dummy_csv()
+    text = extract_text_from_office_file(csv_bytes, "bollette.csv")
+    assert "A2A Energia" in text
+    assert "85.20" in text
+
+
+def test_create_and_unzip_archive_service():
+    """Test creazione archivio ZIP da documenti del caveau e successivo unzip con re-indicizzazione."""
+    from app.models.database import get_db
+    get_db_func = app.dependency_overrides.get(get_db, get_db)
+    db = next(get_db_func())
+    try:
+        # 1. Carica 2 documenti di prova
+        pdf_bytes = b"%PDF-1.4 documento da zippare"
+        res_up1 = client.post(
+            "/api/documents/upload",
+            files={"file": ("doc_uno.pdf", io.BytesIO(pdf_bytes), "application/pdf")},
+            data={"thread_id": "general"}
+        )
+        assert res_up1.status_code == 201
+        doc1_id = res_up1.json()["document_id"]
+
+        docx_bytes = create_dummy_docx()
+        res_up2 = client.post(
+            "/api/documents/upload",
+            files={"file": ("contratto_alfa.docx", io.BytesIO(docx_bytes), "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            data={"thread_id": "general"}
+        )
+        assert res_up2.status_code == 201
+        doc2_id = res_up2.json()["document_id"]
+
+        # 2. Crea archivio ZIP con i 2 documenti
+        zip_doc = create_zip_from_documents(
+            db=db,
+            document_ids=[doc1_id, doc2_id],
+            archive_title="Archivio Contratti e PDF",
+            thread_id="general"
+        )
+        assert zip_doc is not None
+        assert zip_doc.id > 0
+        assert zip_doc.file_type == "zip"
+        assert zip_doc.doc_type == "archivio_zip"
+
+        # 3. Esegui unzip dell'archivio appena creato
+        extracted_docs = unzip_document_to_vault(
+            db=db,
+            document_id=zip_doc.id,
+            thread_id="general"
+        )
+        assert len(extracted_docs) >= 2
+    finally:
+        db.close()
+
+
+def test_agent_zip_and_unzip_tools():
+    """Test esecuzione dei tool create_zip_archive e unzip_vault_archive dell'agente."""
+    from app.models.database import get_db
+    get_db_func = app.dependency_overrides.get(get_db, get_db)
+    db = next(get_db_func())
+    try:
+        agent = AgenticChatService()
+
+        # Upload di un file per il test
+        res_up = client.post(
+            "/api/documents/upload",
+            files={"file": ("tessera_test.pdf", io.BytesIO(b"%PDF-1.4 tessera sanitaria test"), "application/pdf")},
+            data={"thread_id": "general"}
+        )
+        assert res_up.status_code == 201
+        doc_id = res_up.json()["document_id"]
+
+        # 1. Tool create_zip_archive
+        zip_res = agent.execute_tool(
+            "create_zip_archive",
+            {"query": "tessera", "archive_name": "Pacchetto_Tessere.zip"},
+            db=db,
+            thread_id="general"
+        )
+        assert zip_res.get("success") is True
+        assert zip_res.get("zip_document_id") is not None
+        zip_id = zip_res["zip_document_id"]
+
+        # 2. Tool unzip_vault_archive
+        unzip_res = agent.execute_tool(
+            "unzip_vault_archive",
+            {"document_id": zip_id},
+            db=db,
+            thread_id="general"
+        )
+        assert unzip_res.get("success") is True
+        assert len(unzip_res.get("extracted_documents", [])) >= 1
+    finally:
+        db.close()

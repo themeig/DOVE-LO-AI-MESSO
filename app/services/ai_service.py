@@ -91,6 +91,43 @@ class MockAIService:
                 tags=["luce", "energia", "utenze"],
                 suggest_rename=False
             )
+        # Supporto Word (.docx, .doc)
+        if any(fn.endswith(ext) for ext in [".docx", ".doc"]):
+            return ExtractedDocument(
+                title=f"Documento Word {Path(filename).stem.replace('_', ' ').capitalize()}",
+                doc_type="contratto" if "contratt" in fn else "documento_word",
+                issuer="Studio Legale / Società",
+                amount=3500.0 if "contratt" in fn else None,
+                due_date="2026-12-31" if "contratt" in fn else None,
+                summary=f"Documento di testo Word '{filename}' elaborato con successo.",
+                tags=["word", "documento", "docx"],
+                suggest_rename=False
+            )
+        # Supporto Excel / CSV (.xlsx, .xls, .csv)
+        if any(fn.endswith(ext) for ext in [".xlsx", ".xls", ".csv"]):
+            return ExtractedDocument(
+                title=f"Foglio Calcolo {Path(filename).stem.replace('_', ' ').capitalize()}",
+                doc_type="foglio_calcolo",
+                issuer="Contabilità / Amministrazione",
+                amount=570.50 if "spese" in fn else None,
+                due_date="2026-12-01" if "spese" in fn else None,
+                summary=f"Foglio di calcolo Excel/CSV '{filename}' con tabelle di dati e riepilogo spese.",
+                tags=["excel", "tabelle", "dati", "spese"],
+                suggest_rename=False
+            )
+        # Supporto Archivi ZIP (.zip)
+        if fn.endswith(".zip") or "archivio" in fn:
+            return ExtractedDocument(
+                title=f"Archivio Compresso {Path(filename).stem.replace('_', ' ').capitalize()}",
+                doc_type="archivio_zip",
+                issuer="Dove lo AI messo",
+                amount=None,
+                due_date=None,
+                summary=f"Archivio ZIP compresso '{filename}' salvato nel caveau.",
+                tags=["zip", "archivio", "compresso"],
+                suggest_rename=False
+            )
+
         # Per foto, screenshot o altri allegati non fiscali
         is_screen = any(k in fn for k in [".png", "screen", "cattura", "screenshot"])
         clean_name = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
@@ -240,7 +277,63 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                     parsed = _extract_json_object(resp_text)
                     return ExtractedDocument(**parsed)
 
-            # 2. GESTIONE IMMAGINI (Foto, screenshot, scansioni grafiche)
+            # 2. GESTIONE DOCUMENTI OFFICE & FOGLI DI CALCOLO (.docx, .doc, .xlsx, .xls, .csv, .txt, .json)
+            is_office = any(fn.endswith(ext) for ext in [".docx", ".doc", ".xlsx", ".xls", ".csv", ".tsv", ".txt", ".json", ".md"])
+            if is_office:
+                from app.services.archive_service import extract_text_from_office_file
+                office_text = extract_text_from_office_file(file_bytes, filename)
+                if office_text:
+                    office_prompt = f"""Sei l'assistente 'Dove lo AI messo'. Analizza questo testo e tabelle estratti dal file Word/Excel/CSV caricato ({filename}):
+---
+{office_text[:3500]}
+---
+
+Identifica con la massima precisione:
+1. 'title': un titolo chiaro, elegante e sintetico (es. 'Contratto di Consulenza Software', 'Foglio Spese e Scadenze Aziendali', 'Elenco Fornitori')
+2. 'doc_type': scegli tra 'contratto', 'foglio_calcolo', 'spese', 'fattura', 'ricevuta', 'documento_word', 'report', 'generico'
+3. 'issuer': nome ente, azienda, autore o controparte (oppure null)
+4. Se contiene importi da pagare o scadenze specifiche di pagamento, estrai 'amount' e 'due_date' (YYYY-MM-DD), altrimenti null.
+5. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano con i punti chiave, intestatari, colonne o dati più importanti.
+6. 'suggest_rename': false.
+
+Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
+{{
+  "title": "titolo chiaro ed elegante",
+  "doc_type": "contratto" | "foglio_calcolo" | "spese" | "fattura" | "ricevuta" | "documento_word" | "report" | "generico",
+  "issuer": "nome ente o fornitore" o null,
+  "amount": null oppure numero decimale,
+  "due_date": null oppure "YYYY-MM-DD",
+  "summary": "riassunto dettagliato in 2-3 frasi in italiano",
+  "tags": ["tag1", "tag2", "tag3"],
+  "suggest_rename": false
+}}
+"""
+                    messages = [{"role": "user", "content": office_prompt}]
+                    resp_text = self._call_openrouter(messages, max_tokens=4096, model_override=self.primary_model, temperature=0.1)
+                    parsed = _extract_json_object(resp_text)
+                    return ExtractedDocument(**parsed)
+
+            # 3. GESTIONE ARCHIVI ZIP (.zip)
+            if fn.endswith(".zip") or "archivio" in fn:
+                import zipfile
+                try:
+                    with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as zf:
+                        names = [n for n in zf.namelist() if not n.startswith("__MACOSX") and not Path(n).name.startswith(".")]
+                        clean_stem = Path(filename).stem.replace("_", " ").capitalize()
+                        return ExtractedDocument(
+                            title=f"Archivio {clean_stem}",
+                            doc_type="archivio_zip",
+                            issuer="Dove lo AI messo",
+                            amount=None,
+                            due_date=None,
+                            summary=f"Archivio compresso contenente {len(names)} file: {', '.join(names[:5])}{'...' if len(names) > 5 else ''}.",
+                            tags=["zip", "archivio", "compresso"],
+                            suggest_rename=False
+                        )
+                except Exception:
+                    pass
+
+            # 4. GESTIONE IMMAGINI (Foto, screenshot, scansioni grafiche)
             b64_img = base64.b64encode(file_bytes).decode("utf-8")
             data_url = f"data:{mt or 'image/jpeg'};base64,{b64_img}"
 

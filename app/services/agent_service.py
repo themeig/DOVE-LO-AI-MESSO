@@ -349,6 +349,63 @@ TOOLS_DEFINITION = [
                 }
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_zip_archive",
+            "description": (
+                "Crea e comprime uno o più documenti del caveau in un nuovo file archivio .ZIP scaricabile. "
+                "DEVI chiamarlo quando l'utente chiede di creare un archivio zip, comprimere documenti, pacchetti di fatture o esportare un gruppo di file compressi "
+                "(es. 'creami uno zip con tutte le bollette', 'fai uno zip dei documenti del 2026', 'comprimi le ricevute in un file zip', 'crea un archivio zip dei contratti')."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Termine di ricerca o filtro per selezionare i documenti da includere nello zip (es. 'bolletta', 'fisco', 'enel', '2026', 'tutti')"
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Categoria specifica di documenti (es. 'bolletta', 'f24', 'contratto', 'all')"
+                    },
+                    "archive_name": {
+                        "type": "string",
+                        "description": "Nome del file zip da generare (es. 'Archivio_Bollette_2026.zip')"
+                    },
+                    "document_ids": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "description": "Lista opzionale di ID numerici dei documenti da includere nello zip"
+                    }
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "unzip_vault_archive",
+            "description": (
+                "Estrae e scompatta un file archivio .ZIP presente nel caveau, indicizzando automaticamente tutti i documenti, immagini, fogli Excel e file Word al suo interno. "
+                "DEVI chiamarlo quando l'utente chiede di estrarre, scompattare o fare l'unzip di un file compresso "
+                "(es. 'scompatta il file zip che ho caricato', 'estrai l'archivio fatture.zip', 'fai l'unzip dello zip', 'estrai tutti i file dallo zip')."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "document_id": {
+                        "type": "integer",
+                        "description": "ID numerico del documento ZIP da scompattare se noto"
+                    },
+                    "document_title": {
+                        "type": "string",
+                        "description": "Nome o titolo dell'archivio ZIP da cercare ed estrarre (es. 'archivio.zip', 'fatture')"
+                    }
+                }
+            }
+        }
     }
 ]
 
@@ -1425,6 +1482,90 @@ class AgenticChatService:
                 "path": target_path,
                 "title": matched_doc.title if matched_doc else Path(target_path).name,
                 "message": f"Aperto '{Path(target_path).name}' in Esplora File." if opened else "Impossibile aprire Esplora File."
+            }
+
+        elif name == "create_zip_archive":
+            from app.services.archive_service import create_zip_from_documents
+            doc_ids = args.get("document_ids")
+            query = args.get("query")
+            category = args.get("category")
+            archive_name = args.get("archive_name")
+
+            zip_doc = create_zip_from_documents(
+                db=db,
+                document_ids=doc_ids,
+                query=query,
+                category=category,
+                archive_title=archive_name,
+                thread_id=thread_id
+            )
+            if not zip_doc:
+                return {
+                    "success": False,
+                    "message": "Nessun documento trovato corrispondente ai criteri per creare l'archivio ZIP."
+                }
+            fn = Path(zip_doc.file_path).name if zip_doc.file_path else "archivio.zip"
+            return {
+                "success": True,
+                "message": f"Archivio ZIP '{zip_doc.title}' creato con successo.",
+                "zip_document_id": zip_doc.id,
+                "title": zip_doc.title,
+                "file_url": f"/uploads/{fn}",
+                "download_url": f"/api/documents/{zip_doc.id}/download",
+                "summary": zip_doc.summary,
+                "document": {
+                    "id": zip_doc.id,
+                    "document_id": zip_doc.id,
+                    "title": zip_doc.title,
+                    "issuer": zip_doc.issuer,
+                    "doc_type": zip_doc.doc_type,
+                    "amount": None,
+                    "due_date": None,
+                    "status": "archiviato",
+                    "summary": zip_doc.summary,
+                    "file_url": f"/uploads/{fn}",
+                    "download_url": f"/api/documents/{zip_doc.id}/download",
+                    "file_type": "zip"
+                }
+            }
+
+        elif name == "unzip_vault_archive":
+            from app.services.archive_service import unzip_document_to_vault
+            doc_id = args.get("document_id")
+            doc_title = args.get("document_title")
+
+            extracted = unzip_document_to_vault(
+                db=db,
+                document_id=doc_id,
+                document_title=doc_title,
+                thread_id=thread_id
+            )
+            if not extracted:
+                return {
+                    "success": False,
+                    "message": "Impossibile estrarre l'archivio ZIP o nessun file valido trovato all'interno."
+                }
+            return {
+                "success": True,
+                "message": f"Estratti con successo {len(extracted)} documenti dall'archivio ZIP.",
+                "extracted_count": len(extracted),
+                "extracted_documents": [
+                    {
+                        "id": d.id,
+                        "document_id": d.id,
+                        "title": d.title,
+                        "issuer": d.issuer,
+                        "doc_type": d.doc_type,
+                        "amount": d.amount,
+                        "due_date": d.due_date.isoformat() if d.due_date else None,
+                        "status": d.status,
+                        "summary": d.summary,
+                        "file_url": f"/uploads/{Path(d.file_path).name}" if d.file_path else None,
+                        "download_url": f"/api/documents/{d.id}/download",
+                        "file_type": d.file_type
+                    }
+                    for d in extracted
+                ]
             }
 
         return {"error": f"Strumento non riconosciuto: {name}"}
