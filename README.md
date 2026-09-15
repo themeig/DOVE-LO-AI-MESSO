@@ -1,4 +1,4 @@
-﻿# 🧭 Dove lo AI messo
+# 🧭 Dove lo AI messo
 
 > **Il caveau intelligente per non perdere mai più un documento o un oggetto.**
 > Unisce un'interfaccia chat familiare al 100% in stile **WhatsApp Web** con una **Dashboard SaaS moderna** (stile Linear/Stripe/Apple) per il controllo di scadenze, tributi e faldoni fisici.
@@ -109,7 +109,7 @@ Quindi apri il browser su: 👉 **`http://localhost:8000`**
 ## 🔒 Password Predefinita del Caveau
 
 Al primo accesso o per sbloccare le funzionalità protette del Caveau:
-- **Password Master predefinita**: `Leonardo2005`
+- **Password Master predefinita**: `1234`
 
 *(La password può essere personalizzata dalle impostazioni o dal modulo di autenticazione).*
 

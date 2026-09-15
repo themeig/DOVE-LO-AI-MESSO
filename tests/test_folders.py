@@ -18,7 +18,7 @@ client = TestClient(app)
 def setup_test_db():
     mgr = get_vault_manager()
     mgr.initialize_if_needed()
-    mgr.unlock("Leonardo2005")
+    mgr.unlock("1234")
     init_db()
 
 def test_watched_folder_model_and_crud():

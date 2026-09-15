@@ -41,7 +41,7 @@ def test_document_and_item_crud():
 
 def test_encrypted_columns_in_sqlite():
     mgr = get_vault_manager()
-    mgr.initialize_if_needed("Leonardo2005")
+    mgr.initialize_if_needed("1234")
 
     engine = get_engine("sqlite:///:memory:")
     init_db(engine)

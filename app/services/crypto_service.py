@@ -103,7 +103,7 @@ class VaultManager:
         self._unlocked: bool = False
         self._active_tokens: set[str] = set()
 
-    def initialize_if_needed(self, default_password: str = "Leonardo2005"):
+    def initialize_if_needed(self, default_password: str = "1234"):
         self.meta_file.parent.mkdir(parents=True, exist_ok=True)
         if not self.meta_file.exists():
             meta = hash_password(default_password)

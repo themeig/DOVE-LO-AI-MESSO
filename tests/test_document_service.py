@@ -10,7 +10,7 @@ from pathlib import Path
 def test_save_uploaded_file_is_encrypted_on_disk(tmp_path):
     # Ensure vault is initialized and unlocked
     mgr = get_vault_manager()
-    mgr.initialize_if_needed("Leonardo2005")
+    mgr.initialize_if_needed("1234")
 
     raw_content = b"Contenuto riservato bolletta o foto cassetto"
     saved_path = save_uploaded_file(raw_content, "bolletta.pdf", target_dir=tmp_path)
@@ -37,7 +37,7 @@ def test_read_decrypted_file_fallback_legacy_plain(tmp_path):
 
 def test_migrate_unencrypted_files(tmp_path):
     mgr = get_vault_manager()
-    mgr.initialize_if_needed("Leonardo2005")
+    mgr.initialize_if_needed("1234")
 
     legacy_file = tmp_path / "unencrypted.pdf"
     legacy_file.write_bytes(b"File da migrare a cifrato")

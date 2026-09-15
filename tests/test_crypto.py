@@ -11,7 +11,7 @@ from app.services.crypto_service import (
 )
 
 def test_derive_key_deterministic():
-    password = "Leonardo2005"
+    password = "1234"
     salt = b"test_salt_12345678"
     key1 = derive_key(password, salt)
     key2 = derive_key(password, salt)
@@ -19,7 +19,7 @@ def test_derive_key_deterministic():
     assert len(key1) > 0
 
 def test_encrypt_decrypt_bytes():
-    password = "Leonardo2005"
+    password = "1234"
     salt = os.urandom(16)
     key = derive_key(password, salt)
 
@@ -42,17 +42,17 @@ def test_decrypt_invalid_key_fails():
         decrypt_bytes(ciphertext, key2)
 
 def test_password_hash_and_verify():
-    meta = hash_password("Leonardo2005")
+    meta = hash_password("1234")
     assert "salt" in meta
     assert "hash" in meta
 
-    assert verify_password("Leonardo2005", meta) is True
+    assert verify_password("1234", meta) is True
     assert verify_password("PasswordSbagliata", meta) is False
 
 def test_vault_manager_unlock_and_lock(tmp_path):
     meta_file = tmp_path / "vault_meta.json"
     mgr = VaultManager(meta_file=meta_file)
-    mgr.initialize_if_needed(default_password="Leonardo2005")
+    mgr.initialize_if_needed(default_password="1234")
 
     # Initially unlocked on fresh init
     assert mgr.is_unlocked() is True
@@ -65,7 +65,7 @@ def test_vault_manager_unlock_and_lock(tmp_path):
     assert mgr.is_unlocked() is False
 
     # Unlock with correct password succeeds
-    success = mgr.unlock("Leonardo2005")
+    success = mgr.unlock("1234")
     assert success is True
     assert mgr.is_unlocked() is True
     assert mgr.get_active_key() is not None

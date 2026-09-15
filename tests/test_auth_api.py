@@ -9,7 +9,7 @@ client = TestClient(app)
 def setup_module():
     init_db()
     mgr = get_vault_manager()
-    mgr.initialize_if_needed("Leonardo2005")
+    mgr.initialize_if_needed("1234")
 
 def test_auth_login_wrong_password():
     res = client.post("/api/auth/login", json={"password": "PasswordSbagliata"})
@@ -17,7 +17,7 @@ def test_auth_login_wrong_password():
     assert "non corretta" in res.json()["detail"].lower()
 
 def test_auth_login_correct_password():
-    res = client.post("/api/auth/login", json={"password": "Leonardo2005"})
+    res = client.post("/api/auth/login", json={"password": "1234"})
     assert res.status_code == 200
     data = res.json()
     assert data["success"] is True
@@ -26,7 +26,7 @@ def test_auth_login_correct_password():
 
 def test_auth_status_and_lock():
     # Login first
-    login_res = client.post("/api/auth/login", json={"password": "Leonardo2005"})
+    login_res = client.post("/api/auth/login", json={"password": "1234"})
     assert login_res.status_code == 200
     token = login_res.json()["token"]
 
@@ -40,7 +40,7 @@ def test_auth_status_and_lock():
     assert lock_res.json()["success"] is True
 
     # Re-unlock for subsequent operations
-    re_res = client.post("/api/auth/login", json={"password": "Leonardo2005"})
+    re_res = client.post("/api/auth/login", json={"password": "1234"})
     assert re_res.status_code == 200
 
 def test_upload_photo_to_physical_item():
