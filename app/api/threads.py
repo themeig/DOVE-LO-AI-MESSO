@@ -2,7 +2,7 @@ import json
 import re
 import uuid
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -90,7 +90,7 @@ def create_thread(payload: ChatThreadCreate, db: Session = Depends(get_db)):
         color=color,
         description=payload.description or ("Gruppo di persone" if payload.thread_type == "group" else "Area tematica"),
         members=json.dumps(members),
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     db.add(new_thread)
     db.commit()
@@ -124,7 +124,7 @@ def create_thread(payload: ChatThreadCreate, db: Session = Depends(get_db)):
         members=members,
         created_at=new_thread.created_at.isoformat() if new_thread.created_at else None,
         last_message=welcome_text,
-        last_message_time=datetime.utcnow().strftime("%H:%M"),
+        last_message_time=datetime.now(timezone.utc).strftime("%H:%M"),
         message_count=1,
         unread_count=0
     )

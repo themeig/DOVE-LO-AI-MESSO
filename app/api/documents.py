@@ -187,7 +187,7 @@ def delete_documents_bulk(payload: BulkDeleteRequest, db: Session = Depends(get_
     deleted_ids = []
     for doc in docs:
         deleted_ids.append(doc.id)
-        if doc.file_path:
+        if doc.file_path and not doc.is_local_file:
             try:
                 p = Path(doc.file_path)
                 if p.exists():
@@ -211,8 +211,8 @@ def delete_document(document_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Documento non trovato")
 
     title = doc.title
-    # Try removing physical file
-    if doc.file_path:
+    # Try removing physical file (only if not a local computer folder file)
+    if doc.file_path and not doc.is_local_file:
         try:
             p = Path(doc.file_path)
             if p.exists():

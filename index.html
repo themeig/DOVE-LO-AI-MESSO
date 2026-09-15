@@ -96,6 +96,35 @@
         overflow: hidden;
       }
     }
+
+    /* Typing indicator WhatsApp style */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 10px 14px;
+      background: #FFFFFF;
+      border-radius: 18px 18px 18px 4px;
+      width: fit-content;
+      max-width: 80px;
+      margin: 2px 0 6px 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+    .typing-indicator span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #90949c;
+      display: block;
+      animation: typing-bounce 1.4s infinite ease-in-out;
+    }
+    .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing-bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-6px); opacity: 1; }
+    }
   </style>
 </head>
 <body class="h-screen flex flex-col bg-[#d1d7db] text-slate-800">
@@ -642,6 +671,27 @@
         >
           <i class="fa-solid fa-lock text-emerald-600 text-[11px]"></i>
           <span class="font-semibold text-xs">Blocca</span>
+        </button>
+
+        <button 
+          onclick="openWatchedFoldersModal()" 
+          class="bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
+          title="Gestisci e indicizza le cartelle sul tuo computer"
+        >
+          <i class="fa-solid fa-folder-tree text-xs"></i>
+          <span class="hidden sm:inline">📂 Cartelle PC</span>
+          <span class="sm:hidden">Cartelle</span>
+        </button>
+
+        <button 
+          onclick="exportVault()" 
+          class="flex items-center gap-1.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200 px-3 py-2 rounded-xl text-xs text-slate-700 transition active:scale-95 cursor-pointer"
+          title="Esporta tutto il caveau come archivio ZIP (file + metadati)"
+          id="exportVaultBtn"
+        >
+          <i class="fa-solid fa-file-zipper text-blue-500 text-[11px]"></i>
+          <span class="font-semibold text-xs hidden sm:inline">Esporta ZIP</span>
+          <span class="font-semibold text-xs sm:hidden">ZIP</span>
         </button>
 
         <button 
@@ -1899,13 +1949,9 @@
     function showTypingIndicator() {
       const indicator = document.createElement('div');
       indicator.id = 'typingIndicator';
-      indicator.className = 'flex items-start max-w-[85%]';
       indicator.innerHTML = `
-        <div class="wa-bubble-in px-3 py-2 text-xs text-gray-500 italic flex items-center gap-1.5">
-          <span class="inline-block w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
-          <span class="inline-block w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
-          <span class="inline-block w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></span>
-          <span class="ml-1 text-[11px]">Sta elaborando...</span>
+        <div class="typing-indicator">
+          <span></span><span></span><span></span>
         </div>
       `;
       chatFeed.appendChild(indicator);
@@ -2088,7 +2134,7 @@
                         </div>
                         <div class="flex items-center gap-1.5 shrink-0">
                           ${url ? `
-                            <button type="button" onclick="openMediaModal('${url}', '${title.replace(/'/g, "\\'")}', '${fileType}', '${downloadUrl}')" class="bg-[#075E54] hover:bg-[#128C7E] text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 active:scale-95" title="Visualizza anteprima">
+                            <button type="button" onclick="openMediaModal('${url}', '${title.replace(/'/g, "\\'")}', '${fileType}', '${downloadUrl}')" class="bg-[#075E54] hover:bg-[#128C7E] text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 active:scale-95 cursor-pointer" title="Visualizza anteprima">
                               <i class="fa-regular fa-eye text-xs"></i>
                               <span>Vedi</span>
                             </button>
@@ -2098,6 +2144,12 @@
                               <i class="fa-solid fa-download text-xs text-emerald-700"></i>
                               <span>Scarica</span>
                             </a>
+                          ` : ''}
+                          ${docId ? `
+                            <button type="button" onclick="openFileInExplorer(${docId})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-300 text-[11px] font-semibold px-2 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 active:scale-95 cursor-pointer" title="Apri file in Esplora Risorse del PC">
+                              <i class="fa-regular fa-folder-open text-xs text-amber-600"></i>
+                              <span class="hidden sm:inline">PC</span>
+                            </button>
                           ` : ''}
                         </div>
                       </div>
@@ -2725,12 +2777,15 @@
               const escapedType = escapeHtml(rec.file_type || 'application/pdf');
               const downloadUrl = `/api/documents/${rec.id}/download`;
               previewBtn = `
-                <button onclick="openMediaModal('${escapedUrl}', '${escapedTitle}', '${escapedType}', '${downloadUrl}')" title="Anteprima documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-2 py-1 rounded-lg transition active:scale-95 flex items-center gap-1">
+                <button onclick="openMediaModal('${escapedUrl}', '${escapedTitle}', '${escapedType}', '${downloadUrl}')" title="Anteprima documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-2 py-1 rounded-lg transition active:scale-95 flex items-center gap-1 cursor-pointer">
                   <i class="fa-regular fa-eye text-xs"></i> Vedi
                 </button>
-                <a href="${downloadUrl}" download title="Scarica documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-emerald-800 text-xs font-semibold px-2 py-1 rounded-lg transition active:scale-95 flex items-center gap-1">
+                <a href="${downloadUrl}" download title="Scarica documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-emerald-800 text-xs font-semibold px-2 py-1 rounded-lg transition active:scale-95 flex items-center gap-1 cursor-pointer">
                   <i class="fa-solid fa-download text-xs text-emerald-700"></i>
                 </a>
+                <button onclick="openFileInExplorer(${rec.id})" title="Apri in Esplora Risorse di Windows" class="bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs font-semibold px-2 py-1 rounded-lg transition active:scale-95 flex items-center gap-1 cursor-pointer">
+                  <i class="fa-regular fa-folder-open text-xs text-amber-600"></i>
+                </button>
               `;
             }
 
@@ -3096,12 +3151,15 @@
             const escapedType = escapeHtml(rec.file_type || 'application/pdf');
             const downloadUrl = `/api/documents/${rec.id}/download`;
             previewBtn = `
-              <button onclick="openMediaModal('${escapedUrl}', '${escapedTitle}', '${escapedType}', '${downloadUrl}')" title="Anteprima documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-lg transition active:scale-95 flex items-center gap-1">
+              <button onclick="openMediaModal('${escapedUrl}', '${escapedTitle}', '${escapedType}', '${downloadUrl}')" title="Anteprima documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-lg transition active:scale-95 flex items-center gap-1 cursor-pointer">
                 <i class="fa-regular fa-eye text-xs"></i> Vedi
               </button>
-              <a href="${downloadUrl}" download title="Scarica documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-lg transition active:scale-95 flex items-center gap-1">
+              <a href="${downloadUrl}" download title="Scarica documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-lg transition active:scale-95 flex items-center gap-1 cursor-pointer">
                 <i class="fa-solid fa-download text-xs text-emerald-700"></i> Scarica
               </a>
+              <button onclick="openFileInExplorer(${rec.id})" title="Apri file in Esplora Risorse del PC" class="bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs font-semibold px-2.5 py-1 rounded-lg transition active:scale-95 flex items-center gap-1 cursor-pointer">
+                <i class="fa-regular fa-folder-open text-xs text-amber-600"></i> Apri PC
+              </button>
             `;
           }
           let payBtn = '';
@@ -3403,6 +3461,299 @@
       if (e.key === 'Escape') closeMediaModal();
     });
 
+    // --- Export / Backup Caveau ---
+    async function exportVault() {
+      const btn = document.getElementById('exportVaultBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[11px]"></i> <span class="font-semibold text-xs hidden sm:inline">Preparazione...</span>';
+      }
+      try {
+        // Usa fetch per verificare la risposta prima di triggerare il download
+        const res = await fetch('/api/export/vault', {
+          headers: getAuthHeaders()
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: 'Errore sconosciuto' }));
+          alert('Errore durante l\'esportazione: ' + (err.detail || res.statusText));
+          return;
+        }
+        // Trigger download creando un link temporaneo
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const cd = res.headers.get('Content-Disposition') || '';
+        const fnMatch = cd.match(/filename[^;=\n]*=["']?([^"'\n]+)/i);
+        a.download = fnMatch ? fnMatch[1] : 'caveau_backup.zip';
+        a.href = url;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('Errore durante l\'esportazione: ' + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-file-zipper text-blue-500 text-[11px]"></i> <span class="font-semibold text-xs hidden sm:inline">Esporta ZIP</span><span class="font-semibold text-xs sm:hidden">ZIP</span>';
+        }
+      }
+    }
+
+    // --- Gestione Cartelle PC Monitorate & Explorer ---
+    let watchedFoldersCache = [];
+
+    function openWatchedFoldersModal() {
+      const modal = document.getElementById('watchedFoldersModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        loadWatchedFolders();
+      }
+    }
+
+    function closeWatchedFoldersModal() {
+      const modal = document.getElementById('watchedFoldersModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    async function loadWatchedFolders() {
+      const listEl = document.getElementById('watchedFoldersList');
+      const countEl = document.getElementById('watchedFoldersCountText');
+      if (listEl) {
+        listEl.innerHTML = `
+          <div class="p-6 text-center text-slate-400 text-xs">
+            <i class="fa-solid fa-circle-notch animate-spin text-xl mb-2 text-emerald-600"></i>
+            <p>Caricamento cartelle in corso...</p>
+          </div>
+        `;
+      }
+      try {
+        const res = await fetch('/api/folders', { headers: authHeaders() });
+        if (!res.ok) throw new Error("Errore recupero cartelle");
+        const folders = await res.json();
+        watchedFoldersCache = folders;
+        renderWatchedFoldersList(folders);
+        if (countEl) {
+          countEl.textContent = `${folders.length} cartelle collegate sul PC`;
+        }
+      } catch (err) {
+        console.error("Errore loadWatchedFolders:", err);
+        if (listEl) {
+          listEl.innerHTML = `
+            <div class="p-6 text-center text-rose-500 text-xs bg-rose-50 rounded-2xl border border-rose-200">
+              Impossibile caricare le cartelle: ${escapeHtml(err.message)}
+            </div>
+          `;
+        }
+      }
+    }
+
+    function renderWatchedFoldersList(folders) {
+      const listEl = document.getElementById('watchedFoldersList');
+      if (!listEl) return;
+
+      if (!folders || folders.length === 0) {
+        listEl.innerHTML = `
+          <div class="p-8 text-center text-slate-400 text-xs bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+            <i class="fa-solid fa-folder-open text-3xl mb-2 text-slate-300"></i>
+            <p class="font-bold text-slate-700 text-sm">Nessuna cartella locale collegata</p>
+            <p class="text-slate-400 mt-1">Clicca su "Sfoglia Cartella PC..." in alto per selezionare una cartella (es. Documenti o Fatture) e indicizzare subito i tuoi file.</p>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = folders.map(f => {
+        const lastScan = f.last_scanned_at ? new Date(f.last_scanned_at).toLocaleString('it-IT') : 'Mai';
+        const escapedPath = escapeHtml(f.path).replace(/'/g, "\\'");
+        const escapedName = escapeHtml(f.name).replace(/'/g, "\\'");
+
+        return `
+          <div class="bg-slate-50 hover:bg-slate-100/90 border border-slate-200/90 rounded-2xl p-3.5 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div class="flex items-start gap-3 min-w-0">
+              <div class="w-10 h-10 rounded-xl bg-emerald-100 text-[#075E54] flex items-center justify-center shrink-0 text-base shadow-2xs">
+                <i class="fa-solid fa-folder"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <h4 class="font-bold text-slate-900 text-xs truncate" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</h4>
+                  <span class="bg-emerald-50 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">${f.file_count} file</span>
+                </div>
+                <p class="text-[11px] font-mono text-slate-500 truncate mt-0.5" title="${escapeHtml(f.path)}">${escapeHtml(f.path)}</p>
+                <p class="text-[10px] text-slate-400 mt-0.5">Ultima scansione: ${lastScan}</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+              <button 
+                onclick="scanWatchedFolder(${f.id})" 
+                id="btnScanFolder_${f.id}"
+                class="bg-white hover:bg-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 transition active:scale-95 flex items-center gap-1 shadow-2xs cursor-pointer"
+                title="Esegui nuova scansione e indicizza nuovi documenti"
+              >
+                <i class="fa-solid fa-arrows-rotate text-emerald-600 text-[11px]"></i>
+                <span>Scansiona</span>
+              </button>
+
+              <button 
+                onclick="openExplorerPath('${escapedPath}')" 
+                class="bg-white hover:bg-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 transition active:scale-95 flex items-center gap-1 shadow-2xs cursor-pointer"
+                title="Apri in Esplora File di Windows"
+              >
+                <i class="fa-regular fa-folder-open text-amber-600 text-[11px]"></i>
+                <span class="hidden sm:inline">Esplora</span>
+              </button>
+
+              <button 
+                onclick="deleteWatchedFolder(${f.id}, '${escapedName}')" 
+                class="text-slate-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-xl transition active:scale-95 text-xs cursor-pointer"
+                title="Rimuovi dal monitoraggio (non cancella i file dal disco)"
+              >
+                <i class="fa-regular fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function selectFolderFromPC() {
+      const btn = document.getElementById('btnSelectFolderPC');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Selezione in corso...`;
+      }
+      try {
+        const res = await fetch('/api/folders/select', {
+          method: 'POST',
+          headers: authHeaders()
+        });
+        if (!res.ok) throw new Error("Errore apertura finestra di dialogo");
+        const data = await res.json();
+        if (data.cancelled || !data.selected_path) {
+          return;
+        }
+
+        const path = data.selected_path;
+        const folderName = path.split(/[\\/]/).pop() || 'Cartella PC';
+        const addRes = await fetch('/api/folders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders()
+          },
+          body: JSON.stringify({
+            path: path,
+            name: folderName,
+            thread_id: currentThreadId || 'general',
+            auto_scan: true
+          })
+        });
+        if (!addRes.ok) {
+          const errData = await addRes.json().catch(() => ({}));
+          throw new Error(errData.detail || "Impossibile registrare la cartella");
+        }
+        await loadWatchedFolders();
+        await loadDashboard(currentFilter);
+      } catch (err) {
+        console.error("Errore selectFolderFromPC:", err);
+        alert("Errore durante la selezione cartella: " + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-folder-plus text-xs"></i><span>Sfoglia Cartella PC...</span>`;
+        }
+      }
+    }
+
+    async function scanWatchedFolder(folderId) {
+      const btn = document.getElementById(`btnScanFolder_${folderId}`);
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin text-emerald-600 text-[11px]"></i> Scansione...`;
+      }
+      try {
+        const res = await fetch(`/api/folders/${folderId}/scan`, {
+          method: 'POST',
+          headers: authHeaders()
+        });
+        if (!res.ok) throw new Error("Errore scansione cartella");
+        const data = await res.json();
+        await loadWatchedFolders();
+        await loadDashboard(currentFilter);
+        alert(`Scansione completata!\n• Nuovi file indicizzati: ${data.new_indexed_count}\n• Già presenti: ${data.skipped_count}\n• Totale esaminati: ${data.scanned_files_count}`);
+      } catch (err) {
+        console.error("Errore scanWatchedFolder:", err);
+        alert("Errore scansione: " + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-arrows-rotate text-emerald-600 text-[11px]"></i><span>Scansiona</span>`;
+        }
+      }
+    }
+
+    async function deleteWatchedFolder(folderId, name) {
+      if (!confirm(`Vuoi rimuovere la cartella "${name}" dal monitoraggio?\n(I tuoi file rimarranno intatti sul tuo computer).`)) {
+        return;
+      }
+      try {
+        const res = await fetch(`/api/folders/${folderId}`, {
+          method: 'DELETE',
+          headers: authHeaders()
+        });
+        if (!res.ok) throw new Error("Errore rimozione cartella");
+        await loadWatchedFolders();
+      } catch (err) {
+        console.error("Errore deleteWatchedFolder:", err);
+        alert("Errore: " + err.message);
+      }
+    }
+
+    async function openFileInExplorer(docId) {
+      try {
+        const res = await fetch('/api/folders/open-in-explorer', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders()
+          },
+          body: JSON.stringify({ document_id: docId })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Impossibile aprire Esplora File per questo documento");
+        }
+      } catch (err) {
+        console.error("Errore openFileInExplorer:", err);
+        alert(err.message);
+      }
+    }
+
+    async function openExplorerPath(path) {
+      try {
+        const res = await fetch('/api/folders/open-in-explorer', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders()
+          },
+          body: JSON.stringify({ path: path })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Impossibile aprire Esplora File");
+        }
+      } catch (err) {
+        console.error("Errore openExplorerPath:", err);
+        alert(err.message);
+      }
+    }
+
     function initApp() {
       applyLayout();
       loadAiModelSetting();
@@ -3595,6 +3946,55 @@
       <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
         <span>Password predefinita: <code class="font-mono font-bold text-slate-600 bg-slate-100 px-1 py-0.5 rounded">Leonardo2005</code></span>
         <i class="fa-solid fa-circle-info" title="Modificabile dopo l'accesso"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- 6. MODALE: GESTIONE CARTELLE PC MONITORATE & INDICIZZAZIONE       -->
+  <!-- ================================================================= -->
+  <div id="watchedFoldersModal" class="hidden fixed inset-0 bg-black/60 z-50 items-center justify-center p-4 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-base">
+            <i class="fa-solid fa-folder-tree"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm text-slate-900">Cartelle Monitorate sul tuo PC</h3>
+            <p class="text-[11px] text-slate-400">Indicizzazione diretta di PDF, immagini e fatture locali</p>
+          </div>
+        </div>
+        <button onclick="closeWatchedFoldersModal()" class="w-7 h-7 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <div class="flex items-center justify-between bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 gap-3">
+        <div class="text-xs text-slate-600">
+          <span class="font-bold text-slate-800">Collega una cartella dal computer:</span>
+          <p class="text-[11px] text-slate-400">L'AI scansionerà ed estrarrà automaticamente i documenti senza duplicare i file.</p>
+        </div>
+        <button 
+          onclick="selectFolderFromPC()" 
+          id="btnSelectFolderPC"
+          class="bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0"
+        >
+          <i class="fa-solid fa-folder-plus text-xs"></i>
+          <span>Sfoglia Cartella PC...</span>
+        </button>
+      </div>
+
+      <!-- Lista cartelle -->
+      <div id="watchedFoldersList" class="space-y-2.5 max-h-80 overflow-y-auto custom-scroll pr-1">
+        <!-- Popolato dinamicamente da loadWatchedFolders() -->
+      </div>
+
+      <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+        <span id="watchedFoldersCountText" class="text-slate-400 text-[11px]">Caricamento cartelle...</span>
+        <button onclick="closeWatchedFoldersModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition cursor-pointer">
+          Chiudi
+        </button>
       </div>
     </div>
   </div>

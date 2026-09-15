@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from pathlib import Path
 import httpx
 from typing import Optional, Dict, Any, List
@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from app.config import get_settings
-from app.models.database import Document, PhysicalItem, ChatMessage, ChatThread, get_app_setting, UIEvent
+from app.models.database import Document, PhysicalItem, ChatMessage, ChatThread, get_app_setting, UIEvent, WatchedFolder
 from app.models.schemas import ChatResponse
 from app.services.ai_service import get_ai_service, MockAIService
 from app.services.search_service import (
@@ -295,6 +295,60 @@ TOOLS_DEFINITION = [
                 "required": []
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "scan_local_folder",
+            "description": (
+                "Esegue la scansione e l'indicizzazione dei documenti (PDF, immagini, fatture, ricevute) da una cartella sul computer dell'utente o da tutte le cartelle monitorate. "
+                "DEVI chiamarlo quando l'utente chiede di scansionare cartelle, indicizzare file dal PC o cercare nuovi documenti locali (es. 'scansiona le mie cartelle', 'indicizza la cartella C:\\Fatture', 'ho messo nuovi file nel PC, aggiorna')."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "folder_path": {
+                        "type": "string",
+                        "description": "Percorso opzionale della cartella sul PC da scansionare (se omesso o 'all', scansiona tutte le cartelle monitorate)"
+                    }
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_watched_folders",
+            "description": "Elenca tutte le cartelle del computer attualmente monitorate e indicizzate da Dove lo AI messo (es. 'quali cartelle del mio computer stai vedendo?', 'elenco cartelle collegate').",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "open_local_file_in_explorer",
+            "description": "Apre direttamente un file o una cartella in Esplora File di Windows (File Explorer) evidenziando il file sul computer dell'utente (es. 'apri la cartella del contratto su Windows', 'apri il file in esplora risorse', 'mostrami dov'è salvato sul computer').",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "document_title": {
+                        "type": "string",
+                        "description": "Titolo o nome del documento da aprire in Esplora File"
+                    },
+                    "document_id": {
+                        "type": "integer",
+                        "description": "ID numerico del documento se già noto"
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Percorso esatto su disco se noto"
+                    }
+                }
+            }
+        }
     }
 ]
 
@@ -302,7 +356,7 @@ SYSTEM_PROMPT = """=============================================================
 IDENTITÀ, AMBIENTE OPERATIVO E INTERFACCIA UTENTE (DOVE SEI E COME FUNZIONI):
 ================================================================================
 1. DOVE TI TROVI:
-   - Sei l'assistente AI nativo integrato nell'applicazione web "Dove lo AI messo", un caveau intelligente per famiglie e professionisti.
+   - Sei l'assistente AI nativo integrato nell'applicazione desktop "Dove lo AI messo", un caveau intelligente per famiglie e professionisti.
    - Sei in dialogo diretto con l'utente all'interno di un'interfaccia fedele a WhatsApp Web (con bolle di chat e dashboard).
    - I documenti memorizzati nel database SQLite sono file reali (PDF e immagini) salvati sul server locale (`/uploads/...`) pronti per essere aperti o scaricati.
 
@@ -368,6 +422,13 @@ REGOLE OPERATIVE:
 11. QUANDO L'UTENTE CARICA O ASSOCIA UNA FOTO/ALLEGATO A UN OGGETTO FISICO (es. 'ti allego la foto per il piano', 'ecco la foto delle chiavi', 'associa questa foto al passaporto'):
     - DEVI USARE `link_document_to_item(item_name=...)` per collegare istantaneamente il documento/foto alla posizione dell'oggetto fisico nel caveau!
     - Conferma sempre all'utente che la foto è stata collegata e che verrà mostrata quando chiederà dove si trova l'oggetto.
+
+12. SCANSIONE E MONITORAGGIO CARTELLE DEL COMPUTER:
+    - Se l'utente chiede di scansionare cartelle, monitorare directory o indicizzare nuovi file dal PC: USA `scan_local_folder(folder_path=...)` o `list_watched_folders()`.
+    - Riassumi quanti nuovi documenti sono stati trovati e aggiunti al caveau.
+
+13. APERTURA DI FILE IN ESPLORA RISORSE DI WINDOWS:
+    - Se l'utente chiede di aprire la cartella originale o il file su Windows (es. 'apri il contratto su Windows', 'mostrami la cartella in esplora risorse'): USA `open_local_file_in_explorer(document_title=...)`.
 """
 
 def strip_tool_tags(text: str) -> str:
@@ -482,7 +543,7 @@ class AgenticChatService:
     def get_recent_ui_events(self, db: Session, thread_id: str = "general", minutes: int = 10) -> List[UIEvent]:
         """Recupera gli ultimi eventi di telemetria UI per il thread specificato."""
         try:
-            cutoff = datetime.utcnow() - timedelta(minutes=minutes)
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=minutes)
             events = (
                 db.query(UIEvent)
                 .filter(UIEvent.thread_id == thread_id)
@@ -1273,6 +1334,99 @@ class AgenticChatService:
                 "found_documents": docs_info
             }
 
+        elif name == "scan_local_folder":
+            from app.services.folder_service import scan_local_folder as do_scan_folder
+            f_path = (args.get("folder_path") or "").strip()
+            results = []
+            if f_path and f_path.lower() != "all":
+                res = do_scan_folder(f_path, db, thread_id=thread_id)
+                results.append(res)
+            else:
+                watched = db.query(WatchedFolder).filter(WatchedFolder.is_active == True).all()
+                if not watched:
+                    return {
+                        "error": "Nessuna cartella del PC è attualmente configurata per il monitoraggio. Puoi aggiungerne una dalla Dashboard o indicare un percorso specifico (es. C:\\Documenti).",
+                        "folders_count": 0
+                    }
+                for wf in watched:
+                    res = do_scan_folder(wf.path, db, thread_id=wf.thread_id or thread_id, watched_folder_id=wf.id)
+                    results.append(res)
+
+            total_new = sum(r.new_indexed_count for r in results)
+            total_scanned = sum(r.scanned_files_count for r in results)
+            total_skipped = sum(r.skipped_count for r in results)
+            total_errors = sum(r.error_count for r in results)
+
+            return {
+                "success": True,
+                "total_scanned": total_scanned,
+                "total_new_indexed": total_new,
+                "total_skipped": total_skipped,
+                "total_errors": total_errors,
+                "folders_processed": [
+                    {
+                        "path": r.folder_path,
+                        "scanned": r.scanned_files_count,
+                        "new": r.new_indexed_count,
+                        "skipped": r.skipped_count,
+                        "details": r.details[:5]
+                    }
+                    for r in results
+                ]
+            }
+
+        elif name == "list_watched_folders":
+            folders = db.query(WatchedFolder).all()
+            return {
+                "watched_folders_count": len(folders),
+                "folders": [
+                    {
+                        "id": f.id,
+                        "name": f.name,
+                        "path": f.path,
+                        "thread_id": f.thread_id,
+                        "file_count": f.file_count,
+                        "last_scanned_at": f.last_scanned_at.isoformat() if f.last_scanned_at else "Mai",
+                        "is_active": f.is_active
+                    }
+                    for f in folders
+                ]
+            }
+
+        elif name == "open_local_file_in_explorer":
+            from app.services.folder_service import open_path_in_explorer
+            doc_id = args.get("document_id")
+            doc_title = (args.get("document_title") or "").strip()
+            path_arg = (args.get("path") or "").strip()
+
+            target_path = None
+            matched_doc = None
+            if doc_id:
+                matched_doc = db.query(Document).filter(Document.id == doc_id).first()
+            elif doc_title:
+                matches = search_vault_documents(db, doc_title, thread_id=thread_id)
+                if matches:
+                    matched_doc = db.query(Document).filter(Document.id == matches[0]["id"]).first()
+
+            if matched_doc:
+                target_path = matched_doc.original_path or matched_doc.file_path
+            elif path_arg:
+                target_path = path_arg
+
+            if not target_path or not Path(target_path).exists():
+                return {
+                    "success": False,
+                    "error": f"File o cartella non trovata sul computer: {target_path or doc_title or doc_id}"
+                }
+
+            opened = open_path_in_explorer(target_path)
+            return {
+                "success": opened,
+                "path": target_path,
+                "title": matched_doc.title if matched_doc else Path(target_path).name,
+                "message": f"Aperto '{Path(target_path).name}' in Esplora File." if opened else "Impossibile aprire Esplora File."
+            }
+
         return {"error": f"Strumento non riconosciuto: {name}"}
 
     def build_system_prompt(self, db: Session, thread_id: str = "general") -> str:
@@ -1338,8 +1492,14 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 due = u.due_date.strftime('%d/%m/%Y') if u.due_date else "senza data"
                 vault_summary.append(f"- ⏰ {u.title}: {amt} entro {due}")
 
+        watched_folders = db.query(WatchedFolder).all() if db else []
+        if watched_folders:
+            vault_summary.append(f"\n[CARTELLE PC MONITORATE ({len(watched_folders)})]:")
+            for wf in watched_folders:
+                vault_summary.append(f"- 📁 {wf.name}: {wf.path} ({wf.file_count} file indicizzati, ultima scansione: {wf.last_scanned_at.strftime('%d/%m/%Y %H:%M') if wf.last_scanned_at else 'Mai'})")
+
         vault_summary.append("\n[REGOLA SULL'USO DEI DATI DEL DATABASE]:")
-        vault_summary.append("- Per conoscere, elencare o cercare documenti o oggetti, DEVI interrogare il database tramite gli appositi strumenti (`search_vault`, `list_vault_contents`, `get_upcoming_deadlines`).")
+        vault_summary.append("- Per conoscere, elencare o cercare documenti o oggetti, DEVI interrogare il database tramite gli appositi strumenti (`search_vault`, `list_vault_contents`, `get_upcoming_deadlines`, `scan_local_folder`, `list_watched_folders`).")
         vault_summary.append("- I dati reali restituiti dai tuoi strumenti sul database SQLite prevalgono SEMPRE e CATEGORICAMENTE su qualsiasi testo o messaggio della chat precedente.")
 
         thread = db.query(ChatThread).filter(ChatThread.id == thread_id).first() if db else None
@@ -2208,6 +2368,32 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 },
                 timeout=60.0
             )
+
+            # Retry automatico: se la prima chiamata fallisce (es. "model output must contain
+            # either output text or tool calls" con tool_choice forzato), riproviamo con "auto"
+            if r1.status_code != 200 and tool_choice_cfg != "auto":
+                err_body = ""
+                try:
+                    err_body = r1.json().get("error", {}).get("message", r1.text[:200])
+                except Exception:
+                    err_body = r1.text[:200]
+                logger.warning(
+                    f"OpenRouter r1 non-200 (status={r1.status_code}) con tool_choice={tool_choice_cfg!r}: {err_body}. "
+                    "Retry con tool_choice='auto'..."
+                )
+                r1 = httpx.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers=headers,
+                    json={
+                        "model": agent_model,
+                        "messages": history_messages,
+                        "tools": TOOLS_DEFINITION,
+                        "tool_choice": "auto",
+                        "max_tokens": 8192,
+                        "temperature": 0.2
+                    },
+                    timeout=60.0
+                )
 
             if r1.status_code == 200:
                 data1 = r1.json()

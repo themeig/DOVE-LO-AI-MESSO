@@ -154,7 +154,9 @@ def get_dashboard(
                     document_id=doc.id,
                     physical_item_id=doc.physical_item_id,
                     image_url=f"/uploads/{fn}" if doc.file_type in ["jpg", "jpeg", "png", "webp"] else None,
-                    has_photo=doc.file_type in ["jpg", "jpeg", "png", "webp"]
+                    has_photo=doc.file_type in ["jpg", "jpeg", "png", "webp"],
+                    is_local_file=bool(doc.is_local_file),
+                    original_path=doc.original_path or (doc.file_path if doc.is_local_file else None)
                 )
             )
 

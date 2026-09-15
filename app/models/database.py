@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy import create_engine, Column, Integer, String, Float, Date, DateTime, Text, inspect, text, types
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from app.config import get_settings
@@ -77,7 +77,7 @@ class ChatThread(Base):
     color = Column(String(50), nullable=False, default="bg-[#128C7E]")
     description = Column(String(255), nullable=True)
     members = Column(Text, nullable=True)  # JSON array string, e.g. '["Io", "Chiara"]'
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class Document(Base):
@@ -94,7 +94,22 @@ class Document(Base):
     due_date = Column(Date, nullable=True)
     status = Column(String(50), nullable=False, default="da_pagare")
     summary = Column(EncryptedText, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    is_local_file = Column(types.Boolean, nullable=False, default=False)
+    original_path = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class WatchedFolder(Base):
+    __tablename__ = "watched_folders"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    path = Column(String(500), nullable=False, unique=True, index=True)
+    name = Column(String(255), nullable=False)
+    thread_id = Column(String(50), nullable=False, default="general", index=True)
+    is_active = Column(types.Boolean, nullable=False, default=True)
+    auto_scan = Column(types.Boolean, nullable=False, default=True)
+    last_scanned_at = Column(DateTime, nullable=True)
+    file_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class PhysicalItem(Base):
@@ -108,7 +123,7 @@ class PhysicalItem(Base):
     detailed_location = Column(EncryptedString(500), nullable=True)
     notes = Column(EncryptedText, nullable=True)
     image_path = Column(String(500), nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class ChatMessage(Base):
@@ -119,7 +134,7 @@ class ChatMessage(Base):
     message_type = Column(String(20), default="text")
     content = Column(EncryptedText, nullable=False)
     metadata_json = Column(EncryptedText, nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class UIEvent(Base):
@@ -131,7 +146,7 @@ class UIEvent(Base):
     target_id = Column(Integer, nullable=True)
     title = Column(String(255), nullable=True)
     error_details = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class AppSetting(Base):
@@ -193,18 +208,24 @@ def init_db(engine=None):
                 conn.execute(text("ALTER TABLE physical_items ADD COLUMN document_id INTEGER"))
                 conn.commit()
 
-        # Ensure physical_item_id in documents
+        # Ensure physical_item_id, is_local_file, original_path in documents
         if "documents" in table_names:
             cols = [c["name"] for c in inspector.get_columns("documents")]
             if "physical_item_id" not in cols:
                 conn.execute(text("ALTER TABLE documents ADD COLUMN physical_item_id INTEGER"))
+                conn.commit()
+            if "is_local_file" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN is_local_file BOOLEAN DEFAULT 0"))
+                conn.commit()
+            if "original_path" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN original_path VARCHAR(500)"))
                 conn.commit()
 
         # Seed default threads if table exists and is empty
         if "chat_threads" in table_names:
             count = conn.execute(text("SELECT COUNT(*) FROM chat_threads")).scalar()
             if count == 0:
-                now_str = datetime.utcnow().isoformat()
+                now_str = datetime.now(timezone.utc).isoformat()
                 defaults = [
                     ("general", "Dove lo AI messo", "thematic", "fa-compass", "bg-[#128C7E]", "Assistente Personale & Caveau Globale", json.dumps(["Io"])),
                     ("famiglia", "Famiglia 👨‍👩‍👧", "group", "fa-users", "bg-emerald-600", "Documenti di casa, bollette e posizioni condivise", json.dumps(["Io", "Famiglia"])),

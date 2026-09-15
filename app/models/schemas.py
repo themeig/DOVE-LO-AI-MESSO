@@ -83,6 +83,8 @@ class RecordItem(BaseModel):
     physical_item_id: Optional[int] = None
     image_url: Optional[str] = None
     has_photo: Optional[bool] = None
+    is_local_file: Optional[bool] = None
+    original_path: Optional[str] = None
 
 class DashboardKPI(BaseModel):
     total_upcoming_amount: float
@@ -160,5 +162,39 @@ class LinkDocumentItemRequest(BaseModel):
     item_name: Optional[str] = None
     document_id: int
     thread_id: Optional[str] = "general"
+
+class WatchedFolderCreate(BaseModel):
+    path: str = Field(..., description="Percorso cartella locale su PC")
+    name: Optional[str] = Field(default=None, description="Nome o etichetta personalizzata")
+    thread_id: Optional[str] = Field(default="general", description="Spazio/Gruppo associato")
+    auto_scan: bool = Field(default=True, description="Scansiona subito la cartella")
+
+class WatchedFolderResponse(BaseModel):
+    id: int
+    path: str
+    name: str
+    thread_id: str
+    is_active: bool
+    auto_scan: bool
+    last_scanned_at: Optional[str] = None
+    file_count: int
+    created_at: Optional[str] = None
+
+class FolderScanResult(BaseModel):
+    folder_id: Optional[int] = None
+    folder_path: str
+    scanned_files_count: int
+    new_indexed_count: int
+    skipped_count: int
+    error_count: int
+    details: List[str] = Field(default_factory=list)
+
+class FolderSelectResponse(BaseModel):
+    selected_path: Optional[str] = None
+    cancelled: bool = False
+
+class OpenInExplorerRequest(BaseModel):
+    path: Optional[str] = None
+    document_id: Optional[int] = None
 
 
