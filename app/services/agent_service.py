@@ -716,7 +716,11 @@ class AgenticChatService:
             if target_type == "physical_item":
                 rec = db.query(PhysicalItem).filter(PhysicalItem.id == target_id).first() if target_id else None
                 if not rec and title:
-                    rec = db.query(PhysicalItem).filter(PhysicalItem.item_name.ilike(f"%{title}%")).first()
+                    clean_t = re.sub(r"^(?:elimina|cancella|rimuovi|butta)\s*(?:il|la|lo|le|i|l'|un|una|uno)?\s*", "", title, flags=re.IGNORECASE).strip(" ?.")
+                    clean_t = re.sub(r"\s*(?:per favore|per cortesia|grazie)$", "", clean_t, flags=re.IGNORECASE).strip()
+                    s_items = search_vault_items(db, clean_t or title, thread_id=thread_id)
+                    if s_items:
+                        rec = db.query(PhysicalItem).filter(PhysicalItem.id == (s_items[0].get("item_id") or s_items[0].get("id"))).first()
                 if rec:
                     target_id = rec.id
                     title = rec.item_name
@@ -725,7 +729,9 @@ class AgenticChatService:
                 target_type = "document"
                 rec = db.query(Document).filter(Document.id == target_id).first() if target_id else None
                 if not rec and title:
-                    s_res = search_vault_documents(db, title, thread_id=thread_id)
+                    clean_t = re.sub(r"^(?:elimina|cancella|rimuovi|butta)\s*(?:il|la|lo|le|i|l'|un|una|uno)?\s*", "", title, flags=re.IGNORECASE).strip(" ?.")
+                    clean_t = re.sub(r"\s*(?:per favore|per cortesia|grazie)$", "", clean_t, flags=re.IGNORECASE).strip()
+                    s_res = search_vault_documents(db, clean_t or title, thread_id=thread_id)
                     if s_res:
                         rec = db.query(Document).filter(Document.id == s_res[0]["id"]).first()
                 if rec:
@@ -2003,7 +2009,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
                 if direct_reply:
                     if is_delete_request:
-                        del_tool_res = self.execute_tool("delete_vault_record", {"target_type": "bulk_documents", "title": user_text}, db=db, thread_id=thread_id)
+                        is_bulk_phrase = any(k in lower_t for k in ["tutti", "tutte", "tutto"])
+                        t_type = "bulk_documents" if is_bulk_phrase else ("physical_item" if any(k in lower_t for k in ["patente", "passaporto", "chiav", "oggett"]) else "document")
+                        del_tool_res = self.execute_tool("delete_vault_record", {"target_type": t_type, "title": user_text}, db=db, thread_id=thread_id)
                         conf_b = del_tool_res.get("confirmation")
                         c_docs = del_tool_res.get("documents")
                         return ChatResponse(

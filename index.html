@@ -703,14 +703,30 @@
               <button onclick="filterTable('deadlines')" id="fDeadlines" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900">Scadenze</button>
               <button onclick="filterTable('items')" id="fItems" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900">Oggetti</button>
             </div>
+
+            <!-- Selettore Modalità Vista (Per Categoria / Tabella Elenco) -->
+            <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium">
+              <button onclick="setDashboardViewMode('grouped')" id="btnViewGrouped" class="px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-folder-tree text-emerald-600"></i> Per Categoria
+              </button>
+              <button onclick="setDashboardViewMode('table')" id="btnViewTable" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900 flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-table-list"></i> Tabella
+              </button>
+            </div>
+
             <select id="dashboardThreadSelect" onchange="loadDashboard()" class="text-xs bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl px-3 py-1.5 outline-none font-medium cursor-pointer">
               <option value="">📁 Tutti gli Spazi / Gruppi</option>
             </select>
           </div>
         </div>
 
+        <!-- Vista a Categorie Raggruppate (Documenti & Oggetti) -->
+        <div id="dashboardGroupedContainer" class="p-6 space-y-6 bg-slate-50/50">
+          <!-- Popolato dinamicamente da renderGroupedView -->
+        </div>
+
         <!-- Tabella con Design Moderno -->
-        <div class="overflow-x-auto">
+        <div id="dashboardTableContainer" class="overflow-x-auto hidden">
           <table class="w-full text-left text-xs border-collapse">
             <thead>
               <tr class="bg-slate-50/70 text-slate-500 border-b border-slate-200/80 text-[10px] uppercase font-bold tracking-wider">
@@ -1936,8 +1952,8 @@
         const fI = document.getElementById('fItems');
         if (fI) fI.textContent = kpi.total_items_count ? `Oggetti (${kpi.total_items_count})` : 'Oggetti';
 
-        // 2. Render righe tabella
-        renderTableRows(currentRecords);
+        // 2. Render vista attiva (categorizzata o tabellare)
+        renderDashboardView();
 
         // 3. Footer contatore
         const tableFooterCount = document.getElementById('tableFooterCount');
@@ -1946,6 +1962,475 @@
         }
       } catch (err) {
         console.error("Errore loadDashboard:", err);
+      }
+    }
+
+    // --- Modalità Vista Dashboard (Raggruppata per Categoria o Tabellare) ---
+    let dashboardViewMode = 'grouped';
+
+    function setDashboardViewMode(mode) {
+      dashboardViewMode = mode;
+      const btnG = document.getElementById('btnViewGrouped');
+      const btnT = document.getElementById('btnViewTable');
+      if (mode === 'grouped') {
+        if (btnG) btnG.className = 'px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold flex items-center gap-1.5 transition';
+        if (btnT) btnT.className = 'px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900 flex items-center gap-1.5 transition';
+      } else {
+        if (btnG) btnG.className = 'px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900 flex items-center gap-1.5 transition';
+        if (btnT) btnT.className = 'px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold flex items-center gap-1.5 transition';
+      }
+      renderDashboardView();
+    }
+
+    function renderDashboardView() {
+      const groupedCont = document.getElementById('dashboardGroupedContainer');
+      const tableCont = document.getElementById('dashboardTableContainer');
+      if (dashboardViewMode === 'grouped') {
+        if (groupedCont) groupedCont.classList.remove('hidden');
+        if (tableCont) tableCont.classList.add('hidden');
+        renderGroupedView(currentRecords);
+      } else {
+        if (groupedCont) groupedCont.classList.add('hidden');
+        if (tableCont) tableCont.classList.remove('hidden');
+        renderTableRows(currentRecords);
+      }
+    }
+
+    // --- Helper Badge Scadenza con Countdown Dinamico ---
+    function getDueDateBadge(rec) {
+      if (!rec.due_date) return '<span class="text-slate-400 font-normal">-</span>';
+      const parts = rec.due_date.split('-');
+      const formatted = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : rec.due_date;
+      if (rec.status === 'da_pagare') {
+        let days = rec.days_remaining;
+        if (days == null) {
+          const dDate = new Date(rec.due_date + 'T00:00:00');
+          const todayObj = new Date();
+          todayObj.setHours(0, 0, 0, 0);
+          days = Math.round((dDate - todayObj) / (1000 * 60 * 60 * 24));
+        }
+
+        let countdownBadge = '';
+        if (days < 0) {
+          const absD = Math.abs(days);
+          countdownBadge = `
+            <span class="inline-flex items-center gap-1 bg-red-100 text-red-800 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap mt-1">
+              <i class="fa-solid fa-fire text-red-600"></i> Scaduta da ${absD} ${absD === 1 ? 'giorno' : 'giorni'}
+            </span>
+          `;
+          return `<div class="flex flex-col"><span class="font-bold text-red-700">${formatted}</span>${countdownBadge}</div>`;
+        } else if (days === 0) {
+          countdownBadge = `
+            <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap mt-1 animate-pulse">
+              <i class="fa-solid fa-clock text-amber-700"></i> Scade oggi!
+            </span>
+          `;
+          return `<div class="flex flex-col"><span class="font-bold text-amber-800">${formatted}</span>${countdownBadge}</div>`;
+        } else if (days <= 3) {
+          countdownBadge = `
+            <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap mt-1">
+              <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Scade tra ${days} ${days === 1 ? 'giorno' : 'giorni'}
+            </span>
+          `;
+          return `<div class="flex flex-col"><span class="font-semibold text-amber-800">${formatted}</span>${countdownBadge}</div>`;
+        } else if (days <= 7) {
+          countdownBadge = `
+            <span class="inline-flex items-center gap-1 bg-yellow-50 text-yellow-800 border border-yellow-200 text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap mt-1">
+              <i class="fa-regular fa-clock text-yellow-600"></i> In scadenza (${days} gg)
+            </span>
+          `;
+          return `<div class="flex flex-col"><span class="font-medium text-slate-700">${formatted}</span>${countdownBadge}</div>`;
+        } else {
+          countdownBadge = `
+            <span class="inline-flex items-center gap-1 bg-slate-50 text-slate-600 border border-slate-200 text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap mt-1">
+              Tra ${days} gg
+            </span>
+          `;
+          return `<div class="flex flex-col"><span class="text-slate-600">${formatted}</span>${countdownBadge}</div>`;
+        }
+      } else {
+        return `<span class="text-slate-500">${formatted}</span>`;
+      }
+    }
+
+    // --- Rendering Vista Raggruppata per Categoria (Documenti) e Ambiente (Oggetti) ---
+    function renderGroupedView(records) {
+      const container = document.getElementById('dashboardGroupedContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (!records || records.length === 0) {
+        container.innerHTML = `
+          <div class="py-12 text-center text-slate-400 text-xs bg-white rounded-2xl border border-slate-200/80 p-8">
+            <i class="fa-solid fa-folder-open text-4xl mb-3 block text-slate-300"></i>
+            <p class="font-semibold text-slate-700 text-sm">Nessun elemento trovato</p>
+            <p class="text-slate-400 mt-1">Non ci sono documenti o oggetti per il filtro o lo spazio selezionato.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const docs = records.filter(r => r.type === 'document');
+      const items = records.filter(r => r.type === 'physical_item');
+
+      // --- SEZIONE 1: DOCUMENTI PER CATEGORIA ---
+      if (docs.length > 0) {
+        const docSection = document.createElement('div');
+        docSection.className = 'space-y-4';
+
+        docSection.innerHTML = `
+          <div class="flex items-center justify-between pb-1 border-b border-slate-200/70">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Documenti Raggruppati per Categoria</h3>
+              <span class="text-xs bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200/50">${docs.length}</span>
+            </div>
+            <span class="text-[11px] text-slate-400 font-medium">Utenze, Fisco, Contratti, Identità & Spese</span>
+          </div>
+        `;
+
+        const docGroups = {};
+        docs.forEach(doc => {
+          const catLabel = doc.category_label || 'Altri Documenti';
+          if (!docGroups[catLabel]) {
+            docGroups[catLabel] = {
+              icon: doc.category_icon || 'fa-folder-closed',
+              categoryKey: doc.category || 'altro',
+              items: []
+            };
+          }
+          docGroups[catLabel].items.push(doc);
+        });
+
+        const categoryOrder = [
+          "Utenze & Bollette",
+          "Fisco, Tributi & F24",
+          "Documenti Personali & Identità",
+          "Contratti, Polizze & Assicurazioni",
+          "Fatture, Spese & Ricevute",
+          "Sanità & Spese Mediche",
+          "Altri Documenti"
+        ];
+
+        const sortedDocCatKeys = Object.keys(docGroups).sort((a, b) => {
+          const idxA = categoryOrder.indexOf(a);
+          const idxB = categoryOrder.indexOf(b);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          if (idxA !== -1) return -1;
+          if (idxB !== -1) return 1;
+          return a.localeCompare(b);
+        });
+
+        sortedDocCatKeys.forEach(catLabel => {
+          const group = docGroups[catLabel];
+          const catDocs = group.items;
+
+          let catTotalAmount = 0;
+          let hasAmounts = false;
+          let catUnpaidCount = 0;
+          catDocs.forEach(d => {
+            if (d.amount != null) {
+              catTotalAmount += d.amount;
+              hasAmounts = true;
+            }
+            if (d.status === 'da_pagare') catUnpaidCount++;
+          });
+
+          let iconColor = 'bg-slate-100 text-slate-700';
+          if (group.categoryKey === 'utenze') iconColor = 'bg-amber-100 text-amber-700';
+          else if (group.categoryKey === 'fisco') iconColor = 'bg-blue-100 text-blue-700';
+          else if (group.categoryKey === 'identita') iconColor = 'bg-indigo-100 text-indigo-700';
+          else if (group.categoryKey === 'contratti') iconColor = 'bg-violet-100 text-violet-700';
+          else if (group.categoryKey === 'spese') iconColor = 'bg-emerald-100 text-emerald-700';
+          else if (group.categoryKey === 'sanita') iconColor = 'bg-rose-100 text-rose-700';
+
+          const detailsEl = document.createElement('details');
+          detailsEl.open = true;
+          detailsEl.className = 'group bg-white border border-slate-200/90 rounded-2xl shadow-2xs transition-all overflow-hidden';
+
+          let unpaidBadge = '';
+          if (catUnpaidCount > 0) {
+            unpaidBadge = `
+              <span class="bg-amber-50 text-amber-800 border border-amber-200/80 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                ⚠️ ${catUnpaidCount} da saldare
+              </span>
+            `;
+          }
+
+          let totalBadge = '';
+          if (hasAmounts) {
+            totalBadge = `
+              <span class="text-xs font-extrabold text-slate-800 bg-slate-100/80 px-2.5 py-1 rounded-lg border border-slate-200/60">
+                ${catTotalAmount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+              </span>
+            `;
+          }
+
+          let cardsHtml = '';
+          catDocs.forEach(rec => {
+            const escapedTitle = escapeHtml(rec.title).replace(/'/g, "\\'");
+            const threadName = escapeHtml(rec.thread_name || 'Principale');
+            const isGroup = (rec.thread_id || '').includes('famiglia') || (rec.thread_id || '').includes('gruppo');
+            const threadIcon = isGroup ? 'fa-users text-emerald-600' : 'fa-folder text-indigo-600';
+
+            const amountDisplay = rec.amount != null
+              ? `${rec.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+              : '<span class="text-slate-300 font-normal text-xs">-</span>';
+
+            const dueDateBadge = getDueDateBadge(rec);
+
+            let statusBadge = '';
+            if (rec.status === 'da_pagare') {
+              statusBadge = `<span class="bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-md">Da Saldare</span>`;
+            } else if (rec.status === 'quietanzato') {
+              statusBadge = `<span class="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-md">Quietanzato</span>`;
+            } else {
+              statusBadge = `<span class="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-md">${escapeHtml(rec.status)}</span>`;
+            }
+
+            let previewBtn = '';
+            if (rec.file_url) {
+              const escapedUrl = escapeHtml(rec.file_url);
+              const escapedType = escapeHtml(rec.file_type || 'application/pdf');
+              const downloadUrl = `/api/documents/${rec.id}/download`;
+              previewBtn = `
+                <button onclick="openMediaModal('${escapedUrl}', '${escapedTitle}', '${escapedType}', '${downloadUrl}')" title="Anteprima documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-2 py-1 rounded-lg transition active:scale-95 flex items-center gap-1">
+                  <i class="fa-regular fa-eye text-xs"></i> Vedi
+                </button>
+                <a href="${downloadUrl}" download title="Scarica documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-emerald-800 text-xs font-semibold px-2 py-1 rounded-lg transition active:scale-95 flex items-center gap-1">
+                  <i class="fa-solid fa-download text-xs text-emerald-700"></i>
+                </a>
+              `;
+            }
+
+            let payBtn = '';
+            if (rec.status === 'da_pagare') {
+              payBtn = `<button onclick="markAsPaid(${rec.id})" class="text-emerald-700 hover:text-emerald-800 font-bold underline text-xs transition active:scale-95">Salda</button>`;
+            }
+
+            const deleteBtn = `
+              <button onclick="confirmDashboardDelete('${rec.type}', ${rec.id}, '${escapedTitle}')" title="Elimina dal caveau" class="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition active:scale-95 text-xs ml-auto">
+                <i class="fa-regular fa-trash-can"></i>
+              </button>
+            `;
+
+            cardsHtml += `
+              <div class="bg-slate-50/70 hover:bg-white border border-slate-200/80 hover:border-slate-300 rounded-xl p-3.5 flex flex-col justify-between transition-all shadow-2xs hover:shadow-sm">
+                <div>
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <div class="w-7 h-7 rounded-lg ${iconColor} flex items-center justify-center shrink-0 text-xs">
+                        <i class="fa-solid ${group.icon}"></i>
+                      </div>
+                      <div class="min-w-0">
+                        <h4 class="font-bold text-slate-900 text-xs truncate" title="${escapeHtml(rec.title)}">${escapeHtml(rec.title)}</h4>
+                        <p class="text-[11px] text-slate-400 truncate">${escapeHtml(rec.source || '')}</p>
+                      </div>
+                    </div>
+                    <span class="inline-flex items-center gap-1 text-[10px] font-medium bg-white text-slate-600 px-2 py-0.5 rounded-full border border-slate-200/80 shrink-0">
+                      <i class="fa-solid ${threadIcon} text-[9px]"></i>
+                      <span>${threadName}</span>
+                    </span>
+                  </div>
+
+                  <!-- Dettagli Importo & Scadenza -->
+                  <div class="mt-3 pt-2.5 border-t border-slate-200/50 flex items-end justify-between gap-2">
+                    <div>
+                      <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Importo</span>
+                      <span class="text-sm font-black text-slate-900">${amountDisplay}</span>
+                    </div>
+                    <div class="text-right">
+                      <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Scadenza</span>
+                      <div class="text-xs font-semibold">${dueDateBadge}</div>
+                    </div>
+                  </div>
+
+                  ${rec.location_or_notes ? `<p class="text-[11px] text-slate-500 mt-2 bg-slate-100/60 px-2 py-1 rounded-md line-clamp-1">💬 ${escapeHtml(rec.location_or_notes)}</p>` : ''}
+                </div>
+
+                <!-- Footer Azioni & Stato -->
+                <div class="mt-3 pt-2 border-t border-slate-200/50 flex items-center gap-2 flex-wrap">
+                  ${statusBadge}
+                  ${payBtn}
+                  <div class="flex items-center gap-1.5 ml-auto">
+                    ${previewBtn}
+                    ${deleteBtn}
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+
+          detailsEl.innerHTML = `
+            <summary class="list-none flex items-center justify-between p-4 cursor-pointer select-none hover:bg-slate-50/60 transition">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl ${iconColor} flex items-center justify-center shrink-0 text-sm">
+                  <i class="fa-solid ${group.icon}"></i>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h4 class="font-bold text-slate-900 text-sm">${escapeHtml(catLabel)}</h4>
+                  <span class="bg-slate-100 text-slate-600 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-slate-200/60">${catDocs.length} ${catDocs.length === 1 ? 'doc' : 'doc'}</span>
+                  ${unpaidBadge}
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                ${totalBadge}
+                <i class="fa-solid fa-chevron-down text-slate-400 group-open:rotate-180 transition-transform text-xs"></i>
+              </div>
+            </summary>
+            <div class="p-4 pt-0 border-t border-slate-100">
+              <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 mt-3">
+                ${cardsHtml}
+              </div>
+            </div>
+          `;
+
+          docSection.appendChild(detailsEl);
+        });
+
+        container.appendChild(docSection);
+      }
+
+      // --- SEZIONE 2: OGGETTI PER AMBIENTE / STANZA ---
+      if (items.length > 0) {
+        const itemSection = document.createElement('div');
+        itemSection.className = 'space-y-4 pt-2';
+
+        itemSection.innerHTML = `
+          <div class="flex items-center justify-between pb-1 border-b border-slate-200/70">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+              <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Oggetti & Cespiti per Ambiente / Stanza</h3>
+              <span class="text-xs bg-purple-50 text-purple-700 font-bold px-2 py-0.5 rounded-full border border-purple-200/50">${items.length}</span>
+            </div>
+            <span class="text-[11px] text-slate-400 font-medium">Studio, Camera, Cucina, Salotto, Garage & Altri</span>
+          </div>
+        `;
+
+        const roomGroups = {};
+        items.forEach(item => {
+          const roomName = item.room || 'Altro Spazio';
+          if (!roomGroups[roomName]) {
+            roomGroups[roomName] = [];
+          }
+          roomGroups[roomName].push(item);
+        });
+
+        const roomStyles = {
+          "Studio & Scrivania": { icon: "fa-laptop", color: "bg-indigo-100 text-indigo-700" },
+          "Camera da letto": { icon: "fa-bed", color: "bg-purple-100 text-purple-700" },
+          "Salotto & Living": { icon: "fa-couch", color: "bg-amber-100 text-amber-700" },
+          "Cucina": { icon: "fa-kitchen-set", color: "bg-emerald-100 text-emerald-700" },
+          "Garage & Ripostiglio": { icon: "fa-warehouse", color: "bg-cyan-100 text-cyan-700" },
+          "Altro Spazio": { icon: "fa-location-dot", color: "bg-slate-100 text-slate-700" }
+        };
+
+        const roomKeys = Object.keys(roomGroups).sort();
+
+        roomKeys.forEach(roomName => {
+          const roomItems = roomGroups[roomName];
+          const style = roomStyles[roomName] || { icon: "fa-location-dot", color: "bg-slate-100 text-slate-700" };
+
+          const detailsEl = document.createElement('details');
+          detailsEl.open = true;
+          detailsEl.className = 'group bg-white border border-slate-200/90 rounded-2xl shadow-2xs transition-all overflow-hidden';
+
+          let itemCardsHtml = '';
+          roomItems.forEach(rec => {
+            const escapedTitle = escapeHtml(rec.title).replace(/'/g, "\\'");
+            const threadName = escapeHtml(rec.thread_name || 'Principale');
+            const isGroup = (rec.thread_id || '').includes('famiglia') || (rec.thread_id || '').includes('gruppo');
+            const threadIcon = isGroup ? 'fa-users text-emerald-600' : 'fa-folder text-indigo-600';
+
+            let catChip = 'Oggetto';
+            let catChipIcon = 'fa-box-archive';
+            const lowerCat = (rec.category || '').toLowerCase();
+            if (lowerCat.includes('document')) {
+              catChip = 'Documento Cartaceo';
+              catChipIcon = 'fa-file-lines';
+            } else if (lowerCat.includes('chiav')) {
+              catChip = 'Chiavi & Accessori';
+              catChipIcon = 'fa-key';
+            } else if (lowerCat.includes('elettron')) {
+              catChip = 'Elettronica';
+              catChipIcon = 'fa-plug';
+            } else if (lowerCat.includes('attrezzatur') || lowerCat.includes('strument')) {
+              catChip = 'Attrezzatura';
+              catChipIcon = 'fa-wrench';
+            }
+
+            const deleteBtn = `
+              <button onclick="confirmDashboardDelete('${rec.type}', ${rec.id}, '${escapedTitle}')" title="Elimina dal caveau" class="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition active:scale-95 text-xs">
+                <i class="fa-regular fa-trash-can"></i>
+              </button>
+            `;
+
+            itemCardsHtml += `
+              <div class="bg-slate-50/70 hover:bg-white border border-slate-200/80 hover:border-slate-300 rounded-xl p-3.5 flex flex-col justify-between transition-all shadow-2xs hover:shadow-sm">
+                <div>
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <div class="w-7 h-7 rounded-lg ${style.color} flex items-center justify-center shrink-0 text-xs">
+                        <i class="fa-solid ${style.icon}"></i>
+                      </div>
+                      <div class="min-w-0">
+                        <h4 class="font-bold text-slate-900 text-xs truncate" title="${escapeHtml(rec.title)}">${escapeHtml(rec.title)}</h4>
+                        <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md mt-0.5">
+                          <i class="fa-solid ${catChipIcon} text-[9px]"></i> ${catChip}
+                        </span>
+                      </div>
+                    </div>
+                    <span class="inline-flex items-center gap-1 text-[10px] font-medium bg-white text-slate-600 px-2 py-0.5 rounded-full border border-slate-200/80 shrink-0">
+                      <i class="fa-solid ${threadIcon} text-[9px]"></i>
+                      <span>${threadName}</span>
+                    </span>
+                  </div>
+
+                  <!-- Posizione Dettagliata -->
+                  <div class="mt-3 p-2 bg-white rounded-lg border border-slate-200/60">
+                    <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+                      <i class="fa-solid fa-location-dot text-purple-600 text-xs"></i>
+                      <span>${escapeHtml(rec.detailed_location || rec.location_or_notes || 'Posizione registrata')}</span>
+                    </div>
+                    ${rec.location_or_notes && rec.location_or_notes !== rec.detailed_location ? `<p class="text-[11px] text-slate-400 mt-1 pl-4">${escapeHtml(rec.location_or_notes)}</p>` : ''}
+                  </div>
+                </div>
+
+                <!-- Footer Azioni -->
+                <div class="mt-3 pt-2 border-t border-slate-200/50 flex items-center justify-between">
+                  <span class="text-[10px] text-slate-400 font-medium">📍 Sincronizzato con AI</span>
+                  ${deleteBtn}
+                </div>
+              </div>
+            `;
+          });
+
+          detailsEl.innerHTML = `
+            <summary class="list-none flex items-center justify-between p-4 cursor-pointer select-none hover:bg-slate-50/60 transition">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl ${style.color} flex items-center justify-center shrink-0 text-sm">
+                  <i class="fa-solid ${style.icon}"></i>
+                </div>
+                <div class="flex items-center gap-2">
+                  <h4 class="font-bold text-slate-900 text-sm">${escapeHtml(roomName)}</h4>
+                  <span class="bg-slate-100 text-slate-600 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-slate-200/60">${roomItems.length} ${roomItems.length === 1 ? 'oggetto' : 'oggetti'}</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <i class="fa-solid fa-chevron-down text-slate-400 group-open:rotate-180 transition-transform text-xs"></i>
+              </div>
+            </summary>
+            <div class="p-4 pt-0 border-t border-slate-100">
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 mt-3">
+                ${itemCardsHtml}
+              </div>
+            </div>
+          `;
+
+          itemSection.appendChild(detailsEl);
+        });
+
+        container.appendChild(itemSection);
       }
     }
 
@@ -2020,61 +2505,7 @@
         }
 
         // Scadenza formattata con countdown dinamico
-        let dueDateHtml = '<span class="text-slate-400">-</span>';
-        if (rec.due_date) {
-          const parts = rec.due_date.split('-');
-          const formatted = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : rec.due_date;
-          if (rec.status === 'da_pagare') {
-            let days = rec.days_remaining;
-            if (days == null) {
-              const dDate = new Date(rec.due_date + 'T00:00:00');
-              const todayObj = new Date();
-              todayObj.setHours(0, 0, 0, 0);
-              days = Math.round((dDate - todayObj) / (1000 * 60 * 60 * 24));
-            }
-
-            let countdownBadge = '';
-            if (days < 0) {
-              const absD = Math.abs(days);
-              countdownBadge = `
-                <span class="inline-flex items-center gap-1 bg-red-100 text-red-800 border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap mt-1">
-                  <i class="fa-solid fa-fire text-red-600"></i> Scaduta da ${absD} ${absD === 1 ? 'giorno' : 'giorni'}
-                </span>
-              `;
-              dueDateHtml = `<div class="flex flex-col"><span class="font-bold text-red-700">${formatted}</span>${countdownBadge}</div>`;
-            } else if (days === 0) {
-              countdownBadge = `
-                <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap mt-1 animate-pulse">
-                  <i class="fa-solid fa-clock text-amber-700"></i> Scade oggi!
-                </span>
-              `;
-              dueDateHtml = `<div class="flex flex-col"><span class="font-bold text-amber-800">${formatted}</span>${countdownBadge}</div>`;
-            } else if (days <= 3) {
-              countdownBadge = `
-                <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap mt-1">
-                  <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Scade tra ${days} ${days === 1 ? 'giorno' : 'giorni'}
-                </span>
-              `;
-              dueDateHtml = `<div class="flex flex-col"><span class="font-semibold text-amber-800">${formatted}</span>${countdownBadge}</div>`;
-            } else if (days <= 7) {
-              countdownBadge = `
-                <span class="inline-flex items-center gap-1 bg-yellow-50 text-yellow-800 border border-yellow-200 text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap mt-1">
-                  <i class="fa-regular fa-clock text-yellow-600"></i> In scadenza (${days} gg)
-                </span>
-              `;
-              dueDateHtml = `<div class="flex flex-col"><span class="font-medium text-slate-700">${formatted}</span>${countdownBadge}</div>`;
-            } else {
-              countdownBadge = `
-                <span class="inline-flex items-center gap-1 bg-slate-50 text-slate-600 border border-slate-200 text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap mt-1">
-                  Tra ${days} gg
-                </span>
-              `;
-              dueDateHtml = `<div class="flex flex-col"><span class="text-slate-600">${formatted}</span>${countdownBadge}</div>`;
-            }
-          } else {
-            dueDateHtml = `<span class="text-slate-500">${formatted}</span>`;
-          }
-        }
+        const dueDateHtml = getDueDateBadge(rec);
 
         // Stato / Coordinate
         let statusHtml = '';

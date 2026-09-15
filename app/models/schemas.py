@@ -74,6 +74,11 @@ class RecordItem(BaseModel):
     days_remaining: Optional[int] = None
     urgency: Optional[str] = None
     urgency_label: Optional[str] = None
+    category: Optional[str] = None
+    category_label: Optional[str] = None
+    category_icon: Optional[str] = None
+    room: Optional[str] = None
+    detailed_location: Optional[str] = None
 
 class DashboardKPI(BaseModel):
     total_upcoming_amount: float

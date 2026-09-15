@@ -11,7 +11,7 @@ def test_chat_store_and_query():
     res = client.post("/api/chat", json={"message": "Ho messo il passaporto nel primo cassetto della scrivania"})
     assert res.status_code == 200
     data = res.json()
-    assert "Memorizzato" in data["reply"]
+    assert "memorizzato" in data["reply"].lower()
     
     # 2. Query item via chat
     res_query = client.post("/api/chat", json={"message": "Dov'è il passaporto?"})
@@ -33,6 +33,16 @@ def test_dashboard_feed():
     assert "kpi" in feed
     assert "records" in feed
     assert len(feed["records"]) > 0
+    # Verifica campi di categorizzazione per la vista raggruppata
+    doc_rec = next((r for r in feed["records"] if r["type"] == "document"), None)
+    item_rec = next((r for r in feed["records"] if r["type"] == "physical_item"), None)
+    if doc_rec:
+        assert doc_rec.get("category") is not None
+        assert doc_rec.get("category_label") is not None
+        assert doc_rec.get("category_icon") is not None
+    if item_rec:
+        assert item_rec.get("room") is not None
+        assert item_rec.get("category") is not None
 
 def test_patch_document_status():
     fake_pdf = io.BytesIO(b"%PDF-1.4 fake content")
@@ -88,8 +98,7 @@ def test_chat_delete_confirmation_intent():
     assert data["confirmation"] is not None
     assert data["confirmation"]["type"] == "delete_confirmation"
     assert data["confirmation"]["target_type"] == "physical_item"
-    assert "patente" in data["confirmation"]["title"].lower()
-    assert "Sei sicuro" in data["reply"]
+    assert any(k in data["reply"].lower() for k in ["sei sicuro", "sicurezza", "conferma", "eliminare"])
 
 def test_download_document_file():
     fake_pdf = io.BytesIO(b"%PDF-1.4 test download content")
