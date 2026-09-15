@@ -1763,26 +1763,47 @@
       });
     }
 
-    // Formattazione markdown per la chat: gestisce **grassetto/evidenziato**, *corsivo*, `codice` e a capo
+    // Formattazione markdown completa per la chat: gestisce titoli (###), divisori (---), elenchi puntati (*, -), numerati (1.), grassetto (** o *), corsivo (_) e blocchi codice
     function formatMessageText(text) {
       if (!text) return '';
       let formatted = escapeHtml(text);
 
-      // Doppi asterischi **testo**: evidenziazione in grassetto con lieve risalto per le parole chiave
+      // 1. Blocchi di codice (```code```)
+      formatted = formatted.replace(/```(?:[a-zA-Z0-9_\-]+)?\n?([\s\S]*?)```/g, '<pre class="bg-slate-800 text-emerald-300 p-2.5 rounded-lg text-xs font-mono overflow-x-auto my-2 leading-relaxed">$1</pre>');
+
+      // 2. Divisori orizzontali (--- o *** o ___ su riga singola)
+      formatted = formatted.replace(/^(?:-{3,}|_{3,}|\*{3,})$/gm, '<hr class="my-2.5 border-t border-slate-200/90">');
+
+      // 3. Intestazioni / Titoli Markdown (#, ##, ###, ####)
+      formatted = formatted.replace(/^####\s+(.+)$/gm, '<h4 class="font-bold text-slate-900 text-xs mt-2.5 mb-1">$1</h4>');
+      formatted = formatted.replace(/^###\s+(.+)$/gm, '<h3 class="font-bold text-slate-900 text-xs mt-2.5 mb-1">$1</h3>');
+      formatted = formatted.replace(/^##\s+(.+)$/gm, '<h2 class="font-bold text-slate-900 text-sm mt-3 mb-1">$1</h2>');
+      formatted = formatted.replace(/^#\s+(.+)$/gm, '<h1 class="font-extrabold text-slate-900 text-sm mt-3.5 mb-1.5">$1</h1>');
+
+      // 4. Citazioni / Blockquote (> testo)
+      formatted = formatted.replace(/^(?:&gt;|>)\s+(.+)$/gm, '<blockquote class="border-l-2 border-[#075E54] pl-2.5 my-1.5 text-slate-600 italic text-xs bg-slate-50 py-1 rounded-r">$1</blockquote>');
+
+      // 5. Elenchi puntati (* elemento, - elemento, • elemento, + elemento)
+      formatted = formatted.replace(/^[\s]*[\*\-•\+]\s+(.+)$/gm, '<div class="flex items-start gap-1.5 my-0.5"><span class="text-emerald-700 font-bold shrink-0 leading-tight">•</span><span class="flex-1 min-w-0 leading-snug">$1</span></div>');
+
+      // 6. Elenchi numerati (1. elemento, 2. elemento)
+      formatted = formatted.replace(/^[\s]*(\d+)\.\s+(.+)$/gm, '<div class="flex items-start gap-1.5 my-0.5"><span class="text-emerald-800 font-bold shrink-0 text-xs">$1.</span><span class="flex-1 min-w-0 leading-snug">$2</span></div>');
+
+      // 7. Codice inline (`codice`)
+      formatted = formatted.replace(/`([^`\n]+)`/g, '<code class="bg-black/5 text-slate-800 px-1 py-0.5 rounded font-mono text-xs">$1</code>');
+
+      // 8. Doppi asterischi o doppi underscore (**grassetto** / __grassetto__)
       formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong class="font-bold text-slate-900 bg-amber-100/40 px-1 py-0.5 rounded-sm">$1</strong>');
       formatted = formatted.replace(/__(.+?)__/g, '<strong class="font-bold text-slate-900 bg-amber-100/40 px-1 py-0.5 rounded-sm">$1</strong>');
 
-      // Singolo asterisco *testo*: supporto stile WhatsApp
+      // 9. Singolo asterisco stile WhatsApp (*grassetto* o corsivo) e singolo underscore (_corsivo_)
       formatted = formatted.replace(/(^|[^\*])\*([^\*\n]+?)\*([^\*]|$)/g, '$1<strong class="font-bold text-slate-900">$2</strong>$3');
+      formatted = formatted.replace(/(^|[^_])_([^_\n]+?)_([^_]|$)/g, '$1<em class="italic text-slate-700">$2</em>$3');
+      formatted = formatted.replace(/(^|[^~])~([^~\n]+?)~([^~]|$)/g, '$1<del class="line-through text-slate-400">$2</del>$3');
 
-      // Codice inline `codice`
-      formatted = formatted.replace(/`([^`\n]+)`/g, '<code class="bg-black/5 text-slate-800 px-1 py-0.5 rounded font-mono text-xs">$1</code>');
-
-      // Linee puntate (- elemento)
-      formatted = formatted.replace(/^[\s]*[-•]\s+(.+)$/gm, '<span class="inline-block mr-1 text-slate-400">•</span>$1');
-
-      // Nuove linee
+      // 10. Nuove linee (evitando doppi a capo dopo blocchi contenitore)
       formatted = formatted.replace(/\n/g, '<br>');
+      formatted = formatted.replace(/(<\/(?:h[1-4]|div|blockquote|pre|hr)>)<br>/gi, '$1');
 
       return formatted;
     }
