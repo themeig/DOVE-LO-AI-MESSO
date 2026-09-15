@@ -179,7 +179,9 @@ def get_dashboard(
                     category_label=item_cat_label,
                     category_icon=item_icon,
                     room=room,
-                    detailed_location=item.detailed_location
+                    detailed_location=item.detailed_location,
+                    file_url=f"/api/files/{Path(item.image_path).name}" if item.image_path else None,
+                    file_type="image" if item.image_path else None
                 )
             )
 

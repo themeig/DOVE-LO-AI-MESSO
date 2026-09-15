@@ -309,7 +309,9 @@ def search_vault_items(db: Session, query: str, thread_id: str = "general") -> L
             "primary_location": it.primary_location,
             "detailed_location": it.detailed_location,
             "category": it.category,
-            "location_str": it.primary_location + (f" ({it.detailed_location})" if it.detailed_location else "")
+            "location_str": it.primary_location + (f" ({it.detailed_location})" if it.detailed_location else ""),
+            "image_url": f"/api/files/{Path(it.image_path).name}" if it.image_path else None,
+            "has_photo": bool(it.image_path)
         } for it in items]
 
     words = [w.lower() for w in re.split(r"[^\w]+", raw_query) if len(w) > 1]
@@ -391,7 +393,9 @@ def search_vault_items(db: Session, query: str, thread_id: str = "general") -> L
                 "primary_location": it.primary_location,
                 "detailed_location": it.detailed_location,
                 "category": it.category,
-                "location_str": it.primary_location + (f" ({it.detailed_location})" if it.detailed_location else "")
+                "location_str": it.primary_location + (f" ({it.detailed_location})" if it.detailed_location else ""),
+                "image_url": f"/api/files/{Path(it.image_path).name}" if it.image_path else None,
+                "has_photo": bool(it.image_path)
             }))
 
     item_scored.sort(key=lambda x: (x[1], x[0]), reverse=True)

@@ -1,10 +1,72 @@
 import json
 from datetime import datetime, date
-from sqlalchemy import create_engine, Column, Integer, String, Float, Date, DateTime, Text, inspect, text
+from sqlalchemy import create_engine, Column, Integer, String, Float, Date, DateTime, Text, inspect, text, types
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from app.config import get_settings
+from app.services.crypto_service import get_vault_manager, encrypt_str, decrypt_str
 
 Base = declarative_base()
+
+
+class EncryptedString(types.TypeDecorator):
+    """Stringa trasparente cifrata su SQLite con la chiave del caveau e decifrata in memoria RAM."""
+    impl = types.String
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        mgr = get_vault_manager()
+        key = mgr.get_active_key()
+        if key:
+            try:
+                return encrypt_str(str(value), key)
+            except Exception:
+                return str(value)
+        return str(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        mgr = get_vault_manager()
+        key = mgr.get_active_key()
+        if key:
+            try:
+                return decrypt_str(value, key)
+            except Exception:
+                return value
+        return value
+
+
+class EncryptedText(types.TypeDecorator):
+    """Testo lungo trasparente cifrato su SQLite con la chiave del caveau e decifrato in memoria RAM."""
+    impl = types.Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        mgr = get_vault_manager()
+        key = mgr.get_active_key()
+        if key:
+            try:
+                return encrypt_str(str(value), key)
+            except Exception:
+                return str(value)
+        return str(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        mgr = get_vault_manager()
+        key = mgr.get_active_key()
+        if key:
+            try:
+                return decrypt_str(value, key)
+            except Exception:
+                return value
+        return value
+
 
 class ChatThread(Base):
     __tablename__ = "chat_threads"
@@ -17,31 +79,35 @@ class ChatThread(Base):
     members = Column(Text, nullable=True)  # JSON array string, e.g. '["Io", "Chiara"]'
     created_at = Column(DateTime, default=datetime.utcnow)
 
+
 class Document(Base):
     __tablename__ = "documents"
     id = Column(Integer, primary_key=True, autoincrement=True)
     thread_id = Column(String(50), nullable=False, default="general", index=True)
-    title = Column(String(255), nullable=False)
+    title = Column(EncryptedString(500), nullable=False)
     file_path = Column(String(500), nullable=False)
     file_type = Column(String(50), nullable=False)
     doc_type = Column(String(50), nullable=False, default="generico")
-    issuer = Column(String(255), nullable=True)
+    issuer = Column(EncryptedString(500), nullable=True)
     amount = Column(Float, nullable=True)
     due_date = Column(Date, nullable=True)
     status = Column(String(50), nullable=False, default="da_pagare")
-    summary = Column(Text, nullable=False)
+    summary = Column(EncryptedText, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
 
 class PhysicalItem(Base):
     __tablename__ = "physical_items"
     id = Column(Integer, primary_key=True, autoincrement=True)
     thread_id = Column(String(50), nullable=False, default="general", index=True)
-    item_name = Column(String(255), nullable=False, index=True)
+    item_name = Column(EncryptedString(500), nullable=False, index=True)
     category = Column(String(100), nullable=True)
-    primary_location = Column(String(255), nullable=False)
-    detailed_location = Column(String(255), nullable=True)
-    notes = Column(Text, nullable=True)
+    primary_location = Column(EncryptedString(500), nullable=False)
+    detailed_location = Column(EncryptedString(500), nullable=True)
+    notes = Column(EncryptedText, nullable=True)
+    image_path = Column(String(500), nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
@@ -49,18 +115,21 @@ class ChatMessage(Base):
     thread_id = Column(String(50), nullable=False, default="general", index=True)
     sender = Column(String(20), nullable=False)  # 'user' or 'assistant'
     message_type = Column(String(20), default="text")
-    content = Column(Text, nullable=False)
-    metadata_json = Column(Text, nullable=True)
+    content = Column(EncryptedText, nullable=False)
+    metadata_json = Column(EncryptedText, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
 
 class AppSetting(Base):
     __tablename__ = "app_settings"
     key = Column(String(50), primary_key=True)
     value = Column(Text, nullable=False)
 
+
 def get_app_setting(db: Session, key: str, default: str = "") -> str:
     s = db.query(AppSetting).filter(AppSetting.key == key).first()
     return s.value if s else default
+
 
 def set_app_setting(db: Session, key: str, value: str):
     s = db.query(AppSetting).filter(AppSetting.key == key).first()
@@ -71,15 +140,25 @@ def set_app_setting(db: Session, key: str, value: str):
         db.add(s)
     db.commit()
 
+
+_engine = None
+_session_maker = None
+
+
 def get_engine(db_url: str = None):
-    url = db_url or get_settings().DATABASE_URL
-    return create_engine(url, connect_args={"check_same_thread": False})
+    global _engine
+    if db_url:
+        return create_engine(db_url, connect_args={"check_same_thread": False})
+    if _engine is None:
+        _engine = create_engine(get_settings().DATABASE_URL, connect_args={"check_same_thread": False})
+    return _engine
+
 
 def init_db(engine=None):
     eng = engine or get_engine()
     Base.metadata.create_all(bind=eng)
 
-    # SQLite migration: ensure thread_id column exists on pre-existing tables
+    # SQLite migration: ensure thread_id and image_path columns exist on pre-existing tables
     inspector = inspect(eng)
     table_names = inspector.get_table_names()
     with eng.connect() as conn:
@@ -89,6 +168,13 @@ def init_db(engine=None):
                 if "thread_id" not in cols:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN thread_id VARCHAR(50) DEFAULT 'general'"))
                     conn.commit()
+
+        # Ensure image_path in physical_items
+        if "physical_items" in table_names:
+            cols = [c["name"] for c in inspector.get_columns("physical_items")]
+            if "image_path" not in cols:
+                conn.execute(text("ALTER TABLE physical_items ADD COLUMN image_path VARCHAR(500)"))
+                conn.commit()
 
         # Seed default threads if table exists and is empty
         if "chat_threads" in table_names:
@@ -109,9 +195,15 @@ def init_db(engine=None):
                     )
                 conn.commit()
 
+
 def get_session_maker(engine=None):
-    eng = engine or get_engine()
-    return sessionmaker(autocommit=False, autoflush=False, bind=eng)
+    global _session_maker
+    if engine is not None:
+        return sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    if _session_maker is None:
+        _session_maker = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
+    return _session_maker
+
 
 def get_db():
     SessionLocal = get_session_maker()
@@ -120,4 +212,3 @@ def get_db():
         yield db
     finally:
         db.close()
-

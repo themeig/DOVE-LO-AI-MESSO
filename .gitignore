@@ -4,5 +4,6 @@ __pycache__/
 storage/uploads/*
 !storage/uploads/.gitkeep
 storage/vault.db
+storage/vault_meta.json
 .env
 .superpowers/

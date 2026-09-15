@@ -120,17 +120,21 @@ def get_document_file(document_id: int, db: Session = Depends(get_db)):
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc or not Path(doc.file_path).exists():
         raise HTTPException(status_code=404, detail="File non trovato")
-    from fastapi.responses import FileResponse
+    from fastapi.responses import Response
+    from app.services.document_service import read_decrypted_file
+    decrypted_bytes = read_decrypted_file(doc.file_path)
     media_type = "application/pdf" if doc.file_type == "pdf" else f"image/{doc.file_type}"
-    return FileResponse(doc.file_path, media_type=media_type, filename=Path(doc.file_path).name)
+    return Response(content=decrypted_bytes, media_type=media_type)
 
 @router.get("/{document_id}/download")
 def download_document_file(document_id: int, db: Session = Depends(get_db)):
-    """Permette lo scaricamento immediato del file con nome pulito e Content-Disposition attachment."""
+    """Permette lo scaricamento immediato del file decifrato al volo con nome pulito."""
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc or not Path(doc.file_path).exists():
         raise HTTPException(status_code=404, detail="File non trovato")
-    from fastapi.responses import FileResponse
+    from fastapi.responses import Response
+    from app.services.document_service import read_decrypted_file
+    decrypted_bytes = read_decrypted_file(doc.file_path)
     nfkd = unicodedata.normalize('NFKD', doc.title)
     ascii_title = nfkd.encode('ASCII', 'ignore').decode('ASCII')
     clean_title = re.sub(r'[^a-zA-Z0-9_\-]+', '_', ascii_title).strip('_') or f"documento_{doc.id}"
@@ -139,10 +143,11 @@ def download_document_file(document_id: int, db: Session = Depends(get_db)):
         download_filename = f"{clean_title}.{file_ext}"
     else:
         download_filename = clean_title
-    return FileResponse(
-        doc.file_path,
+    headers = {"Content-Disposition": f'attachment; filename="{download_filename}"'}
+    return Response(
+        content=decrypted_bytes,
         media_type="application/octet-stream",
-        filename=download_filename
+        headers=headers
     )
 
 @router.patch("/{document_id}/status")

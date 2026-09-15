@@ -75,6 +75,8 @@
 
   <!-- Invisible file input for real uploads -->
   <input type="file" id="realFileInput" accept="image/*,application/pdf" style="display:none">
+  <!-- Invisible input per foto/fotocamera per la posizione degli oggetti -->
+  <input type="file" id="itemPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleItemPhotoSelected(event)">
 
   <!-- ================================================================= -->
   <!-- 1. VISTA CHAT (100% STILE WHATSAPP)                               -->
@@ -215,6 +217,16 @@
               id="deadlinesBellBadge" 
               class="hidden absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] bg-red-500 text-white text-[10px] font-bold rounded-full px-1 flex items-center justify-center border-2 border-[#075E54] shadow-xs"
             >0</span>
+          </button>
+ 
+          <!-- Pulsante Blocca Caveau (Sicurezza) -->
+          <button 
+            id="lockVaultHeaderBtn" 
+            onclick="lockVault()" 
+            class="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-full transition cursor-pointer" 
+            title="Blocca il Caveau (Sicurezza Crittografata)"
+          >
+            <i class="fa-solid fa-lock text-sm"></i>
           </button>
 
           <!-- Pulsante Apri Dashboard -->
@@ -595,11 +607,25 @@
       </div>
 
       <!-- Azioni Rapide & Cifratura -->
-      <div class="flex items-center space-x-3">
-        <div class="hidden md:flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs text-slate-600">
+      <div class="flex items-center space-x-2.5">
+        <button 
+          onclick="lockVault()" 
+          class="flex items-center gap-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200 px-3 py-2 rounded-xl text-xs text-slate-700 transition active:scale-95 cursor-pointer"
+          title="Blocca immediatamente il Caveau"
+        >
           <i class="fa-solid fa-lock text-emerald-600 text-[11px]"></i>
-          <span class="font-medium text-[11px]">AES-256 Crittografato</span>
-        </div>
+          <span class="font-semibold text-xs">Blocca</span>
+        </button>
+
+        <button 
+          onclick="openCreateItemModal()" 
+          class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
+          title="Registra un oggetto fisico con posizione e scatta una foto"
+        >
+          <i class="fa-solid fa-camera text-xs"></i>
+          <span class="hidden sm:inline">+ Oggetto con Foto</span>
+          <span class="sm:hidden">+ Oggetto</span>
+        </button>
 
         <button 
           onclick="triggerFileInput()" 
@@ -780,6 +806,273 @@
     let currentFilter = 'all';
     let currentRecords = [];
 
+    // --- Helper Autenticazione con Token Cifrato ---
+    function authHeaders(extra = {}) {
+      const token = sessionStorage.getItem('vault_token');
+      const h = { ...extra };
+      if (token) {
+        h['X-Vault-Token'] = token;
+      }
+      return h;
+    }
+
+    // --- Gestione Sicurezza Caveau & Lock Screen ---
+    function togglePasswordVisibility() {
+      const pwd = document.getElementById('vaultPasswordInput');
+      const icon = document.getElementById('eyeIcon');
+      if (pwd && icon) {
+        if (pwd.type === 'password') {
+          pwd.type = 'text';
+          icon.classList.remove('fa-eye');
+          icon.classList.add('fa-eye-slash');
+        } else {
+          pwd.type = 'password';
+          icon.classList.remove('fa-eye-slash');
+          icon.classList.add('fa-eye');
+        }
+      }
+    }
+
+    async function checkVaultAuth() {
+      const token = sessionStorage.getItem('vault_token');
+      try {
+        const res = await fetch('/api/auth/status', {
+          headers: authHeaders()
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.unlocked && token) {
+            hideLockScreen();
+            initApp();
+            return true;
+          }
+        }
+      } catch (err) {
+        console.error('Errore verifica stato caveau:', err);
+      }
+      showLockScreen();
+      return false;
+    }
+
+    function showLockScreen() {
+      const modal = document.getElementById('lockScreenModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        const pwdInput = document.getElementById('vaultPasswordInput');
+        if (pwdInput) {
+          pwdInput.value = '';
+          setTimeout(() => pwdInput.focus(), 100);
+        }
+        const errEl = document.getElementById('lockScreenError');
+        if (errEl) errEl.classList.add('hidden');
+      }
+    }
+
+    function hideLockScreen() {
+      const modal = document.getElementById('lockScreenModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    async function unlockVault() {
+      const pwdInput = document.getElementById('vaultPasswordInput');
+      const errEl = document.getElementById('lockScreenError');
+      const errText = document.getElementById('lockScreenErrorText');
+      const btn = document.getElementById('unlockVaultBtn');
+      const pwd = pwdInput ? pwdInput.value : '';
+
+      if (!pwd) {
+        if (errEl && errText) {
+          errText.textContent = "Inserisci la password.";
+          errEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin mr-1.5"></i> Sblocco in corso...`;
+      }
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pwd })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Password non corretta. Riprova.");
+        }
+        const data = await res.json();
+        sessionStorage.setItem('vault_token', data.token);
+        hideLockScreen();
+        initApp();
+      } catch (err) {
+        if (errEl && errText) {
+          errText.textContent = err.message || "Password non corretta. Riprova.";
+          errEl.classList.remove('hidden');
+        }
+        if (pwdInput) {
+          pwdInput.focus();
+          pwdInput.select();
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-lock-open mr-1.5"></i> Sblocca Caveau`;
+        }
+      }
+    }
+
+    async function lockVault() {
+      try {
+        await fetch('/api/auth/lock', {
+          method: 'POST',
+          headers: authHeaders()
+        });
+      } catch (e) {
+        console.error('Errore lock vault:', e);
+      }
+      sessionStorage.removeItem('vault_token');
+      showLockScreen();
+    }
+
+    // --- Gestione Foto Posizione Oggetti Fisici ---
+    let pendingPhotoItemId = null;
+
+    function promptUploadItemPhoto(itemId, itemName) {
+      pendingPhotoItemId = itemId;
+      const input = document.getElementById('itemPhotoInput');
+      if (input) {
+        input.value = '';
+        input.click();
+      }
+    }
+
+    async function handleItemPhotoSelected(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file || !pendingPhotoItemId) return;
+      const itemId = pendingPhotoItemId;
+      pendingPhotoItemId = null;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch(`/api/items/${itemId}/photo`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: formData
+        });
+        if (!res.ok) throw new Error('Errore durante il caricamento della foto');
+        const data = await res.json();
+
+        loadDashboard(currentFilter);
+
+        if (data.image_url) {
+          appendAssistantBubble(
+            `📸 **Foto memorizzata!** Ho salvato la foto della posizione per **${data.item_name}**.`,
+            null,
+            null,
+            { item_name: data.item_name, image_url: data.image_url }
+          );
+        }
+      } catch (err) {
+        console.error('Errore caricamento foto:', err);
+        alert('Impossibile salvare la foto: ' + err.message);
+      }
+    }
+
+    function openCreateItemModal() {
+      const modal = document.getElementById('createItemModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.getElementById('createItemForm').reset();
+        clearNewItemPhoto();
+        setTimeout(() => document.getElementById('newItemName').focus(), 100);
+      }
+    }
+
+    function closeCreateItemModal() {
+      const modal = document.getElementById('createItemModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function previewNewItemPhoto(event) {
+      const file = event.target.files && event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          document.getElementById('newItemPhotoPreview').src = e.target.result;
+          document.getElementById('newItemPhotoPreviewContainer').classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function clearNewItemPhoto() {
+      const fileInput = document.getElementById('newItemPhotoFile');
+      if (fileInput) fileInput.value = '';
+      const previewCont = document.getElementById('newItemPhotoPreviewContainer');
+      if (previewCont) previewCont.classList.add('hidden');
+    }
+
+    async function handleCreateItemSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('newItemName').value.trim();
+      const room = document.getElementById('newItemRoom').value.trim();
+      const detail = document.getElementById('newItemDetail').value.trim();
+      const category = document.getElementById('newItemCategory').value;
+      const fileInput = document.getElementById('newItemPhotoFile');
+      const file = fileInput.files && fileInput.files[0];
+
+      if (!name || !room) {
+        alert('Inserisci il nome dell\'oggetto e la stanza/ambiente.');
+        return;
+      }
+
+      const btn = document.getElementById('saveNewItemBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Salvataggio...`;
+      }
+
+      const formData = new FormData();
+      formData.append('item_name', name);
+      formData.append('primary_location', room);
+      if (detail) formData.append('detailed_location', detail);
+      if (category) formData.append('category', category);
+      formData.append('thread_id', currentThreadId);
+      if (file) formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/items/with-photo', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: formData
+        });
+        if (!res.ok) throw new Error('Errore durante la creazione dell\'oggetto');
+        closeCreateItemModal();
+        loadDashboard(currentFilter);
+      } catch (err) {
+        console.error('Errore create item with photo:', err);
+        alert('Errore: ' + err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-check text-xs"></i> Salva Oggetto`;
+        }
+      }
+    }
+
     // --- Apertura e Chiusura Dashboard ---
     function openDashboard(filter = null) {
       chatView.classList.add('hidden');
@@ -801,7 +1094,7 @@
     // --- Gestione Threads, Gruppi e Aree Tematiche ---
     async function loadThreads() {
       try {
-        const res = await fetch('/api/threads');
+        const res = await fetch('/api/threads', { headers: authHeaders() });
         if (!res.ok) throw new Error("Errore recupero thread");
         const data = await res.json();
         threadsCache = data.threads || [];
@@ -972,7 +1265,9 @@
           } else {
             const docs = m.metadata && m.metadata.documents ? m.metadata.documents : null;
             const conf = m.metadata && m.metadata.confirmation ? m.metadata.confirmation : null;
-            appendAssistantBubble(m.content, docs, conf);
+            const itemPhoto = m.metadata && m.metadata.item_photo ? m.metadata.item_photo : null;
+            const storeItem = m.metadata && m.metadata.store_item ? m.metadata.store_item : null;
+            appendAssistantBubble(m.content, docs, conf, itemPhoto, storeItem);
           }
         }
         scrollBottom();
@@ -1563,10 +1858,41 @@
       scrollBottom();
     }
 
-    function appendAssistantBubble(text, documents = null, confirmation = null) {
+    function appendAssistantBubble(text, documents = null, confirmation = null, itemPhoto = null, storeItem = null) {
       const aiBubble = document.createElement('div');
       aiBubble.className = 'flex items-start max-w-[85%]';
       const formattedHtml = formatMessageText(text || '');
+
+      let photoHtml = '';
+      if (itemPhoto && itemPhoto.image_url) {
+        const safeItemName = escapeHtml(itemPhoto.item_name || 'Posizione Oggetto');
+        photoHtml = `
+          <div class="mt-2.5 relative group/item-img cursor-pointer overflow-hidden rounded-xl border border-slate-200/90 shadow-2xs max-w-xs" onclick="openMediaModal('${itemPhoto.image_url}', '${safeItemName.replace(/'/g, "\\'")} (Foto Posizione)', 'image')">
+            <img src="${itemPhoto.image_url}" alt="${safeItemName}" class="w-full h-40 object-cover group-hover/item-img:scale-105 transition duration-200">
+            <div class="absolute inset-0 bg-black/25 opacity-0 group-hover/item-img:opacity-100 transition flex items-center justify-center gap-1.5 text-white text-xs font-semibold backdrop-blur-2xs">
+              <i class="fa-solid fa-magnifying-glass-plus"></i> Ingrandisci Foto
+            </div>
+            <div class="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between pointer-events-none">
+              <span class="bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs flex items-center gap-1">
+                <i class="fa-solid fa-camera text-[9px]"></i> Foto Posizione
+              </span>
+            </div>
+          </div>
+        `;
+      }
+
+      let storeItemHtml = '';
+      if (storeItem && storeItem.item_id) {
+        const safeItemName = escapeHtml(storeItem.item_name || 'Oggetto');
+        storeItemHtml = `
+          <div class="mt-2 pt-2 border-t border-slate-100 flex items-center gap-2">
+            <button type="button" onclick="promptUploadItemPhoto(${storeItem.item_id}, '${safeItemName.replace(/'/g, "\\'")}')" class="bg-emerald-50 hover:bg-emerald-100 text-[#075E54] hover:text-[#128C7E] border border-emerald-200 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition active:scale-95 flex items-center gap-1.5 shadow-2xs cursor-pointer">
+              <i class="fa-solid fa-camera text-emerald-600 text-xs"></i>
+              <span>📸 Scatta o allega foto posizione</span>
+            </button>
+          </div>
+        `;
+      }
 
       let docsHtml = '';
       if (documents && Array.isArray(documents) && documents.length > 0) {
@@ -1674,8 +2000,10 @@
       aiBubble.innerHTML = `
         <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug max-w-full">
           <p>${formattedHtml}</p>
+          ${photoHtml}
           ${docsHtml}
           ${confHtml}
+          ${storeItemHtml}
           <span class="block text-[10px] text-gray-400 text-right mt-1">${getTime()}</span>
         </div>
       `;
@@ -1769,13 +2097,31 @@
       try {
         const res = await fetch('/api/chat', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ message: text, thread_id: currentThreadId })
         });
         if (indicator) indicator.remove();
         if (!res.ok) throw new Error('Errore nella risposta del server');
         const data = await res.json();
-        appendAssistantBubble(data.reply, data.documents, data.confirmation);
+
+        let itemPhoto = null;
+        let storeItem = null;
+        if (data.data) {
+          if (data.action === "store_physical_item" && data.data.item_id) {
+            if (data.data.image_url) {
+              itemPhoto = { item_name: data.data.item_name, image_url: data.data.image_url };
+            } else {
+              storeItem = { item_id: data.data.item_id, item_name: data.data.item_name };
+            }
+          } else if (data.data.found_physical_items && Array.isArray(data.data.found_physical_items)) {
+            const itemWithPhoto = data.data.found_physical_items.find(it => it.image_url);
+            if (itemWithPhoto) {
+              itemPhoto = { item_name: itemWithPhoto.item_name, image_url: itemWithPhoto.image_url };
+            }
+          }
+        }
+
+        appendAssistantBubble(data.reply, data.documents, data.confirmation, itemPhoto, storeItem);
         const th = threadsCache.find(t => t.id === currentThreadId);
         if (th) {
           th.last_message = text;
@@ -1814,6 +2160,7 @@
       try {
         const res = await fetch('/api/documents/upload', {
           method: 'POST',
+          headers: authHeaders(),
           body: formData
         });
         if (indicator) indicator.remove();
@@ -1917,7 +2264,7 @@
         if (threadId) {
           url += `&thread_id=${encodeURIComponent(threadId)}`;
         }
-        const res = await fetch(url);
+        const res = await fetch(url, { headers: authHeaders() });
         if (!res.ok) throw new Error("Errore recupero feed dashboard");
         const data = await res.json();
 
@@ -2396,8 +2743,21 @@
                     </span>
                   </div>
 
+                  <!-- Foto Posizione (se presente) -->
+                  ${rec.file_url ? `
+                    <div class="mt-2.5 relative group/img cursor-pointer overflow-hidden rounded-xl border border-slate-200/80 bg-slate-100" onclick="openMediaModal('${escapeHtml(rec.file_url)}', '${escapedTitle} (Foto Posizione)', 'image')">
+                      <img src="${escapeHtml(rec.file_url)}" alt="${escapedTitle}" class="w-full h-28 object-cover group-hover/img:scale-105 transition duration-200">
+                      <div class="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 transition flex items-center justify-center gap-1.5 text-white text-xs font-semibold backdrop-blur-2xs">
+                        <i class="fa-solid fa-magnifying-glass-plus"></i> Ingrandisci Foto
+                      </div>
+                      <span class="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded-md backdrop-blur-xs flex items-center gap-1">
+                        <i class="fa-solid fa-camera text-[9px]"></i> Foto
+                      </span>
+                    </div>
+                  ` : ''}
+
                   <!-- Posizione Dettagliata -->
-                  <div class="mt-3 p-2 bg-white rounded-lg border border-slate-200/60">
+                  <div class="mt-2.5 p-2 bg-white rounded-lg border border-slate-200/60">
                     <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
                       <i class="fa-solid fa-location-dot text-purple-600 text-xs"></i>
                       <span>${escapeHtml(rec.detailed_location || rec.location_or_notes || 'Posizione registrata')}</span>
@@ -2408,7 +2768,11 @@
 
                 <!-- Footer Azioni -->
                 <div class="mt-3 pt-2 border-t border-slate-200/50 flex items-center justify-between">
-                  <span class="text-[10px] text-slate-400 font-medium">📍 Sincronizzato con AI</span>
+                  ${!rec.file_url ? `
+                    <button onclick="promptUploadItemPhoto(${rec.id}, '${escapedTitle}')" class="text-[11px] text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 font-semibold px-2 py-1 rounded-lg transition active:scale-95 flex items-center gap-1 border border-purple-200/60 cursor-pointer">
+                      <i class="fa-solid fa-camera text-[10px]"></i> + Foto
+                    </button>
+                  ` : `<span class="text-[10px] text-emerald-700 font-semibold flex items-center gap-1"><i class="fa-solid fa-camera text-[10px]"></i> Con Foto</span>`}
                   ${deleteBtn}
                 </div>
               </div>
@@ -2575,8 +2939,24 @@
             </div>
           `;
         } else if (rec.type === 'physical_item') {
+          let photoBtn = '';
+          if (rec.file_url) {
+            const escapedUrl = escapeHtml(rec.file_url);
+            photoBtn = `
+              <button onclick="openMediaModal('${escapedUrl}', '${escapedTitle} (Foto Posizione)', 'image')" title="Vedi foto posizione" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold px-2.5 py-1 rounded-lg transition active:scale-95 flex items-center gap-1 border border-indigo-200">
+                <i class="fa-solid fa-camera text-xs"></i> Vedi Foto
+              </button>
+            `;
+          } else {
+            photoBtn = `
+              <button onclick="promptUploadItemPhoto(${rec.id}, '${escapedTitle}')" title="Scatta o aggiungi foto" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium px-2 py-1 rounded-lg transition active:scale-95 flex items-center gap-1 border border-dashed border-slate-300">
+                <i class="fa-solid fa-camera text-slate-400 text-xs"></i> + Foto
+              </button>
+            `;
+          }
           actionHtml = `
             <div class="flex items-center justify-end gap-1.5">
+              ${photoBtn}
               ${deleteBtn}
             </div>
           `;
@@ -2658,7 +3038,7 @@
       try {
         const targetThread = threadId || currentThreadId || 'all';
         const url = `/api/deadlines/alerts?thread_id=${encodeURIComponent(targetThread)}&days_ahead=7`;
-        const res = await fetch(url);
+        const res = await fetch(url, { headers: authHeaders() });
         if (!res.ok) return;
         const data = await res.json();
         deadlineAlertsCache = data;
@@ -2834,20 +3214,20 @@
       if (e.key === 'Escape') closeMediaModal();
     });
 
-    // Inizializzazione al caricamento della pagina
-    document.addEventListener('DOMContentLoaded', () => {
+    function initApp() {
       applyLayout();
       loadAiModelSetting();
       loadThreads();
       loadDashboard('all');
       checkDeadlineAlerts();
+    }
+
+    // Inizializzazione al caricamento della pagina con controllo di sicurezza Caveau
+    document.addEventListener('DOMContentLoaded', () => {
+      checkVaultAuth();
     });
-    // Chiamata immediata per sicurezza nel caso il DOM sia già pronto
-    applyLayout();
-    loadAiModelSetting();
-    loadThreads();
-    loadDashboard('all');
-    checkDeadlineAlerts();
+    // Verifica immediata se il DOM è già pronto
+    checkVaultAuth();
   </script>
 
   <!-- ================================================================= -->
@@ -2888,6 +3268,144 @@
           <p class="font-semibold text-slate-700 text-sm">Anteprima diretta non disponibile</p>
           <p class="text-xs text-slate-500 mt-1">Puoi scaricare il file o aprirlo in una nuova scheda usando il pulsante in alto a destra.</p>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- 4. MODALE: REGISTRA NUOVO OGGETTO CON FOTO                        -->
+  <!-- ================================================================= -->
+  <div id="createItemModal" class="hidden fixed inset-0 bg-black/60 z-50 items-center justify-center p-4 backdrop-blur-xs">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-sm">
+            <i class="fa-solid fa-camera"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm text-slate-900">Memorizza Oggetto con Foto</h3>
+            <p class="text-[11px] text-slate-400">Salva dove si trova e allega la foto</p>
+          </div>
+        </div>
+        <button onclick="closeCreateItemModal()" class="w-7 h-7 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <form id="createItemForm" onsubmit="handleCreateItemSubmit(event)" class="space-y-3.5 text-left">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Nome Oggetto *</label>
+          <input type="text" id="newItemName" placeholder="es. Passaporto, Trapano, Occhiali da sole..." required class="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-purple-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Stanza / Ambiente *</label>
+            <input type="text" id="newItemRoom" placeholder="es. Studio, Soggiorno..." required class="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-purple-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Dettaglio (Mobile/Scaffale)</label>
+            <input type="text" id="newItemDetail" placeholder="es. Primo cassetto, Mensola..." class="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-purple-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Categoria</label>
+          <select id="newItemCategory" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-hidden focus:ring-2 focus:ring-purple-500">
+            <option value="documenti_cartacei">📄 Documenti Cartacei & Valori</option>
+            <option value="chiavi_accessori">🔑 Chiavi & Accessori</option>
+            <option value="elettronica">⚡ Dispositivi & Elettronica</option>
+            <option value="attrezzatura">🔧 Attrezzatura & Fai-da-te</option>
+            <option value="oggetti_personali" selected>📦 Oggetti Personali</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Foto della Posizione 📸</label>
+          <input type="file" id="newItemPhotoFile" accept="image/*" capture="environment" onchange="previewNewItemPhoto(event)" class="text-xs w-full file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer">
+          <div id="newItemPhotoPreviewContainer" class="hidden mt-2 relative rounded-xl overflow-hidden border border-slate-200 max-h-36">
+            <img id="newItemPhotoPreview" class="w-full h-36 object-cover" alt="Anteprima">
+            <button type="button" onclick="clearNewItemPhoto()" class="absolute top-1.5 right-1.5 bg-black/60 text-white rounded-md px-1.5 py-0.5 text-[10px] hover:bg-black/80">Rimuovi</button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeCreateItemModal()" class="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">Annulla</button>
+          <button type="submit" id="saveNewItemBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 text-xs font-bold rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1.5">
+            <i class="fa-solid fa-check text-xs"></i> Salva Oggetto
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- 5. MODALE: BLOCCO SICUREZZA / SBLOCCO CAVEAU CRITTOGRAFATO        -->
+  <!-- ================================================================= -->
+  <div id="lockScreenModal" class="hidden fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md items-center justify-center p-4 transition-all duration-300">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200 text-center relative border border-slate-100">
+      
+      <!-- Icona Caveau Cifrato -->
+      <div class="mx-auto w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200/80 flex items-center justify-center text-2xl shadow-inner">
+        <i class="fa-solid fa-vault"></i>
+      </div>
+
+      <div>
+        <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Caveau Crittografato</h2>
+        <div class="inline-flex items-center gap-1.5 bg-emerald-100/70 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full mt-1 border border-emerald-200">
+          <i class="fa-solid fa-shield-halved text-[10px]"></i> Protezione Dati AES-128 / Fernet
+        </div>
+        <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+          I file caricati e il database SQLite sono protetti con cifratura a riposo. Inserisci la password master per sbloccare l'archivio.
+        </p>
+      </div>
+
+      <!-- Errore password -->
+      <div id="lockScreenError" class="hidden text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-xl p-3 flex items-center gap-2 text-left">
+        <i class="fa-solid fa-circle-exclamation shrink-0 text-sm"></i>
+        <span id="lockScreenErrorText">Password non corretta. Riprova.</span>
+      </div>
+
+      <!-- Form password -->
+      <form onsubmit="event.preventDefault(); unlockVault();" class="space-y-4 text-left">
+        <div>
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">Password Master</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-solid fa-key text-xs"></i>
+            </div>
+            <input 
+              type="password" 
+              id="vaultPasswordInput" 
+              placeholder="Inserisci password..." 
+              required
+              autocomplete="current-password"
+              class="w-full pl-9 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#128C7E] focus:bg-white transition"
+            >
+            <button 
+              type="button" 
+              onclick="togglePasswordVisibility()" 
+              class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+              title="Mostra/Nascondi password"
+            >
+              <i id="eyeIcon" class="fa-regular fa-eye text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <button 
+          type="submit" 
+          id="unlockVaultBtn"
+          class="w-full bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 font-bold text-sm py-3 rounded-xl shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <i class="fa-solid fa-lock-open text-xs"></i>
+          <span>Sblocca Caveau</span>
+        </button>
+      </form>
+
+      <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+        <span>Password predefinita: <code class="font-mono font-bold text-slate-600 bg-slate-100 px-1 py-0.5 rounded">Leonardo2005</code></span>
+        <i class="fa-solid fa-circle-info" title="Modificabile dopo l'accesso"></i>
       </div>
     </div>
   </div>

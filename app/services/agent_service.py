@@ -612,10 +612,13 @@ class AgenticChatService:
                     if matched_id:
                         existing = db.query(PhysicalItem).filter(PhysicalItem.id == matched_id).first()
 
+            img_p = args.get("image_path")
             if existing:
                 existing.primary_location = prim_loc
                 # Quando si aggiorna la stanza principale, il dettaglio va aggiornato se fornito o azzerato per non ereditare vecchi mobili
                 existing.detailed_location = det_loc
+                if img_p:
+                    existing.image_path = img_p
                 if thread_id:
                     existing.thread_id = thread_id
                 item = existing
@@ -625,13 +628,15 @@ class AgenticChatService:
                     item_name=item_name,
                     primary_location=prim_loc,
                     detailed_location=det_loc,
-                    category=cat
+                    category=cat,
+                    image_path=img_p
                 )
                 db.add(item)
             db.commit()
             db.refresh(item)
 
             loc_str = item.primary_location + (f" ({item.detailed_location})" if item.detailed_location else "")
+            fn = Path(item.image_path).name if item.image_path else None
             return {
                 "success": True,
                 "item_id": item.id,
@@ -640,7 +645,9 @@ class AgenticChatService:
                 "primary_location": item.primary_location,
                 "detailed_location": item.detailed_location,
                 "category": item.category,
-                "location_str": loc_str
+                "location_str": loc_str,
+                "image_url": f"/api/files/{fn}" if fn else None,
+                "has_photo": bool(item.image_path)
             }
 
         elif name == "delete_vault_record":
