@@ -22,8 +22,13 @@ class AIServiceInterface(Protocol):
 
 def _extract_json_object(raw_text: str) -> dict:
     """Estrae in modo robusto il dizionario JSON dal testo o dal reasoning del modello."""
+    # Rimuove blocchi di thinking/reasoning (<thought>...</thought> o <think>...</think>)
+    cleaned_input = re.sub(r"<thought>.*?</thought>", "", raw_text, flags=re.DOTALL | re.IGNORECASE)
+    cleaned_input = re.sub(r"<think>.*?</think>", "", cleaned_input, flags=re.DOTALL | re.IGNORECASE)
+    cleaned_input = re.sub(r"</?(?:thought|think)[^>]*>", "", cleaned_input, flags=re.IGNORECASE).strip()
+
     # 1. Prova prima con il blocco di codice markdown ```json ... ```
-    json_block = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw_text, re.DOTALL)
+    json_block = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", cleaned_input, re.DOTALL)
     if json_block:
         try:
             return json.loads(json_block.group(1))
@@ -31,16 +36,16 @@ def _extract_json_object(raw_text: str) -> dict:
             pass
 
     # 2. Cerca blocchi graffe bilanciati
-    for m in re.finditer(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", raw_text, re.DOTALL):
+    for m in re.finditer(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", cleaned_input, re.DOTALL):
         try:
             parsed = json.loads(m.group(0))
-            if isinstance(parsed, dict) and ("doc_type" in parsed or "intent" in parsed or "issuer" in parsed):
+            if isinstance(parsed, dict) and ("doc_type" in parsed or "intent" in parsed or "issuer" in parsed or "title" in parsed):
                 return parsed
         except Exception:
             continue
 
     # 3. Fallback: pulizia testo e ricerca greedy
-    cleaned = re.sub(r"```(?:json)?", "", raw_text).replace("```", "").strip()
+    cleaned = re.sub(r"```(?:json)?", "", cleaned_input).replace("```", "").strip()
     match = re.search(r"\{.*\}", cleaned, re.DOTALL)
     if match:
         try:
@@ -146,7 +151,7 @@ class OpenRouterAIService:
         self.vision_model = self.primary_model
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
 
-    def _call_openrouter(self, messages: list, max_tokens: int = 1500, model_override: str = None, temperature: float = 0.2) -> str:
+    def _call_openrouter(self, messages: list, max_tokens: int = 8192, model_override: str = None, temperature: float = 0.2) -> str:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "HTTP-Referer": "http://localhost:8000",
@@ -164,7 +169,7 @@ class OpenRouterAIService:
         # Prova fino a 2 tentativi con backoff breve su rate limit
         for attempt in range(2):
             try:
-                res = httpx.post(self.base_url, headers=headers, json=payload, timeout=30.0)
+                res = httpx.post(self.base_url, headers=headers, json=payload, timeout=60.0)
                 if res.status_code == 200:
                     data = res.json()
                     choices = data.get("choices", [])
@@ -231,7 +236,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
 }}
 """
                     messages = [{"role": "user", "content": pdf_prompt}]
-                    resp_text = self._call_openrouter(messages, max_tokens=1500, model_override=self.primary_model, temperature=0.1)
+                    resp_text = self._call_openrouter(messages, max_tokens=4096, model_override=self.primary_model, temperature=0.1)
                     parsed = _extract_json_object(resp_text)
                     return ExtractedDocument(**parsed)
 
@@ -272,7 +277,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                     ]
                 }
             ]
-            response_text = self._call_openrouter(messages, max_tokens=1600, model_override=self.vision_model, temperature=0.1)
+            response_text = self._call_openrouter(messages, max_tokens=4096, model_override=self.vision_model, temperature=0.1)
             parsed = _extract_json_object(response_text)
             if not parsed.get("title"):
                 clean_name = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
@@ -302,7 +307,7 @@ Regole:
 - Se saluta, fa domande generali sull'app, su chi sei o se può mandare documenti -> intent: "GENERAL"
 """
             messages = [{"role": "user", "content": prompt}]
-            response_text = self._call_openrouter(messages, max_tokens=1200, model_override=self.primary_model, temperature=0.1)
+            response_text = self._call_openrouter(messages, max_tokens=4096, model_override=self.primary_model, temperature=0.1)
             parsed = _extract_json_object(response_text)
             return MessageIntent(**parsed)
         except Exception as e:
@@ -325,7 +330,11 @@ Regole:
                     messages.append({"role": m.get("role", "user"), "content": m.get("content", "")})
             messages.append({"role": "user", "content": text})
 
-            return self._call_openrouter(messages, max_tokens=1200, model_override=self.primary_model, temperature=0.4)
+            reply = self._call_openrouter(messages, max_tokens=4096, model_override=self.primary_model, temperature=0.4)
+            reply = re.sub(r"<thought>.*?</thought>", "", reply, flags=re.DOTALL | re.IGNORECASE)
+            reply = re.sub(r"<think>.*?</think>", "", reply, flags=re.DOTALL | re.IGNORECASE)
+            reply = re.sub(r"</?(?:thought|think)[^>]*>", "", reply, flags=re.IGNORECASE)
+            return reply.strip()
         except Exception as e:
             logger.error(f"Errore OpenRouter generate_conversational_reply: {e}. Uso fallback Mock.")
             return MockAIService().generate_conversational_reply(text, chat_history)

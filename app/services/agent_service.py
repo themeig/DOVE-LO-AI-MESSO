@@ -342,13 +342,15 @@ REGOLE OPERATIVE:
 """
 
 def strip_tool_tags(text: str) -> str:
-    """Rimuove qualsiasi tag <tool_call>...</tool_call> o residui XML di chiamata tool."""
+    """Rimuove qualsiasi tag <tool_call>...</tool_call>, blocchi di thinking <thought>...</thought> o residui XML di chiamata tool."""
     if not text:
         return ""
-    cleaned = re.sub(r"<tool_call>.*?</tool_call>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    cleaned = re.sub(r"<thought>.*?</thought>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    cleaned = re.sub(r"<think>.*?</think>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+    cleaned = re.sub(r"<tool_call>.*?</tool_call>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
     cleaned = re.sub(r"<function=.*?</function>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
     cleaned = re.sub(r"<parameter=.*?</parameter>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
-    cleaned = re.sub(r"</?(?:tool_call|function|parameter|arg_key|arg_value)[^>]*>", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"</?(?:thought|think|tool_call|function|parameter|arg_key|arg_value)[^>]*>", "", cleaned, flags=re.IGNORECASE)
     return cleaned.strip()
 
 
@@ -1767,10 +1769,10 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                     "messages": history_messages,
                     "tools": TOOLS_DEFINITION,
                     "tool_choice": tool_choice_cfg,
-                    "max_tokens": 1500,
+                    "max_tokens": 8192,
                     "temperature": 0.2
                 },
-                timeout=30.0
+                timeout=60.0
             )
 
             if r1.status_code == 200:
@@ -1805,10 +1807,10 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                         json={
                             "model": agent_model,
                             "messages": history_messages,
-                            "max_tokens": 1500,
+                            "max_tokens": 8192,
                             "temperature": 0.2
                         },
-                        timeout=30.0
+                        timeout=60.0
                     )
 
                     if r2.status_code == 200:
