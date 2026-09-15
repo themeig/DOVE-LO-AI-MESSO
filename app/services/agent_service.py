@@ -126,9 +126,32 @@ TOOLS_DEFINITION = [
                     "item_name": {"type": "string", "description": "Nome dell'oggetto (es. 'Tenda da campeggio', 'Passaporto', 'Patente', 'Chiavi di scorta')"},
                     "primary_location": {"type": "string", "description": "Nuova stanza o ambiente principale (es. 'Soggiorno', 'Garage', 'Studio', 'Cucina', 'Camera')"},
                     "detailed_location": {"type": "string", "description": "Dettaglio specifico opzionale del mobile o ripiano (es. 'Primo cassetto scrivania', 'Mensola')"},
-                    "category": {"type": "string", "description": "Categoria opzionale dell'oggetto"}
+                    "category": {"type": "string", "description": "Categoria opzionale dell'oggetto"},
+                    "document_id": {"type": "integer", "description": "ID numerico opzionale di un documento o foto salvato nel caveau da collegare a questo oggetto"},
+                    "document_title": {"type": "string", "description": "Titolo opzionale del documento o foto da associare"}
                 },
                 "required": ["item_name", "primary_location"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "link_document_to_item",
+            "description": (
+                "Collega un documento, foto o allegato presente nel caveau a un oggetto fisico memorizzato "
+                "(es. 'ti allego una foto per il piano', 'ecco la foto per il passaporto', 'associa questa foto alle chiavi di scorta', 'collega la foto al piano'). "
+                "Consente di mostrare direttamente l'immagine della posizione quando l'utente chiede dove si trova l'oggetto."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "item_name": {"type": "string", "description": "Nome dell'oggetto fisico a cui associare la foto/documento (es. 'Piano', 'Chiavi di scorta', 'Passaporto')"},
+                    "item_id": {"type": "integer", "description": "ID dell'oggetto fisico se già noto"},
+                    "document_id": {"type": "integer", "description": "ID numerico del documento/foto da associare (se omesso, fa riferimento all'ultimo documento caricato)"},
+                    "document_title": {"type": "string", "description": "Titolo o parola chiave del documento/foto da associare"}
+                },
+                "required": ["item_name"]
             }
         }
     },
@@ -311,6 +334,7 @@ REGOLE OPERATIVE:
 2. QUANDO L'UTENTE CHIEDE DOVE SI TROVA UN OGGETTO (es. "dov'è il passaporto?", "dove ho messo le chiavi?"):
    - DEVI SEMPRE USARE lo strumento `search_vault`!
    - Basa la risposta solo su ciò che restituisce `search_vault` dal database in tempo reale.
+   - Se l'oggetto ha una foto collegata nel caveau, l'anteprima verrà mostrata automaticamente nella chat.
 
 3. QUANDO L'UTENTE COMUNICA, MODIFICA, SPOSTA O AGGIORNA LA POSIZIONE DI UN OGGETTO:
    - DEVI SEMPRE USARE lo strumento `store_physical_item`!
@@ -318,13 +342,13 @@ REGOLE OPERATIVE:
 4. QUANDO L'UTENTE CHIEDE DELLE SCADENZE O COSA DEVE PAGARE:
    - USA lo strumento `get_upcoming_deadlines`.
 
-5. QUANDO L'UTENTE CHIEDE DI ELIMINARE O CANCELLARE (es. 'elimina tutti i documenti', 'cancella tutte le bollette', 'elimina tutti', 'elimina la bolletta Enel', 'cancella il passaporto'):
+5. QUANDO L'UTENTE CHIEDE DI ELIMINARE O CANCELLARE:
    - Per eliminare un singolo elemento: cerca con `search_vault` e chiama `delete_vault_record(target_type='document' o 'physical_item', target_id=..., title=...)`.
-   - Per eliminare tutti i documenti o una categoria in blocco (es. 'elimina tutti', 'elimina tutti i documenti', 'cancella tutte le bollette'): chiama `delete_vault_record(target_type='bulk_documents', title='Tutti i documenti' o 'Tutte le bollette')`.
+   - Per eliminare tutti i documenti o una specifica categoria/gruppo per nome (es. 'elimina tutti i 730 test', 'elimina tutte le ricevute', 'cancella tutte le bollette', 'elimina tutti i documenti'): chiama `delete_vault_record(target_type='bulk_documents', title=..., category=...)`.
    - Questo genera l'apposita card di conferma interattiva con i pulsanti per confermare o annullare l'eliminazione in sicurezza!
 
 6. STILE DI RISPOSTA:
-   - Italiano naturale, cortese, chiaro e conciso in stile WhatsApp (emoji 📄, 📍, 💡, ✅).
+   - Italiano naturale, cortese, chiaro e conciso in stile WhatsApp (emoji 📄, 📍, 💡, ✅, 📸).
    - MAI identificativi tecnici di database (come "ID 83", "chiave primaria").
 
 7. DATA ODIERNA E CONTESTO TEMPORALE:
@@ -340,6 +364,10 @@ REGOLE OPERATIVE:
 10. QUANDO L'UTENTE CHIEDE DI SCARICARE O VEDERE UN DOCUMENTO:
     - Di norma, DIVIETO DI SCRIVERE FINTI LINK MARKDOWN e CHIAMA SEMPRE `show_document_card`! L'interfaccia WhatsApp mostrerà all'utente la scheda interattiva con i pulsanti [👁️ Vedi] e [⬇️ Scarica].
     - GESTIONE RESILIENTE SEGNALAZIONI UI: Se la telemetria UI del client segnala un errore di visualizzazione o se l'utente riferisce esplicitamente di non vedere il pulsante/scheda, riconosci l'inconveniente tecnico e fornisci come riserva il percorso/link di download diretto reale di sistema (es. `/api/documents/{id}/download`).
+
+11. QUANDO L'UTENTE CARICA O ASSOCIA UNA FOTO/ALLEGATO A UN OGGETTO FISICO (es. 'ti allego la foto per il piano', 'ecco la foto delle chiavi', 'associa questa foto al passaporto'):
+    - DEVI USARE `link_document_to_item(item_name=...)` per collegare istantaneamente il documento/foto alla posizione dell'oggetto fisico nel caveau!
+    - Conferma sempre all'utente che la foto è stata collegata e che verrà mostrata quando chiederà dove si trova l'oggetto.
 """
 
 def strip_tool_tags(text: str) -> str:
@@ -390,10 +418,22 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
         return issuer_matches
 
     # 2. Se l'utente ha memorizzato una posizione fisica o ha chiesto dove si trova un oggetto,
-    # oppure se l'assistente risponde indicando una posizione fisica (📍 o 'si trova in'), non allegare documenti!
+    # oppure se l'assistente risponde indicando una posizione fisica (📍 o 'si trova in'):
+    # se c'è una foto collegata all'oggetto (📸 o 'foto' o physical_item_id), allegala! Altrimenti non allegare documenti non correlati.
     is_store_phrase = any(k in user_lower for k in ["messo", "riposto", "salvato", "lasciato", "conservato", "posizionato"])
     is_where_phrase = any(k in user_lower for k in ["dov'è", "dov'e", "dove è", "dove si trova", "dove sono", "dove sta"])
     is_item_answer = "📍" in asst_lower or "si trova in" in asst_lower or "si trovano in" in asst_lower or "è in " in asst_lower
+    has_photo_doc = any(
+        d.get("physical_item_id")
+        or "📸" in asst_lower
+        or "foto" in asst_lower
+        or "foto" in (d.get("title") or "").lower()
+        or (d.get("file_type") or "").lower() in ["image", "jpg", "jpeg", "png", "webp"]
+        for d in docs
+    )
+    if is_where_phrase and is_item_answer and has_photo_doc:
+        return docs[:2]
+
     if is_store_phrase or (is_where_phrase and is_item_answer) or (is_item_answer and not any(k in user_lower for k in ["document", "bollett", "fattur", "f24", "730", "file"])):
         return None
 
@@ -602,6 +642,76 @@ class AgenticChatService:
                     return title
         return None
 
+    def _extract_bulk_delete_target(self, text: str) -> tuple[bool, Optional[str]]:
+        """
+        Determina se la cancellazione multipla richiesta è un azzeramento totale del caveau
+        oppure è mirata a un termine/categoria/gruppo specifico (es. '730 test', 'ricevute', 'bollette').
+        Ritorna: (is_total_vault, target_keyword)
+        """
+        if not text:
+            return True, None
+        
+        low = text.lower().strip()
+        # 1. Rimuovi verbi di eliminazione e prefissi iniziali (forme lunghe prima per evitare match parziali)
+        clean = re.sub(
+            r"^(?:per\s+favore|puoi|ti\s+prego\s+di|vorrei|potresti)?\s*(?:eliminali\s+tutti|cancellali\s+tutti|rimuovili\s+tutti|eliminali|cancellali|rimuovili|eliminami|cancellami|rimuovimi|eliminarlo|cancellarlo|rimuoverlo|eliminarla|cancellarla|rimuoverla|elimina|cancella|rimuovi|svuota|butta)\s*(?:tutti\s+i|tutte\s+le|tutti\s+gli|tutti|tutte|tutto|l'intero|l'intera|ogni|qualsiasi)?\s*",
+            "",
+            low,
+            flags=re.IGNORECASE
+        ).strip(" ?.")
+
+        # 2. Rimuovi suffissi descrittivi comuni
+        clean = re.sub(
+            r"\s*(?:dal\s+caveau|dall'archivio|dal\s+database|dalla\s+memoria|dal\s+sistema|presenti\s+nel\s+caveau|salvati\s+nel\s+caveau|nel\s+caveau|in\s+archivio|salvati|archiviati|memorizzati|presenti|che\s+hai|che\s+ci\s+sono|che\s+abbiamo|per\s+favore|grazie)$",
+            "",
+            clean,
+            flags=re.IGNORECASE
+        ).strip(" ?.")
+
+        # 3. Rimuovi eventuali prefissi rimanenti di articoli / appartenenza
+        clean = re.sub(r"^(?:i\s+miei|le\s+mie|i\s+tuoi|le\s+tue|i|gli|le|il|la|lo|l'|un|una|uno)\s+", "", clean, flags=re.IGNORECASE).strip(" ?.")
+
+        # 4. Rimuovi nuovamente suffissi se rimasti
+        clean = re.sub(
+            r"\s*(?:dal\s+caveau|dall'archivio|dal\s+database|dalla\s+memoria|dal\s+sistema|presenti\s+nel\s+caveau|salvati\s+nel\s+caveau|nel\s+caveau|in\s+archivio|salvati|archiviati|memorizzati|presenti|che\s+hai|che\s+ci\s+sono|che\s+abbiamo|per\s+favore|grazie)$",
+            "",
+            clean,
+            flags=re.IGNORECASE
+        ).strip(" ?.")
+
+        # 5. Se è rimasto un prefisso generico come "documenti di" o "file di" o solo "documenti", puliscilo se c'è altro testo
+        clean_specific = re.sub(r"^(?:documenti|documento|file|allegati|oggetti|cose)\s*(?:di\s+|del\s+|della\s+|dei\s+|degli\s+|delle\s+|d\'|da\s+|per\s+)?", "", clean, flags=re.IGNORECASE).strip(" ?.")
+
+        generic_terms = ["", "documenti", "documento", "file", "tutto", "tutti", "tutte", "caveau", "archivio", "dati", "elementi", "record", "allegati", "all", "bulk_documents", "cose", "oggetti"]
+        if clean in generic_terms or clean_specific in generic_terms:
+            return True, None
+
+        return False, (clean_specific if clean_specific else clean)
+
+    def _extract_link_photo_item(self, text: str) -> Optional[str]:
+        """
+        Estrae il nome dell'oggetto fisico a cui associare una foto/documento
+        da espressioni come 'ti allego la foto per il piano', 'ecco la foto delle chiavi', 'associa la foto al passaporto'.
+        """
+        if not text:
+            return None
+        
+        clean = text.strip()
+        patterns = [
+            r"(?:ti\s+allego|ecco|ti\s+lascio|ti\s+mando|ho\s+fatto|ho\s+mandato|ho\s+caricato)\s+(?:una|la|questa)?\s*(?:foto|immagine|allegato)\s+(?:per|del|della|delle|dei|degli|a|al|alla|alle|ai|agli|di)\s+[\"']?(.+?)[\"']?$",
+            r"(?:collega|associa|lega|abbina)\s+(?:la|questa|l'ultima)?\s*(?:foto|immagine|documento|file|allegato)\s+(?:al|alla|alle|ai|agli|a|per|con)\s+[\"']?(.+?)[\"']?$",
+            r"^(?:foto|immagine|allegato)\s+(?:per|del|della|delle|dei|degli|di)\s+[\"']?(.+?)[\"']?$",
+            r"(?:questa|quest'ultima)\s+(?:foto|immagine)\s+(?:è|e'|serve)\s+(?:per|a)\s+[\"']?(.+?)[\"']?$"
+        ]
+        for p in patterns:
+            m = re.search(p, clean, flags=re.IGNORECASE)
+            if m:
+                target = m.group(1).strip(" .?!\"'")
+                target = re.sub(r"^(?:il|lo|la|i|gli|le|l'|un|uno|una|un')\s*", "", target, flags=re.IGNORECASE).strip()
+                if target and len(target) >= 2:
+                    return target
+        return None
+
     def execute_tool(self, name: str, args: Dict[str, Any], db: Session, thread_id: str = "general") -> Dict[str, Any]:
         """Esegue uno strumento registrato contro il database SQLite locale."""
         logger.info(f"Esecuzione tool {name} con argomenti: {args} (thread: {thread_id})")
@@ -637,8 +747,8 @@ class AgenticChatService:
                         "due_date": d.due_date.isoformat() if d.due_date else None,
                         "status": d.status,
                         "summary": d.summary,
-                        "filename": Path(d.file_path).name,
-                        "file_url": f"/uploads/{Path(d.file_path).name}",
+                        "filename": Path(d.file_path).name if d.file_path else "",
+                        "file_url": f"/uploads/{Path(d.file_path).name}" if d.file_path else None,
                         "download_url": f"/api/documents/{d.id}/download",
                         "file_type": d.file_type
                     }
@@ -670,12 +780,26 @@ class AgenticChatService:
                         existing = db.query(PhysicalItem).filter(PhysicalItem.id == matched_id).first()
 
             img_p = args.get("image_path")
+            doc_id = args.get("document_id")
+            doc_title = (args.get("document_title") or "").strip()
+
+            linked_doc = None
+            if doc_id:
+                linked_doc = db.query(Document).filter(Document.id == doc_id).first()
+            if not linked_doc and doc_title:
+                s_docs = search_vault_documents(db, doc_title, thread_id=thread_id)
+                if s_docs:
+                    linked_doc = db.query(Document).filter(Document.id == s_docs[0]["id"]).first()
+
             if existing:
                 existing.primary_location = prim_loc
-                # Quando si aggiorna la stanza principale, il dettaglio va aggiornato se fornito o azzerato per non ereditare vecchi mobili
                 existing.detailed_location = det_loc
                 if img_p:
                     existing.image_path = img_p
+                if linked_doc:
+                    existing.document_id = linked_doc.id
+                    existing.image_path = linked_doc.file_path
+                    linked_doc.physical_item_id = existing.id
                 if thread_id:
                     existing.thread_id = thread_id
                 item = existing
@@ -686,9 +810,14 @@ class AgenticChatService:
                     primary_location=prim_loc,
                     detailed_location=det_loc,
                     category=cat,
-                    image_path=img_p
+                    image_path=linked_doc.file_path if linked_doc else img_p,
+                    document_id=linked_doc.id if linked_doc else None
                 )
                 db.add(item)
+                db.flush()
+                if linked_doc:
+                    linked_doc.physical_item_id = item.id
+
             db.commit()
             db.refresh(item)
 
@@ -703,8 +832,98 @@ class AgenticChatService:
                 "detailed_location": item.detailed_location,
                 "category": item.category,
                 "location_str": loc_str,
+                "document_id": item.document_id,
                 "image_url": f"/api/files/{fn}" if fn else None,
-                "has_photo": bool(item.image_path)
+                "has_photo": bool(item.image_path or item.document_id)
+            }
+
+        elif name == "link_document_to_item":
+            item_name = (args.get("item_name") or "").strip()
+            item_id = args.get("item_id")
+            doc_id = args.get("document_id")
+            doc_title = (args.get("document_title") or "").strip()
+            img_path = args.get("image_path")
+
+            # 1. Trova documento
+            doc = None
+            if doc_id:
+                doc = db.query(Document).filter(Document.id == doc_id).first()
+            if not doc and doc_title:
+                s_docs = search_vault_documents(db, doc_title, thread_id=thread_id)
+                if s_docs:
+                    doc = db.query(Document).filter(Document.id == s_docs[0]["id"]).first()
+            if not doc:
+                q = db.query(Document)
+                if thread_id and thread_id not in ["general", "all"]:
+                    q = q.filter(Document.thread_id == thread_id)
+                doc = q.order_by(Document.id.desc()).first()
+
+            # 2. Trova o crea oggetto fisico
+            item = None
+            if item_id:
+                item = db.query(PhysicalItem).filter(PhysicalItem.id == item_id).first()
+            elif item_name:
+                clean_name = re.sub(r"^(il|lo|la|i|gli|le|l'|un|uno|una|un')\s*", "", item_name, flags=re.IGNORECASE).strip()
+                cap_name = (clean_name if clean_name else item_name).capitalize()
+                item = db.query(PhysicalItem).filter(PhysicalItem.item_name.ilike(cap_name)).first()
+                if not item and thread_id:
+                    item = db.query(PhysicalItem).filter(PhysicalItem.thread_id == thread_id, PhysicalItem.item_name.ilike(cap_name)).first()
+                if not item:
+                    s_items = search_vault_items(db, cap_name, thread_id=thread_id)
+                    if s_items:
+                        item = db.query(PhysicalItem).filter(PhysicalItem.id == s_items[0]["item_id"]).first()
+
+            if not item and item_name:
+                clean_name = re.sub(r"^(il|lo|la|i|gli|le|l'|un|uno|una|un')\s*", "", item_name, flags=re.IGNORECASE).strip()
+                cap_name = (clean_name if clean_name else item_name).capitalize()
+                item = PhysicalItem(
+                    thread_id=thread_id,
+                    item_name=cap_name,
+                    primary_location="Posizione da foto",
+                    category="generico"
+                )
+                db.add(item)
+                db.flush()
+
+            if not item:
+                return {"error": "Specificare un oggetto fisico valido a cui associare la foto/documento."}
+
+            if doc:
+                item.document_id = doc.id
+                item.image_path = doc.file_path
+                doc.physical_item_id = item.id
+            elif img_path:
+                item.image_path = img_path
+
+            db.commit()
+            db.refresh(item)
+
+            fn = Path(item.image_path).name if item.image_path else (Path(doc.file_path).name if doc and doc.file_path else None)
+            doc_info = {
+                "id": doc.id if doc else None,
+                "document_id": doc.id if doc else None,
+                "title": doc.title if doc else f"Foto {item.item_name}",
+                "issuer": doc.issuer if doc else None,
+                "amount": doc.amount if doc else None,
+                "due_date": doc.due_date.isoformat() if doc and doc.due_date else None,
+                "summary": doc.summary if doc else f"Foto della posizione di {item.item_name}",
+                "file_url": f"/uploads/{fn}" if fn else None,
+                "download_url": f"/api/documents/{doc.id}/download" if doc else None,
+                "file_type": doc.file_type if doc else "image"
+            } if (doc or fn) else None
+
+            loc_str = item.primary_location + (f" ({item.detailed_location})" if item.detailed_location else "")
+            return {
+                "success": True,
+                "item_id": item.id,
+                "item_name": item.item_name,
+                "location_str": loc_str,
+                "document_id": doc.id if doc else None,
+                "document_title": doc.title if doc else None,
+                "image_url": f"/api/files/{fn}" if fn else None,
+                "has_photo": bool(item.image_path or item.document_id),
+                "document": doc_info,
+                "documents": [doc_info] if doc_info else []
             }
 
         elif name == "delete_vault_record":
@@ -726,17 +945,39 @@ class AgenticChatService:
                 if thread_id and thread_id != "general" and thread_id != "all":
                     query = query.filter(Document.thread_id == thread_id)
 
-                cat_name = "tutti i documenti"
-                clean_ref = f"{title or ''} {category or ''}".lower()
-                if "bollett" in clean_ref:
-                    query = query.filter(or_(Document.doc_type == "bolletta", Document.title.ilike("%bollett%")))
-                    cat_name = "tutte le bollette"
-                elif "f24" in clean_ref or "tribut" in clean_ref:
-                    query = query.filter(or_(Document.doc_type.ilike("%f24%"), Document.title.ilike("%f24%")))
-                    cat_name = "tutti i modelli F24"
+                clean_ref = f"{title or ''} {category or ''}".strip()
+                is_total, target_kw = self._extract_bulk_delete_target(clean_ref)
 
                 if target_ids:
                     query = query.filter(Document.id.in_(target_ids))
+                    cat_name = f"{len(target_ids)} documenti selezionati"
+                elif not is_total and target_kw:
+                    s_matches = search_vault_documents(db, target_kw, thread_id=thread_id)
+                    matched_ids = [m["id"] for m in s_matches]
+                    stem_kw = it_stem(target_kw)
+                    like_matches = query.filter(or_(
+                        Document.title.ilike(f"%{target_kw}%"),
+                        Document.doc_type.ilike(f"%{target_kw}%"),
+                        Document.issuer.ilike(f"%{target_kw}%"),
+                        Document.summary.ilike(f"%{target_kw}%"),
+                        Document.title.ilike(f"%{stem_kw}%"),
+                        Document.doc_type.ilike(f"%{stem_kw}%"),
+                        Document.summary.ilike(f"%{stem_kw}%")
+                    )).all()
+                    for lm in like_matches:
+                        if lm.id not in matched_ids:
+                            matched_ids.append(lm.id)
+
+                    if matched_ids:
+                        query = query.filter(Document.id.in_(matched_ids))
+                        cat_name = f"documenti corrispondenti a '{target_kw}'"
+                    else:
+                        return {
+                            "error": f"Nessun documento trovato nel caveau corrispondente a '{target_kw}'.",
+                            "status": "not_found"
+                        }
+                else:
+                    cat_name = "tutti i documenti"
 
                 docs_to_delete = query.all()
                 if not docs_to_delete:
@@ -747,7 +988,7 @@ class AgenticChatService:
 
                 doc_ids = [d.id for d in docs_to_delete]
                 doc_titles = [d.title for d in docs_to_delete]
-                conf_title = title if (title and "tutt" in title.lower()) else (f"TUTTI i {len(doc_ids)} documenti ({cat_name})" if len(doc_ids) > 1 else doc_titles[0])
+                conf_title = title if (title and "tutt" in title.lower() and is_total) else (f"I {len(doc_ids)} {cat_name}" if len(doc_ids) > 1 else doc_titles[0])
                 conf = {
                     "type": "delete_confirmation",
                     "target_type": "bulk_documents",
@@ -1273,7 +1514,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             any(k in clean_prompt for k in [
                 "elimina tutti", "elimina tutte", "cancella tutti", "cancella tutte",
                 "rimuovi tutti", "rimuovi tutte", "svuota", "elimina tutto", "cancella tutto",
-                "eliminali tutti", "cancellali tutti", "rimuovili tutti"
+                "eliminali tutti", "cancellali tutti", "rimuovili tutti", "elimina ogni"
             ])
             or clean_prompt in ["eliminali", "cancellali", "rimuovili", "elimina tutto", "cancella tutto", "elimina tutti", "cancella tutti"]
         )
@@ -1283,13 +1524,33 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             if thread_id and thread_id != "general" and thread_id != "all":
                 query = query.filter(Document.thread_id == thread_id)
 
-            cat_name = "tutti i documenti"
-            if "bollett" in clean_prompt:
-                query = query.filter(or_(Document.doc_type == "bolletta", Document.title.ilike("%bollett%")))
-                cat_name = "tutte le bollette"
-            elif "f24" in clean_prompt or "tribut" in clean_prompt:
-                query = query.filter(or_(Document.doc_type.ilike("%f24%"), Document.title.ilike("%f24%")))
-                cat_name = "tutti i modelli F24"
+            is_total, target_kw = self._extract_bulk_delete_target(clean_prompt)
+            if not is_total and target_kw:
+                s_matches = search_vault_documents(db, target_kw, thread_id=thread_id)
+                matched_ids = [m["id"] for m in s_matches]
+                stem_kw = it_stem(target_kw)
+                like_matches = query.filter(or_(
+                    Document.title.ilike(f"%{target_kw}%"),
+                    Document.doc_type.ilike(f"%{target_kw}%"),
+                    Document.issuer.ilike(f"%{target_kw}%"),
+                    Document.summary.ilike(f"%{target_kw}%"),
+                    Document.title.ilike(f"%{stem_kw}%"),
+                    Document.doc_type.ilike(f"%{stem_kw}%"),
+                    Document.summary.ilike(f"%{stem_kw}%")
+                )).all()
+                for lm in like_matches:
+                    if lm.id not in matched_ids:
+                        matched_ids.append(lm.id)
+
+                if not matched_ids:
+                    return ChatResponse(
+                        reply=f"Non ho trovato documenti corrispondenti a '{target_kw}' nel caveau da eliminare.",
+                        action="REPLY"
+                    )
+                query = query.filter(Document.id.in_(matched_ids))
+                cat_name = f"documenti corrispondenti a '{target_kw}'"
+            else:
+                cat_name = "tutti i documenti"
 
             docs_to_delete = query.all()
             if not docs_to_delete:
@@ -1306,7 +1567,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 "target_type": "bulk_documents",
                 "target_id": doc_ids[0],
                 "target_ids": doc_ids,
-                "title": f"TUTTI i {len(doc_ids)} documenti ({cat_name})" if len(doc_ids) > 1 else doc_titles[0],
+                "title": f"TUTTI i {len(doc_ids)} documenti ({cat_name})" if (is_total and len(doc_ids) > 1) else (f"I {len(doc_ids)} {cat_name}" if len(doc_ids) > 1 else doc_titles[0]),
                 "details": f"Verranno eliminati definitivamente {len(doc_ids)} file dal caveau."
             }
 
@@ -1617,6 +1878,10 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             and not is_where_request
         )
 
+        # Rileva intenzione di collegare foto ad oggetto fisico (es. "ti allego una foto per il piano", "ecco la foto delle chiavi")
+        linked_photo_item = self._extract_link_photo_item(user_text)
+        is_link_photo_intent = bool(linked_photo_item)
+
         is_download_or_show = (
             any(k in lower_t for k in [
                 "scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala", "scaricarli", "scaricali", "scaricare",
@@ -1627,6 +1892,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             ])
             and not is_store_or_update
             and not is_where_request
+            and not is_link_photo_intent
         )
 
         is_delete_request = any(k in lower_t for k in [
@@ -1646,6 +1912,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             and not is_store_or_update
             and not is_listing_request
             and not is_delete_request
+            and not is_link_photo_intent
         ) or (
             lower_t.strip(" !.?") in [
                 "documenti di identità", "documenti di identita", "documenti personali",
@@ -1668,6 +1935,24 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 return del_resp
 
             clean_test = lower_t.replace("?", "").strip()
+
+            if is_link_photo_intent:
+                tool_out = self.execute_tool("link_document_to_item", {"item_name": linked_photo_item}, db=db, thread_id=thread_id)
+                if tool_out.get("success"):
+                    it_name = tool_out.get("item_name", linked_photo_item)
+                    return ChatResponse(
+                        reply=f"✅ Ho associato la foto alla posizione di **{it_name}**! Quando mi chiederai dove si trova, ti mostrerò subito la foto della sua posizione. 📸",
+                        action="link_document_to_item",
+                        data=tool_out,
+                        documents=tool_out.get("documents")
+                    )
+                else:
+                    return ChatResponse(
+                        reply=tool_out.get("error", "Non sono riuscito ad associare la foto all'oggetto."),
+                        action="link_document_to_item",
+                        data=tool_out
+                    )
+
             if is_download_or_show or is_doc_search_request:
                 last_asst_msg = (
                     db.query(ChatMessage)
@@ -1764,10 +2049,28 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 if items:
                     it = items[0]
                     loc_desc = it.get("location_str") or (it.get("primary_location", "") + (f" ({it['detailed_location']})" if it.get("detailed_location") else ""))
+                    linked_d = None
+                    if it.get("document_id"):
+                        d_rec = db.query(Document).filter(Document.id == it["document_id"]).first()
+                        if d_rec:
+                            fn = Path(d_rec.file_path).name if d_rec.file_path else ""
+                            linked_d = {
+                                "id": d_rec.id, "document_id": d_rec.id, "title": d_rec.title,
+                                "file_url": f"/uploads/{fn}" if fn else None,
+                                "download_url": f"/api/documents/{d_rec.id}/download",
+                                "file_type": d_rec.file_type
+                            }
+                    elif it.get("image_url"):
+                        linked_d = {
+                            "id": it.get("item_id"), "document_id": it.get("item_id"), "title": f"Foto {it['item_name']}",
+                            "file_url": it["image_url"], "download_url": it["image_url"], "file_type": "image"
+                        }
+                    photo_note = "\n📸 Ho allegato la foto della posizione qui sotto!" if (it.get("has_photo") or linked_d) else ""
                     return ChatResponse(
-                        reply=f"📍 **{it['item_name']}** si trova in: {loc_desc}.",
+                        reply=f"📍 **{it['item_name']}** si trova in: {loc_desc}.{photo_note}",
                         action="search_vault",
-                        data=tool_out
+                        data=tool_out,
+                        documents=[linked_d] if linked_d else None
                     )
                 elif docs:
                     d = docs[0]
@@ -1874,6 +2177,8 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         if is_delete_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "delete_vault_record"}}
+        elif is_link_photo_intent:
+            tool_choice_cfg = {"type": "function", "function": {"name": "link_document_to_item"}}
         elif is_rename_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "rename_vault_document"}}
         elif is_download_or_show or is_doc_search_request:
@@ -1961,6 +2266,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             elif tool_action == "show_document_card":
                                 d_tit = (docs_found[0]["title"] if docs_found else "documento")
                                 final_text = f"📄 Ecco la scheda per **{d_tit}**! Puoi visualizzarlo o scaricarlo direttamente dalla scheda qui sotto. ⬇️"
+                            elif tool_action == "link_document_to_item":
+                                it_name = (tool_data or {}).get("item_name") or "oggetto"
+                                final_text = f"✅ Ho associato la foto alla posizione di **{it_name}**! Quando mi chiederai dove si trova, ti mostrerò subito la foto della sua posizione. 📸"
                             elif tool_action == "list_vault_contents":
                                 if (tool_data or {}).get("target_type") == "physical_items":
                                     items = (tool_data or {}).get("physical_items", [])
@@ -2019,6 +2327,11 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                     d_tit = (docs_found[0]["title"] if docs_found else "documento")
                                     final_text = f"📄 Ecco la scheda per **{d_tit}**! Puoi visualizzarlo o scaricarlo direttamente dalla scheda qui sotto. ⬇️"
 
+                            elif tool_action == "link_document_to_item":
+                                it_name = (tool_data or {}).get("item_name") or "oggetto"
+                                if "associat" not in final_text.lower() and "collegat" not in final_text.lower():
+                                    final_text = f"✅ Ho associato la foto alla posizione di **{it_name}**! {final_text}"
+
                             elif tool_action == "list_vault_contents":
                                 target = (tool_data or {}).get("target_type")
                                 items = (tool_data or {}).get("physical_items", [])
@@ -2039,6 +2352,26 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                     it = found_i[0]
                                     if it.get("primary_location", "").lower() not in final_text.lower():
                                         final_text = f"📍 **{it['item_name']}** si trova in: {it['location_str']}."
+                                    if it.get("has_photo") or it.get("document_id"):
+                                        if "📸" not in final_text:
+                                            final_text += "\n📸 Ho allegato la foto della posizione qui sotto!"
+                                        if not docs_found:
+                                            d_rec = None
+                                            if it.get("document_id"):
+                                                d_rec = db.query(Document).filter(Document.id == it["document_id"]).first()
+                                            elif it.get("image_path"):
+                                                d_rec = db.query(Document).filter(Document.file_path == it["image_path"]).first()
+                                            if d_rec:
+                                                fn = Path(d_rec.file_path).name if d_rec.file_path else ""
+                                                docs_found = [{
+                                                    "id": d_rec.id, "document_id": d_rec.id, "title": d_rec.title,
+                                                    "issuer": d_rec.issuer, "amount": d_rec.amount,
+                                                    "due_date": d_rec.due_date.isoformat() if d_rec.due_date else None,
+                                                    "summary": d_rec.summary,
+                                                    "file_url": f"/uploads/{fn}" if fn else None,
+                                                    "download_url": f"/api/documents/{d_rec.id}/download",
+                                                    "file_type": d_rec.file_type
+                                                }]
 
                             elif tool_action == "get_upcoming_deadlines":
                                 up = (tool_data or {}).get("deadlines") or (tool_data or {}).get("upcoming_documents", [])
@@ -2210,7 +2543,21 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             it = found_items[0]
                             loc_desc = it.get("location_str") or (it.get("primary_location", "") + (f" ({it['detailed_location']})" if it.get("detailed_location") else ""))
                             clean_rep = f"📍 **{it['item_name']}** si trova in: {loc_desc}."
-                            return ChatResponse(reply=clean_rep, action="search_vault", data=s_res)
+                            docs_to_attach = []
+                            if it.get("has_photo") or it.get("document_id"):
+                                clean_rep += "\n\n📸 Ho allegato la foto della posizione qui sotto!"
+                                if it.get("document_id"):
+                                    d_rec = db.query(Document).filter(Document.id == it["document_id"]).first()
+                                    if d_rec:
+                                        fn = Path(d_rec.file_path).name if d_rec.file_path else ""
+                                        docs_to_attach.append({
+                                            "id": d_rec.id, "document_id": d_rec.id, "title": d_rec.title,
+                                            "issuer": d_rec.issuer, "amount": d_rec.amount,
+                                            "due_date": d_rec.due_date.isoformat() if d_rec.due_date else None,
+                                            "summary": d_rec.summary, "file_url": f"/uploads/{fn}" if fn else None,
+                                            "download_url": f"/api/documents/{d_rec.id}/download", "file_type": d_rec.file_type
+                                        })
+                            return ChatResponse(reply=clean_rep, action="search_vault", data=s_res, documents=docs_to_attach if docs_to_attach else None)
                         elif found_docs:
                             d = found_docs[0]
                             clean_rep = f"📄 Ho trovato il documento **{d['title']}** ({d.get('issuer', '')}).\n💡 {d.get('summary', '')}"
@@ -2367,6 +2714,25 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         if del_resp:
             return del_resp
 
+        # 0a. Collegamento foto/documento a oggetto fisico
+        linked_photo_item = self._extract_link_photo_item(user_text)
+        if linked_photo_item:
+            tool_out = self.execute_tool("link_document_to_item", {"item_name": linked_photo_item}, db=db, thread_id=thread_id)
+            if tool_out.get("success"):
+                it_name = tool_out.get("item_name", linked_photo_item)
+                return ChatResponse(
+                    reply=f"✅ Ho associato la foto alla posizione di **{it_name}**! Quando mi chiederai dove si trova, ti mostrerò subito la foto della sua posizione. 📸",
+                    action="link_document_to_item",
+                    data=tool_out,
+                    documents=tool_out.get("documents")
+                )
+            else:
+                return ChatResponse(
+                    reply=tool_out.get("error", "Non sono riuscito ad associare la foto all'oggetto."),
+                    action="link_document_to_item",
+                    data=tool_out
+                )
+
         # 0b. Mostra scheda documento o download
         if any(k in lower_t for k in [
             "scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala", "scaricarli", "scaricali", "scaricare",
@@ -2514,6 +2880,37 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             s_res = self.execute_tool("search_vault", {"query": clean_q}, db=db, thread_id=thread_id)
             f_docs = s_res.get("found_documents", [])
             f_items = s_res.get("found_physical_items", [])
+            is_where_intent = any(k in lower_t for k in ["dov'è", "dov'e", "dove è", "dove sono", "dove si trova", "dove si trovano", "dove ho messo", "dove ho riposto", "dove ho lasciato", "dove sta", "dove stanno"])
+            if is_where_intent and f_items:
+                it = f_items[0]
+                loc = it['primary_location'] + (f" ({it['detailed_location']})" if it.get('detailed_location') else "")
+                linked_d = None
+                if it.get("document_id"):
+                    d_rec = db.query(Document).filter(Document.id == it["document_id"]).first()
+                    if d_rec:
+                        fn = Path(d_rec.file_path).name if d_rec.file_path else ""
+                        linked_d = {
+                            "id": d_rec.id, "document_id": d_rec.id, "title": d_rec.title,
+                            "issuer": d_rec.issuer, "amount": d_rec.amount,
+                            "due_date": d_rec.due_date.isoformat() if d_rec.due_date else None,
+                            "summary": d_rec.summary,
+                            "file_url": f"/uploads/{fn}" if fn else None,
+                            "download_url": f"/api/documents/{d_rec.id}/download",
+                            "file_type": d_rec.file_type
+                        }
+                elif it.get("image_url"):
+                    linked_d = {
+                        "id": it.get("item_id"), "document_id": it.get("item_id"), "title": f"Foto {it['item_name']}",
+                        "file_url": it["image_url"], "download_url": it["image_url"], "file_type": "image"
+                    }
+                photo_note = "\n📸 Ho allegato la foto della posizione qui sotto!" if (it.get("has_photo") or linked_d) else ""
+                return ChatResponse(
+                    reply=f"📍 **{it['item_name']}** si trova in: {loc}.{photo_note}",
+                    action="search_vault",
+                    data=s_res,
+                    documents=[linked_d] if linked_d else None
+                )
+
             if f_docs:
                 if len(f_docs) == 1:
                     d = f_docs[0]
@@ -2541,7 +2938,32 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             if f_items:
                 it = f_items[0]
                 loc = it['primary_location'] + (f" ({it['detailed_location']})" if it.get('detailed_location') else "")
-                return ChatResponse(reply=f"📍 Il tuo {it['item_name']} si trova in: {loc}.", action="search_vault", data=s_res)
+                linked_d = None
+                if it.get("document_id"):
+                    d_rec = db.query(Document).filter(Document.id == it["document_id"]).first()
+                    if d_rec:
+                        fn = Path(d_rec.file_path).name if d_rec.file_path else ""
+                        linked_d = {
+                            "id": d_rec.id, "document_id": d_rec.id, "title": d_rec.title,
+                            "issuer": d_rec.issuer, "amount": d_rec.amount,
+                            "due_date": d_rec.due_date.isoformat() if d_rec.due_date else None,
+                            "summary": d_rec.summary,
+                            "file_url": f"/uploads/{fn}" if fn else None,
+                            "download_url": f"/api/documents/{d_rec.id}/download",
+                            "file_type": d_rec.file_type
+                        }
+                elif it.get("image_url"):
+                    linked_d = {
+                        "id": it.get("item_id"), "document_id": it.get("item_id"), "title": f"Foto {it['item_name']}",
+                        "file_url": it["image_url"], "download_url": it["image_url"], "file_type": "image"
+                    }
+                photo_note = "\n📸 Ho allegato la foto della posizione qui sotto!" if (it.get("has_photo") or linked_d) else ""
+                return ChatResponse(
+                    reply=f"📍 **{it['item_name']}** si trova in: {loc}.{photo_note}",
+                    action="search_vault",
+                    data=s_res,
+                    documents=[linked_d] if linked_d else None
+                )
 
         return ChatResponse(
             reply=f"Non ho trovato nessun documento o oggetto corrispondente a '{user_text}' nel tuo caveau. Puoi chiedermi dove si trova un oggetto, cercare un documento o verificare le scadenze!",

@@ -79,6 +79,10 @@ class RecordItem(BaseModel):
     category_icon: Optional[str] = None
     room: Optional[str] = None
     detailed_location: Optional[str] = None
+    document_id: Optional[int] = None
+    physical_item_id: Optional[int] = None
+    image_url: Optional[str] = None
+    has_photo: Optional[bool] = None
 
 class DashboardKPI(BaseModel):
     total_upcoming_amount: float
@@ -150,5 +154,11 @@ class UIEventResponse(BaseModel):
 
 class UIEventsListResponse(BaseModel):
     events: List[UIEventItem]
+
+class LinkDocumentItemRequest(BaseModel):
+    item_id: Optional[int] = None
+    item_name: Optional[str] = None
+    document_id: int
+    thread_id: Optional[str] = "general"
 
 

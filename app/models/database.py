@@ -84,6 +84,7 @@ class Document(Base):
     __tablename__ = "documents"
     id = Column(Integer, primary_key=True, autoincrement=True)
     thread_id = Column(String(50), nullable=False, default="general", index=True)
+    physical_item_id = Column(Integer, nullable=True, index=True)
     title = Column(EncryptedString(500), nullable=False)
     file_path = Column(String(500), nullable=False)
     file_type = Column(String(50), nullable=False)
@@ -100,6 +101,7 @@ class PhysicalItem(Base):
     __tablename__ = "physical_items"
     id = Column(Integer, primary_key=True, autoincrement=True)
     thread_id = Column(String(50), nullable=False, default="general", index=True)
+    document_id = Column(Integer, nullable=True, index=True)
     item_name = Column(EncryptedString(500), nullable=False, index=True)
     category = Column(String(100), nullable=True)
     primary_location = Column(EncryptedString(500), nullable=False)
@@ -181,11 +183,21 @@ def init_db(engine=None):
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN thread_id VARCHAR(50) DEFAULT 'general'"))
                     conn.commit()
 
-        # Ensure image_path in physical_items
+        # Ensure image_path and document_id in physical_items
         if "physical_items" in table_names:
             cols = [c["name"] for c in inspector.get_columns("physical_items")]
             if "image_path" not in cols:
                 conn.execute(text("ALTER TABLE physical_items ADD COLUMN image_path VARCHAR(500)"))
+                conn.commit()
+            if "document_id" not in cols:
+                conn.execute(text("ALTER TABLE physical_items ADD COLUMN document_id INTEGER"))
+                conn.commit()
+
+        # Ensure physical_item_id in documents
+        if "documents" in table_names:
+            cols = [c["name"] for c in inspector.get_columns("documents")]
+            if "physical_item_id" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN physical_item_id INTEGER"))
                 conn.commit()
 
         # Seed default threads if table exists and is empty

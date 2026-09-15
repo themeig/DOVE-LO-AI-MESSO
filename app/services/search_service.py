@@ -323,7 +323,8 @@ def search_vault_items(db: Session, query: str, thread_id: str = "general") -> L
             "category": it.category,
             "location_str": it.primary_location + (f" ({it.detailed_location})" if it.detailed_location else ""),
             "image_url": f"/api/files/{Path(it.image_path).name}" if it.image_path else None,
-            "has_photo": bool(it.image_path)
+            "has_photo": bool(it.image_path),
+            "document_id": it.document_id
         } for it in items]
 
     words = [w.lower() for w in re.split(r"[^\w]+", raw_query) if len(w) > 1]
@@ -352,7 +353,15 @@ def search_vault_items(db: Session, query: str, thread_id: str = "general") -> L
         c_words = [w for w in re.split(r"[^\w]+", c_l) if len(w) > 1]
         notes_words = [w for w in re.split(r"[^\w]+", notes_l) if len(w) > 1]
 
-        key_words = n_words + l_words + d_words + c_words + notes_words
+        doc_words = []
+        if it.document_id:
+            from app.models.database import Document
+            doc_rec = db.query(Document).filter(Document.id == it.document_id).first()
+            if doc_rec:
+                doc_title = (doc_rec.title or "").lower()
+                doc_words = [w for w in re.split(r"[^\w]+", doc_title) if len(w) > 1]
+
+        key_words = n_words + l_words + d_words + c_words + notes_words + doc_words
 
         matched_core_count = 0
         for ct in core_tokens:
@@ -394,6 +403,10 @@ def search_vault_items(db: Session, query: str, thread_id: str = "general") -> L
                     m, q = token_matches(tok, nw_note)
                     if m:
                         score += int(q * 10 * mult)
+                for dw_doc in doc_words:
+                    m, q = token_matches(tok, dw_doc)
+                    if m:
+                        score += int(q * 20 * mult)
 
         if score > 0:
             if it.thread_id == thread_id:
@@ -407,7 +420,8 @@ def search_vault_items(db: Session, query: str, thread_id: str = "general") -> L
                 "category": it.category,
                 "location_str": it.primary_location + (f" ({it.detailed_location})" if it.detailed_location else ""),
                 "image_url": f"/api/files/{Path(it.image_path).name}" if it.image_path else None,
-                "has_photo": bool(it.image_path)
+                "has_photo": bool(it.image_path),
+                "document_id": it.document_id
             }))
 
     item_scored.sort(key=lambda x: (x[1], x[0]), reverse=True)

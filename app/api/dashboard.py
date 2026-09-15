@@ -150,7 +150,11 @@ def get_dashboard(
                     category_label=doc_cat_label,
                     category_icon=doc_cat_icon,
                     room=None,
-                    detailed_location=None
+                    detailed_location=None,
+                    document_id=doc.id,
+                    physical_item_id=doc.physical_item_id,
+                    image_url=f"/uploads/{fn}" if doc.file_type in ["jpg", "jpeg", "png", "webp"] else None,
+                    has_photo=doc.file_type in ["jpg", "jpeg", "png", "webp"]
                 )
             )
 
@@ -162,6 +166,7 @@ def get_dashboard(
                 loc += f" - {item.detailed_location}"
 
             room, item_cat, item_cat_label, item_icon = classify_item_room_and_category(item)
+            img_url = f"/api/files/{Path(item.image_path).name}" if item.image_path else None
             records.append(
                 RecordItem(
                     id=item.id,
@@ -180,8 +185,12 @@ def get_dashboard(
                     category_icon=item_icon,
                     room=room,
                     detailed_location=item.detailed_location,
-                    file_url=f"/api/files/{Path(item.image_path).name}" if item.image_path else None,
-                    file_type="image" if item.image_path else None
+                    file_url=img_url,
+                    file_type="image" if item.image_path else None,
+                    document_id=item.document_id,
+                    physical_item_id=None,
+                    image_url=img_url,
+                    has_photo=bool(item.image_path)
                 )
             )
 
