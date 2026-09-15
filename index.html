@@ -477,6 +477,17 @@
           <i class="fa-solid fa-paper-plane text-sm ml-0.5"></i>
         </button>
 
+        <!-- Tasto Interrompi Generazione (Stop Button) -->
+        <button 
+          id="stopBtn" 
+          type="button" 
+          onclick="abortGeneration()" 
+          title="Interrompi generazione" 
+          class="hidden bg-rose-600 hover:bg-rose-700 text-white w-10 h-10 rounded-full items-center justify-center shadow-md active:scale-95 transition cursor-pointer animate-pulse"
+        >
+          <i class="fa-solid fa-stop text-sm"></i>
+        </button>
+
       </footer>
     </main>
 
@@ -2290,6 +2301,7 @@
 
     // --- Toggle Tasto Invio / Microfono WhatsApp ---
     input.addEventListener('input', () => {
+      if (isGenerationActive) return;
       if (input.value.trim().length > 0) {
         micBtn.classList.add('hidden');
         sendBtn.classList.remove('hidden');
@@ -2449,7 +2461,66 @@
       }
     }
 
-    // --- Indicatori UI Chat & Feedback Strumenti ---
+    // --- Gestione Interruzione Generazione (Stop Button) & Indicatori UI ---
+    let activeAbortController = null;
+    let isGenerationActive = false;
+
+    function setGenerationActive(active, statusText = "", progressPercent = null) {
+      isGenerationActive = active;
+      const stopBtn = document.getElementById('stopBtn');
+      const micBtn = document.getElementById('micBtn');
+      const sendBtn = document.getElementById('sendBtn');
+
+      if (active) {
+        activeAbortController = new AbortController();
+        if (stopBtn) {
+          stopBtn.classList.remove('hidden');
+          stopBtn.classList.add('flex');
+        }
+        if (micBtn) micBtn.classList.add('hidden');
+        if (sendBtn) {
+          sendBtn.classList.add('hidden');
+          sendBtn.classList.remove('flex');
+        }
+        showTypingIndicator(statusText, progressPercent);
+      } else {
+        if (activeAbortController) {
+          activeAbortController = null;
+        }
+        if (stopBtn) {
+          stopBtn.classList.add('hidden');
+          stopBtn.classList.remove('flex');
+        }
+        if (input.value.trim().length > 0) {
+          if (micBtn) micBtn.classList.add('hidden');
+          if (sendBtn) {
+            sendBtn.classList.remove('hidden');
+            sendBtn.classList.add('flex');
+          }
+        } else {
+          if (micBtn) micBtn.classList.remove('hidden');
+          if (sendBtn) {
+            sendBtn.classList.add('hidden');
+            sendBtn.classList.remove('flex');
+          }
+        }
+        hideTypingIndicator();
+      }
+    }
+
+    function abortGeneration() {
+      if (activeAbortController) {
+        try {
+          activeAbortController.abort();
+        } catch (e) {
+          console.warn('Abort error:', e);
+        }
+        activeAbortController = null;
+      }
+      setGenerationActive(false);
+      appendAssistantBubble("⏹️ *Generazione/elaborazione interrotta dall'utente.*");
+    }
+
     function showTypingIndicator(statusText = "", progressPercent = null) {
       const existing = document.getElementById('typingIndicator');
       if (existing) {
@@ -2466,13 +2537,19 @@
 
       indicator.innerHTML = `
         <div class="typing-indicator">
-          <div class="flex items-center gap-2.5">
-            <div class="typing-dots shrink-0">
-              <span></span><span></span><span></span>
+          <div class="flex items-center justify-between gap-3 w-full">
+            <div class="flex items-center gap-2.5">
+              <div class="typing-dots shrink-0">
+                <span></span><span></span><span></span>
+              </div>
+              ${statusText ? `<span id="typingStatusText" class="text-xs font-medium text-slate-700 select-none">${escapeHtml(statusText)}</span>` : `<span id="typingStatusText" class="text-xs font-medium text-slate-700 select-none hidden"></span>`}
             </div>
-            ${statusText ? `<span id="typingStatusText" class="text-xs font-medium text-slate-700 select-none">${escapeHtml(statusText)}</span>` : `<span id="typingStatusText" class="text-xs font-medium text-slate-700 select-none hidden"></span>`}
+            <button type="button" onclick="abortGeneration()" title="Interrompi operazione" class="text-[11px] font-semibold text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 px-2 py-0.5 rounded-full flex items-center gap-1 transition active:scale-95 cursor-pointer ml-auto select-none shadow-2xs">
+              <i class="fa-solid fa-stop text-[9px]"></i>
+              <span>Interrompi</span>
+            </button>
           </div>
-          <div id="typingProgressContainer" class="${showProgress ? '' : 'hidden'} w-48 sm:w-60 pt-1">
+          <div id="typingProgressContainer" class="${showProgress ? '' : 'hidden'} w-48 sm:w-64 pt-1">
             <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
               <div id="typingProgressBar" class="bg-[#25D366] h-full rounded-full transition-all duration-300" style="width: ${percentVal}%"></div>
             </div>
@@ -2942,15 +3019,16 @@
         statusFeedback = "Aggiornamento caveau...";
       }
 
-      const indicator = showTypingIndicator(statusFeedback);
+      setGenerationActive(true, statusFeedback);
 
       try {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ message: text, thread_id: currentThreadId })
+          body: JSON.stringify({ message: text, thread_id: currentThreadId }),
+          signal: activeAbortController ? activeAbortController.signal : undefined
         });
-        if (indicator) indicator.remove();
+        setGenerationActive(false);
         if (!res.ok) throw new Error('Errore nella risposta del server');
         const data = await res.json();
 
@@ -2981,7 +3059,10 @@
         }
         loadDashboard(currentFilter);
       } catch (err) {
-        if (indicator) indicator.remove();
+        if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+          return;
+        }
+        setGenerationActive(false);
         console.error('Errore /api/chat:', err);
         appendAssistantBubble("⚠️ Errore di connessione: impossibile contattare il server.");
       }
@@ -3079,7 +3160,7 @@
         const blobUrl = URL.createObjectURL(file);
 
         appendUserFileBubble(file.name, file.size, blobUrl, isImage, isPdf);
-        const indicator = showTypingIndicator(`Analisi intelligente di ${file.name}...`);
+        setGenerationActive(true, `Analisi intelligente di ${file.name}...`);
 
         const formData = new FormData();
         formData.append('file', file);
@@ -3089,9 +3170,10 @@
           const res = await fetch('/api/documents/upload', {
             method: 'POST',
             headers: authHeaders(),
-            body: formData
+            body: formData,
+            signal: activeAbortController ? activeAbortController.signal : undefined
           });
-          if (indicator) indicator.remove();
+          setGenerationActive(false);
           if (!res.ok) throw new Error('Errore durante l\'estrazione');
           const data = await res.json();
           const docItem = {
@@ -3109,7 +3191,8 @@
           appendAssistantBubble(data.chat_reply || "📄 Documento salvato e catalogato!", [docItem]);
           loadDashboard(currentFilter);
         } catch (err) {
-          if (indicator) indicator.remove();
+          if (err.name === 'AbortError' || err.message?.includes('aborted')) return;
+          setGenerationActive(false);
           console.error('Errore /api/documents/upload:', err);
           appendAssistantBubble("⚠️ Errore durante il caricamento del documento.");
         }
@@ -3120,7 +3203,7 @@
         const userSummaryText = `📁 Caricamento di ${totalCount} file... (${formatBytes(totalSize)})`;
         appendUserBubble(userSummaryText);
 
-        const indicator = showTypingIndicator(`Avvio elaborazione di ${totalCount} file...`, 0);
+        setGenerationActive(true, `Avvio elaborazione di ${totalCount} file...`, 0);
 
         try {
           const uploadedDocs = [];
@@ -3133,6 +3216,7 @@
 
           const uploadWorker = async () => {
             while (fileIndex < totalCount) {
+              if (activeAbortController?.signal?.aborted) break;
               const currentIdx = fileIndex++;
               const file = validFiles[currentIdx];
               
@@ -3146,7 +3230,8 @@
                 const res = await fetch('/api/documents/upload', {
                   method: 'POST',
                   headers: authHeaders(),
-                  body: formData
+                  body: formData,
+                  signal: activeAbortController ? activeAbortController.signal : undefined
                 });
 
                 if (res.ok) {
@@ -3168,6 +3253,7 @@
                   errors.push(file.name);
                 }
               } catch (err) {
+                if (err.name === 'AbortError' || err.message?.includes('aborted')) break;
                 console.error(`Errore rete upload per ${file.name}:`, err);
                 errors.push(file.name);
               } finally {
@@ -3185,10 +3271,12 @@
           }
           await Promise.all(workers);
 
+          if (activeAbortController?.signal?.aborted) return;
+
           updateTypingIndicator("Completato!", 100);
           await new Promise(r => setTimeout(r, 300));
 
-          if (indicator) indicator.remove();
+          setGenerationActive(false);
 
           if (uploadedDocs.length > 0) {
             let replyText = `📁 **${uploadedDocs.length} di ${totalCount}** file archiviati e catalogati nel caveau con successo!`;
@@ -3201,7 +3289,8 @@
             appendAssistantBubble("⚠️ Nessun file è stato elaborato con successo. Verifica i formati o la connessione.");
           }
         } catch (err) {
-          if (indicator) indicator.remove();
+          if (err.name === 'AbortError' || err.message?.includes('aborted')) return;
+          setGenerationActive(false);
           console.error('Errore durante il caricamento batch:', err);
           appendAssistantBubble("⚠️ Errore imprevisto durante il caricamento multiplo dei documenti.");
         }
