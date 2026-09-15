@@ -289,13 +289,14 @@ IDENTITÀ, AMBIENTE OPERATIVO E INTERFACCIA UTENTE (DOVE SEI E COME FUNZIONI):
      * [👁️ Vedi]: apre l'anteprima istantanea a schermo intero del documento.
      * [⬇️ Scarica]: scarica direttamente il file originale sul dispositivo (computer o smartphone) dell'utente.
 
-3. COSA DEVI FARE (OBBLIGHI E REGOLE TASSATIVE):
-   - QUANDO L'UTENTE CHIEDE DOCUMENTI, VUOLE VEDERLI O SCARICARLI (es. "dammi i documenti inerenti all'identificazione", "mostrami la tessera", "voglio fare il download", "scarica", "entrambi"):
-     DEVI SEMPRE E SUBITO INVOCARE `show_document_card`!
+3. COSA DEVI FARE (OBBLIGHI E REGOLE TASSATIVE - NLU PROATTIVA & RIDUZIONE DEI PASSAGGI):
+   - QUANDO L'UTENTE CHIEDE DOCUMENTI, VUOLE VEDERLI O SCARICARLI (es. "dammi i documenti di identità", "mostrami la tessera", "voglio fare il download", "scarica", "scaricali", "entrambi"):
+     DEVI SEMPRE E SUBITO INVOCARE `show_document_card` O ALLEGARE TUTTE LE SCHEDE!
+   - PROATTIVITÀ MULTI-SCHEDA (DIVIETO DI CONFERME INUTILI): Se una ricerca (`search_vault`) o richiesta restituisce un numero limitato di risultati altamente pertinenti (es. 2-3 documenti come Tessera Sanitaria e Ricevuta per l'identificazione), DEVI INVOCARE `show_document_card` PER TUTTI I RISULTATI IN AUTOMATICO.
+   - DIVIETO ASSOLUTO DI CHIEDERE IL PERMESSO O FARE DOMANDE SUPERFLUE: MAI chiedere "Quale vuoi?", "Quale preferisci?", "Desideri che ti mostri la scheda di uno in particolare?", "Quale desideri scaricare?". Questo aggiunge passaggi inutili e contrari all'esperienza d'uso. MOSTRA SUBITO LE SCHEDE DI TUTTI I DOCUMENTI PERTINENTI!
+   - GESTIONE COLLETTIVA DI "SCARICALI", "ENTRAMBI", "TUTTI E DUE", "TUTTI", "SI DI ENTRAMBI": Se l'utente dice "scaricali", "scaricale", "scaricalo", "entrambi", "tutti e due", "tutti", "mostrali tutti", "download" subito dopo che hai elencato dei documenti, capisci immediatamente che si riferisce a TUTTI quelli appena menzionati e mostra le schede per tutti contemporaneamente!
+   - DIVIETO ASSOLUTO DI DIRE "dovrai farlo singolarmente": l'interfaccia supporta l'invio contemporaneo di 2, 3 o più schede contemporaneamente con il rispettivo pulsante di download su ciascuna!
    - DIVIETO ASSOLUTO DI RISPONDERE SOLO A PAROLE: l'utente NON può cliccare sulle tue frasi per scaricare un file. Ha bisogno della CARD GRAFICA con il pulsante [Scarica]!
-   - DIVIETO ASSOLUTO DI DIRE "dovrai farlo singolarmente": l'interfaccia supporta nativamente l'invio contemporaneo di 2, 3 o più schede contemporaneamente! Puoi passare più documenti a `show_document_card(document_ids=[...])` o elencarli.
-   - DIVIETO ASSOLUTO DI CHIEDERE IL PERMESSO ("Vuoi che ti mostri la scheda?", "Desideri che ti mostri la scheda di uno in particolare?", "Quale desideri scaricare?"): se l'utente ha chiesto i documenti o il download, fornisci SUBITO le schede di TUTTI i documenti rilevanti senza fare domande superflue!
-   - GESTIONE DI "ENTRAMBI", "TUTTI E DUE", "TUTTI", "SI DI ENTRAMBI": se ci sono più documenti pertinenti e l'utente dice "entrambi", "si di entrambi", "tutti e due", "download", invia le schede per TUTTI i documenti contemporaneamente!
 
 REGOLE OPERATIVE:
 0. PRIMATO ASSOLUTO DEL DATABASE SULLA CHAT (DATI REALI > CONTESTO):
@@ -371,7 +372,7 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
         title = (d.get("title") or "").strip().lower()
         issuer = (d.get("issuer") or "").strip().lower()
         title_words = [w for w in re.split(r"[^\w]+", title) if len(w) > 3 and w not in ITALIAN_STOPWORDS]
-        title_match = (title and title in asst_lower) or (title_words and sum(1 for w in title_words if w in asst_lower) >= max(1, len(title_words) * 0.6))
+        title_match = (title and title in asst_lower) or (title_words and sum(1 for w in title_words if w in asst_lower) >= max(1, len(title_words) * 0.5))
         # Supporta numeri/acronimi specifici nel titolo (es. "730", "f24")
         acronyms = [w for w in re.split(r"[^\w]+", title) if re.search(r"\d+", w) or len(w) in (2, 3)]
         if not title_match and acronyms:
@@ -410,7 +411,7 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
         for w in ["il", "lo", "la", "l'", "un", "uno", "una", "un'"]
     ) and not any(
         re.search(rf"\b{w}\b", user_lower)
-        for w in ["i", "gli", "le", "tutti", "tutte", "elenco", "elencami", "lista", "quali"]
+        for w in ["i", "gli", "le", "tutti", "tutte", "entrambi", "entrambe", "elenco", "elencami", "lista", "quali"]
     )
     if is_singular_request and len(docs) > 0:
         top_title = (docs[0].get("title") or "").lower()
@@ -420,10 +421,16 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
         if user_mentions_title or user_asks_doc:
             return [docs[0]]
 
-    # 5. Se l'utente ha esplicitamente richiesto un documento
-    user_asks_doc = any(k in user_lower for k in ["document", "file", "bollett", "fattur", "contratt", "certificat", "ricevut", "cedolin", "patente", "carta", "f24", "730", "mostrami", "visualizza", "apri", "scarica"])
+    # 5. Se l'utente ha esplicitamente richiesto documenti o una ricerca documenti (proattività per 1-4 documenti)
+    user_asks_doc = any(k in user_lower for k in [
+        "document", "file", "bollett", "fattur", "contratt", "certificat", "ricevut", "cedolin",
+        "patente", "carta", "f24", "730", "identit", "identificazion", "mostrami", "visualizza",
+        "apri", "scarica", "dammi", "prendi", "vedi"
+    ])
     if user_asks_doc and len(docs) > 0:
-        return [docs[0]]
+        if is_singular_request:
+            return [docs[0]]
+        return docs[:4]
 
     return None
 
@@ -978,14 +985,14 @@ class AgenticChatService:
                 except Exception:
                     pass
 
-            # 4. Singolo titolo
+            # 4. Singolo titolo o query di ricerca
             if not docs and doc_title:
                 matches = search_vault_documents(db, doc_title, thread_id=thread_id)
                 if matches:
-                    top_id = matches[0]["id"]
-                    d = db.query(Document).filter(Document.id == top_id).first()
-                    if d:
-                        docs.append(d)
+                    for m in matches[:4]:
+                        d = db.query(Document).filter(Document.id == m["id"]).first()
+                        if d and d not in docs:
+                            docs.append(d)
 
             # 5. Se nessun parametro, prendi l'ultimo documento
             if not docs and not doc_id and not doc_ids and not doc_title and not doc_titles:
@@ -1185,6 +1192,12 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
     def _handle_listing_intent(self, user_text: str, lower_t: str, db: Session, thread_id: str = "general") -> Optional[ChatResponse]:
         """Restituisce l'elenco reale, veritiero e aggiornato dei documenti presenti nel database, eliminando allucinazioni."""
+        is_deletion = any(k in lower_t for k in [
+            "elimina", "cancella", "rimuovi", "butta", "eliminami", "cancellami", "svuota", "eliminali", "cancellali", "rimuovili"
+        ])
+        if is_deletion:
+            return None
+
         clean = re.sub(r"[?!.,;]", " ", lower_t)
         clean = re.sub(r"\s+", " ", clean).strip()
 
@@ -1398,33 +1411,44 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         if temp_resp:
             return temp_resp
 
+        # Intercetta immediatamente richieste di cancellazione/eliminazione sicura
+        del_resp = self._handle_deletion_intent(user_text, lower_t, db, thread_id=thread_id)
+        if del_resp:
+            return del_resp
+
         # Rileva se si tratta di una richiesta esplicita di lista o elenco
         is_listing_phrase = any(k in lower_t for k in [
             "lista", "elenco", "elencami", "quali documenti", "quali oggetti",
             "cosa c'è", "cosa ce", "cosa ho", "cosa hai", "che documenti", "che oggetti"
         ])
 
-        # Intercetta risposte affermative, selezioni multiple ("entrambi", "tutti e due", "si di entrambi") e richieste di download
+        # Intercetta risposte affermative, selezioni multiple ("entrambi", "tutti e due", "si di entrambi", "scaricali") e richieste di download
         is_download_intent = any(k in lower_t for k in [
             "download", "scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala", "scaricarli", "scaricali", "scaricare",
-            "fare il download", "voglio scaricare", "voglio il download", "voglio fare il download"
+            "fare il download", "voglio scaricare", "voglio il download", "voglio fare il download", "scaricale", "scaricali"
         ])
         is_multi_select = (
             lower_t.strip(" !.?") in [
                 "entrambi", "entrambe", "tutti", "tutte", "tutti e due", "tutte e due", "tutti quanti",
-                "si di entrambi", "sì di entrambi", "si entrambi", "sì entrambi"
+                "si di entrambi", "sì di entrambi", "si entrambi", "sì entrambi", "tutti e 2", "tutte e 2",
+                "scaricali", "scaricale", "scaricali entrambi", "scarica entrambi", "scaricali tutti", "scarica tutti",
+                "scarica tutte", "scaricale tutte", "mostrali tutti", "mostrameli tutti", "mostrale tutte", "mostramele tutte",
+                "apri entrambi", "apri tutti", "visualizzali entrambi", "visualizzali tutti", "vedili entrambi", "vedili tutti"
             ]
             or any(k in lower_t for k in [
                 "entrambi", "entrambe", "tutti e due", "tutte e due", "tutti e 2", "tutte e 2",
-                "mostrameli tutti", "scarica tutti", "scarica entrambi", "si di entrambi", "sì di entrambi"
+                "mostrameli tutti", "mostrali tutti", "mostrale tutte", "mostramele tutte",
+                "scarica tutti", "scarica tutte", "scarica entrambi", "scaricali entrambi", "scaricali tutti", "scaricale tutte",
+                "scaricali", "scaricale", "si di entrambi", "sì di entrambi", "apri entrambi", "visualizzali entrambi"
             ])
         ) and not is_listing_phrase
 
         is_affirmative = (
             lower_t.strip(" !.?") in [
-                "si", "sì", "ok", "va bene", "certo", "mostramelo", "mostrameli", "fammi vedere",
-                "apri", "yes", "vai", "entrambi", "entrambe", "tutti e due", "tutte e due",
-                "si di entrambi", "sì di entrambi", "si entrambi", "sì entrambi", "tutti", "tutte"
+                "si", "sì", "ok", "va bene", "certo", "mostramelo", "mostramela", "mostrameli", "mostrali", "mostrale",
+                "fammi vedere", "apri", "yes", "vai", "entrambi", "entrambe", "tutti e due", "tutte e due",
+                "si di entrambi", "sì di entrambi", "si entrambi", "sì entrambi", "tutti", "tutte",
+                "scaricali", "scaricale", "scaricalo", "scaricala", "scarica", "download", "apri entrambi", "mostrali tutti"
             ]
             or is_multi_select
             or (is_download_intent and len(lower_t.split()) <= 6)
@@ -1456,12 +1480,25 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 for cand in cand_names:
                     c_clean = cand.strip(" *📄\"'")
                     if c_clean and len(c_clean) >= 3:
+                        s_matches = search_vault_documents(db, c_clean, thread_id=thread_id)
+                        if s_matches:
+                            top_d = db.query(Document).filter(Document.id == s_matches[0]["id"]).first()
+                            if top_d and top_d not in matched_docs:
+                                matched_docs.append(top_d)
                         for d in all_docs:
-                            if d.title and (d.title.lower() == c_clean.lower() or c_clean.lower() in d.title.lower()):
+                            if d.title and (d.title.lower() == c_clean.lower() or c_clean.lower() in d.title.lower() or d.title.lower() in c_clean.lower()):
                                 if d not in matched_docs:
                                     matched_docs.append(d)
 
-                # 3. Controlla se fa riferimento a un oggetto fisico
+                # 3. Se non trovati per titolo intero, controlla sovrapposizione parole chiave
+                if not matched_docs:
+                    for d in all_docs:
+                        d_words = [w for w in re.split(r"[^\w]+", d.title.lower()) if len(w) > 3 and w not in ITALIAN_STOPWORDS]
+                        if d_words and sum(1 for w in d_words if w in last_asst.content.lower()) >= max(1, len(d_words) * 0.5):
+                            if d not in matched_docs:
+                                matched_docs.append(d)
+
+                # 4. Controlla se fa riferimento a un oggetto fisico
                 matched_item = None
                 if not matched_docs:
                     all_items = db.query(PhysicalItem).order_by(PhysicalItem.updated_at.desc()).all()
@@ -1481,7 +1518,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 if matched_docs:
                     # Se l'utente non ha chiesto 'entrambi' o 'tutti' e ha specificato parole di uno solo:
                     specific_doc = None
-                    if not is_multi_select and not any(k in lower_t for k in ["entrambi", "tutti", "tutte"]):
+                    if not is_multi_select and not any(k in lower_t for k in ["entrambi", "tutti", "tutte", "scaricali", "scaricale", "mostrali", "mostrameli"]):
                         for d in matched_docs:
                             d_words = [w for w in re.split(r"[^\w]+", d.title.lower()) if len(w) > 2 and w not in ITALIAN_STOPWORDS]
                             if any(w in lower_t for w in d_words):
@@ -1596,6 +1633,27 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             "elimina", "cancella", "rimuovi", "butta", "eliminami", "cancellami", "svuota", "eliminali", "cancellali", "rimuovili"
         ])
 
+        is_doc_search_request = (
+            any(k in lower_t for k in [
+                "document", "file", "bollett", "fattur", "contratt", "certificat", "ricevut",
+                "cedolin", "busta paga", "patente", "passaporto", "carta", "f24", "730", "estratto",
+                "identit", "identificazion", "mutuo", "visura", "tessera", "tasse", "tribut"
+            ])
+            and any(k in lower_t for k in [
+                "dammi", "mostra", "mostrami", "cerca", "trova", "trovami", "apri", "vedi", "prendi", "fammi vedere", "visualizza", "voglio", "scarica"
+            ])
+            and not is_where_request
+            and not is_store_or_update
+            and not is_listing_request
+            and not is_delete_request
+        ) or (
+            lower_t.strip(" !.?") in [
+                "documenti di identità", "documenti di identita", "documenti personali",
+                "documenti identità", "documenti identita", "tessera sanitaria", "ricevute", "bollette",
+                "i documenti di identità", "i documenti di identita", "documenti"
+            ]
+        )
+
         stored_item_result = None
         if is_store_or_update:
             item_n, loc_n = self._extract_item_and_location(user_text, last_item_in_context=last_item_name)
@@ -1610,7 +1668,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 return del_resp
 
             clean_test = lower_t.replace("?", "").strip()
-            if is_download_or_show:
+            if is_download_or_show or is_doc_search_request:
                 last_asst_msg = (
                     db.query(ChatMessage)
                     .filter(ChatMessage.thread_id == thread_id, ChatMessage.sender == "assistant")
@@ -1618,14 +1676,14 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                     .first()
                 )
                 target_docs = []
-                if last_asst_msg and last_asst_msg.content:
+                if is_download_or_show and last_asst_msg and last_asst_msg.content:
                     all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
                     for d in all_docs:
                         if d.title and len(d.title) >= 3 and d.title.lower() in last_asst_msg.content.lower():
                             if d not in target_docs:
                                 target_docs.append(d)
                     if not target_docs:
-                        cand_lines = [line.strip(" *🏛️📄:-") for line in last_asst_msg.content.split("\n") if any(k in line.lower() for k in ["f24", "bolletta", "ricevuta", "contratto", "estratto", "certificato", "tessera"])]
+                        cand_lines = [line.strip(" *🏛️📄:-") for line in last_asst_msg.content.split("\n") if any(k in line.lower() for k in ["f24", "bolletta", "ricevuta", "contratto", "estratto", "certificato", "tessera", "mutuo"])]
                         for cl in cand_lines:
                             s_res = search_vault_documents(db, cl, thread_id=thread_id)
                             if s_res:
@@ -1633,8 +1691,20 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                 if td and td not in target_docs:
                                     target_docs.append(td)
 
-                # Se l'utente specifica uno in particolare
-                if len(target_docs) > 1 and not any(k in lower_t for k in ["entrambi", "tutti", "tutte", "download", "scarica"]):
+                if not target_docs:
+                    clean_query = re.sub(
+                        r"^(?:dammi|mostrami|mostra|apri|visualizza|prendi|vedi|scarica|trovami|trova|voglio\s+vedere|fammi\s+vedere|cerca)\s*(?:il|la|lo|le|i|l'|un|una|uno)?\s*",
+                        "", lower_t
+                    ).strip(" ?.")
+                    s_matches = search_vault_documents(db, clean_query or user_text, thread_id=thread_id)
+                    for m in s_matches[:4]:
+                        td = db.query(Document).filter(Document.id == m["id"]).first()
+                        if td and td not in target_docs:
+                            target_docs.append(td)
+
+                # Se richiesta singolare esplicita ("il", "la") e non plurale/collettiva
+                is_sing = any(re.search(rf"\b{w}\b", lower_t) for w in ["il", "lo", "la", "l'", "un", "una"]) and not any(re.search(rf"\b{w}\b", lower_t) for w in ["i", "gli", "le", "tutti", "tutte", "entrambi", "entrambe", "documenti", "ricevute", "bollette"])
+                if is_sing and len(target_docs) > 1:
                     for d in target_docs:
                         d_words = [w for w in re.split(r"[^\w]+", d.title.lower()) if len(w) > 2 and w not in ITALIAN_STOPWORDS]
                         if any(w in lower_t for w in d_words):
@@ -1646,7 +1716,12 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 docs = tool_out.get("documents", [])
                 if docs:
                     if len(docs) > 1:
-                        rep = f"📄 Ecco le schede per i documenti richiesti! Puoi visualizzarli con 'Vedi' o scaricarli direttamente con il pulsante 'Scarica' qui sotto. ⬇️"
+                        lines = [f"- 📄 **{d['title']}** ({d.get('issuer') or d.get('doc_type', '')})" for d in docs]
+                        rep = (
+                            f"📄 Ho trovato i seguenti **{len(docs)} documenti** nel caveau:\n\n" +
+                            "\n".join(lines) +
+                            "\n\nEcco le schede con i pulsanti 'Vedi' e 'Scarica' per ciascun file qui sotto! ⬇️"
+                        )
                     else:
                         rep = f"📄 Ecco la scheda per **{docs[0]['title']}**! Puoi visualizzarlo o scaricarlo direttamente con il pulsante qui sotto. ⬇️"
                     return ChatResponse(
@@ -1801,7 +1876,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             tool_choice_cfg = {"type": "function", "function": {"name": "delete_vault_record"}}
         elif is_rename_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "rename_vault_document"}}
-        elif is_download_or_show:
+        elif is_download_or_show or is_doc_search_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "show_document_card"}}
         elif is_listing_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "list_vault_contents"}}
@@ -1982,6 +2057,19 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                 n_title = (tool_data or {}).get("new_title")
                                 if n_title and n_title.lower() not in final_text.lower():
                                     final_text = f"✅ Ho rinominato il file in '**{n_title}**'!\n{final_text}"
+
+                        # Sanitizzazione anti-esitazione e proattività NLU:
+                        final_text = re.sub(r"per scaricare entrambi i documenti,?\s*dovrai farlo singolarmente\.?", "", final_text, flags=re.IGNORECASE).strip()
+                        hesitation_pattern = r"(?:desideri\s+che\s+ti\s+mostri\s+la\s+scheda\s+di\s+uno\s+(?:di\s+questi\s+documenti\s+)?in\s+particolare\??|quale\s+(?:di\s+questi\s+)?(?:vuoi|desideri|preferisci)\s*(?:vedere|scaricare|aprire)?\??|vuoi\s+che\s+ti\s+mostri\s+la\s+scheda\??|quale\s+vuoi\??|quale\s+preferisci\??)"
+                        if docs_found and len(docs_found) > 0 and re.search(hesitation_pattern, final_text, flags=re.IGNORECASE):
+                            final_text = re.sub(
+                                hesitation_pattern,
+                                "Ecco le schede con i pulsanti 'Vedi' e 'Scarica' per ciascun documento qui sotto! ⬇️",
+                                final_text,
+                                flags=re.IGNORECASE
+                            ).strip()
+                            filtered_docs = docs_found[:4]
+                            tool_action = "show_document_card"
 
                         if tool_action == "show_document_card":
                             filtered_docs = docs_found
@@ -2274,7 +2362,12 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
     def _fallback_deterministic_response(self, user_text: str, lower_t: str, db: Session, thread_id: str) -> ChatResponse:
         """Fallback locale robusto per memorizzazione, ricerca e scadenze in caso di rate-limit API o disconnessione."""
-        # 0. Mostra scheda documento o download
+        # 0. Eliminazione sicura di documenti o oggetti
+        del_resp = self._handle_deletion_intent(user_text, lower_t, db, thread_id=thread_id)
+        if del_resp:
+            return del_resp
+
+        # 0b. Mostra scheda documento o download
         if any(k in lower_t for k in [
             "scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala", "scaricarli", "scaricali", "scaricare",
             "download", "fare il download", "voglio scaricare", "voglio il download", "voglio fare il download",
@@ -2368,13 +2461,16 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         # 4. Liste o elenchi del caveau
         is_list = (
-            any(k in lower_t for k in [
-                "lista", "elenco", "elencami", "quali documenti", "quali oggetti",
-                "mostrami tutti", "mostrami tutte", "mostra tutti", "mostra tutte",
-                "cosa c'è nel caveau", "cosa ce nel caveau", "cosa ho nel caveau", "cosa hai nel caveau",
-                "vedere tutti", "vedere tutte", "tutti i documenti", "tutti gli oggetti", "che oggetti", "che documenti"
-            ])
-            or lower_t.strip(" !.?") in ["documenti", "oggetti", "tutti i documenti", "tutti gli oggetti", "tutto", "i miei documenti", "i miei oggetti"]
+            (
+                any(k in lower_t for k in [
+                    "lista", "elenco", "elencami", "quali documenti", "quali oggetti",
+                    "mostrami tutti", "mostrami tutte", "mostra tutti", "mostra tutte",
+                    "cosa c'è nel caveau", "cosa ce nel caveau", "cosa ho nel caveau", "cosa hai nel caveau",
+                    "vedere tutti", "vedere tutte", "tutti i documenti", "tutti gli oggetti", "che oggetti", "che documenti"
+                ])
+                or lower_t.strip(" !.?") in ["documenti", "oggetti", "tutti i documenti", "tutti gli oggetti", "tutto", "i miei documenti", "i miei oggetti"]
+            )
+            and not any(k in lower_t for k in ["elimina", "cancella", "rimuovi", "butta", "eliminami", "cancellami", "svuota", "eliminali", "cancellali", "rimuovili"])
         )
         if is_list:
             target = "physical_items" if any(k in lower_t for k in ["oggett", "cose"]) else ("documents" if any(k in lower_t for k in ["document", "file", "bollett", "fattur"]) else "all")
@@ -2410,7 +2506,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         # 4. Ricerca intelligente nel caveau (oggetti fisici e documenti)
         search_q = re.sub(
-            r"^(?:dov'è|dov'e|dove ho messo|dove sono|dove|cerca|trovami|trova|dammi|mostrami|apri|visualizza|prendi)\s*(?:il|la|lo|le|i|l'|un|una|uno)?\s*",
+            r"^(?:dov'è|dov'e|dove ho messo|dove sono|dove|cerca|trovami|trova|dammi|mostrami|apri|visualizza|prendi|scarica|vedi)\s*(?:il|la|lo|le|i|l'|un|una|uno)?\s*",
             "", lower_t
         ).strip(" ?.")
         clean_q = search_q or user_text
@@ -2419,15 +2515,29 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             f_docs = s_res.get("found_documents", [])
             f_items = s_res.get("found_physical_items", [])
             if f_docs:
-                d = f_docs[0]
-                amt_str = f" ({d['amount']:.2f} €)" if d.get('amount') else ""
-                due_str = f" - scadenza: {d['due_date']}" if d.get('due_date') else ""
-                return ChatResponse(
-                    reply=f"📄 Ho trovato il documento **{d['title']}**{amt_str}{due_str}:\n💡 {d.get('summary', '')}",
-                    action="search_vault",
-                    data=s_res,
-                    documents=[d]
-                )
+                if len(f_docs) == 1:
+                    d = f_docs[0]
+                    amt_str = f" ({d['amount']:.2f} €)" if d.get('amount') else ""
+                    due_str = f" - scadenza: {d['due_date']}" if d.get('due_date') else ""
+                    return ChatResponse(
+                        reply=f"📄 Ho trovato il documento **{d['title']}**{amt_str}{due_str}:\n💡 {d.get('summary', '')}",
+                        action="show_document_card",
+                        data=s_res,
+                        documents=[d]
+                    )
+                else:
+                    lines = [f"- 📄 **{d['title']}** ({d.get('issuer') or d.get('doc_type', '')})" for d in f_docs]
+                    rep = (
+                        f"📄 Ho trovato i seguenti **{len(f_docs)} documenti** nel caveau:\n\n" +
+                        "\n".join(lines) +
+                        "\n\nEcco le schede con i pulsanti 'Vedi' e 'Scarica' per ciascun file qui sotto! ⬇️"
+                    )
+                    return ChatResponse(
+                        reply=rep,
+                        action="show_document_card",
+                        data=s_res,
+                        documents=f_docs
+                    )
             if f_items:
                 it = f_items[0]
                 loc = it['primary_location'] + (f" ({it['detailed_location']})" if it.get('detailed_location') else "")

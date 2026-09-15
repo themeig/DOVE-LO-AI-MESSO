@@ -716,6 +716,191 @@ def test_delete_vault_record_tool_bulk_and_single():
         assert res_single["confirmation"]["target_id"] == d3.id
 
 
+def test_proactive_multi_document_cards_emission_no_confirmation_needed():
+    """Scenario 1: Se una ricerca o richiesta trova 2-3 documenti pertinenti (es. 'dammi i documenti di identità'),
+    l'agente emette proattivamente tutte le schede e non chiede 'quale preferisci?' o 'quale vuoi?'."""
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        doc_ts = Document(
+            title="Tessera Sanitaria Italiana",
+            file_path="uploads/tessera.pdf",
+            file_type="pdf",
+            doc_type="sanitario",
+            summary="Dati anagrafici e codice fiscale."
+        )
+        doc_pavia = Document(
+            title="Ricevuta Pre-Immatricolazione Università di Pavia",
+            file_path="uploads/pavia.pdf",
+            file_type="pdf",
+            doc_type="ricevuta",
+            summary="Ricevuta iscrizione università con dati anagrafici identificativi."
+        )
+        doc_mutuo = Document(
+            title="Estratto Conto Mutuo Intesa",
+            file_path="uploads/mutuo.pdf",
+            file_type="pdf",
+            doc_type="mutuo",
+            summary="Estratto conto mutuo banca."
+        )
+        session.add_all([doc_ts, doc_pavia, doc_mutuo])
+        session.commit()
+
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = "" # deterministic fallback
+
+        # Richiesta utente: "dammi i documenti di identità"
+        res = agent.run_turn("dammi i documenti di identità", session, thread_id="general")
+
+        # Verifica che entrambe le card siano state allegate
+        assert res.documents is not None, "Le schede documento devono essere allegate!"
+        assert len(res.documents) == 2, f"Dovevano essere allegate 2 schede, trovate {len(res.documents)}"
+        titles = [d["title"] for d in res.documents]
+        assert "Tessera Sanitaria Italiana" in titles
+        assert "Ricevuta Pre-Immatricolazione Università di Pavia" in titles
+        assert "Estratto Conto Mutuo Intesa" not in titles
+
+        # Verifica che la risposta NON contenga domande di esitazione superflue
+        reply_low = res.reply.lower()
+        assert "quale preferisci" not in reply_low
+        assert "quale desideri" not in reply_low
+        assert "uno in particolare" not in reply_low
+        assert "singolarmente" not in reply_low
+
+
+def test_collective_affirmative_scaricali_and_entrambi_resolution():
+    """Scenario 2: Se l'utente dice 'scaricali', 'entrambi', 'mostrali tutti' subito dopo che sono stati elencati più documenti,
+    l'assistente risolve tutti i documenti e mostra le schede senza dire 'devi farlo singolarmente'."""
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        doc1 = Document(
+            title="Bolletta Enel Luce",
+            file_path="uploads/enel.pdf",
+            file_type="pdf",
+            doc_type="bolletta",
+            summary="Bolletta energia elettrica."
+        )
+        doc2 = Document(
+            title="Bolletta Gas Eni",
+            file_path="uploads/eni.pdf",
+            file_type="pdf",
+            doc_type="bolletta",
+            summary="Bolletta gas naturale."
+        )
+        session.add_all([doc1, doc2])
+
+        # L'assistente ha appena risposto citando le due bollette
+        asst_msg = ChatMessage(
+            sender="assistant",
+            content="Ho trovato due bollette nel caveau:\n- 📄 Bolletta Enel Luce\n- 📄 Bolletta Gas Eni",
+            thread_id="general"
+        )
+        session.add(asst_msg)
+        session.commit()
+
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = "" # deterministic fallback
+
+        # 1. Test "scaricali"
+        res_scaricali = agent.run_turn("scaricali", session, thread_id="general")
+        assert res_scaricali.documents is not None
+        assert len(res_scaricali.documents) == 2
+        titles_sc = [d["title"] for d in res_scaricali.documents]
+        assert "Bolletta Enel Luce" in titles_sc
+        assert "Bolletta Gas Eni" in titles_sc
+        assert "singolarmente" not in res_scaricali.reply.lower()
+
+        # 2. Test "scarica entrambi"
+        res_entrambi = agent.run_turn("scarica entrambi", session, thread_id="general")
+        assert res_entrambi.documents is not None
+        assert len(res_entrambi.documents) == 2
+        assert "singolarmente" not in res_entrambi.reply.lower()
+
+        # 3. Test "mostrali tutti"
+        res_mostrali = agent.run_turn("mostrali tutti", session, thread_id="general")
+        assert res_mostrali.documents is not None
+        assert len(res_mostrali.documents) == 2
+
+
+def test_llm_guardrail_replaces_hesitation_with_multi_cards():
+    """Verifica che se il modello LLM restituisce una domanda esitante tipo 'Desideri che ti mostri uno in particolare?',
+    il guardrail sanifichi il messaggio ed emetta subito tutte le schede trovate."""
+    from unittest.mock import patch, MagicMock
+
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        doc1 = Document(
+            title="Tessera Sanitaria Italiana",
+            file_path="uploads/tessera.pdf",
+            file_type="pdf",
+            doc_type="sanitario",
+            summary="Dati anagrafici e codice fiscale."
+        )
+        doc2 = Document(
+            title="Ricevuta Pre-Immatricolazione Università di Pavia",
+            file_path="uploads/pavia.pdf",
+            file_type="pdf",
+            doc_type="ricevuta",
+            summary="Ricevuta iscrizione università con dati anagrafici."
+        )
+        session.add_all([doc1, doc2])
+        session.commit()
+
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = "test-sk-key"
+
+        # Simula il primo step LLM che chiama search_vault
+        mock_r1 = MagicMock()
+        mock_r1.status_code = 200
+        mock_r1.json.return_value = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "tool_calls": [{
+                        "id": "call_search_1",
+                        "type": "function",
+                        "function": {
+                            "name": "search_vault",
+                            "arguments": '{"query": "documenti di identità"}'
+                        }
+                    }]
+                }
+            }]
+        }
+
+        # Simula il secondo step LLM che risponde con una domanda esitante superflua
+        mock_r2 = MagicMock()
+        mock_r2.status_code = 200
+        mock_r2.json.return_value = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "content": (
+                        "Ho trovato i seguenti documenti inerenti all'identificazione personale:\n"
+                        "* 📄 Tessera Sanitaria Italiana : Contiene i tuoi dati anagrafici.\n"
+                        "* 📄 Ricevuta Pre-Immatricolazione Università di Pavia : Riporta i tuoi dati anagrafici.\n\n"
+                        "Desideri che ti mostri la scheda di uno di questi documenti in particolare?"
+                    )
+                }
+            }]
+        }
+
+        with patch("httpx.post", side_effect=[mock_r1, mock_r2]):
+            res = agent.run_turn("dammi i documenti di identità", session, thread_id="general")
+
+            # Il guardrail deve intercettare la domanda superflua, sostituirla ed emettere entrambe le schede
+            assert res.documents is not None, "Le schede documento devono essere allegate!"
+            assert len(res.documents) == 2, f"Dovevano essere allegate 2 schede, trovate {len(res.documents)}"
+            assert "uno di questi documenti in particolare" not in res.reply
+            assert "desideri che ti mostri" not in res.reply.lower()
+            assert "schede" in res.reply.lower()
+            assert res.action == "show_document_card"
+
+
+
+
 
 
 

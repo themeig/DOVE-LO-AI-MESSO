@@ -60,10 +60,22 @@ CONCEPT_SYNONYMS: Dict[str, List[str]] = {
     "referti": ["referto", "visita", "medico", "esame", "analisi", "ospedale", "salute"],
     "chiavi": ["chiave", "porta", "scorta", "casa", "box", "garage", "cancello", "cassaforte"],
     "chiave": ["chiavi", "porta", "scorta", "casa", "box", "garage", "cancello", "cassaforte"],
-    "passaporto": ["passaporti"],
-    "passaporti": ["passaporto"],
-    "patente": ["patenti", "guida", "auto", "veicolo"],
-    "patenti": ["patente", "guida", "auto", "veicolo"]
+    "passaporto": ["passaporti", "identità", "identificazione", "documenti"],
+    "passaporti": ["passaporto", "identità", "identificazione", "documenti"],
+    "patente": ["patenti", "guida", "auto", "veicolo", "identità", "identificazione"],
+    "patenti": ["patente", "guida", "auto", "veicolo", "identità", "identificazione"],
+    "identita": ["identità", "identificazione", "riconoscimento", "tessera", "patente", "passaporto", "carta", "anagrafici", "anagrafico", "anagrafica", "ricevuta", "personale", "codice"],
+    "identità": ["identita", "identificazione", "riconoscimento", "tessera", "patente", "passaporto", "carta", "anagrafici", "anagrafico", "anagrafica", "ricevuta", "personale", "codice"],
+    "identificazione": ["identità", "identita", "riconoscimento", "tessera", "patente", "passaporto", "carta", "anagrafici", "anagrafico", "anagrafica", "ricevuta", "personale"],
+    "personale": ["identità", "identificazione", "anagrafici", "anagrafico", "anagrafica"],
+    "personali": ["identità", "identificazione", "anagrafici", "anagrafico", "anagrafica"],
+    "sanitaria": ["tessera", "salute", "medico", "sanitario", "asl", "codice", "fiscale"],
+    "ricevuta": ["ricevute", "pagamento", "iscrizione", "immatricolazione", "quietanza", "scontrino", "fattura"],
+    "ricevute": ["ricevuta", "pagamento", "iscrizione", "immatricolazione", "quietanza", "scontrino", "fattura"],
+    "contratto": ["contratti", "accordo", "locazione", "affitto", "lavoro"],
+    "contratti": ["contratto", "accordo", "locazione", "affitto", "lavoro"],
+    "certificato": ["certificati", "attestato", "laurea", "residenza", "stato"],
+    "certificati": ["certificato", "attestato", "laurea", "residenza", "stato"]
 }
 
 
