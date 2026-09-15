@@ -1138,6 +1138,17 @@
       }
     }
 
+    function cleanSidebarPreview(text) {
+      if (!text) return 'Nessun messaggio';
+      let clean = String(text)
+        .replace(/<[^>]*>/g, '') // rimuovi tag html
+        .replace(/[*_~`#>•-]/g, '') // rimuovi caratteri markdown
+        .replace(/\r?\n|\r/g, ' ') // sostituisci a capo con spazio singolo
+        .replace(/\s+/g, ' ') // collassa spazi multipli
+        .trim();
+      return clean || 'Nessun messaggio';
+    }
+
     function renderThreadsList() {
       const container = document.getElementById('threadsContainer');
       const searchVal = (document.getElementById('threadsSearchInput')?.value || '').toLowerCase().trim();
@@ -1176,23 +1187,24 @@
           ? `<span class="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-1.5 py-0.5 rounded border border-emerald-200">👥 Gruppo</span>`
           : `<span class="text-[10px] bg-indigo-50 text-indigo-700 font-semibold px-1.5 py-0.5 rounded border border-indigo-200">🗂️ Area</span>`;
 
-        const lastMsg = t.last_message || t.description || 'Nessun messaggio';
+        const rawLastMsg = t.last_message || t.description || 'Nessun messaggio';
+        const cleanPreview = cleanSidebarPreview(rawLastMsg);
         const timeStr = t.last_message_time || '';
 
         return `
-          <div onclick="switchThread('${t.id}')" class="flex items-center gap-3 px-3.5 py-3 cursor-pointer transition select-none ${activeClass}">
+          <div onclick="switchThread('${t.id}')" class="h-[72px] min-h-[72px] max-h-[72px] flex items-center gap-3 px-3.5 py-2 cursor-pointer transition select-none ${activeClass} border-b border-slate-100/80 overflow-hidden box-border">
             <div class="relative shrink-0">
               <div class="w-11 h-11 rounded-full flex items-center justify-center text-white text-lg font-bold border border-white/20 shadow-2xs ${t.color || 'bg-[#128C7E]'}">
                 <i class="fa-solid ${t.icon || 'fa-compass'}"></i>
               </div>
             </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between gap-1 mb-0.5">
+            <div class="flex-1 min-w-0 overflow-hidden">
+              <div class="flex items-center justify-between gap-1 mb-1">
                 <h4 class="font-semibold text-xs text-slate-900 truncate">${escapeHtml(t.name)}</h4>
-                <span class="text-[10px] text-slate-400 shrink-0">${escapeHtml(timeStr)}</span>
+                <span class="text-[10px] text-slate-400 shrink-0 font-normal">${escapeHtml(timeStr)}</span>
               </div>
-              <div class="flex items-center justify-between gap-2">
-                <p class="text-[11px] text-slate-500 truncate leading-tight">${formatMessageText(lastMsg)}</p>
+              <div class="flex items-center justify-between gap-2 overflow-hidden">
+                <p class="text-[11px] text-slate-500 truncate leading-tight flex-1 overflow-hidden whitespace-nowrap block" title="${escapeHtml(cleanPreview)}">${escapeHtml(cleanPreview)}</p>
                 <div class="shrink-0">${badgeTag}</div>
               </div>
             </div>
