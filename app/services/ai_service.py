@@ -160,26 +160,26 @@ class MockAIService:
 
     def classify_and_extract_intent(self, text: str) -> MessageIntent:
         t = text.lower()
-        if "dov'è" in t or "dove si trova" in t or "dove ho messo" in t or "dove sono" in t:
-            item = re.sub(r".*?(dov'è|dove si trova|dove ho messo|dove sono)\s+", "", t).strip(" ?.")
-            return MessageIntent(intent="QUERY_LOCATION", item_name=item, query_text=text)
-        
-        if "scadenz" in t or "da pagare" in t or "quanto devo pagare" in t or "bollett" in t:
+        if any(w in t for w in ["dov'è", "dov'e", "dove si trova", "dove ho messo", "dove sono", "dove sta"]):
+            item = re.sub(r".*?(?:dov'è|dov'e|dove si trova|dove ho messo|dove sono|dove sta)\s*(?:il|lo|la|i|gli|le|l')?\s*", "", t).strip(" ?.")
+            if item:
+                return MessageIntent(intent="QUERY_LOCATION", item_name=item, query_text=text)
+
+        if any(w in t for w in ["scadenz", "da pagare", "quanto devo pagare", "bollette da pagare"]):
             return MessageIntent(intent="QUERY_DEADLINES", query_text=text)
 
-        if "messo" in t or "riposto" in t or "lasciato" in t or "salvato" in t:
-            item = "oggetto"
-            loc = "posto specificato"
-            m = re.search(r"(?:messo|riposto|salvato)\s+(?:il\s+|la\s+|le\s+|i\s+|l\')?(.+?)\s+(?:nel|nella|in|su|sul|sotto)\s+(.+)", t)
+        if any(re.search(rf"\b{w}\b", t) for w in ["messo", "riposto", "lasciato", "salvato", "conservato", "posizionato"]):
+            m = re.search(r"\b(?:ho\s+)?(?:messo|riposto|salvato|lasciato|conservato|posizionato)\b\s+(?:il\s+|la\s+|le\s+|i\s+|l\')?(.+?)\s+\b(?:nel|nella|nello|nei|negli|nelle|in|su|sul|sulla|sullo|sui|sugli|sulle|sotto|a)\b\s+(.+)", t)
             if m:
-                item = m.group(1).strip()
-                loc = m.group(2).strip()
-            return MessageIntent(
-                intent="STORE_LOCATION",
-                item_name=item,
-                primary_location=loc,
-                detailed_location=None
-            )
+                item = m.group(1).strip(" .?!\"'[]:;,")
+                loc = m.group(2).strip(" .?!\"'[]:;,")
+                if item and loc and "dove lo ai messo" not in item.lower() and len(item) >= 2:
+                    return MessageIntent(
+                        intent="STORE_LOCATION",
+                        item_name=item,
+                        primary_location=loc,
+                        detailed_location=None
+                    )
 
         return MessageIntent(intent="GENERAL", query_text=text)
 

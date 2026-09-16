@@ -39,14 +39,13 @@ def handle_chat_message(
     db.commit()
 
     # 2. Run intelligent agent with real tools, thread context and quoted reference
-    agent_input = payload.message
-    if payload.quoted_message and payload.quoted_message.get("text"):
-        quote_sender = payload.quoted_message.get("sender") or "Messaggio precedente"
-        quote_text = str(payload.quoted_message.get("text", "")).strip()
-        agent_input = f'[In risposta a {quote_sender}: "{quote_text}"]\n{payload.message}'
-
     agent = get_agent()
-    chat_response = agent.run_turn(agent_input, db=db, thread_id=thread_id)
+    chat_response = agent.run_turn(
+        payload.message,
+        db=db,
+        thread_id=thread_id,
+        quoted_message=payload.quoted_message
+    )
 
     # 3. Save assistant reply to chat history
     meta_dict = {"action": chat_response.action}

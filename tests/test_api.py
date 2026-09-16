@@ -214,3 +214,29 @@ def test_chat_with_quoted_message():
     assert last_user_msg["metadata"] is not None
     assert "quoted_message" in last_user_msg["metadata"]
     assert last_user_msg["metadata"]["quoted_message"]["text"] == "Bolletta Enel Energia da 64.20€"
+
+def test_quote_with_delete_keyword_does_not_trigger_deletion():
+    quote_payload = {
+        "message": "vedi che sto quotando un messaggio? sto facendo riferimento a questo",
+        "thread_id": "general",
+        "quoted_message": {
+            "sender": "Dove lo AI messo",
+            "text": "Potrebbe essere utile rivedere questi documenti per eliminare le copie superflue."
+        }
+    }
+    res = client.post("/api/chat", json=quote_payload)
+    assert res.status_code == 200
+    data = res.json()
+    # Non deve MAI scattare l'azione di eliminazione o il confirmation modal
+    assert data.get("action") != "REQUEST_DELETE"
+    assert data.get("confirmation") is None
+
+def test_question_about_message_does_not_trigger_store_physical_item():
+    res = client.post("/api/chat", json={
+        "message": "ti ricordi di questo messaggio? ti ricordi questo messaggio dimmi solo si o no",
+        "thread_id": "general"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data.get("action") != "store_physical_item"
+    assert "memorizzato" not in data.get("reply", "").lower()

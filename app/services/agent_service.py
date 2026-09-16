@@ -674,6 +674,19 @@ class AgenticChatService:
         t = text.strip()
         low = t.lower()
 
+        def _clean_and_validate(it: Optional[str], lc: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+            if not it or not lc:
+                return None, None
+            clean_it = it.strip(" .?!\"'[]:;,*`")
+            clean_lc = lc.strip(" .?!\"'[]:;,*`")
+            # Ignora falsi positivi da messaggi di sistema, citazioni o domande meta
+            invalid_kws = ["dove lo ai messo", "in risposta a", "ti ricordi", "questo messaggio", "sto quotando", "messaggio precedente"]
+            if any(k in clean_it.lower() or k in clean_lc.lower() for k in invalid_kws):
+                return None, None
+            if len(clean_it) < 2 or len(clean_it) > 100 or len(clean_lc) < 2 or len(clean_lc) > 150:
+                return None, None
+            return clean_it, clean_lc
+
         # Pronomi (es. "mettila in soggiorno", "spostalo in garage")
         m_pro = re.search(
             r"^(?:mettila|mettilo|mettili|mettile|spostala|spostalo|spostali|spostale|posizionalo|posizionala|sistemalo|sistemala)\s+(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\s+(.+)",
@@ -681,11 +694,11 @@ class AgenticChatService:
         )
         if m_pro:
             loc = m_pro.group(1).strip(" .?!")
-            return last_item_in_context, loc
+            return _clean_and_validate(last_item_in_context, loc)
 
         # 1. "modifica/cambia/aggiorna la posizione di X e mettila/mettilo in Y"
         m = re.search(
-            r"(?:modifica|cambia|aggiorna)\s+(?:la\s+posizione\s+(?:di|del|della|dei|degli|delle|d\')\s*)?(.+?)\s+(?:e\s+)?(?:mettila|mettilo|mettili|mettile|spostala|spostalo|spostali|spostale|salvala|salvalo)?\s*(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\s+(.+)",
+            r"\b(?:modifica|cambia|aggiorna)\b\s+(?:la\s+posizione\s+(?:di|del|della|dei|degli|delle|d\')\s*)?(.+?)\s+(?:e\s+)?(?:mettila|mettilo|mettili|mettile|spostala|spostalo|spostali|spostale|salvala|salvalo)?\s*(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\s+(.+)",
             low
         )
         if m:
@@ -693,56 +706,56 @@ class AgenticChatService:
             loc = m.group(2).strip(" .?!")
             item = re.sub(r"^(?:la\s+posizione\s+(?:di|del|della|dei|degli|delle|d\')\s*)", "", item).strip()
             item = re.sub(r"^(?:il|lo|la|i|gli|le|l\'|un|uno|una|un\')\s*", "", item).strip()
-            return item, loc
+            return _clean_and_validate(item, loc)
 
         # 2. "sposta/trasferisci/porta X in Y"
         m = re.search(
-            r"(?:sposta|trasferisci|porta)\s+(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\s+(.+)",
+            r"\b(?:sposta|trasferisci|porta)\b\s+(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+\b(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\b\s+(.+)",
             low
         )
         if m:
             item = m.group(1).strip()
             loc = m.group(2).strip(" .?!")
-            return item, loc
+            return _clean_and_validate(item, loc)
 
         # 3. "metti/posiziona/sistema X in Y"
         m = re.search(
-            r"(?:metti|posiziona|sistema)\s+(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\s+(.+)",
+            r"\b(?:metti|posiziona|sistema)\b\s+(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+\b(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\b\s+(.+)",
             low
         )
         if m:
             item = m.group(1).strip()
             loc = m.group(2).strip(" .?!")
-            return item, loc
+            return _clean_and_validate(item, loc)
 
         # 4. "ho messo/riposto/salvato/lasciato/conservato/posizionato X in Y"
         m = re.search(
-            r"(?:messo|riposto|salvato|lasciato|conservato|posizionato|sistemato)\s+(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+(?:nel|nella|nello|nei|negli|nelle|in|su|sul|sulla|sullo|sui|sugli|sulle|sotto|a|all\'|allo|alla|dentro|sopra)\s+(.+)",
+            r"\b(?:ho\s+)?(?:messo|riposto|salvato|lasciato|conservato|posizionato|sistemato)\b\s+(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+\b(?:nel|nella|nello|nei|negli|nelle|in|su|sul|sulla|sullo|sui|sugli|sulle|sotto|a|all\'|allo|alla|dentro|sopra)\b\s+(.+)",
             low
         )
         if m:
             item = m.group(1).strip()
             loc = m.group(2).strip(" .?!")
-            return item, loc
+            return _clean_and_validate(item, loc)
 
         # 5. "ora X si trova in Y" o "X ora è in Y"
         m = re.search(
-            r"(?:ora|adesso)\s+(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+(?:è|e\'|si trova|sta)\s+(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\s+(.+)",
+            r"\b(?:ora|adesso)\b\s+(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+(?:è|e\'|si trova|sta)\s+\b(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\b\s+(.+)",
             low
         )
         if m:
             item = m.group(1).strip()
             loc = m.group(2).strip(" .?!")
-            return item, loc
+            return _clean_and_validate(item, loc)
 
         m = re.search(
-            r"(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+(?:ora|adesso)\s+(?:è|e\'|si trova|sta)\s+(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\s+(.+)",
+            r"(?:il\s+|la\s+|le\s+|i\s+|gli\s+|l\')?(.+?)\s+\b(?:ora|adesso)\b\s+(?:è|e\'|si trova|sta)\s+\b(?:in|nel|nella|nello|nei|negli|nelle|sul|sulla|sullo|sui|sugli|sulle|a|all\'|allo|alla|dentro|sopra|sotto)\b\s+(.+)",
             low
         )
         if m:
             item = m.group(1).strip()
             loc = m.group(2).strip(" .?!")
-            return item, loc
+            return _clean_and_validate(item, loc)
 
         return None, None
 
@@ -1808,11 +1821,18 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
     def _handle_deletion_intent(self, user_text: str, lower_t: str, db: Session, thread_id: str = "general") -> Optional[ChatResponse]:
         """Gestisce in modo sicuro le richieste di eliminazione (singola o multipla/totale) chiedendo conferma prima di qualsiasi azione."""
-        is_deletion = any(k in lower_t for k in [
+        is_deletion = any(re.search(rf"\b{re.escape(k)}\b", lower_t) for k in [
             "elimina", "cancella", "rimuovi", "eliminarlo", "cancellarlo", 
             "rimuoverlo", "butta", "cancellami", "eliminami", "eliminali", "cancellali", "rimuovili"
         ])
         if not is_deletion:
+            return None
+
+        # Escludi frasi negative, domande meta o riferimenti a quotazioni
+        if any(re.search(rf"\b{re.escape(k)}\b", lower_t) for k in [
+            "non eliminare", "non cancellare", "senza eliminare", "senza cancellare",
+            "sto quotando", "quotando un messaggio", "ti ricordi", "questo messaggio", "a questo messaggio"
+        ]):
             return None
 
         clean_prompt = re.sub(r"[?!.,;]", " ", lower_t)
@@ -1972,7 +1992,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         else:
             return None
 
-    def run_turn(self, user_text: str, db: Session, thread_id: str = "general") -> ChatResponse:
+    def run_turn(self, user_text: str, db: Session, thread_id: str = "general", quoted_message: Optional[dict] = None) -> ChatResponse:
         """Esegue un turno conversazionale con tool-calling dell'agente."""
         lower_t = user_text.lower()
 
@@ -2141,14 +2161,15 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         # Rileva intenzione di memorizzazione, modifica o spostamento posizione fisica
         is_store_or_update = (
-            any(k in lower_t for k in [
+            any(re.search(rf"\b{re.escape(k)}\b", lower_t) for k in [
                 "messo", "riposto", "salvato", "lasciato", "conservato", "posizionato", "sistemato",
                 "modifica la posizione", "cambia la posizione", "aggiorna la posizione",
                 "sposta", "spostato", "spostata", "spostare",
                 "mettilo", "mettila", "mettili", "mettile", "metti",
                 "ora è in", "ora si trova in", "adesso è in", "adesso si trova in"
             ])
-            and not any(k in lower_t for k in ["dov'è", "dov'e", "dove ho", "dove si trova", "dove sono", "dove sta", "dove è"])
+            and not any(re.search(rf"\b{re.escape(k)}\b", lower_t) for k in ["dov'è", "dov'e", "dove ho", "dove si trova", "dove sono", "dove sta", "dove è", "dove"])
+            and not any(re.search(rf"\b{re.escape(k)}\b", lower_t) for k in ["ti ricordi", "ti ricordi di", "ti ricordi questo", "ricordi", "sto quotando"])
         )
 
         is_where_request = (
@@ -2204,8 +2225,10 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             and not is_link_photo_intent
         )
 
-        is_delete_request = any(k in lower_t for k in [
+        is_delete_request = any(re.search(rf"\b{re.escape(k)}\b", lower_t) for k in [
             "elimina", "cancella", "rimuovi", "butta", "eliminami", "cancellami", "svuota", "eliminali", "cancellali", "rimuovili"
+        ]) and not any(re.search(rf"\b{re.escape(k)}\b", lower_t) for k in [
+            "non eliminare", "non cancellare", "senza eliminare", "senza cancellare", "sto quotando", "quotando un messaggio", "ti ricordi", "questo messaggio"
         ])
 
         is_doc_search_request = (
@@ -2235,6 +2258,8 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             item_n, loc_n = self._extract_item_and_location(user_text, last_item_in_context=last_item_name)
             if item_n and loc_n:
                 stored_item_result = self.execute_tool("store_physical_item", {"item_name": item_n, "primary_location": loc_n}, db=db, thread_id=thread_id)
+            else:
+                is_store_or_update = False
 
         # Se non c'è chiave API, fallback deterministico per test offline
         if not self.settings.OPENROUTER_API_KEY:
@@ -2469,7 +2494,14 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         if ui_telemetry_note:
             history_messages.append({"role": "system", "content": ui_telemetry_note})
 
-        history_messages.append({"role": "user", "content": user_text})
+        if quoted_message and quoted_message.get("text"):
+            q_sender = quoted_message.get("sender") or "Messaggio precedente"
+            q_text = str(quoted_message.get("text", "")).strip()
+            user_llm_content = f'[In risposta a {q_sender}: "{q_text}"]\n{user_text}'
+        else:
+            user_llm_content = user_text
+
+        history_messages.append({"role": "user", "content": user_llm_content})
 
         headers = {
             "Authorization": f"Bearer {self.settings.OPENROUTER_API_KEY.strip()}",
