@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Header, status
+import math
+from fastapi import APIRouter, HTTPException, Header, Request, Response, status
 from pydantic import BaseModel
 from typing import Optional
 from app.services.crypto_service import get_vault_manager
@@ -12,15 +13,52 @@ class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str
 
+def get_client_ip(request: Request) -> str:
+    """Estrae l'indirizzo IP del client gestendo header di inoltro o socket diretto."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return "127.0.0.1"
+
 @router.post("/login")
-def login(payload: LoginRequest):
+def login(payload: LoginRequest, request: Request, response: Response):
     mgr = get_vault_manager()
+    client_ip = get_client_ip(request)
+
+    # 1. Verifica se l'IP è attualmente soggetto a blocco esponenziale da tentativi precedenti
+    is_limited, remaining_wait = mgr.rate_limiter.is_rate_limited(client_ip)
+    if is_limited:
+        wait_seconds = max(1, int(math.ceil(remaining_wait)))
+        response.headers["Retry-After"] = str(wait_seconds)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Troppi tentativi errati. Riprova tra {wait_seconds} secondi.",
+            headers={"Retry-After": str(wait_seconds)}
+        )
+
+    # 2. Verifica la password
     success = mgr.unlock(payload.password)
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Password non corretta. Riprova."
-        )
+        delay = mgr.rate_limiter.record_failure(client_ip)
+        if delay > 0:
+            wait_seconds = max(1, int(math.ceil(delay)))
+            response.headers["Retry-After"] = str(wait_seconds)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Password non corretta. 3 tentativi esauriti. Riprova tra {wait_seconds} secondi.",
+                headers={"Retry-After": str(wait_seconds)}
+            )
+        else:
+            attempts_left = mgr.rate_limiter.get_remaining_attempts_in_block(client_ip)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Password non corretta. Hai ancora {attempts_left} tentativ{'o' if attempts_left == 1 else 'i'} prima del blocco temporaneo."
+            )
+
+    # 3. Successo: azzera il rate limiter per questo IP e genera token di sessione
+    mgr.rate_limiter.record_success(client_ip)
     token = mgr.create_session_token()
     return {
         "success": True,

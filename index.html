@@ -1549,7 +1549,57 @@
       }
     }
 
+    let vaultLockoutTimer = null;
+    function startVaultLockoutCountdown(seconds) {
+      window._vaultLockoutActive = true;
+      const btn = document.getElementById('unlockVaultBtn');
+      const pwdInput = document.getElementById('vaultPasswordInput');
+      const errEl = document.getElementById('lockScreenError');
+      const errText = document.getElementById('lockScreenErrorText');
+
+      if (pwdInput) pwdInput.disabled = true;
+      if (btn) btn.disabled = true;
+      if (errEl) errEl.classList.remove('hidden');
+
+      let remaining = Math.max(1, parseInt(seconds, 10) || 1);
+      if (vaultLockoutTimer) clearInterval(vaultLockoutTimer);
+
+      const renderCountdown = () => {
+        if (btn) {
+          btn.innerHTML = `<i class="fa-solid fa-hourglass-half animate-pulse mr-1.5"></i> Attendi ${remaining}s`;
+        }
+        if (errText) {
+          errText.textContent = `Troppi tentativi errati o attesa di sicurezza. Riprova tra ${remaining}s...`;
+        }
+      };
+      renderCountdown();
+
+      vaultLockoutTimer = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+          clearInterval(vaultLockoutTimer);
+          vaultLockoutTimer = null;
+          window._vaultLockoutActive = false;
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-lock-open mr-1.5"></i> Sblocca Caveau`;
+          }
+          if (pwdInput) {
+            pwdInput.disabled = false;
+            pwdInput.focus();
+            pwdInput.select();
+          }
+          if (errText) {
+            errText.textContent = "Ora puoi riprovare ad inserire la password.";
+          }
+        } else {
+          renderCountdown();
+        }
+      }, 1000);
+    }
+
     async function unlockVault() {
+      if (window._vaultLockoutActive) return;
       const pwdInput = document.getElementById('vaultPasswordInput');
       const errEl = document.getElementById('lockScreenError');
       const errText = document.getElementById('lockScreenErrorText');
@@ -1576,7 +1626,13 @@
           body: JSON.stringify({ password: pwd })
         });
         if (!res.ok) {
+          const retryAfter = res.headers.get('Retry-After');
           const errData = await res.json().catch(() => ({}));
+          const waitSec = retryAfter ? parseInt(retryAfter, 10) : 0;
+          if (res.status === 429 || (res.status === 401 && waitSec > 0)) {
+            startVaultLockoutCountdown(waitSec || 30);
+            return;
+          }
           throw new Error(errData.detail || "Password non corretta. Riprova.");
         }
         const data = await res.json();
@@ -1593,7 +1649,7 @@
           pwdInput.select();
         }
       } finally {
-        if (btn) {
+        if (btn && !window._vaultLockoutActive) {
           btn.disabled = false;
           btn.innerHTML = `<i class="fa-solid fa-lock-open mr-1.5"></i> Sblocca Caveau`;
         }

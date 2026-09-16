@@ -35,6 +35,7 @@ def isolate_test_database(tmp_path_factory):
     # Inizializza VaultManager di test con password 1234
     test_vault_mgr = crypto_service.VaultManager(meta_file=test_meta_path)
     test_vault_mgr.initialize_if_needed("1234")
+    test_vault_mgr.unlock("1234")
     crypto_service._vault_manager = test_vault_mgr
 
     # Inizializza motore DB di test e resetta engine/sessionmaker globale

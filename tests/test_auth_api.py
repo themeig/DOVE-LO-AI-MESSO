@@ -12,17 +12,59 @@ def setup_module():
     mgr.initialize_if_needed("1234")
 
 def test_auth_login_wrong_password():
+    mgr = get_vault_manager()
+    mgr.rate_limiter.reset()
     res = client.post("/api/auth/login", json={"password": "PasswordSbagliata"})
     assert res.status_code == 401
     assert "non corretta" in res.json()["detail"].lower()
+    assert "2 tentativi" in res.json()["detail"].lower()
+    mgr.rate_limiter.reset()
 
 def test_auth_login_correct_password():
+    mgr = get_vault_manager()
+    mgr.rate_limiter.reset()
     res = client.post("/api/auth/login", json={"password": "1234"})
     assert res.status_code == 200
     data = res.json()
     assert data["success"] is True
     assert "token" in data
     assert len(data["token"]) > 10
+
+def test_auth_api_exponential_backoff_and_lockout():
+    mgr = get_vault_manager()
+    mgr.rate_limiter.reset()
+
+    # Tentativo 1 errato: 401 (2 tentativi rimasti)
+    res1 = client.post("/api/auth/login", json={"password": "bad_password_1"})
+    assert res1.status_code == 401
+    assert "2 tentativi" in res1.json()["detail"]
+
+    # Tentativo 2 errato: 401 (1 tentativo rimasto)
+    res2 = client.post("/api/auth/login", json={"password": "bad_password_2"})
+    assert res2.status_code == 401
+    assert "1 tentativ" in res2.json()["detail"]
+
+    # Tentativo 3 errato: 401, scatta il blocco di 30 secondi con header Retry-After
+    res3 = client.post("/api/auth/login", json={"password": "bad_password_3"})
+    assert res3.status_code == 401
+    assert "retry-after" in res3.headers
+    retry_after = int(res3.headers["retry-after"])
+    assert retry_after == 30
+    assert "3 tentativi esauriti" in res3.json()["detail"]
+
+    # Tentativo immediato durante il blocco: 429 Too Many Requests
+    res_blocked = client.post("/api/auth/login", json={"password": "1234"})
+    assert res_blocked.status_code == 429
+    assert "troppi tentativi" in res_blocked.json()["detail"].lower()
+    assert "retry-after" in res_blocked.headers
+
+    # Reset per simulare il termine del blocco temporaneo
+    mgr.rate_limiter.reset()
+
+    # Login corretto dopo sblocco: 200 OK
+    res_ok = client.post("/api/auth/login", json={"password": "1234"})
+    assert res_ok.status_code == 200
+    assert res_ok.json()["success"] is True
 
 def test_auth_status_and_lock():
     # Login first

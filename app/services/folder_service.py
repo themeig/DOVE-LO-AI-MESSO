@@ -364,8 +364,8 @@ def scan_folder_for_sensitive_proposals(
 ) -> List[PendingFileProposal]:
     """
     Scansiona una cartella alla ricerca di nuovi file sensibili.
-    Invece di salvarli direttamente, crea proposte in 'pending_file_proposals'
-    e invia una notifica proattiva nella chat WhatsApp se richiesto.
+    I file che erano già presenti nella cartella al momento della registrazione o prima dell'avvio
+    vengono ignorati e non analizzati dall'AI.
     """
     p = Path(folder_path)
     if not p.exists() or not p.is_dir():
@@ -374,15 +374,54 @@ def scan_folder_for_sensitive_proposals(
     norm_folder = os.path.normpath(str(p.resolve()))
     fname = folder_name or p.name
 
+    # Recupera la cartella monitorata se registrata
+    watched = None
+    if folder_id:
+        watched = db.query(WatchedFolder).filter(WatchedFolder.id == folder_id).first()
+    if not watched:
+        watched = db.query(WatchedFolder).filter(
+            (WatchedFolder.path == norm_folder) | (WatchedFolder.path == folder_path)
+        ).first()
+
+    baseline_set = set()
+    started_ts = None
+    if watched:
+        if watched.baseline_files_json:
+            try:
+                baseline_set = set(json.loads(watched.baseline_files_json))
+            except Exception:
+                baseline_set = set()
+
+        start_time = watched.monitoring_started_at or watched.created_at
+        if start_time:
+            started_ts = start_time.timestamp()
+
     new_proposals = []
+    total_files_in_dir = 0
     try:
         for f in p.iterdir():
             if not f.is_file():
                 continue
+            total_files_in_dir += 1
             if f.suffix.lower() in IGNORED_EXTENSIONS:
                 continue
 
             norm_file = os.path.normpath(str(f.resolve()))
+
+            # 0. ESCLUSIONE FILE PRE-ESISTENTI:
+            # I file che erano già presenti nella cartella prima del monitoraggio NON vengono analizzati.
+            if norm_file in baseline_set:
+                continue
+
+            if started_ts is not None:
+                try:
+                    st = f.stat()
+                    file_time = max(st.st_mtime, getattr(st, "st_ctime", 0))
+                    # Se il file è antecedente all'inizio del monitoraggio, ignoralo
+                    if file_time < (started_ts - 0.5):
+                        continue
+                except Exception:
+                    continue
 
             # 1. Controlla se già proposto in passato (anche se risolto o archiviato)
             existing_proposal = db.query(PendingFileProposal).filter(
@@ -468,6 +507,10 @@ def scan_folder_for_sensitive_proposals(
                     })
                 )
                 db.add(chat_msg)
+
+        if watched:
+            watched.file_count = total_files_in_dir
+            watched.last_scanned_at = datetime.now(timezone.utc)
 
         db.commit()
     except Exception as e:

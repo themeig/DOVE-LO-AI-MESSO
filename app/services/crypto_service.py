@@ -3,6 +3,7 @@ import json
 import base64
 import hmac
 import secrets
+import time
 from pathlib import Path
 from typing import Optional, Dict
 
@@ -90,6 +91,97 @@ def verify_password(password: str, meta: Dict[str, str]) -> bool:
         return False
 
 
+class LoginRateLimiter:
+    """
+    Protezione anti-bruteforce a blocchi con backoff esponenziale.
+    Regola:
+    - Primi 3 tentativi: immediati. Al 3° fallimento: blocco di 30 secondi.
+    - Successivi 3 tentativi: immediati. Al 6° fallimento (totale): blocco di 1 minuto (60s).
+    - Successivi 3 tentativi: immediati. Al 9° fallimento: blocco di 2 minuti (120s).
+    - E così via raddoppiando per ogni blocco fino al ritardo massimo (default 3600s).
+    Al login riuscito, il conteggio fallimenti per la chiave viene azzerato.
+    """
+
+    def __init__(
+        self,
+        attempts_per_block: int = 3,
+        base_block_delay: float = 30.0,
+        max_delay: float = 3600.0,
+        backoff_factor: float = 2.0
+    ):
+        self.attempts_per_block = attempts_per_block
+        self.base_block_delay = base_block_delay
+        self.max_delay = max_delay
+        self.backoff_factor = backoff_factor
+        # Struttura: key -> {"failures": int, "locked_until": float, "last_attempt": float}
+        self._attempts: Dict[str, Dict[str, float]] = {}
+
+    def get_remaining_wait(self, key: str) -> float:
+        """Restituisce i secondi rimanenti di blocco per la chiave specificata (0.0 se non bloccato)."""
+        record = self._attempts.get(key)
+        if not record:
+            return 0.0
+        now = time.time()
+        remaining = record.get("locked_until", 0.0) - now
+        return max(0.0, remaining)
+
+    def is_rate_limited(self, key: str) -> tuple[bool, float]:
+        """Restituisce (is_limited, remaining_wait_seconds)."""
+        rem = self.get_remaining_wait(key)
+        return (rem > 0.0, rem)
+
+    def record_failure(self, key: str) -> float:
+        """
+        Registra un tentativo fallito.
+        Se il conteggio fallimenti raggiunge un multiplo di attempts_per_block (es. 3, 6, 9...),
+        applica il blocco temporaneo con tempo raddoppiato (30s, 60s, 120s...) e restituisce il ritardo.
+        Se non ha ancora esaurito i tentativi del blocco, restituisce 0.0.
+        """
+        now = time.time()
+        record = self._attempts.setdefault(key, {"failures": 0, "locked_until": 0.0, "last_attempt": now})
+        record["failures"] += 1
+        record["last_attempt"] = now
+        failures = int(record["failures"])
+
+        if failures % self.attempts_per_block == 0:
+            block_index = failures // self.attempts_per_block  # 1 per 3 tentativi, 2 per 6, 3 per 9...
+            delay = min(self.base_block_delay * (self.backoff_factor ** (block_index - 1)), self.max_delay)
+            record["locked_until"] = now + delay
+            return delay
+        else:
+            return 0.0
+
+    def get_remaining_attempts_in_block(self, key: str) -> int:
+        """Restituisce il numero di tentativi rimasti nel blocco corrente prima dello scatto del lockout."""
+        record = self._attempts.get(key)
+        if not record:
+            return self.attempts_per_block
+        failures = int(record.get("failures", 0))
+        remainder = failures % self.attempts_per_block
+        if remainder == 0:
+            if self.is_rate_limited(key)[0]:
+                return 0
+            return self.attempts_per_block
+        return self.attempts_per_block - remainder
+
+    def record_success(self, key: str) -> None:
+        """Azzera il contatore dei fallimenti per la chiave specificata."""
+        if key in self._attempts:
+            del self._attempts[key]
+
+    def get_failure_count(self, key: str) -> int:
+        """Restituisce il numero attuale di tentativi consecutivi falliti."""
+        record = self._attempts.get(key)
+        return int(record["failures"]) if record else 0
+
+    def reset(self, key: Optional[str] = None) -> None:
+        """Azzera la cronologia dei tentativi (per una singola chiave o per tutte)."""
+        if key is not None:
+            self._attempts.pop(key, None)
+        else:
+            self._attempts.clear()
+
+
 class VaultManager:
     """Gestore del caveau crittografico: conserva la chiave attiva in memoria finché il caveau è sbloccato."""
 
@@ -102,15 +194,21 @@ class VaultManager:
         self._active_key: Optional[bytes] = None
         self._unlocked: bool = False
         self._active_tokens: set[str] = set()
+        self.rate_limiter = LoginRateLimiter()
 
-    def initialize_if_needed(self, default_password: str = "1234"):
+    def initialize_if_needed(self, default_password: str = "1234", auto_unlock: bool = False):
+        """
+        Inizializza i metadati del caveau se non esistono.
+        Per sicurezza predefinita, il caveau rimane BLOCCATO finché l'utente non inserisce
+        esplicitamente la password master corretta.
+        """
         self.meta_file.parent.mkdir(parents=True, exist_ok=True)
         if not self.meta_file.exists():
             meta = hash_password(default_password)
             self.meta_file.write_text(json.dumps(meta, indent=2), encoding="utf-8")
-            self.unlock(default_password)
-        else:
-            # Se siamo in ambiente di test o debug, pre-sblocchiamo con default se corrisponde
+            if auto_unlock:
+                self.unlock(default_password)
+        elif auto_unlock:
             try:
                 meta = json.loads(self.meta_file.read_text(encoding="utf-8"))
                 if verify_password(default_password, meta):
@@ -126,8 +224,7 @@ class VaultManager:
 
     def unlock(self, password: str) -> bool:
         if not self.meta_file.exists():
-            self.initialize_if_needed(default_password=password)
-            return self.is_unlocked()
+            self.initialize_if_needed(default_password=password, auto_unlock=False)
 
         try:
             meta = json.loads(self.meta_file.read_text(encoding="utf-8"))

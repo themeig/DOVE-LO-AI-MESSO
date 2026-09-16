@@ -323,17 +323,21 @@ def test_api_presets_and_proposals_endpoints(tmp_path):
     assert "presets" in p_data
     assert len(p_data["presets"]) >= 3
 
-    # Crea un file sensibile
+    # Aggiungi cartella monitorata
+    res_add = client.post("/api/folders", json={
+        "path": str(tmp_path),
+        "name": "Test Temp",
+        "thread_id": "general",
+        "auto_scan": False
+    })
+    assert res_add.status_code == 201
+
+    import time
+    time.sleep(1.0)
+
+    # Crea un nuovo file sensibile aggiunto dopo l'avvio del monitoraggio
     test_pdf = tmp_path / "fattura_enel_test.pdf"
     test_pdf.write_bytes(b"%PDF-1.4 enel")
-
-    engine = get_engine()
-    SessionLocal = get_session_maker(engine)
-    with SessionLocal() as db:
-        # Aggiungi cartella monitorata
-        wf = WatchedFolder(path=str(tmp_path), name="Test Temp", thread_id="general")
-        db.add(wf)
-        db.commit()
 
     # 2. Trigger scan-sensitive
     res_scan = client.post("/api/folders/scan-sensitive")
@@ -356,4 +360,50 @@ def test_api_presets_and_proposals_endpoints(tmp_path):
     # 5. Verifica che non sia più nei pending
     res_pending = client.get("/api/folders/proposals?status=pending")
     assert not any(p["id"] == p_id for p in res_pending.json()["proposals"])
+
+
+def test_preexisting_files_are_not_analyzed(tmp_path):
+    # 1. File già presenti nella cartella prima del monitoraggio
+    old_file_1 = tmp_path / "bolletta_vecchia_2025.pdf"
+    old_file_1.write_bytes(b"%PDF-1.4 bolletta vecchia")
+
+    old_file_2 = tmp_path / "f24_vecchio.pdf"
+    old_file_2.write_bytes(b"%PDF-1.4 f24 vecchio")
+
+    # 2. Aggiunge la cartella al monitoraggio tramite API
+    res_add = client.post("/api/folders", json={
+        "path": str(tmp_path),
+        "name": "Cartella Con Vecchi File",
+        "thread_id": "general",
+        "auto_scan": True
+    })
+    assert res_add.status_code == 201
+    assert res_add.json()["file_count"] == 2
+
+    # 3. La scansione non deve proporre i file già presenti prima dell'avvio!
+    res_scan1 = client.post("/api/folders/scan-sensitive")
+    assert res_scan1.status_code == 200
+    assert res_scan1.json()["new_proposals_count"] == 0
+
+    engine = get_engine()
+    SessionLocal = get_session_maker(engine)
+    with SessionLocal() as db:
+        proposals = db.query(PendingFileProposal).filter(
+            PendingFileProposal.folder_name == "Cartella Con Vecchi File",
+            PendingFileProposal.status == "pending"
+        ).all()
+        assert len(proposals) == 0
+
+    # 4. Ora viene aggiunto un NUOVO file nella cartella dopo l'avvio del monitoraggio
+    import time
+    time.sleep(1.0)
+    new_file = tmp_path / "f24_nuovo_scaricato_oggi.pdf"
+    new_file.write_bytes(b"%PDF-1.4 f24 nuovo di oggi")
+
+    # 5. La nuova scansione rileva e analizza SOLO il nuovo file!
+    res_scan2 = client.post("/api/folders/scan-sensitive")
+    assert res_scan2.status_code == 200
+    assert res_scan2.json()["new_proposals_count"] == 1
+    assert res_scan2.json()["proposals"][0]["file_name"] == "f24_nuovo_scaricato_oggi.pdf"
+
 

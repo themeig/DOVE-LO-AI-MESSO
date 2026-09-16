@@ -113,6 +113,8 @@ class WatchedFolder(Base):
     auto_scan = Column(types.Boolean, nullable=False, default=True)
     last_scanned_at = Column(DateTime, nullable=True)
     file_count = Column(Integer, nullable=False, default=0)
+    baseline_files_json = Column(Text, nullable=True)
+    monitoring_started_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
@@ -244,6 +246,15 @@ def init_db(engine=None):
                 conn.commit()
             if "original_path" not in cols:
                 conn.execute(text("ALTER TABLE documents ADD COLUMN original_path VARCHAR(500)"))
+                conn.commit()
+
+        if "watched_folders" in table_names:
+            wf_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(watched_folders)")).fetchall()]
+            if "baseline_files_json" not in wf_cols:
+                conn.execute(text("ALTER TABLE watched_folders ADD COLUMN baseline_files_json TEXT"))
+                conn.commit()
+            if "monitoring_started_at" not in wf_cols:
+                conn.execute(text("ALTER TABLE watched_folders ADD COLUMN monitoring_started_at DATETIME"))
                 conn.commit()
 
         # Seed default threads if table exists and is empty

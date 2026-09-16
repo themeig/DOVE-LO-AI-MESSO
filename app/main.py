@@ -76,6 +76,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# ==============================================================================
+# SICUREZZA / TODO HARDENING CORS:
+# Per ambienti di produzione o reti condivise, raccomandato restringere allow_origins=["*"]
+# a domini fidati specifici (es. ["http://localhost:8000", "http://127.0.0.1:8000"]).
+# Mantenuto attualmente ad allow_origins=["*"] su richiesta per comodità di sviluppo locale
+# e test cross-origin da dispositivi locali (es. smartphone / tablet su Wi-Fi).
+# ==============================================================================
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,

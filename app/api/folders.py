@@ -1,5 +1,7 @@
 import os
+import json
 from pathlib import Path
+from datetime import datetime, timezone
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -64,11 +66,22 @@ def list_watched_folders(db: Session = Depends(get_db)):
 @router.post("", response_model=WatchedFolderResponse, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=WatchedFolderResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 def add_watched_folder(payload: WatchedFolderCreate, db: Session = Depends(get_db)):
-    """Aggiunge una cartella locale al monitoraggio e la scansiona."""
+    """Aggiunge una cartella locale al monitoraggio, scatta la baseline dei file già presenti e avvia il monitoraggio per i nuovi file."""
     norm_path = os.path.normpath(payload.path.strip())
     p = Path(norm_path)
     if not p.exists() or not p.is_dir():
         raise HTTPException(status_code=400, detail=f"Percorso cartella '{norm_path}' non valido o inesistente.")
+
+    # Raccogli tutti i file attualmente presenti al momento dell'attivazione per impostare la baseline
+    baseline_files = []
+    try:
+        for f in p.iterdir():
+            if f.is_file():
+                baseline_files.append(os.path.normpath(str(f.resolve())))
+    except Exception:
+        pass
+
+    now_utc = datetime.now(timezone.utc)
 
     # Verifica se già registrata
     existing = db.query(WatchedFolder).filter(WatchedFolder.path == norm_path).first()
@@ -77,11 +90,12 @@ def add_watched_folder(payload: WatchedFolderCreate, db: Session = Depends(get_d
             existing.name = payload.name
         if payload.thread_id:
             existing.thread_id = payload.thread_id
+        if not existing.baseline_files_json:
+            existing.baseline_files_json = json.dumps(baseline_files)
+            existing.monitoring_started_at = now_utc
+            existing.file_count = len(baseline_files)
         db.commit()
         db.refresh(existing)
-        if payload.auto_scan:
-            scan_local_folder(norm_path, db, thread_id=existing.thread_id, watched_folder_id=existing.id)
-            db.refresh(existing)
         return WatchedFolderResponse(
             id=existing.id,
             path=existing.path,
@@ -100,15 +114,15 @@ def add_watched_folder(payload: WatchedFolderCreate, db: Session = Depends(get_d
         name=folder_name,
         thread_id=payload.thread_id or "general",
         is_active=True,
-        auto_scan=payload.auto_scan
+        auto_scan=payload.auto_scan,
+        file_count=len(baseline_files),
+        baseline_files_json=json.dumps(baseline_files),
+        monitoring_started_at=now_utc,
+        created_at=now_utc
     )
     db.add(folder)
     db.commit()
     db.refresh(folder)
-
-    if payload.auto_scan:
-        scan_local_folder(norm_path, db, thread_id=folder.thread_id, watched_folder_id=folder.id)
-        db.refresh(folder)
 
     return WatchedFolderResponse(
         id=folder.id,

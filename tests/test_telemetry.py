@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -62,7 +62,7 @@ def test_agent_telemetry_context_injection():
             target_id=doc.id,
             title=doc.title,
             error_details="Script rendering failure in WhatsApp bubble",
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(ui_ev)
         db.commit()
