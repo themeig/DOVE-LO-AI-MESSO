@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="it" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dove lo AI messo — Product Showcase & Interactive Pitch</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            display: ['"Outfit"', 'sans-serif'],
+          },
+          colors: {
+            wa: {
+              teal: '#075E54',
+              light: '#128C7E',
+              green: '#25D366',
+              bg: '#EFEAE2',
+              bubble: '#E7FFDB',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Glow meshes & modern effects */
+    .glow-mesh {
+      background: radial-gradient(circle at 50% 20%, rgba(37, 211, 102, 0.15) 0%, transparent 60%),
+                  radial-gradient(circle at 80% 80%, rgba(18, 140, 126, 0.12) 0%, transparent 50%),
+                  radial-gradient(circle at 20% 70%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .text-gradient {
+      background: linear-gradient(135deg, #FFFFFF 20%, #A7F3D0 70%, #25D366 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .device-shadow {
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 35px rgba(37, 211, 102, 0.15);
+    }
+  </style>
+</head>
+<body class="bg-[#0B0F17] text-slate-100 font-sans antialiased overflow-x-hidden selection:bg-emerald-500 selection:text-white">
+
+  <!-- ================================================================= -->
+  <!-- NAVBAR                                                            -->
+  <!-- ================================================================= -->
+  <header class="fixed top-0 left-0 right-0 z-50 glass-card bg-[#0B0F17]/80 border-b border-white/10 transition-all duration-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#075E54] to-[#25D366] flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 ring-1 ring-white/20">
+          <i class="fa-solid fa-vault text-lg"></i>
+        </div>
+        <div>
+          <span class="font-display font-bold text-lg tracking-tight text-white flex items-center gap-2">
+            Dove lo AI messo
+            <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono font-medium">v1.0 AI Vault</span>
+          </span>
+        </div>
+      </div>
+
+      <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+        <a href="#simulator" class="hover:text-emerald-400 transition">Demo Interattiva</a>
+        <a href="#features" class="hover:text-emerald-400 transition">Funzionalità</a>
+        <a href="#architecture" class="hover:text-emerald-400 transition">Architettura</a>
+        <a href="/api/whitepaper" target="_blank" class="hover:text-emerald-400 transition flex items-center gap-1.5">
+          <i class="fa-regular fa-file-lines text-xs text-emerald-400"></i> White Paper
+        </a>
+      </nav>
+
+      <div class="flex items-center gap-3">
+        <button onclick="startPresentationMode()" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-white/10 transition flex items-center gap-2 shadow-sm cursor-pointer">
+          <i class="fa-solid fa-desktop text-emerald-400"></i>
+          <span class="hidden sm:inline">Modalità Pitch Deck</span>
+        </button>
+        <a href="/" class="px-4 py-2 rounded-xl bg-gradient-to-r from-[#128C7E] to-[#25D366] hover:brightness-110 text-white text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-500/25 cursor-pointer">
+          <span>Apri l'App Live</span>
+          <i class="fa-solid fa-arrow-right text-[11px]"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================================================================= -->
+  <!-- HERO SECTION                                                      -->
+  <!-- ================================================================= -->
+  <section class="relative pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden glow-mesh">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+      
+      <!-- Top Pill Badge -->
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-card border border-emerald-500/30 text-emerald-300 text-xs font-semibold mb-6 animate-pulse">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span>Il meglio dei due mondi: Chat WhatsApp + Dashboard Fintech</span>
+      </div>
+
+      <!-- Main Title -->
+      <h1 class="text-4xl sm:text-6xl lg:text-7xl font-display font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-[1.1] mb-6">
+        Zero curva d'apprendimento.<br>
+        <span class="text-gradient">Controllo fiscale totale.</span>
+      </h1>
+
+      <!-- Subtitle -->
+      <p class="text-lg sm:text-xl text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed mb-10">
+        Invia una foto o un vocale come faresti con un amico. L'AI cifra tutto a livello militare (AES-256), estrae importi e scadenze e sincronizza la tua dashboard in tempo reale.
+      </p>
+
+      <!-- CTA Action Bar -->
+      <div class="flex flex-wrap items-center justify-center gap-4 mb-16">
+        <a href="#simulator" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#128C7E] to-[#25D366] hover:brightness-110 text-white text-sm font-bold transition flex items-center gap-2.5 shadow-xl shadow-emerald-500/30 cursor-pointer active:scale-95">
+          <i class="fa-solid fa-play text-xs"></i>
+          <span>Guarda la Demo Interattiva</span>
+        </a>
+        <a href="/" class="px-6 py-3.5 rounded-2xl glass-card hover:bg-white/10 text-slate-200 text-sm font-semibold border border-white/15 transition flex items-center gap-2 cursor-pointer active:scale-95">
+          <i class="fa-solid fa-laptop-code text-slate-400"></i>
+          <span>Accedi al Caveau Reale</span>
+        </a>
+        <button onclick="startPresentationMode()" class="px-6 py-3.5 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white text-sm font-semibold border border-slate-700/60 transition flex items-center gap-2 cursor-pointer active:scale-95">
+          <i class="fa-solid fa-presentation-screen text-emerald-400"></i>
+          <span>Avvia Presentazione (Slide)</span>
+        </button>
+      </div>
+
+      <!-- Live Dual-World Mockup Preview -->
+      <div class="relative max-w-5xl mx-auto mt-6">
+        <div class="absolute -inset-4 bg-gradient-to-r from-emerald-500/20 via-teal-500/15 to-cyan-500/20 rounded-3xl blur-3xl -z-10 opacity-70"></div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          
+          <!-- WhatsApp Mobile Chat Mockup (Left 5 Cols) -->
+          <div class="lg:col-span-5 text-left">
+            <div class="rounded-3xl border border-white/20 bg-slate-900/95 overflow-hidden device-shadow">
+              <!-- Smartphone Status Bar -->
+              <div class="bg-[#075E54] text-white px-4 py-2.5 flex items-center justify-between text-xs font-semibold">
+                <div class="flex items-center gap-2">
+                  <div class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs">
+                    <i class="fa-solid fa-robot"></i>
+                  </div>
+                  <div>
+                    <div class="font-bold leading-tight">Dove lo AI messo</div>
+                    <div class="text-[10px] text-emerald-200 font-normal">Online • Caveau Crittografato</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3 text-sm">
+                  <i class="fa-solid fa-lock text-emerald-300 text-xs"></i>
+                  <i class="fa-solid fa-ellipsis-vertical"></i>
+                </div>
+              </div>
+
+              <!-- Chat Wallpaper & Messages Feed -->
+              <div class="p-3.5 space-y-3 bg-[#EFEAE2] min-h-[300px] text-xs font-sans">
+                
+                <div class="flex justify-center">
+                  <span class="bg-[#FFEECD] text-[#54656F] text-[10px] px-3 py-1 rounded-lg shadow-2xs font-medium text-center max-w-[90%]">
+                    🔒 I messaggi e i documenti sono protetti da cifratura a blocchi AES-256.
+                  </span>
+                </div>
+
+                <!-- User Bubble -->
+                <div class="flex justify-end">
+                  <div class="bg-[#E7FFDB] p-2.5 rounded-xl rounded-tr-none max-w-[85%] shadow-sm text-slate-800">
+                    <div class="flex items-center gap-2 bg-emerald-100/60 p-1.5 rounded-lg mb-1 border border-emerald-200/50">
+                      <i class="fa-solid fa-file-pdf text-red-500 text-base"></i>
+                      <div class="truncate">
+                        <div class="font-bold text-[11px] truncate">bolletta_enel_ottobre.pdf</div>
+                        <div class="text-[9px] text-slate-500">245 KB • PDF</div>
+                      </div>
+                    </div>
+                    <div class="text-[10px] text-right text-slate-500 flex items-center justify-end gap-1 mt-0.5">
+                      <span>14:32</span>
+                      <i class="fa-solid fa-check-double text-sky-500 text-[10px]"></i>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- AI Response Bubble -->
+                <div class="flex justify-start">
+                  <div class="bg-white p-2.5 rounded-xl rounded-tl-none max-w-[90%] shadow-sm text-slate-800 space-y-2">
+                    <p class="leading-snug">
+                      📄 Ho registrato la bolletta: <strong>Bolletta Enel Energia</strong> (64,20 €) con scadenza <strong>28/10/2026</strong>.
+                    </p>
+                    <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2 flex items-center justify-between gap-2">
+                      <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-red-100 text-red-600 flex items-center justify-center font-bold text-xs">
+                          PDF
+                        </div>
+                        <div>
+                          <div class="font-bold text-[11px] text-slate-800">Bolletta Enel Luce</div>
+                          <div class="text-[9px] text-emerald-600 font-semibold">€ 64.20 • 28 Ott 2026</div>
+                        </div>
+                      </div>
+                      <span class="bg-amber-100 text-amber-700 text-[9px] font-bold px-2 py-0.5 rounded-full">Da Pagare</span>
+                    </div>
+                    <div class="text-[9px] text-slate-400 text-right">14:32</div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Chat Input Bar -->
+              <div class="bg-[#F0F2F5] p-2 flex items-center gap-2 border-t border-slate-200">
+                <i class="fa-solid fa-paperclip text-slate-400 text-sm ml-1"></i>
+                <div class="bg-white rounded-full px-3 py-1.5 flex-1 text-[11px] text-slate-400 flex items-center justify-between">
+                  <span>Dov'è il passaporto?</span>
+                  <i class="fa-solid fa-camera text-slate-400"></i>
+                </div>
+                <div class="w-7 h-7 rounded-full bg-[#25D366] text-white flex items-center justify-center text-xs shadow-sm">
+                  <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                </div>
+              </div>
+            </div>
+            <div class="text-center mt-3">
+              <span class="text-xs font-semibold text-emerald-400 flex items-center justify-center gap-1.5">
+                <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp al 100% per chattare e caricare
+              </span>
+            </div>
+          </div>
+
+          <!-- Fintech Dashboard Mockup (Right 7 Cols) -->
+          <div class="lg:col-span-7 text-left">
+            <div class="rounded-3xl border border-white/20 bg-slate-900/95 p-5 device-shadow space-y-4">
+              
+              <div class="flex items-center justify-between pb-3 border-b border-white/10">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white text-xs font-bold">
+                    <i class="fa-solid fa-chart-pie"></i>
+                  </div>
+                  <div>
+                    <h4 class="text-sm font-bold text-white">Dashboard Operativa</h4>
+                    <p class="text-[11px] text-slate-400">Scadenzario fiscale & Inventario oggetti</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                    ● Caveau Sbloccato
+                  </span>
+                </div>
+              </div>
+
+              <!-- KPI Bento Grid -->
+              <div class="grid grid-cols-3 gap-3">
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-3">
+                  <div class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">In Scadenza</div>
+                  <div class="text-lg font-bold text-emerald-400 mt-1">€ 2.514,20</div>
+                  <div class="text-[9px] text-slate-400 mt-0.5">2 pagamenti attivi</div>
+                </div>
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-3">
+                  <div class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Documenti</div>
+                  <div class="text-lg font-bold text-white mt-1">28</div>
+                  <div class="text-[9px] text-slate-400 mt-0.5">100% Cifrati</div>
+                </div>
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-3">
+                  <div class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Oggetti Mappati</div>
+                  <div class="text-lg font-bold text-cyan-400 mt-1">14</div>
+                  <div class="text-[9px] text-slate-400 mt-0.5">Con foto & stanze</div>
+                </div>
+              </div>
+
+              <!-- Mini Table Records -->
+              <div class="bg-white/5 border border-white/10 rounded-2xl p-3 space-y-2">
+                <div class="text-[11px] font-bold text-slate-300 flex items-center justify-between pb-1 border-b border-white/5">
+                  <span>Scadenze & Documenti Recenti</span>
+                  <span class="text-[10px] text-emerald-400 hover:underline cursor-pointer">Vedi tutti →</span>
+                </div>
+
+                <div class="space-y-1.5 text-xs">
+                  <div class="flex items-center justify-between p-2 rounded-xl bg-white/5 hover:bg-white/10 transition">
+                    <div class="flex items-center gap-2.5">
+                      <i class="fa-solid fa-bolt text-amber-400 text-xs"></i>
+                      <div>
+                        <div class="font-semibold text-white text-[11px]">Bolletta Enel Energia</div>
+                        <div class="text-[9px] text-slate-400">Scadenza 28/10/2026</div>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="font-bold text-white text-[11px]">€ 64,20</div>
+                      <span class="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-semibold">Tra 42 gg</span>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center justify-between p-2 rounded-xl bg-white/5 hover:bg-white/10 transition">
+                    <div class="flex items-center gap-2.5">
+                      <i class="fa-solid fa-passport text-sky-400 text-xs"></i>
+                      <div>
+                        <div class="font-semibold text-white text-[11px]">Passaporto Italiano</div>
+                        <div class="text-[9px] text-slate-400">Studio • 1° Cassetto scrivania</div>
+                      </div>
+                    </div>
+                    <span class="text-[9px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-lg font-semibold">📍 Localizzato</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+            <div class="text-center mt-3">
+              <span class="text-xs font-semibold text-slate-400 flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-table-columns text-emerald-400"></i> Dashboard stile Linear & Stripe per il controllo completo
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- SIMULATORE INTERATTIVO A STEP                                     -->
+  <!-- ================================================================= -->
+  <section id="simulator" class="py-24 border-t border-white/10 bg-[#0E131F] relative">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <span class="text-xs font-bold tracking-widest text-emerald-400 uppercase bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
+          Demo Interattiva
+        </span>
+        <h2 class="text-3xl sm:text-5xl font-display font-extrabold text-white mt-4 tracking-tight">
+          Come Funziona in 4 Passaggi
+        </h2>
+        <p class="text-slate-400 text-base sm:text-lg mt-3">
+          Clicca sugli step o premi "Avvia Simulazione" per vedere come l'intelligenza artificiale e il motore crittografico operano sotto al cofano.
+        </p>
+      </div>
+
+      <!-- Step Progress Bar & Pills -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+        <button onclick="setDemoStep(1)" id="stepBtn1" class="step-btn p-4 rounded-2xl text-left border transition cursor-pointer bg-emerald-500/15 border-emerald-500 text-white shadow-lg shadow-emerald-500/10">
+          <div class="text-xs font-mono font-bold text-emerald-400 mb-1">01. INGESTION</div>
+          <div class="text-sm font-bold">Foto o Vocale</div>
+          <p class="text-[11px] text-slate-400 mt-1">Nessun form complicato</p>
+        </button>
+
+        <button onclick="setDemoStep(2)" id="stepBtn2" class="step-btn p-4 rounded-2xl text-left border transition cursor-pointer glass-card border-white/10 text-slate-300 hover:border-white/25">
+          <div class="text-xs font-mono font-bold text-slate-500 mb-1">02. VISION & AI</div>
+          <div class="text-sm font-bold">Zero-Latency AI</div>
+          <p class="text-[11px] text-slate-400 mt-1">Estrazione dati & importi</p>
+        </button>
+
+        <button onclick="setDemoStep(3)" id="stepBtn3" class="step-btn p-4 rounded-2xl text-left border transition cursor-pointer glass-card border-white/10 text-slate-300 hover:border-white/25">
+          <div class="text-xs font-mono font-bold text-slate-500 mb-1">03. SICUREZZA</div>
+          <div class="text-sm font-bold">Cifratura AES-256</div>
+          <p class="text-[11px] text-slate-400 mt-1">File e DB inespugnabili</p>
+        </button>
+
+        <button onclick="setDemoStep(4)" id="stepBtn4" class="step-btn p-4 rounded-2xl text-left border transition cursor-pointer glass-card border-white/10 text-slate-300 hover:border-white/25">
+          <div class="text-xs font-mono font-bold text-slate-500 mb-1">04. DASHBOARD</div>
+          <div class="text-sm font-bold">Live Sync & Alert</div>
+          <p class="text-[11px] text-slate-400 mt-1">Countdown e notifiche</p>
+        </button>
+      </div>
+
+      <!-- Simulator Stage Box -->
+      <div class="glass-card border border-white/15 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          
+          <!-- Narrative & Description -->
+          <div class="lg:col-span-6 space-y-5 text-left">
+            <div id="demoBadge" class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold font-mono">
+              SCENARIO: CARICAMENTO DOCUMENTO FISCALE
+            </div>
+            <h3 id="demoTitle" class="text-2xl sm:text-3xl font-display font-bold text-white">
+              L'utente carica una bolletta o scatta una foto
+            </h3>
+            <p id="demoDesc" class="text-slate-300 text-sm sm:text-base leading-relaxed">
+              Basta trascinare un PDF, inviare una foto dalla fotocamera dello smartphone o un vocale WhatsApp. Nessuna compilazione manuale: l'utente non deve digitare nulla.
+            </p>
+
+            <div id="demoPills" class="flex flex-wrap gap-2 pt-2">
+              <span class="bg-white/5 border border-white/10 text-slate-300 text-xs px-3 py-1.5 rounded-xl font-medium">📎 PDF / Foto / Vocale</span>
+              <span class="bg-white/5 border border-white/10 text-slate-300 text-xs px-3 py-1.5 rounded-xl font-medium">⚡ Upload singolo o batch di 100 file</span>
+              <span class="bg-white/5 border border-white/10 text-slate-300 text-xs px-3 py-1.5 rounded-xl font-medium">🎤 Whisper Audio Transcription</span>
+            </div>
+
+            <div class="pt-4 flex items-center gap-3">
+              <button onclick="nextDemoStep()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#128C7E] to-[#25D366] text-white text-xs font-bold hover:brightness-110 transition flex items-center gap-2 cursor-pointer shadow-md">
+                <span>Passaggio Successivo</span>
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+              </button>
+              <button onclick="autoPlayDemo()" id="autoPlayBtn" class="px-4 py-2.5 rounded-xl glass-card hover:bg-white/10 text-slate-300 text-xs font-semibold border border-white/10 transition flex items-center gap-1.5 cursor-pointer">
+                <i class="fa-solid fa-play text-emerald-400 text-xs"></i>
+                <span>Auto-Play Demo</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Visual Simulation Card -->
+          <div class="lg:col-span-6">
+            <div id="demoVisualContainer" class="bg-slate-900/90 border border-white/15 rounded-2xl p-6 min-h-[320px] flex flex-col justify-center transition-all duration-300">
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- BENTO GRID DELLE FUNZIONALITÀ CHIAVE                              -->
+  <!-- ================================================================= -->
+  <section id="features" class="py-24 border-t border-white/10 bg-[#0B0F17]">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="text-center max-w-3xl mx-auto mb-16">
+        <span class="text-xs font-bold tracking-widest text-cyan-400 uppercase bg-cyan-500/10 border border-cyan-500/20 px-3 py-1 rounded-full">
+          Caratteristiche Uniche
+        </span>
+        <h2 class="text-3xl sm:text-5xl font-display font-extrabold text-white mt-4 tracking-tight">
+          Progettato per essere Inviolabile, Istantaneo e Intelligente
+        </h2>
+        <p class="text-slate-400 text-base sm:text-lg mt-3">
+          Ogni singolo modulo è stato ingegnerizzato con standard crittografici moderni e un'esperienza utente senza frizioni.
+        </p>
+      </div>
+
+      <!-- Bento Grid Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+        
+        <!-- Card 1: WhatsApp Experience -->
+        <div class="glass-card rounded-3xl p-6 md:col-span-2 border border-white/10 hover:border-emerald-500/40 transition group">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl mb-5 group-hover:scale-110 transition">
+            <i class="fa-brands fa-whatsapp"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">Interfaccia WhatsApp al 100%</h3>
+          <p class="text-slate-300 text-sm leading-relaxed mb-4">
+            Zero barriere all'ingresso per qualsiasi membro della famiglia o del team. Bolle bianche per l'AI, verdi per l'utente, doppie spunte azzurre, messaggi vocali e schede grafiche interattive con pulsanti [👁️ Vedi] e [⬇️ Scarica].
+          </p>
+          <div class="flex items-center gap-2 text-xs font-mono text-emerald-400">
+            <i class="fa-solid fa-check"></i> Nessun manuale di istruzioni necessario
+          </div>
+        </div>
+
+        <!-- Card 2: Military Grade Security -->
+        <div class="glass-card rounded-3xl p-6 border border-white/10 hover:border-emerald-500/40 transition group">
+          <div class="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center text-xl mb-5 group-hover:scale-110 transition">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">Crittografia AES-256</h3>
+          <p class="text-slate-300 text-sm leading-relaxed mb-4">
+            Ogni file su disco e ogni colonna sensibile nel database SQLite sono cifrati a byte con derivazione PBKDF2 e Master Password. Se il computer viene rubato, i file sono illeggibili.
+          </p>
+          <div class="text-xs font-mono text-rose-400">
+            🔒 Zero-Knowledge Storage
+          </div>
+        </div>
+
+        <!-- Card 3: Deadlines & Tax Countdown -->
+        <div class="glass-card rounded-3xl p-6 border border-white/10 hover:border-emerald-500/40 transition group">
+          <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-xl mb-5 group-hover:scale-110 transition">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">Scadenzario Intelligente</h3>
+          <p class="text-slate-300 text-sm leading-relaxed mb-4">
+            Calcolo dinamico dei giorni rimanenti e delle urgenze (F24, bollette, bolli auto, contratti). Badge dinamici con avvisi prima che una scadenza diventi critica.
+          </p>
+          <div class="text-xs font-mono text-amber-400">
+            ⏱️ Countdown real-time
+          </div>
+        </div>
+
+        <!-- Card 4: Ultra-Fast Zip & Batch -->
+        <div class="glass-card rounded-3xl p-6 md:col-span-2 border border-white/10 hover:border-emerald-500/40 transition group">
+          <div class="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl mb-5 group-hover:scale-110 transition">
+            <i class="fa-solid fa-bolt-lightning"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">Ultra-Fast Unzip & Elaborazione Batch</h3>
+          <p class="text-slate-300 text-sm leading-relaxed mb-4">
+            Trascina una cartella con 100 file o un archivio .ZIP: il motore con parser ad alta velocità indicizza, estrae metadati e cifra 100 documenti in circa 1 secondo, con barra di avanzamento reale concorrente e tasto di interruzione immediata.
+          </p>
+          <div class="flex items-center gap-2 text-xs font-mono text-cyan-400">
+            <i class="fa-solid fa-check"></i> Supporto PDF, Word, Excel, CSV e Immagini
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- ARCHITETTURA TECNICA & WHITE PAPER LINK                          -->
+  <!-- ================================================================= -->
+  <section id="architecture" class="py-24 border-t border-white/10 bg-[#0E131F]">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      
+      <span class="text-xs font-bold tracking-widest text-emerald-400 uppercase bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
+        Specifiche Tecniche
+      </span>
+      <h2 class="text-3xl sm:text-5xl font-display font-extrabold text-white mt-4 tracking-tight">
+        Architettura di Livello Enterprise
+      </h2>
+      <p class="text-slate-400 text-base sm:text-lg mt-3 max-w-2xl mx-auto">
+        Struttura modulare con separazione netta tra ingestion, intelligenza artificiale, persistenza cifrata e interfaccia reattiva.
+      </p>
+
+      <!-- Architecture Visual Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-12 text-left">
+        <div class="glass-card p-5 rounded-2xl border border-white/10">
+          <div class="text-emerald-400 font-mono text-xs font-bold mb-2">FRONTEND SPA</div>
+          <h4 class="text-white font-bold text-base mb-1">Tailwind + Vanilla JS</h4>
+          <p class="text-slate-400 text-xs leading-relaxed">Nessun overhead di framework pesanti. Transizioni istantanee tra Chat WhatsApp e Dashboard Fintech.</p>
+        </div>
+
+        <div class="glass-card p-5 rounded-2xl border border-white/10">
+          <div class="text-teal-400 font-mono text-xs font-bold mb-2">BACKEND CORE</div>
+          <h4 class="text-white font-bold text-base mb-1">FastAPI (Python 3.12+)</h4>
+          <p class="text-slate-400 text-xs leading-relaxed">Architettura asincrona con validazione rigorosa Pydantic v2 e pool concorrente di elaborazione.</p>
+        </div>
+
+        <div class="glass-card p-5 rounded-2xl border border-white/10">
+          <div class="text-cyan-400 font-mono text-xs font-bold mb-2">AI ENGINE</div>
+          <h4 class="text-white font-bold text-base mb-1">OpenRouter Multimodal</h4>
+          <p class="text-slate-400 text-xs leading-relaxed">Visione per scontrini e foto + LLM reasoning con Tool Calling autonomo e parser deterministico.</p>
+        </div>
+
+        <div class="glass-card p-5 rounded-2xl border border-white/10">
+          <div class="text-rose-400 font-mono text-xs font-bold mb-2">STORAGE & CRYPTO</div>
+          <h4 class="text-white font-bold text-base mb-1">SQLite WAL + AES-256</h4>
+          <p class="text-slate-400 text-xs leading-relaxed">Cifratura su disco di tutti i blob binari e isolamento crittografico per sessione utente.</p>
+        </div>
+      </div>
+
+      <!-- White Paper Banner -->
+      <div class="mt-14 glass-card border border-emerald-500/30 rounded-3xl p-8 max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-left">
+        <div>
+          <div class="inline-flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase font-mono mb-1">
+            <i class="fa-regular fa-file-code"></i> Documento Ufficiale
+          </div>
+          <h3 class="text-xl font-bold text-white">White Paper Tecnico Disponibile</h3>
+          <p class="text-slate-300 text-sm mt-1">Include l'analisi formale del modello di minaccia, specifiche degli endpoint e benchmark.</p>
+        </div>
+        <a href="/api/whitepaper" target="_blank" class="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition flex items-center gap-2 whitespace-nowrap cursor-pointer shadow-lg shadow-emerald-500/20">
+          <i class="fa-solid fa-download"></i>
+          <span>Visualizza White Paper</span>
+        </a>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- FOOTER                                                            -->
+  <!-- ================================================================= -->
+  <footer class="py-12 border-t border-white/10 bg-[#070A10] text-slate-400 text-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2 text-slate-300 font-medium">
+        <div class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs">
+          <i class="fa-solid fa-vault"></i>
+        </div>
+        <span>Dove lo AI messo — Open Source AI Vault</span>
+      </div>
+      <div class="flex items-center gap-6">
+        <a href="/" class="hover:text-emerald-400 transition">App Live</a>
+        <a href="/api/whitepaper" target="_blank" class="hover:text-emerald-400 transition">White Paper</a>
+        <a href="https://github.com/themeig/DOVE-LO-AI-MESSO" target="_blank" class="hover:text-emerald-400 transition flex items-center gap-1">
+          <i class="fa-brands fa-github text-sm"></i> GitHub
+        </a>
+      </div>
+      <p class="text-slate-500">© 2026 Dove lo AI messo. Tutti i diritti riservati.</p>
+    </div>
+  </footer>
+
+  <!-- ================================================================= -->
+  <!-- MODAL: MODALITÀ PRESENTAZIONE FULLSCREEN (PITCH DECK)             -->
+  <!-- ================================================================= -->
+  <div id="deckModal" class="hidden fixed inset-0 z-50 bg-[#080C14] flex flex-col text-white select-none">
+    
+    <!-- Top Deck Header Bar -->
+    <div class="px-6 py-4 flex items-center justify-between border-b border-white/10 bg-slate-950/80">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-bold">
+          <i class="fa-solid fa-vault"></i>
+        </div>
+        <div>
+          <span class="font-bold text-sm text-white">Dove lo AI messo</span>
+          <span class="text-xs text-slate-400 ml-2 font-mono" id="deckSlideCounter">Slide 1 di 5</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="text-xs text-slate-400 font-mono hidden sm:inline">Usa i tasti freccia ⬅ ➡ o Spazio</div>
+        <button onclick="exitPresentationMode()" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-semibold transition cursor-pointer">
+          <i class="fa-solid fa-xmark mr-1"></i> Esci
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Slide Content Display -->
+    <div class="flex-1 flex items-center justify-center p-6 sm:p-12 overflow-hidden relative">
+      
+      <!-- Slide 1: Problem & Solution -->
+      <div id="slide1" class="deck-slide max-w-4xl text-center space-y-6">
+        <span class="text-xs font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full font-mono">
+          IL PROBLEMA E LA SOLUZIONE
+        </span>
+        <h2 class="text-4xl sm:text-6xl font-display font-extrabold leading-tight text-gradient">
+          "Dove ho messo quel documento?"
+        </h2>
+        <p class="text-lg sm:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
+          Ogni famiglia e professionista perde ore a cercare scontrini di garanzia, scadenze di bollette o oggetti riposti mesi prima. I gestionali tradizionali sono troppo complessi e vengono abbandonati.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto text-left pt-4">
+          <div class="glass-card p-4 rounded-2xl border border-red-500/30 bg-red-950/10">
+            <div class="text-red-400 font-bold text-sm mb-1">❌ App Tradizionali</div>
+            <p class="text-xs text-slate-400">Troppi campi da compilare, tabelle noiose, login dimenticati e zero confidenzialità.</p>
+          </div>
+          <div class="glass-card p-4 rounded-2xl border border-emerald-500/30 bg-emerald-950/10">
+            <div class="text-emerald-400 font-bold text-sm mb-1">✅ Dove lo AI messo</div>
+            <p class="text-xs text-slate-300">Scatti la foto su WhatsApp, parli a voce e l'AI organizza e cifra tutto all'istante.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 2: The WhatsApp Philosophy -->
+      <div id="slide2" class="deck-slide hidden max-w-4xl text-center space-y-6">
+        <span class="text-xs font-bold uppercase tracking-widest text-[#25D366] bg-[#25D366]/10 border border-[#25D366]/20 px-3 py-1 rounded-full font-mono">
+          FILOSOFIA DI PRODOTTO
+        </span>
+        <h2 class="text-4xl sm:text-6xl font-display font-extrabold leading-tight text-white">
+          WhatsApp UI: Curva d'apprendimento <span class="text-[#25D366]">ZERO</span>
+        </h2>
+        <p class="text-lg text-slate-300 max-w-2xl mx-auto">
+          Tutti sanno già usare WhatsApp: dai nonni agli adolescenti. Abbiamo replicato fedelmente l'interfaccia di messaggistica per eliminare ogni attrito d'uso.
+        </p>
+        <div class="flex flex-wrap justify-center gap-3 pt-2">
+          <span class="glass-card px-4 py-2 rounded-xl text-sm font-semibold border border-white/10 text-emerald-300">🎙️ Note vocali con trascrizione</span>
+          <span class="glass-card px-4 py-2 rounded-xl text-sm font-semibold border border-white/10 text-emerald-300">📸 Fotocamera diretta</span>
+          <span class="glass-card px-4 py-2 rounded-xl text-sm font-semibold border border-white/10 text-emerald-300">📄 Card interattive con download</span>
+        </div>
+      </div>
+
+      <!-- Slide 3: Fintech Dashboard -->
+      <div id="slide3" class="deck-slide hidden max-w-4xl text-center space-y-6">
+        <span class="text-xs font-bold uppercase tracking-widest text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-3 py-1 rounded-full font-mono">
+          PANORAMICA OPERATIVA
+        </span>
+        <h2 class="text-4xl sm:text-6xl font-display font-extrabold leading-tight text-white">
+          Dashboard Fintech & Scadenzario
+        </h2>
+        <p class="text-lg text-slate-300 max-w-2xl mx-auto">
+          Con un click passi alla Dashboard ultra-moderna (stile Stripe/Linear) con Bento Grid di indicatori, scadenzario fiscale a colori e filtri avanzati.
+        </p>
+        <div class="grid grid-cols-3 gap-4 max-w-xl mx-auto text-left pt-2">
+          <div class="glass-card p-3 rounded-2xl border border-white/10 text-center">
+            <div class="text-xs text-slate-400">Bollette & Fisco</div>
+            <div class="text-lg font-bold text-emerald-400 mt-1">Automatico</div>
+          </div>
+          <div class="glass-card p-3 rounded-2xl border border-white/10 text-center">
+            <div class="text-xs text-slate-400">Ricerca Testo</div>
+            <div class="text-lg font-bold text-cyan-400 mt-1">Fuzzy & Stemming</div>
+          </div>
+          <div class="glass-card p-3 rounded-2xl border border-white/10 text-center">
+            <div class="text-xs text-slate-400">Esportazione</div>
+            <div class="text-lg font-bold text-white mt-1">Backup .ZIP</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 4: Security & Privacy -->
+      <div id="slide4" class="deck-slide hidden max-w-4xl text-center space-y-6">
+        <span class="text-xs font-bold uppercase tracking-widest text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1 rounded-full font-mono">
+          SICUREZZA E PRIVACY
+        </span>
+        <h2 class="text-4xl sm:text-6xl font-display font-extrabold leading-tight text-white">
+          Crittografia a Blocchi <span class="text-rose-400">AES-256</span>
+        </h2>
+        <p class="text-lg text-slate-300 max-w-2xl mx-auto">
+          I tuoi documenti non vengono caricati su cloud pubblici in chiaro. Tutto risiede in locale, protetto da Master Password e chiavi crittografiche PBKDF2.
+        </p>
+        <div class="glass-card p-6 rounded-3xl border border-white/10 max-w-lg mx-auto text-left space-y-2">
+          <div class="flex items-center gap-2 text-xs text-slate-300 font-mono">
+            <i class="fa-solid fa-lock text-rose-400"></i> File a disco: Cifratura a byte (Fernet)
+          </div>
+          <div class="flex items-center gap-2 text-xs text-slate-300 font-mono">
+            <i class="fa-solid fa-key text-amber-400"></i> Database SQLite: Colonne sensibili oscurate
+          </div>
+          <div class="flex items-center gap-2 text-xs text-slate-300 font-mono">
+            <i class="fa-solid fa-shield-check text-emerald-400"></i> Protezione da furto fisico del dispositivo
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 5: The Market & Vision -->
+      <div id="slide5" class="deck-slide hidden max-w-4xl text-center space-y-6">
+        <span class="text-xs font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full font-mono">
+          IMPATTO E FUTURO
+        </span>
+        <h2 class="text-4xl sm:text-6xl font-display font-extrabold leading-tight text-white">
+          La Nuova Frontiera dell'Organizzazione
+        </h2>
+        <p class="text-lg text-slate-300 max-w-2xl mx-auto">
+          "Dove lo AI messo" ridefinisce la gestione documentale per privati, famiglie, freelance e studi professionali.
+        </p>
+        <div class="pt-4 flex items-center justify-center gap-4">
+          <a href="/" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#128C7E] to-[#25D366] text-white font-bold text-sm transition shadow-xl shadow-emerald-500/25 cursor-pointer">
+            Prova Subito l'Applicazione 🚀
+          </a>
+          <a href="/api/whitepaper" target="_blank" class="px-6 py-3.5 rounded-2xl glass-card hover:bg-white/10 text-white font-semibold text-sm border border-white/10 transition cursor-pointer">
+            Leggi White Paper 📄
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Deck Navigation Footer Controls -->
+    <div class="px-6 py-4 flex items-center justify-between border-t border-white/10 bg-slate-950/80">
+      <button onclick="prevSlide()" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition flex items-center gap-2 cursor-pointer">
+        <i class="fa-solid fa-arrow-left"></i> Precedente
+      </button>
+
+      <!-- Slide Dots -->
+      <div class="flex items-center gap-2" id="slideDots">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 transition-all cursor-pointer" onclick="goToSlide(1)"></span>
+        <span class="w-2 h-2 rounded-full bg-white/20 transition-all cursor-pointer" onclick="goToSlide(2)"></span>
+        <span class="w-2 h-2 rounded-full bg-white/20 transition-all cursor-pointer" onclick="goToSlide(3)"></span>
+        <span class="w-2 h-2 rounded-full bg-white/20 transition-all cursor-pointer" onclick="goToSlide(4)"></span>
+        <span class="w-2 h-2 rounded-full bg-white/20 transition-all cursor-pointer" onclick="goToSlide(5)"></span>
+      </div>
+
+      <button onclick="nextSlide()" class="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition flex items-center gap-2 cursor-pointer">
+        Successivo <i class="fa-solid fa-arrow-right"></i>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- JAVASCRIPT LOGIC FOR SIMULATOR & PITCH DECK                       -->
+  <!-- ================================================================= -->
+  <script>
+    // --- Simulator Data & Steps ---
+    const demoSteps = [
+      {
+        step: 1,
+        badge: "01. INGESTION DIRETTA",
+        title: "L'utente invia una bolletta o un vocale WhatsApp",
+        desc: "L'utente trascina un file PDF (es. 'bolletta_enel.pdf') o manda un messaggio vocale: 'Ho riposto il passaporto nel primo cassetto della scrivania'. Nessuna interfaccia complessa.",
+        pills: ["📎 Drag & Drop PDF", "🎤 Whisper Voice Note", "📸 Foto da Fotocamera", "📁 Cartelle Intere"],
+        visualHtml: `
+          <div class="space-y-3">
+            <div class="flex items-center gap-2 text-xs text-slate-400 font-mono">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              Ricezione file in corso...
+            </div>
+            <div class="bg-[#E7FFDB] text-slate-800 p-3 rounded-2xl rounded-tr-none shadow-sm max-w-[85%] ml-auto text-xs">
+              <div class="flex items-center gap-2.5 bg-emerald-100/70 p-2 rounded-xl border border-emerald-200">
+                <i class="fa-solid fa-file-pdf text-red-500 text-xl"></i>
+                <div>
+                  <div class="font-bold text-xs">bolletta_enel_ottobre.pdf</div>
+                  <div class="text-[10px] text-slate-500">245 KB • Inviato via WhatsApp</div>
+                </div>
+              </div>
+              <div class="text-[10px] text-right text-slate-500 mt-1">14:32 ✓✓</div>
+            </div>
+          </div>
+        `
+      },
+      {
+        step: 2,
+        badge: "02. AI VISION & REASONING",
+        title: "Estrazione entità istantanea ad alta precisione",
+        desc: "Il motore AI analizza il testo o i pixel dell'immagine, identificando autonomamente: Emittente (Enel Energia), Tipologia (Bolletta Luce), Importo (€ 64,20) e Scadenza (28/10/2026).",
+        pills: ["🧠 OpenRouter Multimodal AI", "⚡ Zero-Latency Parser", "🏷️ Tagging Automatico", "📄 Pydantic Schema Contracts"],
+        visualHtml: `
+          <div class="space-y-2.5">
+            <div class="text-[11px] font-mono text-cyan-400 font-semibold flex items-center justify-between">
+              <span>ESTRAZIONE PYDANTIC SCHEMA:</span>
+              <span class="text-emerald-400">100% MATCH</span>
+            </div>
+            <div class="bg-black/60 font-mono text-[11px] p-3 rounded-xl border border-cyan-500/30 text-cyan-200 space-y-1">
+              <div>{</div>
+              <div class="pl-4">"doc_type": <span class="text-emerald-300">"bolletta"</span>,</div>
+              <div class="pl-4">"issuer": <span class="text-emerald-300">"Enel Energia"</span>,</div>
+              <div class="pl-4">"amount": <span class="text-amber-300">64.20</span>,</div>
+              <div class="pl-4">"due_date": <span class="text-amber-300">"2026-10-28"</span>,</div>
+              <div class="pl-4">"status": <span class="text-emerald-300">"da_pagare"</span></div>
+              <div>}</div>
+            </div>
+          </div>
+        `
+      },
+      {
+        step: 3,
+        badge: "03. CRITTOGRAFIA A BLOCCHI",
+        title: "Cifratura AES-256 & Salvataggio nel Caveau",
+        desc: "I byte originali del file vengono cifrati con chiave derivata da Master Password (PBKDF2) prima della scrittura su disco. Anche leggendo il disco grezzo, i dati sono indistinguibili dal rumore casuale.",
+        pills: ["🔒 AES-256 Fernet Engine", "🔑 PBKDF2 Key Derivation", "🛡️ Database Obfuscation", "📦 Zero Unencrypted Leaks"],
+        visualHtml: `
+          <div class="space-y-3">
+            <div class="text-xs font-mono text-rose-400 font-semibold flex items-center gap-2">
+              <i class="fa-solid fa-shield-halved"></i>
+              <span>BLOB STORAGE CIFRATO (storage/uploads/):</span>
+            </div>
+            <div class="bg-black/70 font-mono text-[10px] p-3 rounded-xl border border-rose-500/30 text-rose-300/80 break-all leading-relaxed">
+              gAAAAABnw8_J29sL...8xK0qZ91vLmN37aP5qW2eR8tY...[AES-256 CIFRATO A BLOCCHI]
+            </div>
+            <div class="flex items-center gap-2 text-[11px] text-emerald-400 font-medium">
+              <i class="fa-solid fa-circle-check"></i>
+              <span>File al sicuro da accessi non autorizzati e furti di dati.</span>
+            </div>
+          </div>
+        `
+      },
+      {
+        step: 4,
+        badge: "04. DASHBOARD & COUNTDOWN",
+        title: "Sincronizzazione in tempo reale & Alert Scadenze",
+        desc: "La bolletta appare istantaneamente nello scadenzario con il badge 'Tra 42 giorni'. L'assistente WhatsApp genera la card interattiva con il tasto di download decifrato.",
+        pills: ["⏱️ Scadenzario Fiscale", "📍 Mappatura Oggetti", "⬇️ Download Decifrato On-The-Fly", "📊 KPI Finanziari"],
+        visualHtml: `
+          <div class="space-y-2.5">
+            <div class="bg-white p-3 rounded-xl border border-slate-200 text-slate-800 shadow-md">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center font-bold text-xs">PDF</div>
+                  <div>
+                    <div class="font-bold text-xs text-slate-900">Bolletta Enel Energia</div>
+                    <div class="text-[10px] text-slate-500">Scadenza: 28/10/2026 • 64,20 €</div>
+                  </div>
+                </div>
+                <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200">
+                  Tra 42 giorni
+                </span>
+              </div>
+              <div class="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                <span class="text-emerald-700 font-medium">✓ Sincronizzato con la Dashboard</span>
+                <span class="text-slate-400">ID #83</span>
+              </div>
+            </div>
+          </div>
+        `
+      }
+    ];
+
+    let currentStep = 1;
+    let autoPlayInterval = null;
+
+    function setDemoStep(stepNum) {
+      currentStep = stepNum;
+      const data = demoSteps[stepNum - 1];
+
+      // Update active button styles
+      for (let i = 1; i <= 4; i++) {
+        const btn = document.getElementById(`stepBtn${i}`);
+        if (i === stepNum) {
+          btn.className = "step-btn p-4 rounded-2xl text-left border transition cursor-pointer bg-emerald-500/15 border-emerald-500 text-white shadow-lg shadow-emerald-500/10";
+          btn.querySelector('.font-mono').className = "text-xs font-mono font-bold text-emerald-400 mb-1";
+        } else {
+          btn.className = "step-btn p-4 rounded-2xl text-left border transition cursor-pointer glass-card border-white/10 text-slate-300 hover:border-white/25";
+          btn.querySelector('.font-mono').className = "text-xs font-mono font-bold text-slate-500 mb-1";
+        }
+      }
+
+      // Update text details
+      document.getElementById('demoBadge').textContent = data.badge;
+      document.getElementById('demoTitle').textContent = data.title;
+      document.getElementById('demoDesc').textContent = data.desc;
+      
+      const pillsContainer = document.getElementById('demoPills');
+      pillsContainer.innerHTML = data.pills.map(p => `
+        <span class="bg-white/5 border border-white/10 text-slate-300 text-xs px-3 py-1.5 rounded-xl font-medium">${p}</span>
+      `).join('');
+
+      // Update visual box
+      document.getElementById('demoVisualContainer').innerHTML = data.visualHtml;
+    }
+
+    function nextDemoStep() {
+      const next = currentStep >= 4 ? 1 : currentStep + 1;
+      setDemoStep(next);
+    }
+
+    function autoPlayDemo() {
+      const btn = document.getElementById('autoPlayBtn');
+      if (autoPlayInterval) {
+        clearInterval(autoPlayInterval);
+        autoPlayInterval = null;
+        btn.innerHTML = `<i class="fa-solid fa-play text-emerald-400 text-xs"></i><span>Auto-Play Demo</span>`;
+      } else {
+        btn.innerHTML = `<i class="fa-solid fa-pause text-amber-400 text-xs"></i><span>Pausa Demo</span>`;
+        autoPlayInterval = setInterval(() => {
+          nextDemoStep();
+        }, 3200);
+      }
+    }
+
+    // --- Pitch Deck Presentation Mode ---
+    let currentSlide = 1;
+    const totalSlides = 5;
+
+    function startPresentationMode() {
+      document.getElementById('deckModal').classList.remove('hidden');
+      goToSlide(1);
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    }
+
+    function exitPresentationMode() {
+      document.getElementById('deckModal').classList.add('hidden');
+      if (document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+    }
+
+    function goToSlide(slideNum) {
+      currentSlide = slideNum;
+      for (let i = 1; i <= totalSlides; i++) {
+        const slide = document.getElementById(`slide${i}`);
+        if (slide) {
+          if (i === slideNum) slide.classList.remove('hidden');
+          else slide.classList.add('hidden');
+        }
+      }
+
+      // Update counter & dots
+      document.getElementById('deckSlideCounter').textContent = `Slide ${currentSlide} di ${totalSlides}`;
+      const dots = document.getElementById('slideDots').children;
+      for (let i = 0; i < dots.length; i++) {
+        if (i === slideNum - 1) {
+          dots[i].className = "w-3 h-3 rounded-full bg-emerald-400 transition-all cursor-pointer";
+        } else {
+          dots[i].className = "w-2 h-2 rounded-full bg-white/20 transition-all cursor-pointer";
+        }
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) goToSlide(currentSlide + 1);
+      else goToSlide(1);
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) goToSlide(currentSlide - 1);
+      else goToSlide(totalSlides);
+    }
+
+    // Keyboard navigation for presentation
+    document.addEventListener('keydown', (e) => {
+      const modal = document.getElementById('deckModal');
+      if (!modal || modal.classList.contains('hidden')) return;
+
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Escape') {
+        exitPresentationMode();
+      }
+    });
+
+    // Init on load
+    document.addEventListener('DOMContentLoaded', () => {
+      setDemoStep(1);
+    });
+  </script>
+</body>
+</html>

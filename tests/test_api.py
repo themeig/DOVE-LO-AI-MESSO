@@ -58,6 +58,15 @@ def test_root_serves_index():
     assert res.status_code == 200
     assert "Dove lo AI messo" in res.text
 
+def test_showcase_and_demo_endpoints():
+    res_sc = client.get("/showcase")
+    assert res_sc.status_code == 200
+    assert "Product Showcase" in res_sc.text or "Dove lo AI messo" in res_sc.text
+
+    res_demo = client.get("/demo")
+    assert res_demo.status_code == 200
+    assert "Product Showcase" in res_demo.text or "Dove lo AI messo" in res_demo.text
+
 def test_delete_document():
     fake_pdf = io.BytesIO(b"%PDF-1.4 test delete")
     upload_res = client.post("/api/documents/upload", files={"file": ("doc_da_eliminare.pdf", fake_pdf, "application/pdf")})

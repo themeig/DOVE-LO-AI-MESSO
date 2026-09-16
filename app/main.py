@@ -106,3 +106,12 @@ def serve_index():
     if index_file.exists():
         return FileResponse(index_file)
     return HTMLResponse("<h1>Dove lo AI messo</h1>")
+
+# Showcase & Interactive Pitch Deck endpoints
+@app.get("/showcase")
+@app.get("/demo")
+def serve_showcase():
+    showcase_file = settings.BASE_DIR / "showcase.html"
+    if showcase_file.exists():
+        return FileResponse(showcase_file)
+    return HTMLResponse("<h1>Dove lo AI messo — Showcase</h1>")
