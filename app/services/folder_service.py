@@ -391,6 +391,16 @@ def scan_folder_for_sensitive_proposals(
                 baseline_set = set(json.loads(watched.baseline_files_json))
             except Exception:
                 baseline_set = set()
+        else:
+            # Cartella preesistente senza baseline salvata: scatta baseline istantanea
+            try:
+                current_files = [os.path.normpath(str(x.resolve())) for x in p.iterdir() if x.is_file()]
+                watched.baseline_files_json = json.dumps(current_files)
+                watched.monitoring_started_at = datetime.now(timezone.utc)
+                db.commit()
+                baseline_set = set(current_files)
+            except Exception:
+                pass
 
         start_time = watched.monitoring_started_at or watched.created_at
         if start_time:
@@ -413,11 +423,11 @@ def scan_folder_for_sensitive_proposals(
             if norm_file in baseline_set:
                 continue
 
-            if started_ts is not None:
+            # Se non c'è una baseline registrata (fallback), usa il timestamp
+            if started_ts is not None and not baseline_set:
                 try:
                     st = f.stat()
                     file_time = max(st.st_mtime, getattr(st, "st_ctime", 0))
-                    # Se il file è antecedente all'inizio del monitoraggio, ignoralo
                     if file_time < (started_ts - 0.5):
                         continue
                 except Exception:

@@ -132,3 +132,61 @@ def test_login_rate_limiter_exponential_backoff():
     assert limiter.get_failure_count(key) == 0
     assert limiter.get_remaining_attempts_in_block(key) == 3
     assert limiter.is_rate_limited(key)[0] is False
+
+
+def test_rate_limiter_persistence_across_restarts(tmp_path):
+    from app.services.crypto_service import LoginRateLimiter
+
+    rate_file = tmp_path / "rate_limits.json"
+    limiter1 = LoginRateLimiter(storage_file=rate_file)
+    key = "127.0.0.1"
+
+    # 3 fallimenti consecutivi -> blocco di 30 secondi
+    limiter1.record_failure(key)
+    limiter1.record_failure(key)
+    d3 = limiter1.record_failure(key)
+    assert d3 == 30.0
+    assert limiter1.is_rate_limited(key)[0] is True
+    assert rate_file.exists()
+
+    # Simula chiusura dell'app e riavvio da zero con nuova istanza del processo
+    limiter2 = LoginRateLimiter(storage_file=rate_file)
+    assert limiter2.get_failure_count(key) == 3
+    is_limited, remaining = limiter2.is_rate_limited(key)
+    assert is_limited is True
+    assert remaining > 25.0
+
+    # Successo cancella il blocco persistito
+    limiter2.record_success(key)
+    limiter3 = LoginRateLimiter(storage_file=rate_file)
+    assert limiter3.get_failure_count(key) == 0
+    assert limiter3.is_rate_limited(key)[0] is False
+
+
+def test_rate_limiter_tamper_detection(tmp_path):
+    import json
+    from app.services.crypto_service import LoginRateLimiter
+
+    rate_file = tmp_path / "rate_limits.json"
+    signing_key = b"hardware_bound_signing_key_1234"
+    key = "127.0.0.1"
+
+    limiter = LoginRateLimiter(storage_file=rate_file, signing_key=signing_key)
+    limiter.record_failure(key)
+    limiter.record_failure(key)
+    limiter.record_failure(key)
+    assert limiter.is_rate_limited(key)[0] is True
+
+    # Simula un malintenzionato che modifica manualmente il file per azzerare i fallimenti
+    content = json.loads(rate_file.read_text(encoding="utf-8"))
+    assert "data" in content and "signature" in content
+    content["data"][key]["failures"] = 0  # manomissione senza conoscere la chiave HMAC!
+    rate_file.write_text(json.dumps(content), encoding="utf-8")
+
+    # Nuova istanza legge il file manomesso
+    limiter2 = LoginRateLimiter(storage_file=rate_file, signing_key=signing_key)
+
+    # La firma HMAC non corrisponde: rilevata manomissione e scatta sanzione massima (1 ora di blocco)
+    assert limiter2.is_rate_limited(key)[0] is True
+    assert limiter2._attempts[key].get("tamper_detected") is True
+    assert limiter2.get_remaining_wait(key) > 3500.0

@@ -297,10 +297,11 @@
           <!-- Pulsante Apri Dashboard -->
           <button 
             onclick="openDashboard()" 
-            class="bg-[#128C7E] hover:bg-[#0e7468] text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-xs transition flex items-center gap-1.5 active:scale-95 border border-white/20"
+            class="relative bg-[#128C7E] hover:bg-[#0e7468] text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-xs transition flex items-center gap-1.5 active:scale-95 border border-white/20"
           >
             <i class="fa-solid fa-chart-simple text-[11px]"></i>
             <span class="hidden sm:inline">Apri Dashboard</span>
+            <span id="chatDashboardBadge" class="hidden bg-amber-400 text-amber-950 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full animate-pulse ml-0.5 shadow-2xs">0</span>
           </button>
 
           <!-- Elimina Gruppo/Area Personalizzata -->
@@ -355,6 +356,53 @@
             onclick="dismissDeadlinesBanner()" 
             class="text-amber-800/60 hover:text-amber-900 p-1 hover:bg-amber-100/60 rounded-md transition cursor-pointer"
             title="Chiudi avviso"
+          >
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Banner Avviso File Sensibili Cartelle Monitorate nella Chat -->
+      <div 
+        id="chatSensitiveAlertBanner" 
+        class="hidden bg-gradient-to-r from-emerald-50 via-teal-50 to-amber-50 border-b border-emerald-200/90 px-3.5 py-2 text-xs text-slate-800 flex items-center justify-between shadow-2xs z-10 select-none animate-fade-in"
+      >
+        <div class="flex items-center gap-2.5 min-w-0 pr-2">
+          <div class="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 text-xs shadow-2xs animate-pulse">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div class="min-w-0">
+            <span id="chatSensitiveBannerText" class="font-bold text-xs leading-snug line-clamp-1 text-slate-900">
+              Rilevato nuovo file sensibile
+            </span>
+            <span id="chatSensitiveBannerSubtext" class="text-[10px] text-slate-600 block line-clamp-1">
+              Vuoi proteggerlo cifrato nel Caveau?
+            </span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button 
+            id="chatSensitiveBannerActionBtn"
+            onclick="approveFirstPendingProposal(this)" 
+            class="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-2xs transition active:scale-95 flex items-center gap-1 cursor-pointer"
+            title="Salva cifrato nel caveau"
+          >
+            <i class="fa-solid fa-lock text-[10px]"></i>
+            <span>Salva nel Caveau</span>
+          </button>
+          <button 
+            onclick="openWatchedFoldersModal()" 
+            class="bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs transition active:scale-95 hidden sm:flex items-center gap-1 cursor-pointer"
+            title="Gestisci cartelle e proposte"
+          >
+            <i class="fa-solid fa-folder-tree text-[10px] text-teal-600"></i>
+            <span>Gestisci</span>
+          </button>
+          <button 
+            onclick="dismissChatSensitiveBanner()" 
+            class="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100/60 rounded-md transition cursor-pointer"
+            title="Chiudi avviso temporaneamente"
           >
             <i class="fa-solid fa-xmark text-xs"></i>
           </button>
@@ -5238,6 +5286,22 @@
       }
     }
 
+    function dismissChatSensitiveBanner() {
+      window._chatSensitiveBannerDismissed = true;
+      const banner = document.getElementById('chatSensitiveAlertBanner');
+      if (banner) banner.classList.add('hidden');
+    }
+
+    async function approveFirstPendingProposal(btn) {
+      const propId = btn ? btn.getAttribute('data-prop-id') : null;
+      if (!propId) {
+        openWatchedFoldersModal();
+        return;
+      }
+      await approveProposal(parseInt(propId, 10), btn);
+      dismissChatSensitiveBanner();
+    }
+
     async function checkPendingProposalsBanner() {
       try {
         const res = await fetch('/api/folders/proposals?status=pending', { headers: authHeaders() });
@@ -5248,25 +5312,71 @@
         const badge = document.getElementById('sensitiveBannerBadge');
         const text = document.getElementById('sensitiveBannerText');
         const toolsBadge = document.getElementById('toolsFoldersBadge');
+        const chatBanner = document.getElementById('chatSensitiveAlertBanner');
+        const chatDashBadge = document.getElementById('chatDashboardBadge');
+        const chatBannerText = document.getElementById('chatSensitiveBannerText');
+        const chatBannerSubtext = document.getElementById('chatSensitiveBannerSubtext');
+        const chatActionBtn = document.getElementById('chatSensitiveBannerActionBtn');
 
         if (proposals.length > 0) {
-          if (banner) {
-            banner.classList.remove('hidden');
-          }
-          if (badge) {
-            badge.textContent = `${proposals.length} da verificare`;
-          }
+          if (banner) banner.classList.remove('hidden');
+          if (badge) badge.textContent = `${proposals.length} da verificare`;
+          const first = proposals[0];
           if (text) {
-            const first = proposals[0];
             text.innerHTML = `L'AI ha individuato <strong>${escapeHtml(first.file_name)}</strong> in <em>${escapeHtml(first.folder_name || 'cartella monitorata')}</em> (${escapeHtml(first.sensitivity_reason || '')}). Vuoi salvarlo cifrato nel Caveau?`;
           }
           if (toolsBadge) {
             toolsBadge.classList.remove('hidden');
             toolsBadge.textContent = proposals.length;
           }
+          if (chatDashBadge) {
+            chatDashBadge.classList.remove('hidden');
+            chatDashBadge.textContent = proposals.length;
+          }
+          if (chatBanner && !window._chatSensitiveBannerDismissed) {
+            chatBanner.classList.remove('hidden');
+            if (chatBannerText) {
+              chatBannerText.innerHTML = `🛡️ Rilevato <strong>${escapeHtml(first.file_name)}</strong> in ${escapeHtml(first.folder_name || 'Download')}`;
+            }
+            if (chatBannerSubtext) {
+              chatBannerSubtext.innerHTML = `${escapeHtml(first.sensitivity_reason || 'File sensibile')} • Vuoi proteggerlo cifrato nel Caveau?`;
+            }
+            if (chatActionBtn) {
+              chatActionBtn.setAttribute('data-prop-id', first.id);
+            }
+          }
+
+          // Se siamo nella chat attiva e la bolla per questa proposta non è ancora nel feed, iniettiamola dal vivo!
+          const chatFeed = document.getElementById('chatFeed');
+          if (chatFeed) {
+            for (const prop of proposals) {
+              const existingBubble = document.getElementById(`proposal-bubble-${prop.id}`);
+              if (!existingBubble) {
+                const proposalData = {
+                  id: prop.id,
+                  file_name: prop.file_name,
+                  folder_name: prop.folder_name,
+                  file_size: prop.file_size,
+                  doc_type: prop.doc_type,
+                  issuer: prop.issuer,
+                  amount: prop.amount,
+                  due_date: prop.due_date,
+                  sensitivity_reason: prop.sensitivity_reason,
+                  summary: prop.summary,
+                  status: prop.status || 'pending'
+                };
+                const bubbleText = `🛡️ **Rilevato nuovo file sensibile** in \`${escapeHtml(prop.folder_name || 'cartella monitorata')}\`:\n\n📄 **${escapeHtml(prop.file_name)}**\n_${escapeHtml(prop.sensitivity_reason || 'Documento rilevato')}_\n\nVuoi che lo protegga salvandolo cifrato nel Caveau e lo indicizzi nello scadenzario?`;
+                appendAssistantBubble(bubbleText, null, null, null, null, proposalData);
+                scrollBottom();
+              }
+            }
+          }
         } else {
           if (banner) banner.classList.add('hidden');
           if (toolsBadge) toolsBadge.classList.add('hidden');
+          if (chatBanner) chatBanner.classList.add('hidden');
+          if (chatDashBadge) chatDashBadge.classList.add('hidden');
+          window._chatSensitiveBannerDismissed = false;
         }
       } catch (e) {
         console.warn("checkPendingProposalsBanner err:", e);

@@ -4,8 +4,13 @@ import base64
 import hmac
 import secrets
 import time
+import uuid
+import hashlib
+import logging
 from pathlib import Path
 from typing import Optional, Dict
+
+logger = logging.getLogger(__name__)
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -93,12 +98,16 @@ def verify_password(password: str, meta: Dict[str, str]) -> bool:
 
 class LoginRateLimiter:
     """
-    Protezione anti-bruteforce a blocchi con backoff esponenziale.
+    Protezione anti-bruteforce a blocchi con backoff esponenziale, persistenza su disco
+    e firma crittografica HMAC anti-manomissione (Tamper-Proofing).
     Regola:
     - Primi 3 tentativi: immediati. Al 3° fallimento: blocco di 30 secondi.
     - Successivi 3 tentativi: immediati. Al 6° fallimento (totale): blocco di 1 minuto (60s).
     - Successivi 3 tentativi: immediati. Al 9° fallimento: blocco di 2 minuti (120s).
     - E così via raddoppiando per ogni blocco fino al ritardo massimo (default 3600s).
+    - Persiste lo stato su disco in rate_limits.json con firma crittografica HMAC-SHA256:
+      se un utente o malintenzionato tenta di modificare manualmente i file su disco
+      (es. alterando failures a 0), la firma fallisce e scatta un blocco di sicurezza penalizzante!
     Al login riuscito, il conteggio fallimenti per la chiave viene azzerato.
     """
 
@@ -107,17 +116,82 @@ class LoginRateLimiter:
         attempts_per_block: int = 3,
         base_block_delay: float = 30.0,
         max_delay: float = 3600.0,
-        backoff_factor: float = 2.0
+        backoff_factor: float = 2.0,
+        storage_file: Optional[Path] = None,
+        signing_key: Optional[bytes] = None
     ):
         self.attempts_per_block = attempts_per_block
         self.base_block_delay = base_block_delay
         self.max_delay = max_delay
         self.backoff_factor = backoff_factor
+        self.storage_file = Path(storage_file) if storage_file else None
+        self.signing_key = signing_key
         # Struttura: key -> {"failures": int, "locked_until": float, "last_attempt": float}
         self._attempts: Dict[str, Dict[str, float]] = {}
+        self._load_state()
+
+    def _compute_signature(self, data: dict) -> str:
+        """Calcola la firma HMAC-SHA256 canonica del dizionario di dati."""
+        if not self.signing_key:
+            return ""
+        canonical = json.dumps(data, sort_keys=True, separators=(',', ':'))
+        return hmac.new(self.signing_key, canonical.encode('utf-8'), hashlib.sha256).hexdigest()
+
+    def _handle_tampering_detected(self) -> None:
+        """
+        Se viene rilevata una manomissione del file su disco (es. modifica manuale del numero di tentativi),
+        applica una sanzione di sicurezza immediata bloccando l'accesso per il tempo massimo consentito (1 ora).
+        """
+        now = time.time()
+        self._attempts = {
+            "127.0.0.1": {
+                "failures": 10,
+                "locked_until": now + self.max_delay,
+                "last_attempt": now,
+                "tamper_detected": True
+            }
+        }
+        self._save_state()
+
+    def _load_state(self) -> None:
+        """Carica lo stato persistito da disco verificando la firma crittografica HMAC anti-manomissione."""
+        if self.storage_file and self.storage_file.exists():
+            try:
+                raw = json.loads(self.storage_file.read_text(encoding="utf-8"))
+                if isinstance(raw, dict) and "data" in raw and "signature" in raw:
+                    data = raw["data"]
+                    sig = raw["signature"]
+                    if self.signing_key:
+                        expected_sig = self._compute_signature(data)
+                        if not hmac.compare_digest(sig, expected_sig):
+                            logger.warning("SICUREZZA: Rilevata manomissione nel file rate_limits.json! Firma HMAC non valida.")
+                            self._handle_tampering_detected()
+                            return
+                    self._attempts = data
+                elif isinstance(raw, dict) and "data" not in raw:
+                    # File in formato legacy non firmato: migra e firma
+                    self._attempts = raw
+                    self._save_state()
+            except Exception as e:
+                logger.error(f"Errore lettura rate_limits.json: {e}")
+                self._attempts = {}
+
+    def _save_state(self) -> None:
+        """Salva lo stato corrente su disco applicando la firma HMAC-SHA256."""
+        if self.storage_file:
+            try:
+                self.storage_file.parent.mkdir(parents=True, exist_ok=True)
+                envelope = {
+                    "data": self._attempts,
+                    "signature": self._compute_signature(self._attempts)
+                }
+                self.storage_file.write_text(json.dumps(envelope, indent=2), encoding="utf-8")
+            except Exception as e:
+                logger.error(f"Errore salvataggio rate_limits.json: {e}")
 
     def get_remaining_wait(self, key: str) -> float:
         """Restituisce i secondi rimanenti di blocco per la chiave specificata (0.0 se non bloccato)."""
+        self._load_state()
         record = self._attempts.get(key)
         if not record:
             return 0.0
@@ -136,7 +210,9 @@ class LoginRateLimiter:
         Se il conteggio fallimenti raggiunge un multiplo di attempts_per_block (es. 3, 6, 9...),
         applica il blocco temporaneo con tempo raddoppiato (30s, 60s, 120s...) e restituisce il ritardo.
         Se non ha ancora esaurito i tentativi del blocco, restituisce 0.0.
+        Persiste lo stato su disco con firma crittografica HMAC.
         """
+        self._load_state()
         now = time.time()
         record = self._attempts.setdefault(key, {"failures": 0, "locked_until": 0.0, "last_attempt": now})
         record["failures"] += 1
@@ -147,12 +223,15 @@ class LoginRateLimiter:
             block_index = failures // self.attempts_per_block  # 1 per 3 tentativi, 2 per 6, 3 per 9...
             delay = min(self.base_block_delay * (self.backoff_factor ** (block_index - 1)), self.max_delay)
             record["locked_until"] = now + delay
+            self._save_state()
             return delay
         else:
+            self._save_state()
             return 0.0
 
     def get_remaining_attempts_in_block(self, key: str) -> int:
         """Restituisce il numero di tentativi rimasti nel blocco corrente prima dello scatto del lockout."""
+        self._load_state()
         record = self._attempts.get(key)
         if not record:
             return self.attempts_per_block
@@ -165,36 +244,69 @@ class LoginRateLimiter:
         return self.attempts_per_block - remainder
 
     def record_success(self, key: str) -> None:
-        """Azzera il contatore dei fallimenti per la chiave specificata."""
+        """Azzera il contatore dei fallimenti per la chiave specificata e aggiorna il disco con nuova firma."""
+        self._load_state()
         if key in self._attempts:
             del self._attempts[key]
+            self._save_state()
 
     def get_failure_count(self, key: str) -> int:
         """Restituisce il numero attuale di tentativi consecutivi falliti."""
+        self._load_state()
         record = self._attempts.get(key)
         return int(record["failures"]) if record else 0
 
     def reset(self, key: Optional[str] = None) -> None:
-        """Azzera la cronologia dei tentativi (per una singola chiave o per tutte)."""
+        """Azzera la cronologia dei tentativi (per una singola chiave o per tutte) e aggiorna il disco."""
         if key is not None:
             self._attempts.pop(key, None)
         else:
             self._attempts.clear()
+        self._save_state()
 
 
 class VaultManager:
     """Gestore del caveau crittografico: conserva la chiave attiva in memoria finché il caveau è sbloccato."""
 
-    def __init__(self, meta_file: Optional[Path] = None):
+    def __init__(self, meta_file: Optional[Path] = None, rate_limit_file: Optional[Path] = None):
         if meta_file is not None:
             self.meta_file = Path(meta_file)
         else:
             settings = get_settings()
             self.meta_file = settings.BASE_DIR / "storage" / "vault_meta.json"
+
+        if rate_limit_file is not None:
+            limit_file = Path(rate_limit_file)
+        else:
+            limit_file = self.meta_file.parent / "rate_limits.json"
+
         self._active_key: Optional[bytes] = None
         self._unlocked: bool = False
         self._active_tokens: set[str] = set()
-        self.rate_limiter = LoginRateLimiter()
+
+        signing_key = self._get_or_create_signing_key()
+        self.rate_limiter = LoginRateLimiter(storage_file=limit_file, signing_key=signing_key)
+
+    def _get_or_create_signing_key(self) -> bytes:
+        """Deriva una chiave HMAC sicura legata alla macchina host e al salt del caveau."""
+        salt_part = b""
+        if self.meta_file.exists():
+            try:
+                meta = json.loads(self.meta_file.read_text(encoding="utf-8"))
+                salt_part = bytes.fromhex(meta.get("salt", ""))
+            except Exception:
+                pass
+        if not salt_part:
+            salt_part = b"dove_lo_ai_messo_hardware_security_salt"
+
+        machine_id = f"{uuid.getnode()}_{os.environ.get('COMPUTERNAME', 'localhost')}".encode("utf-8")
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt_part,
+            iterations=10_000,
+        )
+        return kdf.derive(machine_id)
 
     def initialize_if_needed(self, default_password: str = "1234", auto_unlock: bool = False):
         """
