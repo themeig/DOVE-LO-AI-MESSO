@@ -428,6 +428,20 @@
           <h3 class="text-base font-bold pointer-events-none">Rilascia qui i tuoi file o cartelle</h3>
           <p class="text-xs text-emerald-100 max-w-sm mt-1 pointer-events-none">Caricamento automatico di documenti multipli e cartelle nel caveau</p>
         </div>
+      <!-- Barra Preview Messaggio Quotato Stile WhatsApp -->
+      <div id="quotePreviewBar" class="hidden bg-[#F0F2F5] px-3 pt-2 pb-0.5 border-t border-slate-200/80 shrink-0 transition-all select-none">
+        <div class="bg-white/95 rounded-xl p-2.5 flex items-center justify-between gap-3 shadow-xs border-l-4 border-[#075E54]">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-[#075E54] mb-0.5">
+              <i class="fa-solid fa-reply text-[10px]"></i>
+              <span id="quoteSenderName">Tu</span>
+            </div>
+            <p id="quotePreviewText" class="text-xs text-slate-600 truncate font-normal leading-tight">Messaggio quotato...</p>
+          </div>
+          <button type="button" onclick="cancelQuoteReply()" class="w-7 h-7 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer shrink-0" title="Annulla quota">
+            <i class="fa-solid fa-xmark text-sm"></i>
+          </button>
+        </div>
       </div>
 
       <!-- Barra Input WhatsApp -->
@@ -2044,6 +2058,7 @@
 
     async function switchThread(threadId, fetchMessages = true) {
       currentThreadId = threadId;
+      if (typeof cancelQuoteReply === 'function') cancelQuoteReply();
       deadlineBannerDismissed = false;
       const thread = threadsCache.find(t => t.id === threadId);
       if (thread) {
@@ -2114,7 +2129,8 @@
 
         for (const m of msgs) {
           if (m.sender === 'user') {
-            appendUserBubble(m.content);
+            const quoted = m.metadata && m.metadata.quoted_message ? m.metadata.quoted_message : null;
+            appendUserBubble(m.content, quoted);
           } else {
             const docs = m.metadata && m.metadata.documents ? m.metadata.documents : null;
             const conf = m.metadata && m.metadata.confirmation ? m.metadata.confirmation : null;
@@ -2638,6 +2654,12 @@
       }
     });
 
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && typeof cancelQuoteReply === 'function') {
+        cancelQuoteReply();
+      }
+    });
+
     function scrollBottom() {
       chatFeed.scrollTop = chatFeed.scrollHeight;
     }
@@ -3077,15 +3099,79 @@
       if (el) el.remove();
     }
 
-    function appendUserBubble(text) {
+    // --- Gestione Citazioni / Rispondi a Messaggio (WhatsApp Quote) ---
+    let currentQuotedMessage = null;
+
+    function replyToMessage(btnEl, senderType = 'assistant', explicitText = null) {
+      let text = explicitText;
+      if (!text) {
+        const selection = window.getSelection() ? window.getSelection().toString().trim() : '';
+        if (selection && selection.length > 0) {
+          text = selection;
+        } else {
+          const bubble = btnEl ? btnEl.closest('.group\\/msg') : null;
+          const bodyEl = bubble ? bubble.querySelector('.message-body') : null;
+          text = bodyEl ? bodyEl.innerText.trim() : '';
+        }
+      }
+
+      if (!text) return;
+
+      const senderName = senderType === 'user' ? 'Tu' : 'Dove lo AI messo';
+      currentQuotedMessage = {
+        sender: senderType,
+        senderName: senderName,
+        text: text
+      };
+
+      const bar = document.getElementById('quotePreviewBar');
+      const senderEl = document.getElementById('quoteSenderName');
+      const previewEl = document.getElementById('quotePreviewText');
+
+      if (senderEl) senderEl.textContent = senderName;
+      if (previewEl) previewEl.textContent = cleanSidebarPreview(text);
+      if (bar) bar.classList.remove('hidden');
+
+      if (input) {
+        input.focus();
+      }
+    }
+
+    function cancelQuoteReply() {
+      currentQuotedMessage = null;
+      const bar = document.getElementById('quotePreviewBar');
+      if (bar) bar.classList.add('hidden');
+    }
+
+    function appendUserBubble(text, quoted = null) {
       const userBubble = document.createElement('div');
       userBubble.className = 'flex justify-end';
+
+      let quoteHtml = '';
+      if (quoted && quoted.text) {
+        const safeSender = escapeHtml(quoted.sender || quoted.senderName || 'Messaggio');
+        const safeQuote = escapeHtml(cleanSidebarPreview(quoted.text));
+        quoteHtml = `
+          <div class="bg-black/5 hover:bg-black/10 transition rounded-lg p-2 mb-1.5 border-l-4 border-[#075E54] text-xs select-none">
+            <div class="font-bold text-[#075E54] text-[11px] mb-0.5 flex items-center gap-1">
+              <i class="fa-solid fa-reply text-[9px]"></i>
+              <span>${safeSender}</span>
+            </div>
+            <p class="text-slate-600 truncate font-normal leading-tight">${safeQuote}</p>
+          </div>
+        `;
+      }
+
       userBubble.innerHTML = `
         <div class="wa-bubble-out p-2.5 max-w-[85%] text-sm text-gray-800 leading-snug relative group/msg select-text">
+          ${quoteHtml}
           <div class="message-body selectable-text break-words">
             <p>${formatMessageText(text)}</p>
           </div>
           <div class="flex justify-end items-center gap-1.5 mt-0.5 select-none">
+            <button type="button" onclick="replyToMessage(this, 'user')" class="copy-msg-btn hover:text-[#075E54] text-slate-500 text-[11px] p-0.5 rounded transition cursor-pointer" title="Rispondi / Quota">
+              <i class="fa-solid fa-reply"></i>
+            </button>
             <button type="button" onclick="copyMessageText(this)" class="copy-msg-btn hover:text-slate-900 text-slate-500 text-[11px] p-0.5 rounded transition cursor-pointer" title="Copia testo">
               <i class="fa-regular fa-copy"></i>
             </button>
@@ -3182,9 +3268,12 @@
       }
 
       userBubble.innerHTML = `
-        <div class="wa-bubble-out p-2 max-w-[85%] text-sm text-gray-800 select-text">
+        <div class="wa-bubble-out p-2 max-w-[85%] text-sm text-gray-800 select-text group/msg">
           ${previewContent}
           <div class="flex justify-end items-center gap-1.5 mt-0.5 select-none">
+            <button type="button" onclick="replyToMessage(this, 'user', 'File: ${escapeHtml(fileName).replace(/'/g, "\\'")}')" class="copy-msg-btn hover:text-[#075E54] text-slate-500 text-[11px] p-0.5 rounded transition cursor-pointer" title="Rispondi / Quota">
+              <i class="fa-solid fa-reply"></i>
+            </button>
             <button type="button" onclick="copyTextToClipboard('${escapeHtml(fileName).replace(/'/g, "\\'")}', this)" class="copy-msg-btn hover:text-slate-900 text-slate-500 text-[11px] p-0.5 rounded transition cursor-pointer" title="Copia nome file">
               <i class="fa-regular fa-copy"></i>
             </button>
@@ -3427,9 +3516,14 @@
             <div class="message-body selectable-text min-w-0 flex-1 break-words">
               <p>${formattedHtml}</p>
             </div>
-            <button type="button" onclick="copyMessageText(this)" class="copy-msg-btn hover:text-slate-900 text-slate-400 hover:bg-slate-100 text-xs p-1 rounded transition shrink-0 cursor-pointer self-start -mt-0.5 -mr-0.5" title="Copia testo">
-              <i class="fa-regular fa-copy"></i>
-            </button>
+            <div class="flex items-center gap-1 shrink-0 self-start -mt-0.5 -mr-0.5 select-none">
+              <button type="button" onclick="replyToMessage(this, 'assistant')" class="copy-msg-btn hover:text-[#075E54] text-slate-400 hover:bg-slate-100 text-xs p-1 rounded transition cursor-pointer" title="Rispondi / Quota">
+                <i class="fa-solid fa-reply"></i>
+              </button>
+              <button type="button" onclick="copyMessageText(this)" class="copy-msg-btn hover:text-slate-900 text-slate-400 hover:bg-slate-100 text-xs p-1 rounded transition cursor-pointer" title="Copia testo">
+                <i class="fa-regular fa-copy"></i>
+              </button>
+            </div>
           </div>
           ${photoHtml}
           ${docsHtml}
@@ -3528,7 +3622,10 @@
       if (!text) return;
 
       const targetThreadId = currentThreadId; // Memorizza la chat di destinazione
-      appendUserBubble(text);
+      const quotedToSend = currentQuotedMessage;
+      cancelQuoteReply(); // Chiudi subito la barra preview della citazione
+
+      appendUserBubble(text, quotedToSend);
       input.value = '';
       input.dispatchEvent(new Event('input'));
       scrollBottom();
@@ -3559,7 +3656,11 @@
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ message: text, thread_id: targetThreadId }),
+          body: JSON.stringify({
+            message: text,
+            thread_id: targetThreadId,
+            quoted_message: quotedToSend ? { sender: quotedToSend.senderName, text: quotedToSend.text } : null
+          }),
           signal: taskSignal
         });
         setGenerationActive(false, "", null, targetThreadId);

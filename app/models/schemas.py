@@ -21,6 +21,7 @@ class MessageIntent(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     thread_id: Optional[str] = "general"
+    quoted_message: Optional[dict] = None
 
 class ChatThreadCreate(BaseModel):
     name: str = Field(..., description="Nome del gruppo o area tematica")

@@ -23,19 +23,30 @@ def handle_chat_message(
 ):
     thread_id = payload.thread_id or "general"
 
-    # 1. Save incoming user message
+    # 1. Save incoming user message with optional quoted text metadata
+    user_metadata = {}
+    if payload.quoted_message:
+        user_metadata["quoted_message"] = payload.quoted_message
+
     user_msg = ChatMessage(
         thread_id=thread_id,
         sender="user",
         message_type="text",
-        content=payload.message
+        content=payload.message,
+        metadata_json=json.dumps(user_metadata) if user_metadata else None
     )
     db.add(user_msg)
     db.commit()
 
-    # 2. Run intelligent agent with real tools and thread context
+    # 2. Run intelligent agent with real tools, thread context and quoted reference
+    agent_input = payload.message
+    if payload.quoted_message and payload.quoted_message.get("text"):
+        quote_sender = payload.quoted_message.get("sender") or "Messaggio precedente"
+        quote_text = str(payload.quoted_message.get("text", "")).strip()
+        agent_input = f'[In risposta a {quote_sender}: "{quote_text}"]\n{payload.message}'
+
     agent = get_agent()
-    chat_response = agent.run_turn(payload.message, db=db, thread_id=thread_id)
+    chat_response = agent.run_turn(agent_input, db=db, thread_id=thread_id)
 
     # 3. Save assistant reply to chat history
     meta_dict = {"action": chat_response.action}

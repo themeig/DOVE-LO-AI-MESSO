@@ -191,4 +191,26 @@ def test_chat_listing_and_bulk_delete_intents():
     assert del_data["confirmation"]["target_type"] == "bulk_documents"
     assert doc_id in del_data["confirmation"]["target_ids"]
 
+def test_chat_with_quoted_message():
+    # Invia un messaggio quotando un testo precedente
+    quote_payload = {
+        "message": "Chi è l'emittente?",
+        "thread_id": "general",
+        "quoted_message": {
+            "sender": "Dove lo AI messo",
+            "text": "Bolletta Enel Energia da 64.20€"
+        }
+    }
+    res = client.post("/api/chat", json=quote_payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert "reply" in data
 
+    # Verifica che nei messaggi del thread ci sia il metadata quoted_message salvato
+    msgs_res = client.get("/api/threads/general/messages")
+    assert msgs_res.status_code == 200
+    msgs = msgs_res.json().get("messages", [])
+    last_user_msg = [m for m in msgs if m["sender"] == "user"][-1]
+    assert last_user_msg["metadata"] is not None
+    assert "quoted_message" in last_user_msg["metadata"]
+    assert last_user_msg["metadata"]["quoted_message"]["text"] == "Bolletta Enel Energia da 64.20€"
