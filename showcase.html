@@ -477,49 +477,7 @@
           </div>
         </div>
 
-        <!-- Card 4: Universal Drag & Drop with Folder Traversal -->
-        <div class="glass-card rounded-3xl p-6 border border-white/10 hover:border-violet-500/40 transition group">
-          <div class="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 text-violet-400 flex items-center justify-center text-xl mb-5 group-hover:scale-110 transition">
-            <i class="fa-solid fa-folder-arrow-down"></i>
-          </div>
-          <h3 class="text-xl font-bold text-white mb-2">Drag & Drop Universale + Cartelle</h3>
-          <p class="text-slate-300 text-sm leading-relaxed mb-4">
-            Trascina qualsiasi file o <strong>intera cartella</strong> direttamente nella chat o nella dashboard. Il motore <code class="text-violet-400 bg-violet-500/10 px-1 rounded">webkitGetAsEntry</code> esplora ricorsivamente le sottocartelle e carica tutti i documenti interni in batch concorrente con avanzamento reale.
-          </p>
-          <div class="text-xs font-mono text-violet-400">
-            📁 Directory traversal ricorsivo multi-livello
-          </div>
-        </div>
-
-        <!-- Card 5: In-App Toast & Confirm Modal (No Native Popups) -->
-        <div class="glass-card rounded-3xl p-6 border border-white/10 hover:border-pink-500/40 transition group">
-          <div class="w-12 h-12 rounded-2xl bg-pink-500/10 border border-pink-500/20 text-pink-400 flex items-center justify-center text-xl mb-5 group-hover:scale-110 transition">
-            <i class="fa-solid fa-bell-concierge"></i>
-          </div>
-          <h3 class="text-xl font-bold text-white mb-2">Toast & Modale In-App (Zero Popup Nativi)</h3>
-          <p class="text-slate-300 text-sm leading-relaxed mb-4">
-            Tutte le notifiche (successo, errore, avviso) e le conferme di eliminazione usano un <strong>Toast System floating</strong> stile Linear/Stripe e un <strong>modale async in-app</strong>. Nessun alert bloccante del browser mai.
-          </p>
-          <div class="text-xs font-mono text-pink-400">
-            🔔 UX professionale a prova di errore
-          </div>
-        </div>
-
-        <!-- Card 6: Dashboard Tabs: Quietanzati + Segmented Filter -->
-        <div class="glass-card rounded-3xl p-6 border border-white/10 hover:border-teal-500/40 transition group">
-          <div class="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center text-xl mb-5 group-hover:scale-110 transition">
-            <i class="fa-solid fa-filter-circle-dollar"></i>
-          </div>
-          <h3 class="text-xl font-bold text-white mb-2">Tab Quietanzati & Alias Filtri Dashboard</h3>
-          <p class="text-slate-300 text-sm leading-relaxed mb-4">
-            La dashboard include ora la tab dedicata <strong>Quietanzati</strong> con badge numerico dinamico. I filtri API accettano alias in italiano (<code class="text-teal-400 bg-teal-500/10 px-1 rounded">?filter=da_pagare</code>, <code class="text-teal-400 bg-teal-500/10 px-1 rounded">quietanzati</code>, <code class="text-teal-400 bg-teal-500/10 px-1 rounded">oggetti</code>) per massima ergonomia.
-          </p>
-          <div class="text-xs font-mono text-teal-400">
-            ✅ Da Pagare · Quietanzati · Oggetti · Tutti
-          </div>
-        </div>
-
-        <!-- Card 7: Ultra-Fast Zip & Batch -->
+        <!-- Card 4: Ultra-Fast Zip & Batch -->
         <div class="glass-card rounded-3xl p-6 md:col-span-2 border border-white/10 hover:border-emerald-500/40 transition group">
           <div class="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl mb-5 group-hover:scale-110 transition">
             <i class="fa-solid fa-bolt-lightning"></i>
@@ -800,7 +758,7 @@
         </div>
         <div>
           <span class="font-bold text-sm text-white">Dove lo AI messo</span>
-          <span class="text-xs font-mono text-slate-400 ml-2 font-mono" id="deckSlideCounter">Slide 1 di 7</span>
+          <span class="text-xs font-mono text-slate-400 ml-2 font-mono" id="deckSlideCounter">Slide 1 di 6</span>
         </div>
       </div>
 
@@ -956,33 +914,6 @@
         </div>
       </div>
 
-      <!-- Slide 7: New UX Features shipped -->
-      <div id="slide7" class="deck-slide hidden max-w-4xl text-center space-y-6">
-        <span class="text-xs font-bold uppercase tracking-widest text-violet-400 bg-violet-500/10 border border-violet-500/20 px-3 py-1 rounded-full font-mono">
-          NUOVE FUNZIONALITÀ UX
-        </span>
-        <h2 class="text-4xl sm:text-6xl font-display font-extrabold leading-tight text-white">
-          Drag & Drop Totale, Toast <span class="text-violet-400">&</span> Tab Quietanzati
-        </h2>
-        <p class="text-lg text-slate-300 max-w-2xl mx-auto">
-          Trascina anche intere cartelle (traversal ricorsivo), ricevi notifiche in-app senza alert nativi e filtra il tuo scadenzario con tab segmentate dinamiche con badge.
-        </p>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-left pt-2">
-          <div class="glass-card p-4 rounded-2xl border border-violet-500/30">
-            <div class="text-violet-400 font-bold text-sm mb-1"><i class="fa-solid fa-folder-arrow-down mr-1.5"></i> Folder Drop</div>
-            <p class="text-xs text-slate-400">webkitGetAsEntry ricorsivo su chat e dashboard.</p>
-          </div>
-          <div class="glass-card p-4 rounded-2xl border border-pink-500/30">
-            <div class="text-pink-400 font-bold text-sm mb-1"><i class="fa-solid fa-bell-concierge mr-1.5"></i> Toast In-App</div>
-            <p class="text-xs text-slate-400">Zero popup nativi: solo toast floating e modal async.</p>
-          </div>
-          <div class="glass-card p-4 rounded-2xl border border-teal-500/30">
-            <div class="text-teal-400 font-bold text-sm mb-1"><i class="fa-solid fa-filter-circle-dollar mr-1.5"></i> Tab Quietanzati</div>
-            <p class="text-xs text-slate-400">Badge numerico live. Filtri API in italiano.</p>
-          </div>
-        </div>
-      </div>
-
     </div>
 
     <!-- Deck Navigation Footer Controls -->
@@ -999,7 +930,6 @@
         <span class="w-2 h-2 rounded-full bg-white/20 transition-all cursor-pointer" onclick="goToSlide(4)"></span>
         <span class="w-2 h-2 rounded-full bg-white/20 transition-all cursor-pointer" onclick="goToSlide(5)"></span>
         <span class="w-2 h-2 rounded-full bg-white/20 transition-all cursor-pointer" onclick="goToSlide(6)"></span>
-        <span class="w-2 h-2 rounded-full bg-white/20 transition-all cursor-pointer" onclick="goToSlide(7)"></span>
       </div>
 
       <button onclick="nextSlide()" class="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition flex items-center gap-2 cursor-pointer">
@@ -1171,7 +1101,7 @@
 
     // --- Pitch Deck Presentation Mode ---
     let currentSlide = 1;
-    const totalSlides = 7;
+    const totalSlides = 6;
 
     function startPresentationMode() {
       document.getElementById('deckModal').classList.remove('hidden');
