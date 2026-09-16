@@ -53,7 +53,10 @@ A differenza dei tradizionali sistemi di archiviazione complessi o dei cloud pub
 ### 3.1. Chat Conversazionale = 100% Stile WhatsApp
 - **Look & Feel Nativo**: Header verde WhatsApp (`#075E54` / `#128C7E`), sfondo con texture a grana fine (`#EFEAE2`), bolle tipiche (bianco per l'assistente, verde menta `#E7FFDB` per l'utente con doppie spunte azzurre `#53BDEB`).
 - **Barra Input Fedele**: Selettore emoji, campo a pillola, pulsante fotocamera, menu popover allegati (File, Cartelle, Foto Oggetti), microfono vocale reale e pulsante d'invio circolare verde WhatsApp (`#25D366`).
+- **Drag & Drop Universale con Directory Traversal Ricorsivo**: L'utente può trascinare qualsiasi file **o intera cartella** direttamente nell'area chat. Il motore `webkitGetAsEntry` esplora ricorsivamente le sottocartelle su tutti i livelli di profondità, raccogliendo ogni documento e avviando upload batch concorrente (3 worker paralleli) con barra di avanzamento in tempo reale e pulsante di interruzione immediata.
+- **Sistema Notifiche In-App (Zero Alert Nativi)**: Un **Toast System floating** stile Linear/Stripe (successo 🟢, errore 🔴, avviso 🟡) e un **modale di conferma asincrono** in-app sostituiscono completamente gli alert e confirm bloccanti del browser per un'esperienza utente professionale e non invasiva.
 - **Feedback Dinamico & Barra di Avanzamento**: Riconoscimento intelligente dell'azione con indicatore di stato testuale (es. *"Sto creando l'archivio ZIP..."*, *"Scansione cartelle locali in corso..."*) e barra di progressione in tempo reale per upload di cartelle e file multipli.
+
 
 ### 3.2. Executive Dashboard = Stile SaaS Moderno (Bento Grid)
 - **Superficie Ultra-Moderna**: Sfondo slate neutro (`#F8FAFC`), Bento Grid con indicatori KPI in tempo reale:
@@ -61,9 +64,13 @@ A differenza dei tradizionali sistemi di archiviazione complessi o dei cloud pub
   - *Scadenze Pendenti* con alert per pagamenti urgenti.
   - *Documenti Protetti nel Caveau*.
   - *Oggetti & Posizioni Fisiche Catalogate*.
-- **Doppia Vista**:
+- **Tab Segmentate con Badge Dinamici**: Filtri istantanei (*Tutti, Da Pagare, **Quietanzati**, Oggetti*) con contatori numerici live che si aggiornano ad ogni operazione.
+- **Alias Filtri API in Italiano**: I filtri `/api/dashboard?filter=` accettano alias italiani (`da_pagare`, `quietanzati`, `oggetti`, `scadenze`) per ergonomia massima nella chiamate AI e automazioni.
+- **Azioni Rapide Protette**:
   - *Vista Raggruppata per Spazio/Gruppo*: schede tematiche con card animate e anteprime visive.
-  - *Tabella Dettagliata*: filtri istantanei (*Tutti, Da Pagare, Pagati, Oggetti*), badge di stato cromatici (*In Scadenza, Quietanzato, Conservato*), azioni rapide di download, marcatura pagamento con un click e cancellazione protetta.
+  - *Tabella Dettagliata*: filtri istantanei, badge di stato cromatici (*In Scadenza, Quietanzato, Conservato*), azioni rapide di download, marcatura pagamento con un click e cancellazione protetta da **modale di conferma in-app**.
+- **Drag & Drop Nativo sulla Dashboard**: overlay dedicato per il rilascio di file e cartelle direttamente dall'esplora risorse sulla dashboard, con la stessa pipeline di elaborazione batch della chat.
+
 
 ---
 
@@ -199,6 +206,10 @@ Il progetto supporta due modalità di utilizzo chiaramente differenziate:
 | **Oggetti** | **Localizzatore Oggetti** | Memorizzazione posizione dettagliata con supporto fotografico. |
 | **PC & OS** | **Cartelle Monitorate** | Auto-indexing da disco locale e apertura in Windows Explorer. |
 | **Voce** | **Dettatura Vocale Reale** | Riconoscimento vocale `it-IT` istantaneo con Web Speech / Whisper. |
+| **Drag & Drop** | **Directory Traversal Ricorsivo** | Trascina intere cartelle: `webkitGetAsEntry` esplora sottocartelle multi-livello e avvia upload batch da chat e dashboard. |
+| **UX / Notifiche** | **Toast System In-App** | Toast floating (successo/errore/avviso) e modale di conferma async. Zero alert bloccanti del browser. |
+| **Dashboard** | **Tab Quietanzati + Badge Dinamici** | Tab segmentata con contatore live dei documenti quietanzati. Alias filtri API italiani (`da_pagare`, `quietanzati`, `oggetti`). |
+| **Mobile & A11y** | **Touch Target 44 px + `100dvh` + ARIA** | Tutti i bottoni icona superano la soglia WCAG 2.1 di 44 px. Altezza pagina corretta su iOS con tastiera virtuale. Labels ARIA complete. |
 
 ---
 
