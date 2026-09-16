@@ -91,6 +91,7 @@ class DashboardKPI(BaseModel):
     pending_deadlines_count: int
     total_documents_count: int
     total_items_count: int
+    quietanzati_count: Optional[int] = 0
 
 class DashboardResponse(BaseModel):
     kpi: DashboardKPI

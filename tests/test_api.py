@@ -44,6 +44,28 @@ def test_dashboard_feed():
         assert item_rec.get("room") is not None
         assert item_rec.get("category") is not None
 
+def test_dashboard_filter_aliases():
+    # Test ?filter=da_pagare
+    res_dp = client.get("/api/dashboard?filter=da_pagare")
+    assert res_dp.status_code == 200
+    for r in res_dp.json()["records"]:
+        if r["type"] == "document":
+            assert r["status"] == "da_pagare"
+
+    # Test ?filter=oggetti
+    res_ogg = client.get("/api/dashboard?filter=oggetti")
+    assert res_ogg.status_code == 200
+    for r in res_ogg.json()["records"]:
+        assert r["type"] == "physical_item"
+
+    # Test ?filter=quietanzati
+    res_q = client.get("/api/dashboard?filter=quietanzati")
+    assert res_q.status_code == 200
+    for r in res_q.json()["records"]:
+        if r["type"] == "document":
+            assert r["status"] == "quietanzato"
+
+
 def test_patch_document_status():
     fake_pdf = io.BytesIO(b"%PDF-1.4 fake content")
     upload_res = client.post("/api/documents/upload", files={"file": ("f24_tributi.pdf", fake_pdf, "application/pdf")})

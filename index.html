@@ -20,6 +20,7 @@
       margin: 0;
       padding: 0;
       height: 100vh;
+      height: 100dvh;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
@@ -274,13 +275,14 @@
           <button 
             id="deadlinesBellBtn" 
             onclick="openDashboard('deadlines')" 
-            class="relative text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-full transition cursor-pointer" 
+            class="relative text-white/80 hover:text-white w-10 h-10 flex items-center justify-center hover:bg-white/10 rounded-full transition cursor-pointer" 
             title="Avvisi Scadenze e Bollette"
+            aria-label="Avvisi Scadenze e Bollette"
           >
             <i class="fa-solid fa-bell text-sm"></i>
             <span 
               id="deadlinesBellBadge" 
-              class="hidden absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] bg-red-500 text-white text-[10px] font-bold rounded-full px-1 flex items-center justify-center border-2 border-[#075E54] shadow-xs"
+              class="hidden absolute top-1 right-1 min-w-[17px] h-[17px] bg-red-500 text-white text-[10px] font-bold rounded-full px-1 flex items-center justify-center border-2 border-[#075E54] shadow-xs"
             >0</span>
           </button>
  
@@ -288,8 +290,9 @@
           <button 
             id="lockVaultHeaderBtn" 
             onclick="lockVault()" 
-            class="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-full transition cursor-pointer" 
+            class="text-white/80 hover:text-white w-10 h-10 flex items-center justify-center hover:bg-white/10 rounded-full transition cursor-pointer" 
             title="Blocca il Caveau (Sicurezza Crittografata)"
+            aria-label="Blocca il Caveau (Sicurezza Crittografata)"
           >
             <i class="fa-solid fa-lock text-sm"></i>
           </button>
@@ -297,7 +300,8 @@
           <!-- Pulsante Apri Dashboard -->
           <button 
             onclick="openDashboard()" 
-            class="relative bg-[#128C7E] hover:bg-[#0e7468] text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-xs transition flex items-center gap-1.5 active:scale-95 border border-white/20"
+            class="relative bg-[#128C7E] hover:bg-[#0e7468] text-white text-xs font-semibold px-3.5 py-2 rounded-full shadow-xs transition flex items-center gap-1.5 active:scale-95 border border-white/20 min-h-[40px]"
+            aria-label="Apri Dashboard"
           >
             <i class="fa-solid fa-chart-simple text-[11px]"></i>
             <span class="hidden sm:inline">Apri Dashboard</span>
@@ -308,8 +312,9 @@
           <button 
             id="deleteThreadBtn" 
             onclick="confirmDeleteCurrentThread()" 
-            class="hidden text-white/70 hover:text-red-200 p-1.5 hover:bg-white/10 rounded-full transition" 
+            class="hidden text-white/70 hover:text-red-200 w-10 h-10 flex items-center justify-center hover:bg-white/10 rounded-full transition" 
             title="Elimina questo gruppo/area"
+            aria-label="Elimina questo gruppo/area"
           >
             <i class="fa-solid fa-trash-can text-sm"></i>
           </button>
@@ -435,7 +440,8 @@
             id="attachmentBtn"
             onclick="toggleAttachmentMenu(event)" 
             title="Allega file o cartella" 
-            class="text-gray-500 hover:text-[#075E54] p-1.5 text-xl active:scale-95 transition cursor-pointer"
+            aria-label="Allega file o cartella"
+            class="text-gray-500 hover:text-[#075E54] w-11 h-11 flex items-center justify-center text-xl active:scale-95 transition cursor-pointer"
           >
             <i class="fa-solid fa-paperclip"></i>
           </button>
@@ -473,8 +479,8 @@
         </div>
 
         <!-- Input di Testo Arrotondato a Pillola -->
-        <form id="chatForm" onsubmit="handleSend(event)" class="flex-1 flex items-center bg-white rounded-full px-3.5 py-2 shadow-2xs border border-gray-200">
-          <button type="button" class="text-gray-400 hover:text-gray-600 mr-2 text-base" title="Emoji">
+        <form id="chatForm" onsubmit="handleSend(event)" class="flex-1 flex items-center bg-white rounded-full px-3.5 py-1.5 shadow-2xs border border-gray-200 min-h-[44px]">
+          <button type="button" aria-label="Scegli emoji" class="text-gray-400 hover:text-gray-600 mr-2 text-base w-8 h-8 flex items-center justify-center" title="Emoji">
             <i class="fa-regular fa-face-smile"></i>
           </button>
           <input 
@@ -483,12 +489,14 @@
             placeholder="Scrivi un messaggio o trascina file qui..." 
             class="w-full text-sm outline-none bg-transparent placeholder-gray-400 text-gray-800"
             autocomplete="off"
+            aria-label="Messaggio per l'assistente"
           >
           <button 
             type="button" 
             onclick="triggerCameraInput()" 
             title="Fotocamera" 
-            class="text-gray-400 hover:text-[#075E54] ml-2 text-base cursor-pointer"
+            aria-label="Scatta o carica foto"
+            class="text-gray-400 hover:text-[#075E54] ml-2 text-base cursor-pointer w-8 h-8 flex items-center justify-center"
           >
             <i class="fa-solid fa-camera"></i>
           </button>
@@ -500,7 +508,8 @@
           type="button" 
           onclick="handleVoice()" 
           title="Registra vocale" 
-          class="bg-[#128C7E] hover:bg-[#075E54] text-white w-10 h-10 rounded-full flex items-center justify-center shadow-md active:scale-95 transition"
+          aria-label="Registra messaggio vocale"
+          class="bg-[#128C7E] hover:bg-[#075E54] text-white w-11 h-11 rounded-full flex items-center justify-center shadow-md active:scale-95 transition"
         >
           <i class="fa-solid fa-microphone text-base"></i>
         </button>
@@ -511,7 +520,8 @@
           type="button" 
           onclick="handleSend(event)" 
           title="Invia" 
-          class="hidden bg-[#25D366] hover:bg-green-600 text-white w-10 h-10 rounded-full items-center justify-center shadow-md active:scale-95 transition"
+          aria-label="Invia messaggio"
+          class="hidden bg-[#25D366] hover:bg-green-600 text-white w-11 h-11 rounded-full items-center justify-center shadow-md active:scale-95 transition"
         >
           <i class="fa-solid fa-paper-plane text-sm ml-0.5"></i>
         </button>
@@ -522,7 +532,8 @@
           type="button" 
           onclick="abortGeneration()" 
           title="Interrompi generazione" 
-          class="hidden bg-rose-600 hover:bg-rose-700 text-white w-10 h-10 rounded-full items-center justify-center shadow-md active:scale-95 transition cursor-pointer animate-pulse"
+          aria-label="Interrompi elaborazione AI"
+          class="hidden bg-rose-600 hover:bg-rose-700 text-white w-11 h-11 rounded-full items-center justify-center shadow-md active:scale-95 transition"
         >
           <i class="fa-solid fa-stop text-sm"></i>
         </button>
@@ -1444,10 +1455,17 @@
 
           <!-- Filtri Moderni Segmentati & Filtro Spazio/Gruppo -->
           <div class="flex items-center gap-2 flex-wrap self-start sm:self-auto">
-            <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium">
-              <button onclick="filterTable('all')" id="fAll" class="px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold">Tutti</button>
-              <button onclick="filterTable('deadlines')" id="fDeadlines" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900">Scadenze</button>
-              <button onclick="filterTable('items')" id="fItems" class="px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900">Oggetti</button>
+            <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-medium flex-wrap gap-0.5">
+              <button onclick="filterTable('all')" id="fAll" class="px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold transition cursor-pointer">Tutti</button>
+              <button onclick="filterTable('deadlines')" id="fDeadlines" class="px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-900 transition cursor-pointer flex items-center gap-1">
+                <span>Da Pagare</span>
+                <span id="tabBadgeDaPagare" class="hidden bg-amber-200 text-amber-900 text-[9px] font-extrabold px-1.5 py-0.2 rounded-full">0</span>
+              </button>
+              <button onclick="filterTable('quietanzati')" id="fQuietanzati" class="px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-900 transition cursor-pointer flex items-center gap-1">
+                <span>Quietanzati</span>
+                <span id="tabBadgeQuietanzati" class="hidden bg-emerald-100 text-emerald-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded-full">0</span>
+              </button>
+              <button onclick="filterTable('items')" id="fItems" class="px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-900 transition cursor-pointer">Oggetti</button>
             </div>
 
             <!-- Selettore Modalità Vista (Per Categoria / Tabella Elenco) -->
@@ -2325,10 +2343,13 @@
         return;
       }
       const t = threadsCache.find(th => th.id === currentThreadId);
-      const name = t ? t.name : currentThreadId;
-      if (!confirm(`Sei sicuro di voler eliminare lo spazio "${name}"?\nI messaggi verranno eliminati e i file associati saranno ricollocati nel canale principale.`)) {
-        return;
-      }
+      const confirmed = await showConfirmModal({
+        title: "Elimina Spazio o Gruppo",
+        message: `Sei sicuro di voler eliminare lo spazio "${name}"?\nI messaggi verranno eliminati e i file associati saranno ricollocati nel canale principale.`,
+        confirmText: "Elimina Spazio",
+        danger: true
+      });
+      if (!confirmed) return;
 
       try {
         const res = await fetch(`/api/threads/${encodeURIComponent(currentThreadId)}`, { method: 'DELETE' });
@@ -2764,6 +2785,105 @@
       }
       setGenerationActive(false);
       appendAssistantBubble("⏹️ *Generazione/elaborazione interrotta dall'utente.*");
+    }
+
+    // --- Sistema Toast & Notifiche In-App (Linear/Stripe Style) ---
+    function showToast(message, type = 'info', duration = 3500) {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = 'pointer-events-auto flex items-center gap-3 p-3.5 rounded-2xl shadow-xl border text-xs font-medium transition-all duration-300 transform translate-y-2 opacity-0 backdrop-blur-md';
+
+      let bg = 'bg-slate-900/95 text-white border-slate-700/80';
+      let icon = '<i class="fa-solid fa-circle-info text-blue-400"></i>';
+
+      if (type === 'success') {
+        bg = 'bg-emerald-950/95 text-emerald-100 border-emerald-700/80';
+        icon = '<i class="fa-solid fa-circle-check text-emerald-400"></i>';
+      } else if (type === 'error') {
+        bg = 'bg-rose-950/95 text-rose-100 border-rose-700/80';
+        icon = '<i class="fa-solid fa-circle-exclamation text-rose-400"></i>';
+      } else if (type === 'warning') {
+        bg = 'bg-amber-950/95 text-amber-100 border-amber-700/80';
+        icon = '<i class="fa-solid fa-triangle-exclamation text-amber-400"></i>';
+      }
+
+      toast.className += ` ${bg}`;
+      toast.innerHTML = `
+        <div class="text-base shrink-0">${icon}</div>
+        <div class="flex-1 leading-snug break-words">${escapeHtml(message)}</div>
+        <button type="button" class="text-white/60 hover:text-white shrink-0 p-1 cursor-pointer">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      `;
+
+      const closeBtn = toast.querySelector('button');
+      closeBtn.onclick = () => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 250);
+      };
+
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => toast.remove(), 300);
+        }
+      }, duration);
+    }
+
+    // Intercetta e sostituisce alert() nativo in modo non bloccante
+    window.alert = function(msg) {
+      showToast(String(msg || ''), 'info');
+    };
+
+    // --- Modale di Conferma In-App (Sostituisce confirm() nativo) ---
+    function showConfirmModal({ title = "Conferma operazione", message = "", confirmText = "Conferma", cancelText = "Annulla", danger = true }) {
+      return new Promise((resolve) => {
+        const overlay = document.getElementById('confirmModalOverlay');
+        const titleEl = document.getElementById('confirmModalTitle');
+        const msgEl = document.getElementById('confirmModalMessage');
+        const iconBox = document.getElementById('confirmModalIconBox');
+        const iconEl = document.getElementById('confirmModalIcon');
+        const cancelBtn = document.getElementById('confirmModalCancelBtn');
+        const actionBtn = document.getElementById('confirmModalActionBtn');
+
+        if (!overlay) {
+          resolve(window.confirm(message));
+          return;
+        }
+
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+        cancelBtn.textContent = cancelText;
+        actionBtn.textContent = confirmText;
+
+        if (danger) {
+          actionBtn.className = "px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition shadow-xs cursor-pointer";
+          iconBox.className = "w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg shrink-0";
+          iconEl.className = "fa-solid fa-trash-can";
+        } else {
+          actionBtn.className = "px-4 py-2 text-xs font-bold text-white bg-[#075E54] hover:bg-[#128C7E] rounded-xl transition shadow-xs cursor-pointer";
+          iconBox.className = "w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg shrink-0";
+          iconEl.className = "fa-solid fa-circle-question";
+        }
+
+        const cleanup = (result) => {
+          overlay.classList.add('hidden');
+          cancelBtn.onclick = null;
+          actionBtn.onclick = null;
+          resolve(result);
+        };
+
+        cancelBtn.onclick = () => cleanup(false);
+        actionBtn.onclick = () => cleanup(true);
+        overlay.classList.remove('hidden');
+      });
     }
 
     function showTypingIndicator(statusText = "", progressPercent = null) {
@@ -3284,9 +3404,15 @@
       }
     }
 
-    function confirmDashboardDelete(targetType, targetId, title) {
-      const typeLabel = targetType === 'physical_item' ? 'la posizione di questo oggetto' : 'questo documento';
-      if (confirm(`Sei sicuro di voler eliminare ${typeLabel} ("${title}") dal caveau?\nQuesta operazione è definitiva.`)) {
+    async function confirmDashboardDelete(targetType, targetId, title) {
+      const typeLabel = targetType === 'physical_item' ? "la posizione di quest'oggetto" : "questo documento";
+      const confirmed = await showConfirmModal({
+        title: "Elimina dal Caveau",
+        message: `Sei sicuro di voler eliminare ${typeLabel} ("${title}") dal caveau?\nQuesta operazione è definitiva e permanente.`,
+        confirmText: "Elimina Definitivamente",
+        danger: true
+      });
+      if (confirmed) {
         executeDelete(targetType, targetId, null);
       }
     }
@@ -3781,8 +3907,20 @@
         if (kpiItemsEl) kpiItemsEl.textContent = `${kpi.total_items_count || 0} Cespiti & Oggetti`;
 
         // Aggiorna contatori filtri
-        const fD = document.getElementById('fDeadlines');
-        if (fD) fD.textContent = kpi.pending_deadlines_count ? `Scadenze (${kpi.pending_deadlines_count})` : 'Scadenze';
+        const bDaPagare = document.getElementById('tabBadgeDaPagare');
+        if (bDaPagare) {
+          const count = kpi.pending_deadlines_count || 0;
+          bDaPagare.textContent = count;
+          if (count > 0) bDaPagare.classList.remove('hidden');
+          else bDaPagare.classList.add('hidden');
+        }
+        const bQuiet = document.getElementById('tabBadgeQuietanzati');
+        if (bQuiet) {
+          const qCount = kpi.quietanzati_count || 0;
+          bQuiet.textContent = qCount;
+          if (qCount > 0) bQuiet.classList.remove('hidden');
+          else bQuiet.classList.add('hidden');
+        }
         const fI = document.getElementById('fItems');
         if (fI) fI.textContent = kpi.total_items_count ? `Oggetti (${kpi.total_items_count})` : 'Oggetti';
 
@@ -4497,14 +4635,16 @@
       currentFilter = filter;
       const btnA = document.getElementById('fAll');
       const btnD = document.getElementById('fDeadlines');
+      const btnQ = document.getElementById('fQuietanzati');
       const btnI = document.getElementById('fItems');
-      [btnA, btnD, btnI].forEach(b => {
-        if (b) b.className = 'px-3 py-1 rounded-lg text-slate-500 hover:text-slate-900';
+      [btnA, btnD, btnQ, btnI].forEach(b => {
+        if (b) b.className = 'px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-900 transition cursor-pointer flex items-center gap-1';
       });
 
-      if (filter === 'all' && btnA) btnA.className = 'px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold';
-      if (filter === 'deadlines' && btnD) btnD.className = 'px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold';
-      if (filter === 'items' && btnI) btnI.className = 'px-3 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold';
+      if (filter === 'all' && btnA) btnA.className = 'px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold transition cursor-pointer';
+      if ((filter === 'deadlines' || filter === 'da_pagare') && btnD) btnD.className = 'px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold transition cursor-pointer flex items-center gap-1';
+      if ((filter === 'quietanzati' || filter === 'quietanzato') && btnQ) btnQ.className = 'px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold transition cursor-pointer flex items-center gap-1';
+      if ((filter === 'items' || filter === 'oggetti') && btnI) btnI.className = 'px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold transition cursor-pointer';
 
       loadDashboard(filter);
     }
@@ -4959,9 +5099,13 @@
     }
 
     async function deleteWatchedFolder(folderId, name) {
-      if (!confirm(`Vuoi rimuovere la cartella "${name}" dal monitoraggio?\n(I tuoi file rimarranno intatti sul tuo computer).`)) {
-        return;
-      }
+      const confirmed = await showConfirmModal({
+        title: "Rimuovi Cartella dal Monitoraggio",
+        message: `Vuoi rimuovere la cartella "${name}" dal monitoraggio?\n(I tuoi file rimarranno intatti sul tuo computer).`,
+        confirmText: "Rimuovi Monitoraggio",
+        danger: false
+      });
+      if (!confirmed) return;
       try {
         const res = await fetch(`/api/folders/${folderId}`, {
           method: 'DELETE',
@@ -5665,6 +5809,30 @@
         <span id="watchedFoldersCountText" class="text-slate-400 text-[11px]">Caricamento cartelle...</span>
         <button onclick="closeWatchedFoldersModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition cursor-pointer">
           Chiudi
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container (Linear/Stripe Style) -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2.5 pointer-events-none max-w-sm w-full px-4 sm:px-0"></div>
+
+  <!-- Custom In-App Confirmation Modal (Zero Native Popups) -->
+  <div id="confirmModalOverlay" class="hidden fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200/80 max-w-md w-full p-6 text-left transform transition-all scale-100 animate-in zoom-in-95 duration-150">
+      <div class="flex items-center gap-3 mb-3">
+        <div id="confirmModalIconBox" class="w-10 h-10 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg shrink-0">
+          <i id="confirmModalIcon" class="fa-solid fa-trash-can"></i>
+        </div>
+        <h3 id="confirmModalTitle" class="text-base font-bold text-slate-900">Conferma Operazione</h3>
+      </div>
+      <p id="confirmModalMessage" class="text-xs text-slate-600 leading-relaxed mb-6 whitespace-pre-line"></p>
+      <div class="flex items-center justify-end gap-2.5">
+        <button id="confirmModalCancelBtn" type="button" class="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer">
+          Annulla
+        </button>
+        <button id="confirmModalActionBtn" type="button" class="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition shadow-xs cursor-pointer">
+          Conferma
         </button>
       </div>
     </div>

@@ -86,6 +86,19 @@ def get_dashboard(
     thread_id: Optional[str] = Query(default=None),
     db: Session = Depends(get_db)
 ):
+    # Normalize filter parameter with Italian aliases
+    f_raw = (filter or "all").lower().strip()
+    if f_raw in ("da_pagare", "scadenze", "scadenza", "deadlines", "pending"):
+        norm_filter = "deadlines"
+    elif f_raw in ("oggetti", "items", "oggetti_fisici", "cose"):
+        norm_filter = "items"
+    elif f_raw in ("quietanzato", "quietanzati", "pagati", "saldati", "paid"):
+        norm_filter = "quietanzati"
+    elif f_raw in ("documenti", "documents", "docs", "file"):
+        norm_filter = "documents"
+    else:
+        norm_filter = "all"
+
     # Lookup threads for readable names
     threads = db.query(ChatThread).all()
     thread_map = {t.id: t.name for t in threads}
@@ -107,21 +120,26 @@ def get_dashboard(
     pending_deadlines_count = len(pending_docs)
     total_documents_count = len(all_docs)
     total_items_count = len(all_items)
+    quietanzati_docs = [d for d in all_docs if d.status == "quietanzato"]
+    quietanzati_count = len(quietanzati_docs)
 
     kpi = DashboardKPI(
         total_upcoming_amount=total_upcoming_amount,
         pending_deadlines_count=pending_deadlines_count,
         total_documents_count=total_documents_count,
-        total_items_count=total_items_count
+        total_items_count=total_items_count,
+        quietanzati_count=quietanzati_count
     )
 
     # 3. Assemble records
     records = []
 
     # Map documents
-    if filter in ("all", "documents", "deadlines"):
+    if norm_filter in ("all", "documents", "deadlines", "quietanzati"):
         for doc in all_docs:
-            if filter == "deadlines" and doc.status != "da_pagare":
+            if norm_filter == "deadlines" and doc.status != "da_pagare":
+                continue
+            if norm_filter == "quietanzati" and doc.status != "quietanzato":
                 continue
 
             badge_color = "amber" if doc.status == "da_pagare" else "emerald"
@@ -161,7 +179,7 @@ def get_dashboard(
             )
 
     # Map physical items
-    if filter in ("all", "items"):
+    if norm_filter in ("all", "items"):
         for item in all_items:
             loc = item.primary_location
             if item.detailed_location:
