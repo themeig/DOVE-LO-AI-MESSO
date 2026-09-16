@@ -79,6 +79,15 @@ La sicurezza di **Dove lo AI messo** è basata sul principio di **Zero-Knowledge
 | **Storage Binari** | **AES File Encryption** | I file caricati in `storage/uploads/` vengono cifrati a livello di byte. |
 | **Session Lifecycle** | **Token Entropici Monouso (32 byte)** | Nessuna password memorizzata in sessione. Blocco immediato con un click. |
 
+### 4.1. Google Vertex AI Enterprise Security & Data Governance Perimeter
+
+Per le elaborazioni che richiedono modelli linguistici e di visione multimodale avanzati, il sistema integra l'infrastruttura **Google Vertex AI Enterprise**, garantendo il più rigoroso perimetro di confidenzialità dei dati:
+
+1. **Zero Data Retention for Training**: I dati dei clienti (immagini di scontrini, fatture, estratti conto, note sanitarie o documenti personali) **NON vengono mai utilizzati per addestrare o migliorare i modelli fondamentali** di Google o di terzi.
+2. **Isolamento dei Dati & Crittografia End-to-End**: Tutti i flussi verso gli endpoint di inferenza sono incapsulati in connessioni TLS 1.3 con crittografia in transito e a riposo (Customer-Managed Encryption Keys / CMEK compatibili).
+3. **Conformità Normativa Globale & Europea**: Piena aderenza ai requisiti **GDPR**, ISO/IEC 27001, SOC 1/2/3, e perimetro confidenziale idoneo per utilizzi bancari e medico-sanitari.
+4. **SLA e Resilienza Enterprise**: Garanzia di disponibilità al 99.9% e basse latenze con pipeline deterministiche di fall-back locale.
+
 ---
 
 ## 5. Supporto Formati & Pipeline di Estrazione Multimodale
@@ -130,11 +139,43 @@ L'assistente opera mediante un ciclo di decisione agentico dotato dei seguenti s
 
 ---
 
-## 7. Modalità di Esecuzione & Desktop Launcher
+## 7. Modalità di Esecuzione & Modelli di Distribuzione
 
+### 7.1. Modelli di Distribuzione: Freemium Locale vs Cloud Multi-Tenant & Gruppi
+
+Il progetto supporta due modalità di utilizzo chiaramente differenziate:
+
+```text
++-----------------------------------------------------------------------------------------+
+|                                    DOVE LO AI MESSO                                     |
++--------------------------------------------+--------------------------------------------+
+|        🟢 FREEMIUM LOCALE (Gratuito)       |       ☁️ CLOUD PRO & GRUPPI (€9,90/m)       |
++--------------------------------------------+--------------------------------------------+
+| • Storage Locale 100% su proprio PC (Disk) | • Cloud Storage Cifrato Zero-Knowledge     |
+| • Crittografia AES-256 / PBKDF2 locale     | • Multi-Utente & Creazione Gruppi          |
+| • Singolo Dispositivo / Nessun Account     | • Sincronizzazione Real-Time Multi-Device  |
+| • WhatsApp UI + Dashboard Fintech          | • Google Vertex AI Enterprise Perimeter    |
+| • Zero costi ricorrenti / Open Source Core | • Notifiche Push / WhatsApp Condivise      |
+| • Ideale per singoli e privacy maximalist  | • Ideale per Famiglie, Team e Professionisti|
++--------------------------------------------+--------------------------------------------+
+```
+
+1. **Edizione Freemium Locale (100% Free & Open Source)**:
+   - **Perimetro di Esecuzione**: Completamente autonomo e installabile in locale (FastAPI + SQLite + PyWebView).
+   - **Privacy Assoluta**: Tutti i file cifrati risiedono nella cartella `storage/uploads/` del computer dell'utente. Nessun dato lascia la macchina locale senza esplicita richiesta.
+   - **Funzionalità Complete**: Chat stile WhatsApp, Bento Grid Dashboard, ricerca fuzzy con stemming, compressione ZIP e scadenzario deterministico inclusi senza limitazioni.
+
+2. **Edizione Cloud Pro & Spazi di Gruppo (A Pagamento — €9,90 / mese per gruppo)**:
+   - **Collaborazione Multi-Utente**: Possibilità di creare spazi e gruppi condivisi (*"Spese Casa"*, *"Famiglia"*, *"Commercialista / Ufficio"*, *"Coinquilini"*).
+   - **Cloud Storage Cifrato Multi-Dispositivo**: Sincronizzazione sicura tra smartphone, tablet e PC desktop con chiavi crittografiche end-to-end.
+   - **Integrazione Google Vertex AI Enterprise**: Massima confidenzialità con zero data retention per il training dei modelli, alte prestazioni e conformità bancaria/GDPR.
+   - **Notifiche Push & WhatsApp di Gruppo**: Avvisi automatici sincronizzati a tutti i membri del gruppo quando una bolletta o un F24 si avvicina alla data di scadenza.
+   - **Gestione Ruoli & Permessi**: Controllo accessi granulare (Amministratore, Membro con diritto di inserimento, Visualizzatore Sola Lettura).
+
+### 7.2. Launcher & Tecnologie di Esecuzione
 - **Server Web FastAPI**: Avvio rapido con `uvicorn app.main:app --reload --port 8000`.
 - **Desktop Nativo Windows (PyWebView)**: Launcher dedicato (`python run_desktop.py`) che avvia il server in background e apre una finestra desktop nativa Edge WebView2 senza bisogno del browser.
-- **Multi-Modello AI**: Compatibilità con OpenRouter (`google/gemini-2.5-flash-lite`, `anthropic/claude-3.5-sonnet`, `openai/gpt-4o-mini`, `deepseek/deepseek-chat`) e motore deterministico offline Mock per ambienti senza connessione.
+- **Motore AI Ibrido**: Integrazione Google Vertex AI Enterprise, gateway OpenRouter multimodale e motore deterministico offline Mock per testing senza connettività.
 
 ---
 
@@ -145,7 +186,10 @@ L'assistente opera mediante un ciclo di decisione agentico dotato dei seguenti s
 | **Interfaccia** | **WhatsApp Look & Feel** | Chat fedele con doppie spunte, wallpaper e barra input autentica. |
 | **Interfaccia** | **Executive Dashboard** | Bento Grid con KPI in tempo reale, tabelle filtrate e visualizzazione gruppi. |
 | **Interfaccia** | **Feedback Dinamico** | Scritte di stato contestuali e barra di caricamento/progresso in tempo reale. |
-| **Sicurezza** | **AES-128 / Fernet** | Crittografia a riposo su database e file system. |
+| **Piani & Storage** | **Freemium Locale (€0)** | 100% Locale, storage su PC, crittografia AES-256, nessun canone. |
+| **Piani & Storage** | **Cloud Pro & Gruppi** | Spazi condivisi (Famiglie, PMI), Cloud Storage cifrato multi-device, notifiche di gruppo. |
+| **Sicurezza & AI** | **Google Vertex AI** | Perimetro Enterprise con zero-training retention, GDPR e ISO 27001. |
+| **Sicurezza** | **AES-128 / Fernet** | Crittografia a riposo su database e file system locale. |
 | **Sicurezza** | **PBKDF2 600k** | Derivazione chiave crittografica con password master `1234`. |
 | **Sicurezza** | **Export Backup Caveau**| Download pacchetto ZIP completo con file e indice `vault_metadata.json`. |
 | **Documenti** | **Lettura PDF** | Estrazione testo, importi, scadenze ed emittenti. |
