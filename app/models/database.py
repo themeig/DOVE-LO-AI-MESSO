@@ -116,6 +116,27 @@ class WatchedFolder(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
+class PendingFileProposal(Base):
+    __tablename__ = "pending_file_proposals"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    folder_id = Column(Integer, nullable=True, index=True)
+    folder_name = Column(String(255), nullable=True)
+    file_path = Column(String(500), nullable=False, unique=True, index=True)
+    file_name = Column(String(255), nullable=False)
+    file_size = Column(Integer, nullable=False, default=0)
+    doc_type = Column(String(50), nullable=False, default="generico")
+    issuer = Column(EncryptedString(500), nullable=True)
+    amount = Column(Float, nullable=True)
+    due_date = Column(Date, nullable=True)
+    sensitivity_reason = Column(EncryptedString(500), nullable=False)
+    summary = Column(EncryptedText, nullable=False)
+    status = Column(String(50), nullable=False, default="pending", index=True)  # 'pending', 'approved', 'dismissed'
+    thread_id = Column(String(50), nullable=False, default="general", index=True)
+    detected_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    resolved_at = Column(DateTime, nullable=True)
+
+
+
 class PhysicalItem(Base):
     __tablename__ = "physical_items"
     id = Column(Integer, primary_key=True, autoincrement=True)

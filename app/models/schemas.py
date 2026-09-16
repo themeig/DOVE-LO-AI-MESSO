@@ -198,3 +198,53 @@ class OpenInExplorerRequest(BaseModel):
     document_id: Optional[int] = None
 
 
+class FolderPresetItem(BaseModel):
+    key: str
+    name: str
+    path: str
+    exists: bool
+    is_watched: bool
+    icon: str
+
+
+class FolderPresetsResponse(BaseModel):
+    presets: List[FolderPresetItem]
+
+
+class PendingFileProposalResponse(BaseModel):
+    id: int
+    folder_id: Optional[int] = None
+    folder_name: Optional[str] = None
+    file_path: str
+    file_name: str
+    file_size: int
+    doc_type: str
+    issuer: Optional[str] = None
+    amount: Optional[float] = None
+    due_date: Optional[str] = None
+    sensitivity_reason: str
+    summary: str
+    status: str
+    thread_id: str
+    detected_at: Optional[str] = None
+
+
+class PendingProposalsListResponse(BaseModel):
+    proposals: List[PendingFileProposalResponse]
+    count: int
+
+
+class ApproveProposalResponse(BaseModel):
+    success: bool
+    message: str
+    document_id: Optional[int] = None
+    title: Optional[str] = None
+
+
+class DismissProposalResponse(BaseModel):
+    success: bool
+    message: str
+    proposal_id: int
+
+
+

@@ -1184,9 +1184,12 @@
               <div class="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center text-xs shrink-0">
                 <i class="fa-solid fa-folder-tree"></i>
               </div>
-              <div class="text-left">
-                <div class="text-slate-800 font-semibold text-xs">Cartelle PC Monitorate</div>
-                <div class="text-[10px] text-slate-400">Indicizzazione automatica da disco</div>
+              <div class="text-left flex-1 min-w-0">
+                <div class="flex items-center justify-between w-full gap-2">
+                  <span class="text-slate-800 font-semibold text-xs truncate">Cartelle PC & Monitoraggio</span>
+                  <span id="toolsFoldersBadge" class="hidden bg-amber-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full shrink-0 animate-pulse">0</span>
+                </div>
+                <div class="text-[10px] text-slate-400">Download, Documenti & Rilevamento</div>
               </div>
             </button>
 
@@ -1287,6 +1290,28 @@
     <!-- Contenuto Dashboard Scrollabile -->
     <main class="flex-1 p-6 overflow-y-auto space-y-6 max-w-6xl w-full mx-auto custom-scroll">
       
+      <!-- Banner Notifica File Sensibili Rilevati nelle Cartelle Monitorate -->
+      <div id="sensitiveFilesAlertBanner" class="hidden bg-gradient-to-r from-amber-500/15 via-emerald-500/10 to-teal-500/15 border border-amber-300/80 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
+        <div class="flex items-center gap-3.5">
+          <div class="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center text-lg shadow-sm shrink-0 animate-pulse">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div>
+            <h4 id="sensitiveBannerTitle" class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span>File Sensibili Rilevati sul PC</span>
+              <span id="sensitiveBannerBadge" class="bg-amber-100 text-amber-900 text-[10px] font-extrabold px-2 py-0.5 rounded-full">0 da verificare</span>
+            </h4>
+            <p id="sensitiveBannerText" class="text-xs text-slate-600 mt-0.5">L'AI ha individuato nuovi documenti fiscali o personali nella cartella Download o monitorata. Vuoi salvarli cifrati nel Caveau?</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
+          <button onclick="openWatchedFoldersModal()" class="bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-lock text-xs"></i>
+            <span>Esamina & Proteggi</span>
+          </button>
+        </div>
+      </div>
+
       <!-- BENTO-GRID KPI MODERNO -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         
@@ -1926,7 +1951,8 @@
             const conf = m.metadata && m.metadata.confirmation ? m.metadata.confirmation : null;
             const itemPhoto = m.metadata && m.metadata.item_photo ? m.metadata.item_photo : null;
             const storeItem = m.metadata && m.metadata.store_item ? m.metadata.store_item : null;
-            appendAssistantBubble(m.content, docs, conf, itemPhoto, storeItem);
+            const proposal = (m.metadata && m.metadata.proposal) || (m.metadata && m.metadata.action === 'SENSITIVE_FILE_PROPOSAL' ? m.metadata.proposal : null);
+            appendAssistantBubble(m.content, docs, conf, itemPhoto, storeItem, proposal);
           }
         }
         scrollBottom();
@@ -2843,7 +2869,7 @@
       scrollBottom();
     }
 
-    function appendAssistantBubble(text, documents = null, confirmation = null, itemPhoto = null, storeItem = null) {
+    function appendAssistantBubble(text, documents = null, confirmation = null, itemPhoto = null, storeItem = null, proposal = null) {
       const aiBubble = document.createElement('div');
       aiBubble.className = 'flex items-start max-w-[85%]';
       const formattedHtml = formatMessageText(text || '');
@@ -3011,6 +3037,62 @@
         `;
       }
 
+      let proposalHtml = '';
+      if (proposal && proposal.id) {
+        const propId = proposal.id;
+        const fileName = escapeHtml(proposal.file_name || 'File sensibile');
+        const folderName = escapeHtml(proposal.folder_name || 'Cartella');
+        const reason = escapeHtml(proposal.sensitivity_reason || 'Rilevati dati personali o fiscali');
+        const amountStr = proposal.amount ? `<span class="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-md text-[11px] border border-amber-200">€ ${Number(proposal.amount).toFixed(2)}</span>` : '';
+        const dueStr = proposal.due_date ? `<span class="bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-md text-[11px] border border-rose-200">Scad: ${proposal.due_date}</span>` : '';
+        const docTypeStr = proposal.doc_type ? `<span class="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-md text-[10px] uppercase tracking-wider">${escapeHtml(proposal.doc_type)}</span>` : '';
+        const isPending = (proposal.status === 'pending' || !proposal.status);
+
+        proposalHtml = `
+          <div id="proposal-bubble-${propId}" class="mt-2.5 bg-gradient-to-br from-amber-50 to-emerald-50/60 border border-amber-200/90 rounded-2xl p-3 shadow-2xs text-left">
+            <div class="flex items-center justify-between gap-2 border-b border-amber-200/50 pb-2 mb-2">
+              <div class="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
+                <i class="fa-solid fa-shield-halved text-emerald-700"></i>
+                <span>Rilevamento File Sensibile</span>
+              </div>
+              <span class="text-[10px] bg-white/90 text-slate-600 px-2 py-0.5 rounded-full border border-amber-200 font-medium">${folderName}</span>
+            </div>
+            
+            <div class="flex items-start gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-white border border-amber-200 text-red-600 flex items-center justify-center text-sm shrink-0 shadow-2xs">
+                <i class="fa-solid fa-file-shield"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <h4 class="font-bold text-xs text-slate-900 truncate" title="${fileName}">${fileName}</h4>
+                <p class="text-[11px] text-slate-600 mt-0.5">${reason}</p>
+                <div class="flex items-center flex-wrap gap-1.5 mt-1.5">
+                  ${docTypeStr}
+                  ${amountStr}
+                  ${dueStr}
+                </div>
+              </div>
+            </div>
+
+            ${isPending ? `
+              <div class="flex items-center gap-2 mt-2.5 pt-2 border-t border-amber-200/50">
+                <button type="button" onclick="approveProposal(${propId}, this)" class="bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-2xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer">
+                  <i class="fa-solid fa-lock text-[10px]"></i>
+                  <span>Salva nel Caveau</span>
+                </button>
+                <button type="button" onclick="dismissProposal(${propId}, this)" class="bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-800 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 transition active:scale-95 cursor-pointer">
+                  Ignora
+                </button>
+              </div>
+            ` : `
+              <div class="mt-2 pt-2 border-t border-amber-200/50 text-[11px] text-emerald-700 font-bold flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>${proposal.status === 'approved' ? 'Salvato e Cifrato nel Caveau' : 'Ignorato'}</span>
+              </div>
+            `}
+          </div>
+        `;
+      }
+
       aiBubble.innerHTML = `
         <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug max-w-full relative group/msg select-text">
           <div class="flex items-start justify-between gap-2">
@@ -3025,6 +3107,7 @@
           ${docsHtml}
           ${confHtml}
           ${storeItemHtml}
+          ${proposalHtml}
           <div class="flex items-center justify-end gap-1.5 mt-1 select-none">
             <span class="text-[10px] text-gray-400">${getTime()}</span>
           </div>
@@ -3164,7 +3247,8 @@
           }
         }
 
-        appendAssistantBubble(data.reply, data.documents, data.confirmation, itemPhoto, storeItem);
+        let proposal = (data.data && data.data.proposal) || (data.action === "SENSITIVE_FILE_PROPOSAL" ? data.data : null);
+        appendAssistantBubble(data.reply, data.documents, data.confirmation, itemPhoto, storeItem, proposal);
         const th = threadsCache.find(t => t.id === currentThreadId);
         if (th) {
           th.last_message = text;
@@ -3606,6 +3690,9 @@
         if (tableFooterCount) {
           tableFooterCount.textContent = `Mostrati ${currentRecords.length} elementi sincronizzati`;
         }
+
+        // 4. Aggiorna banner notifiche file sensibili rilevati
+        checkPendingProposalsBanner();
       } catch (err) {
         console.error("Errore loadDashboard:", err);
       }
@@ -4576,6 +4663,8 @@
       if (modal) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+        loadFolderPresets();
+        loadPendingProposals();
         loadWatchedFolders();
       }
     }
@@ -4822,12 +4911,321 @@
       }
     }
 
+    // --- Monitoraggio 1-Click Presets (Download, Documenti, Desktop) ---
+    async function loadFolderPresets() {
+      const presetsEl = document.getElementById('folderPresetsList');
+      if (!presetsEl) return;
+      try {
+        const res = await fetch('/api/folders/presets', { headers: authHeaders() });
+        if (!res.ok) return;
+        const data = await res.json();
+        const presets = data.presets || [];
+        presetsEl.innerHTML = presets.map(p => {
+          const isWatched = p.is_watched;
+          const escapedPath = escapeHtml(p.path).replace(/'/g, "\\'");
+          const escapedName = escapeHtml(p.name).replace(/'/g, "\\'");
+          return `
+            <div class="bg-white/95 border border-emerald-200/90 rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-2xs">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-base shrink-0">${p.icon}</span>
+                <div class="min-w-0">
+                  <div class="font-bold text-slate-800 text-xs truncate">${escapeHtml(p.name)}</div>
+                  <div class="text-[10px] text-slate-400 truncate" title="${escapeHtml(p.path)}">${escapeHtml(p.path)}</div>
+                </div>
+              </div>
+              <button 
+                onclick="togglePresetFolder('${escapedPath}', '${escapedName}', ${isWatched})"
+                class="${isWatched ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-[#075E54] hover:bg-[#128C7E] text-white'} text-[10px] font-bold px-2 py-1 rounded-lg transition shrink-0 cursor-pointer active:scale-95"
+              >
+                ${isWatched ? '✅ Attiva' : '+ Collega'}
+              </button>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error("Errore loadFolderPresets:", err);
+      }
+    }
+
+    async function togglePresetFolder(path, name, isWatched) {
+      if (isWatched) {
+        const norm = path.toLowerCase();
+        const found = watchedFoldersCache.find(f => (f.path || '').toLowerCase() === norm);
+        if (found) {
+          await deleteWatchedFolder(found.id, found.name);
+          await loadFolderPresets();
+        }
+      } else {
+        try {
+          const res = await fetch('/api/folders', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...authHeaders()
+            },
+            body: JSON.stringify({
+              path: path,
+              name: name,
+              thread_id: currentThreadId || 'general',
+              auto_scan: true
+            })
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || "Impossibile collegare la cartella");
+          }
+          await loadWatchedFolders();
+          await loadFolderPresets();
+          await loadPendingProposals();
+          await checkPendingProposalsBanner();
+          await loadDashboard(currentFilter);
+        } catch (err) {
+          alert("Errore: " + err.message);
+        }
+      }
+    }
+
+    // --- File Sensibili Rilevati: Proposte & Caveau ---
+    async function loadPendingProposals() {
+      const section = document.getElementById('pendingProposalsSection');
+      const list = document.getElementById('pendingProposalsList');
+      if (!section || !list) return;
+
+      try {
+        const res = await fetch('/api/folders/proposals?status=pending', { headers: authHeaders() });
+        if (!res.ok) return;
+        const data = await res.json();
+        const proposals = data.proposals || [];
+
+        if (proposals.length === 0) {
+          section.classList.add('hidden');
+          return;
+        }
+
+        section.classList.remove('hidden');
+        list.innerHTML = proposals.map(prop => {
+          const fileName = escapeHtml(prop.file_name);
+          const folderName = escapeHtml(prop.folder_name || 'Cartella');
+          const reason = escapeHtml(prop.sensitivity_reason || 'Dati sensibili');
+          const amountBadge = prop.amount ? `<span class="bg-amber-100 text-amber-900 font-bold px-1.5 py-0.5 rounded text-[10px]">€ ${Number(prop.amount).toFixed(2)}</span>` : '';
+          const dueBadge = prop.due_date ? `<span class="bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded text-[10px]">Scad: ${prop.due_date}</span>` : '';
+
+          return `
+            <div id="modal-prop-${prop.id}" class="bg-gradient-to-r from-amber-50/80 to-emerald-50/80 border border-amber-200/90 rounded-2xl p-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+              <div class="flex items-start gap-2.5 min-w-0">
+                <div class="w-8 h-8 rounded-xl bg-white border border-amber-200 text-red-600 flex items-center justify-center shrink-0 shadow-2xs text-xs">
+                  <i class="fa-solid fa-file-shield"></i>
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-bold text-slate-900 text-xs truncate" title="${fileName}">${fileName}</span>
+                    <span class="bg-white/90 text-slate-500 text-[10px] px-1.5 py-0.2 rounded-md border border-amber-200">${folderName}</span>
+                    ${amountBadge}
+                    ${dueBadge}
+                  </div>
+                  <p class="text-[11px] text-slate-600 truncate mt-0.5">${reason}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                <button 
+                  onclick="approveProposalFromModal(${prop.id}, this)"
+                  class="bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-2xs transition active:scale-95 flex items-center gap-1 cursor-pointer"
+                >
+                  <i class="fa-solid fa-lock text-[10px]"></i>
+                  <span>Salva nel Caveau</span>
+                </button>
+                <button 
+                  onclick="dismissProposalFromModal(${prop.id}, this)"
+                  class="bg-white hover:bg-slate-100 text-slate-600 text-xs font-semibold px-2 py-1.5 rounded-xl border border-slate-200 transition active:scale-95 cursor-pointer"
+                >
+                  Ignora
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error("Errore loadPendingProposals:", err);
+      }
+    }
+
+    async function approveProposalFromModal(id, btnEl) {
+      const card = document.getElementById(`modal-prop-${id}`);
+      if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin text-[10px]"></i> Cifratura...`;
+      }
+      try {
+        const res = await fetch(`/api/folders/proposals/${id}/approve`, {
+          method: 'POST',
+          headers: authHeaders()
+        });
+        if (!res.ok) throw new Error("Errore durante l'approvazione");
+        if (card) {
+          card.className = 'bg-emerald-50 border border-emerald-200 rounded-2xl p-2.5 text-xs text-emerald-800 font-bold flex items-center gap-2';
+          card.innerHTML = `<i class="fa-solid fa-shield-check text-emerald-600"></i> File salvato e cifrato con successo nel Caveau!`;
+          setTimeout(() => card.remove(), 2500);
+        }
+        await loadDashboard(currentFilter);
+        await checkPendingProposalsBanner();
+      } catch (err) {
+        alert("Errore: " + err.message);
+      }
+    }
+
+    async function dismissProposalFromModal(id, btnEl) {
+      const card = document.getElementById(`modal-prop-${id}`);
+      try {
+        const res = await fetch(`/api/folders/proposals/${id}/dismiss`, {
+          method: 'POST',
+          headers: authHeaders()
+        });
+        if (!res.ok) throw new Error("Errore durante la dismissione");
+        if (card) card.remove();
+        await checkPendingProposalsBanner();
+      } catch (err) {
+        console.error("Errore dismissProposalFromModal:", err);
+      }
+    }
+
+    async function triggerScanSensitiveFiles() {
+      const btn = document.getElementById('btnScanSensitiveNow');
+      if (btn) {
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin text-[10px]"></i> Scansione...`;
+      }
+      try {
+        const res = await fetch('/api/folders/scan-sensitive', {
+          method: 'POST',
+          headers: authHeaders()
+        });
+        if (!res.ok) throw new Error("Errore scansione sensibile");
+        const data = await res.json();
+        await loadPendingProposals();
+        await checkPendingProposalsBanner();
+        await loadWatchedFolders();
+        if (data.new_proposals_count > 0) {
+          alert(`Rilevati ${data.new_proposals_count} nuovi file sensibili pronti da approvare!`);
+        } else {
+          alert("Nessun nuovo file sensibile da approvare trovato nelle cartelle monitorate.");
+        }
+      } catch (err) {
+        console.error("Errore triggerScanSensitiveFiles:", err);
+      } finally {
+        if (btn) {
+          btn.innerHTML = `<i class="fa-solid fa-arrows-rotate text-[10px]"></i><span>Controlla Ora</span>`;
+        }
+      }
+    }
+
+    // Gestione Azioni Card WhatsApp Chat
+    async function approveProposal(proposalId, btnEl) {
+      const card = btnEl ? btnEl.closest(`#proposal-bubble-${proposalId}`) : document.getElementById(`proposal-bubble-${proposalId}`);
+      if (card) {
+        card.innerHTML = `
+          <div class="p-3 text-center text-xs text-slate-600 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-circle-notch animate-spin text-emerald-600"></i>
+            <span>Cifratura AES-256 e salvataggio nel Caveau in corso...</span>
+          </div>
+        `;
+      }
+
+      try {
+        const res = await fetch(`/api/folders/proposals/${proposalId}/approve`, {
+          method: 'POST',
+          headers: authHeaders()
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || "Errore approvazione file");
+        }
+        const data = await res.json();
+        if (card) {
+          card.className = 'mt-2.5 bg-emerald-50 border border-emerald-300 rounded-2xl p-3 shadow-2xs text-left';
+          card.innerHTML = `
+            <div class="flex items-center gap-2 text-emerald-800 text-xs font-bold">
+              <i class="fa-solid fa-shield-check text-emerald-600"></i>
+              <span>🔒 Salvato e Cifrato nel Caveau!</span>
+            </div>
+            <p class="text-[11px] text-emerald-700 mt-0.5">${escapeHtml(data.message || '')}</p>
+          `;
+        }
+        await loadDashboard(currentFilter);
+        await checkPendingProposalsBanner();
+      } catch (err) {
+        console.error("Errore approveProposal:", err);
+        if (card) {
+          card.innerHTML = `<div class="text-xs text-red-600 p-2 font-medium">⚠️ Errore: ${escapeHtml(err.message)}</div>`;
+        }
+      }
+    }
+
+    async function dismissProposal(proposalId, btnEl) {
+      const card = btnEl ? btnEl.closest(`#proposal-bubble-${proposalId}`) : document.getElementById(`proposal-bubble-${proposalId}`);
+      try {
+        const res = await fetch(`/api/folders/proposals/${proposalId}/dismiss`, {
+          method: 'POST',
+          headers: authHeaders()
+        });
+        if (!res.ok) throw new Error("Errore durante l'operazione");
+        if (card) {
+          card.className = 'mt-2.5 bg-slate-100 border border-slate-200 rounded-2xl p-2.5 shadow-2xs text-left';
+          card.innerHTML = `
+            <div class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+              <i class="fa-solid fa-eye-slash"></i>
+              <span>File ignorato. Non verrà salvato nel Caveau.</span>
+            </div>
+          `;
+        }
+        await checkPendingProposalsBanner();
+      } catch (err) {
+        console.error("Errore dismissProposal:", err);
+      }
+    }
+
+    async function checkPendingProposalsBanner() {
+      try {
+        const res = await fetch('/api/folders/proposals?status=pending', { headers: authHeaders() });
+        if (!res.ok) return;
+        const data = await res.json();
+        const proposals = data.proposals || [];
+        const banner = document.getElementById('sensitiveFilesAlertBanner');
+        const badge = document.getElementById('sensitiveBannerBadge');
+        const text = document.getElementById('sensitiveBannerText');
+        const toolsBadge = document.getElementById('toolsFoldersBadge');
+
+        if (proposals.length > 0) {
+          if (banner) {
+            banner.classList.remove('hidden');
+          }
+          if (badge) {
+            badge.textContent = `${proposals.length} da verificare`;
+          }
+          if (text) {
+            const first = proposals[0];
+            text.innerHTML = `L'AI ha individuato <strong>${escapeHtml(first.file_name)}</strong> in <em>${escapeHtml(first.folder_name || 'cartella monitorata')}</em> (${escapeHtml(first.sensitivity_reason || '')}). Vuoi salvarlo cifrato nel Caveau?`;
+          }
+          if (toolsBadge) {
+            toolsBadge.classList.remove('hidden');
+            toolsBadge.textContent = proposals.length;
+          }
+        } else {
+          if (banner) banner.classList.add('hidden');
+          if (toolsBadge) toolsBadge.classList.add('hidden');
+        }
+      } catch (e) {
+        console.warn("checkPendingProposalsBanner err:", e);
+      }
+    }
+
     function initApp() {
       applyLayout();
       loadAiModelSetting();
       loadThreads();
       loadDashboard('all');
       checkDeadlineAlerts();
+      checkPendingProposalsBanner();
+      // Polling periodico per rilevare nuovi file sensibili segnalati dal monitor di background
+      setInterval(checkPendingProposalsBanner, 20000);
     }
 
     // Inizializzazione al caricamento della pagina con controllo di sicurezza Caveau
@@ -5029,8 +5427,8 @@
             <i class="fa-solid fa-folder-tree"></i>
           </div>
           <div>
-            <h3 class="font-bold text-sm text-slate-900">Cartelle Monitorate sul tuo PC</h3>
-            <p class="text-[11px] text-slate-400">Indicizzazione diretta di PDF, immagini e fatture locali</p>
+            <h3 class="font-bold text-sm text-slate-900">Cartelle Monitorate & Protezione Caveau</h3>
+            <p class="text-[11px] text-slate-400">Monitora cartelle PC, rileva file sensibili e salvali cifrati nel Caveau</p>
           </div>
         </div>
         <button onclick="closeWatchedFoldersModal()" class="w-7 h-7 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition cursor-pointer">
@@ -5038,24 +5436,63 @@
         </button>
       </div>
 
-      <div class="flex items-center justify-between bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 gap-3">
+      <!-- Monitoraggio Rapido 1-Click (Download, Documenti, Desktop) -->
+      <div class="bg-gradient-to-r from-emerald-50/70 to-teal-50/70 p-3.5 rounded-2xl border border-emerald-200/80 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-[#075E54] flex items-center gap-1.5">
+            <i class="fa-solid fa-bolt text-amber-500"></i>
+            <span>Monitoraggio Rapido 1-Click (Consigliato):</span>
+          </span>
+          <span class="text-[10px] text-slate-500 font-medium">Scansione e notifica automatica</span>
+        </div>
+        <div id="folderPresetsList" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <!-- Popolato dinamicamente da loadFolderPresets() -->
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200/80 gap-3">
         <div class="text-xs text-slate-600">
-          <span class="font-bold text-slate-800">Collega una cartella dal computer:</span>
-          <p class="text-[11px] text-slate-400">L'AI scansionerà ed estrarrà automaticamente i documenti senza duplicare i file.</p>
+          <span class="font-bold text-slate-800">Collega un'altra cartella specifica:</span>
+          <p class="text-[11px] text-slate-400">Scegli qualsiasi cartella dal disco locale con la finestra nativa.</p>
         </div>
         <button 
           onclick="selectFolderFromPC()" 
           id="btnSelectFolderPC"
-          class="bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0"
+          class="bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-bold px-3 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0"
         >
           <i class="fa-solid fa-folder-plus text-xs"></i>
-          <span>Sfoglia Cartella PC...</span>
+          <span>Sfoglia Cartella...</span>
         </button>
       </div>
 
-      <!-- Lista cartelle -->
-      <div id="watchedFoldersList" class="space-y-2.5 max-h-80 overflow-y-auto custom-scroll pr-1">
-        <!-- Popolato dinamicamente da loadWatchedFolders() -->
+      <!-- Sezione File Sensibili da Approvare (se presenti) -->
+      <div id="pendingProposalsSection" class="hidden space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+            <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+            <span>File Sensibili Rilevati in Attesa di Approvazione</span>
+          </span>
+          <button onclick="triggerScanSensitiveFiles()" id="btnScanSensitiveNow" class="text-[11px] text-[#075E54] hover:text-[#128C7E] font-semibold flex items-center gap-1 cursor-pointer">
+            <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
+            <span>Controlla Ora</span>
+          </button>
+        </div>
+        <div id="pendingProposalsList" class="space-y-2 max-h-40 overflow-y-auto custom-scroll pr-1">
+          <!-- Popolato dinamicamente da loadPendingProposals() -->
+        </div>
+      </div>
+
+      <!-- Lista cartelle attive -->
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-xs font-bold text-slate-700">Cartelle attive collegate:</span>
+          <button onclick="triggerScanSensitiveFiles()" class="text-[11px] text-emerald-700 hover:text-emerald-800 font-semibold cursor-pointer">
+            <i class="fa-solid fa-shield-cat text-xs mr-1"></i> Scansione Immediata
+          </button>
+        </div>
+        <div id="watchedFoldersList" class="space-y-2 max-h-48 overflow-y-auto custom-scroll pr-1">
+          <!-- Popolato dinamicamente da loadWatchedFolders() -->
+        </div>
       </div>
 
       <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">

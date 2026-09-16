@@ -7,10 +7,20 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.main import app
-from app.models.database import get_engine, init_db, Document, WatchedFolder, get_session_maker
-from app.services.folder_service import scan_local_folder, open_path_in_explorer, select_folder_dialog
+from app.models.database import get_engine, init_db, Document, WatchedFolder, PendingFileProposal, ChatMessage, get_session_maker
+from app.services.folder_service import (
+    scan_local_folder,
+    open_path_in_explorer,
+    select_folder_dialog,
+    get_system_folder_presets,
+    is_sensitive_file,
+    scan_folder_for_sensitive_proposals,
+    check_all_watched_folders_for_sensitive_files,
+    approve_file_proposal,
+    dismiss_file_proposal
+)
 from app.services.agent_service import AgenticChatService
-from app.services.crypto_service import get_vault_manager
+from app.services.crypto_service import get_vault_manager, decrypt_bytes
 
 client = TestClient(app)
 
@@ -188,3 +198,162 @@ def test_agent_folder_tools(tmp_path):
         with patch("app.services.folder_service.open_path_in_explorer", return_value=True):
             open_res = agent.execute_tool("open_local_file_in_explorer", {"document_title": "Bolletta Enel"}, db, thread_id="lavoro")
             assert open_res["success"] is True
+
+
+def test_system_folder_presets():
+    engine = get_engine()
+    SessionLocal = get_session_maker(engine)
+    with SessionLocal() as db:
+        presets = get_system_folder_presets(db)
+        assert len(presets) >= 3
+        keys = [p["key"] for p in presets]
+        assert "downloads" in keys
+        assert "documents" in keys
+        assert "desktop" in keys
+
+
+def test_is_sensitive_file(tmp_path):
+    # 1. File sensibile (bolletta)
+    f_sensitive = tmp_path / "bolletta_luce_agosto.pdf"
+    f_sensitive.write_bytes(b"%PDF-1.4 test enel bill content")
+    is_sens, reason, extracted = is_sensitive_file(f_sensitive)
+    assert is_sens is True
+    assert "Importo" in reason or "Bolletta" in reason or "Scadenza" in reason
+
+    # 2. File ignorato (eseguibile)
+    f_exe = tmp_path / "installer.exe"
+    f_exe.write_bytes(b"MZ fake exe")
+    is_sens_exe, _, _ = is_sensitive_file(f_exe)
+    assert is_sens_exe is False
+
+    # 3. File non supportato
+    f_tmp = tmp_path / "download.crdownload"
+    f_tmp.write_bytes(b"temp download content")
+    is_sens_tmp, _, _ = is_sensitive_file(f_tmp)
+    assert is_sens_tmp is False
+
+
+def test_scan_folder_for_sensitive_proposals_and_approval(tmp_path):
+    download_folder = tmp_path / "SimulatedDownloads"
+    download_folder.mkdir()
+
+    # Crea un file sensibile (F24)
+    f24_file = download_folder / "F24_tributi_settembre.pdf"
+    f24_file.write_bytes(b"%PDF-1.4 F24 content")
+
+    engine = get_engine()
+    SessionLocal = get_session_maker(engine)
+    with SessionLocal() as db:
+        # Scansiona cartella per proposte
+        proposals = scan_folder_for_sensitive_proposals(
+            folder_path=str(download_folder),
+            db=db,
+            folder_name="Download",
+            thread_id="general",
+            auto_notify=True
+        )
+        assert len(proposals) == 1
+        prop = proposals[0]
+        assert prop.file_name == "F24_tributi_settembre.pdf"
+        assert prop.status == "pending"
+        assert prop.amount == 2450.0
+
+        # Verifica che sia stato creato il messaggio interattivo in chat
+        chat_msg = db.query(ChatMessage).filter(ChatMessage.message_type == "sensitive_proposal").first()
+        assert chat_msg is not None
+        assert "F24_tributi_settembre.pdf" in chat_msg.content
+        assert "SENSITIVE_FILE_PROPOSAL" in chat_msg.metadata_json
+
+        # Seconda scansione: non deve creare duplicati
+        proposals_repeat = scan_folder_for_sensitive_proposals(
+            folder_path=str(download_folder),
+            db=db,
+            folder_name="Download",
+            thread_id="general",
+            auto_notify=True
+        )
+        assert len(proposals_repeat) == 0
+
+        # Approva la proposta
+        success, msg, doc = approve_file_proposal(prop.id, db)
+        assert success is True
+        assert doc is not None
+        assert doc.amount == 2450.0
+        assert doc.status == "da_pagare"
+        assert doc.is_local_file is False
+
+        # Verifica crittografia del file salvato nel caveau
+        mgr = get_vault_manager()
+        key = mgr.get_active_key()
+        raw_disk_bytes = Path(doc.file_path).read_bytes()
+        # Non deve contenere testo in chiaro
+        assert raw_disk_bytes != b"%PDF-1.4 F24 content"
+        # Deve essere decifrabile correttamente con la chiave
+        decrypted = decrypt_bytes(raw_disk_bytes, key)
+        assert decrypted == b"%PDF-1.4 F24 content"
+
+        # Verifica stato proposta aggiornato
+        db.refresh(prop)
+        assert prop.status == "approved"
+
+
+def test_dismiss_proposal(tmp_path):
+    f = tmp_path / "bolletta_scartata.pdf"
+    f.write_bytes(b"%PDF-1.4 test")
+
+    engine = get_engine()
+    SessionLocal = get_session_maker(engine)
+    with SessionLocal() as db:
+        proposals = scan_folder_for_sensitive_proposals(str(tmp_path), db, auto_notify=False)
+        assert len(proposals) == 1
+        prop_id = proposals[0].id
+
+        success, msg = dismiss_file_proposal(prop_id, db)
+        assert success is True
+
+        prop = db.query(PendingFileProposal).filter(PendingFileProposal.id == prop_id).first()
+        assert prop.status == "dismissed"
+
+
+def test_api_presets_and_proposals_endpoints(tmp_path):
+    # 1. Test GET /api/folders/presets
+    res_presets = client.get("/api/folders/presets")
+    assert res_presets.status_code == 200
+    p_data = res_presets.json()
+    assert "presets" in p_data
+    assert len(p_data["presets"]) >= 3
+
+    # Crea un file sensibile
+    test_pdf = tmp_path / "fattura_enel_test.pdf"
+    test_pdf.write_bytes(b"%PDF-1.4 enel")
+
+    engine = get_engine()
+    SessionLocal = get_session_maker(engine)
+    with SessionLocal() as db:
+        # Aggiungi cartella monitorata
+        wf = WatchedFolder(path=str(tmp_path), name="Test Temp", thread_id="general")
+        db.add(wf)
+        db.commit()
+
+    # 2. Trigger scan-sensitive
+    res_scan = client.post("/api/folders/scan-sensitive")
+    assert res_scan.status_code == 200
+    assert res_scan.json()["new_proposals_count"] >= 1
+
+    # 3. GET /api/folders/proposals
+    res_props = client.get("/api/folders/proposals")
+    assert res_props.status_code == 200
+    props_list = res_props.json()["proposals"]
+    assert len(props_list) >= 1
+    target_prop = props_list[0]
+    p_id = target_prop["id"]
+
+    # 4. POST /api/folders/proposals/{id}/approve
+    res_app = client.post(f"/api/folders/proposals/{p_id}/approve")
+    assert res_app.status_code == 200
+    assert res_app.json()["success"] is True
+
+    # 5. Verifica che non sia più nei pending
+    res_pending = client.get("/api/folders/proposals?status=pending")
+    assert not any(p["id"] == p_id for p in res_pending.json()["proposals"])
+

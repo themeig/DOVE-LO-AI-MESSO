@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
@@ -21,6 +23,33 @@ from app.api.telemetry import router as telemetry_router
 from app.api.folders import router as folders_router
 from app.api.export import router as export_router
 
+logger = logging.getLogger(__name__)
+
+async def periodic_folder_monitor_loop():
+    """Loop asincrono di background per monitorare periodicamente le cartelle attive (es. Download)."""
+    # Attende 3 secondi all'avvio prima della prima esecuzione
+    await asyncio.sleep(3)
+    from app.models.database import get_engine, get_session_maker
+    from app.services.folder_service import check_all_watched_folders_for_sensitive_files
+
+    while True:
+        try:
+            engine = get_engine()
+            SessionLocal = get_session_maker(engine)
+            with SessionLocal() as db:
+                check_all_watched_folders_for_sensitive_files(db, auto_notify=True)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Errore nel loop di monitoraggio cartelle: {e}")
+
+        try:
+            # Controllo periodico ogni 20 secondi
+            await asyncio.sleep(20)
+        except asyncio.CancelledError:
+            break
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Inizializza caveau crittografico e migra file se necessario
@@ -28,7 +57,17 @@ async def lifespan(app: FastAPI):
     mgr.initialize_if_needed()
     init_db()
     migrate_unencrypted_files()
+
+    # Avvia task in background per il monitoraggio cartelle
+    monitor_task = asyncio.create_task(periodic_folder_monitor_loop())
+
     yield
+
+    monitor_task.cancel()
+    try:
+        await monitor_task
+    except asyncio.CancelledError:
+        pass
 
 app = FastAPI(
     title="Dove lo AI messo",

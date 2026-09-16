@@ -4,18 +4,29 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.database import get_db, WatchedFolder, Document
+from app.models.database import get_db, WatchedFolder, Document, PendingFileProposal
 from app.models.schemas import (
     WatchedFolderCreate,
     WatchedFolderResponse,
     FolderScanResult,
     FolderSelectResponse,
-    OpenInExplorerRequest
+    OpenInExplorerRequest,
+    FolderPresetItem,
+    FolderPresetsResponse,
+    PendingFileProposalResponse,
+    PendingProposalsListResponse,
+    ApproveProposalResponse,
+    DismissProposalResponse
 )
 from app.services.folder_service import (
     select_folder_dialog,
     open_path_in_explorer,
-    scan_local_folder
+    scan_local_folder,
+    get_system_folder_presets,
+    scan_folder_for_sensitive_proposals,
+    check_all_watched_folders_for_sensitive_files,
+    approve_file_proposal,
+    dismiss_file_proposal
 )
 
 router = APIRouter(prefix="/api/folders", tags=["folders"])
@@ -155,3 +166,102 @@ def open_in_explorer(payload: OpenInExplorerRequest, db: Session = Depends(get_d
         raise HTTPException(status_code=500, detail="Impossibile aprire Esplora File per questo percorso")
 
     return {"success": True, "path": target_path}
+
+
+@router.get("/presets", response_model=FolderPresetsResponse)
+def get_folder_presets(db: Session = Depends(get_db)):
+    """Restituisce le cartelle predefinite di sistema (Download, Documenti, Desktop)."""
+    presets = get_system_folder_presets(db)
+    return FolderPresetsResponse(
+        presets=[
+            FolderPresetItem(
+                key=p["key"],
+                name=p["name"],
+                path=p["path"],
+                exists=p["exists"],
+                is_watched=p["is_watched"],
+                icon=p["icon"]
+            )
+            for p in presets
+        ]
+    )
+
+
+@router.get("/proposals", response_model=PendingProposalsListResponse)
+def list_proposals(status: str = "pending", db: Session = Depends(get_db)):
+    """Restituisce le proposte di file sensibili rilevati dalle cartelle monitorate."""
+    query = db.query(PendingFileProposal)
+    if status != "all":
+        query = query.filter(PendingFileProposal.status == status)
+    proposals = query.order_by(PendingFileProposal.detected_at.desc()).all()
+
+    return PendingProposalsListResponse(
+        proposals=[
+            PendingFileProposalResponse(
+                id=p.id,
+                folder_id=p.folder_id,
+                folder_name=p.folder_name,
+                file_path=p.file_path,
+                file_name=p.file_name,
+                file_size=p.file_size,
+                doc_type=p.doc_type,
+                issuer=p.issuer,
+                amount=p.amount,
+                due_date=p.due_date.isoformat() if p.due_date else None,
+                sensitivity_reason=p.sensitivity_reason,
+                summary=p.summary,
+                status=p.status,
+                thread_id=p.thread_id,
+                detected_at=p.detected_at.isoformat() if p.detected_at else None
+            )
+            for p in proposals
+        ],
+        count=len(proposals)
+    )
+
+
+@router.post("/proposals/{proposal_id}/approve", response_model=ApproveProposalResponse)
+def approve_proposal(proposal_id: int, db: Session = Depends(get_db)):
+    """Approva il salvataggio cifrato nel caveau e l'indicizzazione del file sensibile."""
+    success, msg, doc = approve_file_proposal(proposal_id, db)
+    if not success:
+        raise HTTPException(status_code=400, detail=msg)
+    return ApproveProposalResponse(
+        success=True,
+        message=msg,
+        document_id=doc.id if doc else None,
+        title=doc.title if doc else None
+    )
+
+
+@router.post("/proposals/{proposal_id}/dismiss", response_model=DismissProposalResponse)
+def dismiss_proposal(proposal_id: int, db: Session = Depends(get_db)):
+    """Rifiuta la proposta di salvataggio del file sensibile."""
+    success, msg = dismiss_file_proposal(proposal_id, db)
+    if not success:
+        raise HTTPException(status_code=400, detail=msg)
+    return DismissProposalResponse(
+        success=True,
+        message=msg,
+        proposal_id=proposal_id
+    )
+
+
+@router.post("/scan-sensitive")
+def scan_all_sensitive_files(db: Session = Depends(get_db)):
+    """Avvia la scansione manuale di tutte le cartelle monitorate per rilevare nuovi file sensibili."""
+    proposals = check_all_watched_folders_for_sensitive_files(db, auto_notify=True)
+    return {
+        "success": True,
+        "new_proposals_count": len(proposals),
+        "proposals": [
+            {
+                "id": p.id,
+                "file_name": p.file_name,
+                "folder_name": p.folder_name,
+                "reason": p.sensitivity_reason
+            }
+            for p in proposals
+        ]
+    }
+
