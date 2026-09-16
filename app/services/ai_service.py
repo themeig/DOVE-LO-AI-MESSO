@@ -17,8 +17,23 @@ class AIServiceInterface(Protocol):
         ...
     def classify_and_extract_intent(self, text: str) -> MessageIntent:
         ...
-    def generate_conversational_reply(self, text: str, chat_history: list = None) -> str:
-        ...
+def optimize_image_for_vision(image_bytes: bytes, max_bytes: int = 3 * 1024 * 1024, max_dim: int = 1600) -> tuple[bytes, str]:
+    """Ridimensiona e comprime l'immagine per evitare errori 413 (>30MB payload) e velocizzare le chiamate Vision."""
+    if len(image_bytes) <= max_bytes:
+        return image_bytes, "image/jpeg"
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(image_bytes))
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=82, optimize=True)
+        return buf.getvalue(), "image/jpeg"
+    except Exception as e:
+        logger.warning(f"Ottimizzazione immagine per Vision non riuscita: {e}")
+        return image_bytes, "image/jpeg"
+
 
 def _extract_json_object(raw_text: str) -> dict:
     """Estrae in modo robusto il dizionario JSON dal testo o dal reasoning del modello."""
@@ -239,7 +254,7 @@ class OpenRouterAIService:
                 pdf_text = ""
                 try:
                     reader = pypdf.PdfReader(io.BytesIO(file_bytes))
-                    for p in reader.pages:
+                    for p in reader.pages[:15]:
                         page_str = p.extract_text()
                         if page_str:
                             pdf_text += page_str + "\n"
@@ -276,6 +291,9 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                     resp_text = self._call_openrouter(messages, max_tokens=4096, model_override=self.primary_model, temperature=0.1)
                     parsed = _extract_json_object(resp_text)
                     return ExtractedDocument(**parsed)
+                else:
+                    # PDF senza layer di testo estratto (scansione grafica, libro o PDF protetto/test)
+                    return MockAIService().extract_document(file_bytes, mime_type, filename)
 
             # 2. GESTIONE DOCUMENTI OFFICE & FOGLI DI CALCOLO (.docx, .doc, .xlsx, .xls, .csv, .txt, .json)
             is_office = any(fn.endswith(ext) for ext in [".docx", ".doc", ".xlsx", ".xls", ".csv", ".tsv", ".txt", ".json", ".md"])
@@ -334,8 +352,9 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                     pass
 
             # 4. GESTIONE IMMAGINI (Foto, screenshot, scansioni grafiche)
-            b64_img = base64.b64encode(file_bytes).decode("utf-8")
-            data_url = f"data:{mt or 'image/jpeg'};base64,{b64_img}"
+            opt_bytes, opt_mt = optimize_image_for_vision(file_bytes)
+            b64_img = base64.b64encode(opt_bytes).decode("utf-8")
+            data_url = f"data:{opt_mt};base64,{b64_img}"
 
             prompt = (
                 "Sei l'assistente 'Dove lo AI messo'. Analizza con precisione visiva questa immagine caricata dall'utente.\n\n"

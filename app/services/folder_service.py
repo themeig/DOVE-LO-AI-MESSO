@@ -142,6 +142,15 @@ def scan_local_folder(
             skipped_count += 1
             continue
 
+        # Salta file multimediali o enormi (> 40MB) per evitare errori 413 di payload
+        try:
+            if file_path.stat().st_size > 40 * 1024 * 1024:
+                skipped_count += 1
+                details.append(f"File '{file_path.name}' ignorato: dimensione superiore a 40MB.")
+                continue
+        except Exception:
+            pass
+
         # Nuovo file: leggi byte ed estrai
         try:
             file_bytes = file_path.read_bytes()
