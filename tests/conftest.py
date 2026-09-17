@@ -24,6 +24,11 @@ def isolate_test_database(tmp_path_factory):
     test_uploads_dir = test_dir / "uploads"
     test_uploads_dir.mkdir(parents=True, exist_ok=True)
 
+    # Isola credenziali Google Drive per usare il Mock di default nei test
+    import os
+    orig_client_id = os.environ.pop("GOOGLE_CLIENT_ID", None)
+    orig_client_secret = os.environ.pop("GOOGLE_CLIENT_SECRET", None)
+
     # Configura settings per i test
     settings = app_config.Settings(
         STORAGE_DIR=test_uploads_dir,
@@ -57,3 +62,7 @@ def isolate_test_database(tmp_path_factory):
     app.dependency_overrides[db_module.get_db] = override_get_db
     yield
     app.dependency_overrides.clear()
+    if orig_client_id is not None:
+        os.environ["GOOGLE_CLIENT_ID"] = orig_client_id
+    if orig_client_secret is not None:
+        os.environ["GOOGLE_CLIENT_SECRET"] = orig_client_secret

@@ -6472,7 +6472,10 @@
           method: 'POST',
           headers: authHeaders()
         });
-        if (!res.ok) throw new Error("Errore durante l'approvazione");
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Errore durante l'approvazione");
+        }
         if (card) {
           card.className = 'bg-emerald-50 border border-emerald-200 rounded-2xl p-2.5 text-xs text-emerald-800 font-bold flex items-center gap-2';
           card.innerHTML = `<i class="fa-solid fa-shield-check text-emerald-600"></i> File salvato e cifrato con successo nel Caveau!`;
@@ -6481,7 +6484,13 @@
         await loadDashboard(currentFilter);
         await checkPendingProposalsBanner();
       } catch (err) {
-        alert("Errore: " + err.message);
+        showToast(`⚠️ ${err.message}`, 'error');
+        if (card) {
+          card.className = 'bg-rose-50 border border-rose-200 rounded-2xl p-2.5 text-xs text-rose-700 font-medium flex items-center justify-between gap-2';
+          card.innerHTML = `<span>⚠️ ${escapeHtml(err.message)}</span> <button onclick="this.parentElement.remove()" class="text-rose-500 hover:text-rose-800 text-xs font-bold px-2 py-1">✕</button>`;
+        }
+        await loadPendingProposals();
+        await checkPendingProposalsBanner();
       }
     }
 
@@ -6492,11 +6501,16 @@
           method: 'POST',
           headers: authHeaders()
         });
-        if (!res.ok) throw new Error("Errore durante la dismissione");
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Errore durante la dismissione");
+        }
         if (card) card.remove();
         await checkPendingProposalsBanner();
       } catch (err) {
         console.error("Errore dismissProposalFromModal:", err);
+        showToast(`⚠️ ${err.message}`, 'error');
+        await loadPendingProposals();
       }
     }
 
