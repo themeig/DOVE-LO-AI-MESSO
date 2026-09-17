@@ -3952,6 +3952,27 @@
       scrollBottom();
     }
 
+    function toggleExtraWidgets(btn) {
+      const container = btn.nextElementSibling;
+      if (!container) return;
+      const isHidden = container.classList.contains('hidden');
+      const count = btn.getAttribute('data-count') || '';
+      const labelPlural = count === '1' ? 'documento' : 'documenti';
+      const textSpan = btn.querySelector('.widget-toggle-text');
+      const arrow = btn.querySelector('.widget-toggle-arrow');
+
+      if (isHidden) {
+        container.classList.remove('hidden');
+        if (arrow) arrow.classList.add('rotate-180');
+        if (textSpan) textSpan.textContent = `Nascondi altri ${count} ${labelPlural}`;
+        scrollBottom();
+      } else {
+        container.classList.add('hidden');
+        if (arrow) arrow.classList.remove('rotate-180');
+        if (textSpan) textSpan.textContent = `Mostra altri ${count} ${labelPlural}`;
+      }
+    }
+
     function appendAssistantBubble(text, documents = null, confirmation = null, itemPhoto = null, storeItem = null, proposal = null) {
       const aiBubble = document.createElement('div');
       aiBubble.className = 'flex items-start max-w-[85%]';
@@ -3991,108 +4012,141 @@
       let docsHtml = '';
       if (documents && Array.isArray(documents) && documents.length > 0) {
         try {
-          docsHtml = `
-            <div class="mt-2.5 space-y-2 w-full">
-              ${documents.map(doc => {
-                try {
-                  const isPdf = (doc.file_type && doc.file_type.includes('pdf')) || (doc.file_url && doc.file_url.toLowerCase().endsWith('.pdf'));
-                  const iconClass = isPdf ? 'fa-solid fa-file-pdf text-red-600' : 'fa-solid fa-file-lines text-blue-600';
-                  const iconBg = isPdf ? 'bg-red-50' : 'bg-blue-50';
-                  const title = escapeHtml(doc.title || 'Documento');
-                  const issuer = escapeHtml(doc.issuer || 'Ente / Mittente');
-                  const summary = doc.summary || '';
-                  const url = doc.file_url || '';
-                  const fileType = doc.file_type || (isPdf ? 'application/pdf' : 'image');
-                  const docId = doc.document_id || doc.id;
-                  const docItem = doc;
-                  const downloadUrl = doc.download_url || (docId ? `/api/documents/${docId}/download` : url);
-                  const safeDownloadName = (doc.title || 'documento').replace(/[^a-zA-Z0-9_\-]/g, '_') + (isPdf ? '.pdf' : '');
+          const renderDocCardHtml = (doc) => {
+            try {
+              const isPdf = (doc.file_type && doc.file_type.includes('pdf')) || (doc.file_url && doc.file_url.toLowerCase().endsWith('.pdf'));
+              const iconClass = isPdf ? 'fa-solid fa-file-pdf text-red-600' : 'fa-solid fa-file-lines text-blue-600';
+              const iconBg = isPdf ? 'bg-red-50' : 'bg-blue-50';
+              const title = escapeHtml(doc.title || 'Documento');
+              const issuer = escapeHtml(doc.issuer || 'Ente / Mittente');
+              const summary = doc.summary || '';
+              const url = doc.file_url || '';
+              const fileType = doc.file_type || (isPdf ? 'application/pdf' : 'image');
+              const docId = doc.document_id || doc.id;
+              const docItem = doc;
+              const downloadUrl = doc.download_url || (docId ? `/api/documents/${docId}/download` : url);
+              const safeDownloadName = (doc.title || 'documento').replace(/[^a-zA-Z0-9_\-]/g, '_') + (isPdf ? '.pdf' : '');
 
-                  let amountStr = '';
-                  if (doc.amount != null) {
-                    amountStr = `<span class="inline-block mt-1 font-bold text-slate-900 text-xs">${doc.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>`;
-                  }
+              let amountStr = '';
+              if (doc.amount != null) {
+                amountStr = `<span class="inline-block mt-1 font-bold text-slate-900 text-xs">${doc.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>`;
+              }
 
-                  let dueStr = '';
-                  if (doc.due_date) {
-                    dueStr = `<span class="inline-block mt-1 ml-1.5 text-[10px] font-semibold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Scad: ${escapeHtml(doc.due_date)}</span>`;
-                  }
+              let dueStr = '';
+              if (doc.due_date) {
+                dueStr = `<span class="inline-block mt-1 ml-1.5 text-[10px] font-semibold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Scad: ${escapeHtml(doc.due_date)}</span>`;
+              }
 
-                  return `
-                    <div class="bg-slate-50 hover:bg-slate-100/90 border border-slate-200/90 rounded-xl p-2.5 transition shadow-2xs text-left">
-                      <div class="flex items-start justify-between gap-2">
-                        <div class="flex items-start gap-2.5 min-w-0">
-                          <div class="w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                            <i class="${iconClass} text-sm"></i>
-                          </div>
-                          <div class="min-w-0">
-                            <p class="font-bold text-slate-900 text-xs truncate">${title}</p>
-                            <p class="text-[11px] text-slate-500 truncate">${issuer}</p>
-                            <div class="flex items-center flex-wrap gap-1">
-                              ${amountStr}
-                              ${dueStr}
-                            </div>
-                          </div>
-                        </div>
-                        <div class="flex items-center gap-1.5 shrink-0">
-                          ${docItem.drive_web_url ? `
-                            <a href="${docItem.drive_web_url}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition">
-                              <i class="fa-brands fa-google-drive text-xs"></i> <span>Drive ↗</span>
-                            </a>
-                          ` : ''}
-                          ${url ? `
-                            <button type="button" onclick="openMediaModal('${url}', '${title.replace(/'/g, "\\'")}', '${fileType}', '${downloadUrl}')" class="bg-[#075E54] hover:bg-[#128C7E] text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 active:scale-95 cursor-pointer" title="Visualizza anteprima">
-                              <i class="fa-regular fa-eye text-xs"></i>
-                              <span>Vedi</span>
-                            </button>
-                          ` : ''}
-                          ${downloadUrl ? `
-                            <a href="${downloadUrl}" download="${safeDownloadName}" class="bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-300 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 active:scale-95" title="Scarica documento sul tuo dispositivo">
-                              <i class="fa-solid fa-download text-xs text-emerald-700"></i>
-                              <span>Scarica</span>
-                            </a>
-                          ` : ''}
-                          ${docId ? `
-                            <button type="button" onclick="openFileInExplorer(${docId})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-300 text-[11px] font-semibold px-2 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 active:scale-95 cursor-pointer" title="Apri file in Esplora Risorse del PC">
-                              <i class="fa-regular fa-folder-open text-xs text-amber-600"></i>
-                              <span class="hidden sm:inline">PC</span>
-                            </button>
-                          ` : ''}
+              return `
+                <div class="bg-slate-50 hover:bg-slate-100/90 border border-slate-200/90 rounded-xl p-2.5 transition shadow-2xs text-left">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="flex items-start gap-2.5 min-w-0">
+                      <div class="w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                        <i class="${iconClass} text-sm"></i>
+                      </div>
+                      <div class="min-w-0">
+                        <p class="font-bold text-slate-900 text-xs truncate">${title}</p>
+                        <p class="text-[11px] text-slate-500 truncate">${issuer}</p>
+                        <div class="flex items-center flex-wrap gap-1">
+                          ${amountStr}
+                          ${dueStr}
                         </div>
                       </div>
-                      ${summary ? `
-                        <p class="mt-2 pt-1.5 border-t border-slate-200 text-[11px] text-slate-600 italic leading-snug line-clamp-2">
-                          ${formatMessageText(summary)}
-                        </p>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                      ${docItem.drive_web_url ? `
+                        <a href="${docItem.drive_web_url}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition">
+                          <i class="fa-brands fa-google-drive text-xs"></i> <span>Drive ↗</span>
+                        </a>
+                      ` : ''}
+                      ${url ? `
+                        <button type="button" onclick="openMediaModal('${url}', '${title.replace(/'/g, "\\'")}', '${fileType}', '${downloadUrl}')" class="bg-[#075E54] hover:bg-[#128C7E] text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 active:scale-95 cursor-pointer" title="Visualizza anteprima">
+                          <i class="fa-regular fa-eye text-xs"></i>
+                          <span>Vedi</span>
+                        </button>
+                      ` : ''}
+                      ${downloadUrl ? `
+                        <a href="${downloadUrl}" download="${safeDownloadName}" class="bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-300 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 active:scale-95" title="Scarica documento sul tuo dispositivo">
+                          <i class="fa-solid fa-download text-xs text-emerald-700"></i>
+                          <span>Scarica</span>
+                        </a>
+                      ` : ''}
+                      ${docId ? `
+                        <button type="button" onclick="openFileInExplorer(${docId})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-300 text-[11px] font-semibold px-2 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 active:scale-95 cursor-pointer" title="Apri file in Esplora Risorse del PC">
+                          <i class="fa-regular fa-folder-open text-xs text-amber-600"></i>
+                          <span class="hidden sm:inline">PC</span>
+                        </button>
                       ` : ''}
                     </div>
-                  `;
-                } catch (docErr) {
-                  sendUITelemetry('CARD_RENDER_ERROR', {
-                    target_id: doc.id || doc.document_id,
-                    title: doc.title || 'Documento',
-                    error_details: 'Errore generazione singola scheda documento: ' + docErr.message
-                  });
-                  // Fallback minimale resiliente
-                  const docId = doc.document_id || doc.id;
-                  const fallbackDl = doc.download_url || (docId ? `/api/documents/${docId}/download` : '#');
-                  return `
-                    <div class="bg-amber-50 border border-amber-200 rounded-xl p-2 flex items-center justify-between text-xs">
-                      <span class="font-semibold text-slate-800">${escapeHtml(doc.title || 'Documento')}</span>
-                      <div class="flex items-center gap-1.5">
-                        ${doc.drive_web_url ? `
-                          <a href="${doc.drive_web_url}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition">
-                            <i class="fa-brands fa-google-drive text-xs"></i> <span>Drive ↗</span>
-                          </a>
-                        ` : ''}
-                        <a href="${fallbackDl}" class="bg-emerald-600 text-white px-2.5 py-1 rounded-md text-xs font-bold" download>⬇️ Scarica</a>
-                      </div>
-                    </div>
-                  `;
-                }
-              }).join('')}
-            </div>
-          `;
+                  </div>
+                  ${summary ? `
+                    <p class="mt-2 pt-1.5 border-t border-slate-200 text-[11px] text-slate-600 italic leading-snug line-clamp-2">
+                      ${formatMessageText(summary)}
+                    </p>
+                  ` : ''}
+                </div>
+              `;
+            } catch (docErr) {
+              sendUITelemetry('CARD_RENDER_ERROR', {
+                target_id: doc.id || doc.document_id,
+                title: doc.title || 'Documento',
+                error_details: 'Errore generazione singola scheda documento: ' + docErr.message
+              });
+              const docId = doc.document_id || doc.id;
+              const fallbackDl = doc.download_url || (docId ? `/api/documents/${docId}/download` : '#');
+              return `
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-2 flex items-center justify-between text-xs">
+                  <span class="font-semibold text-slate-800">${escapeHtml(doc.title || 'Documento')}</span>
+                  <div class="flex items-center gap-1.5">
+                    ${doc.drive_web_url ? `
+                      <a href="${doc.drive_web_url}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition">
+                        <i class="fa-brands fa-google-drive text-xs"></i> <span>Drive ↗</span>
+                      </a>
+                    ` : ''}
+                    <a href="${fallbackDl}" class="bg-emerald-600 text-white px-2.5 py-1 rounded-md text-xs font-bold" download>⬇️ Scarica</a>
+                  </div>
+                </div>
+              `;
+            }
+          };
+
+          if (documents.length <= 3) {
+            docsHtml = `
+              <div class="mt-2.5 space-y-2 w-full">
+                ${documents.map(renderDocCardHtml).join('')}
+              </div>
+            `;
+          } else {
+            const firstThree = documents.slice(0, 3);
+            const extraDocs = documents.slice(3);
+            const extraCount = extraDocs.length;
+            const labelPlural = extraCount === 1 ? 'documento' : 'documenti';
+
+            docsHtml = `
+              <div class="mt-2.5 space-y-2 w-full">
+                ${firstThree.map(renderDocCardHtml).join('')}
+
+                <!-- Menu a tendina espandibile dopo il 3° widget -->
+                <div class="pt-1 w-full">
+                  <button 
+                    type="button" 
+                    onclick="toggleExtraWidgets(this)" 
+                    data-count="${extraCount}"
+                    class="w-full flex items-center justify-between px-3.5 py-2.5 bg-slate-100/90 hover:bg-slate-200/90 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-xl text-xs font-semibold transition active:scale-[0.99] cursor-pointer shadow-2xs group"
+                  >
+                    <span class="flex items-center gap-2">
+                      <i class="fa-solid fa-layer-group text-slate-500 group-hover:text-slate-800 text-xs transition"></i>
+                      <span class="widget-toggle-text">Mostra altri ${extraCount} ${labelPlural}</span>
+                    </span>
+                    <i class="fa-solid fa-chevron-down text-xs text-slate-400 group-hover:text-slate-700 transition-transform duration-200 widget-toggle-arrow"></i>
+                  </button>
+                  <div class="hidden mt-2 space-y-2 extra-widgets-container animate-fadeIn">
+                    ${extraDocs.map(renderDocCardHtml).join('')}
+                  </div>
+                </div>
+              </div>
+            `;
+          }
         } catch (allDocsErr) {
           sendUITelemetry('CARD_RENDER_ERROR', {
             error_details: 'Errore critico blocco schede: ' + allDocsErr.message
