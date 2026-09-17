@@ -3,6 +3,7 @@ from .database import (
     Document,
     PhysicalItem,
     ChatMessage,
+    GoogleDriveCredential,
     get_engine,
     init_db,
     get_db,
@@ -13,7 +14,9 @@ __all__ = [
     "Document",
     "PhysicalItem",
     "ChatMessage",
+    "GoogleDriveCredential",
     "get_engine",
     "init_db",
     "get_db",
 ]
+

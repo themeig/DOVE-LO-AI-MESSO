@@ -100,6 +100,8 @@ class Document(Base):
     summary = Column(EncryptedText, nullable=False)
     is_local_file = Column(types.Boolean, nullable=False, default=False)
     original_path = Column(String(500), nullable=True)
+    drive_file_id = Column(String(255), nullable=True, index=True)
+    drive_web_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
@@ -176,6 +178,19 @@ class UIEvent(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
+class GoogleDriveCredential(Base):
+    __tablename__ = "google_drive_credentials"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_email = Column(String(255), nullable=True)
+    access_token = Column(EncryptedText, nullable=False)
+    refresh_token = Column(EncryptedText, nullable=False)
+    token_expiry = Column(DateTime, nullable=True)
+    storage_mode = Column(String(50), default="dual")  # 'dual' o 'cloud_only'
+    root_folder_id = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
 class AppSetting(Base):
     __tablename__ = "app_settings"
     key = Column(String(50), primary_key=True)
@@ -246,6 +261,12 @@ def init_db(engine=None):
                 conn.commit()
             if "original_path" not in cols:
                 conn.execute(text("ALTER TABLE documents ADD COLUMN original_path VARCHAR(500)"))
+                conn.commit()
+            if "drive_file_id" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN drive_file_id VARCHAR(255)"))
+                conn.commit()
+            if "drive_web_url" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN drive_web_url VARCHAR(500)"))
                 conn.commit()
 
         if "watched_folders" in table_names:
