@@ -1577,6 +1577,8 @@
       }
       return h;
     }
+    const getAuthHeaders = authHeaders;
+    window.getAuthHeaders = authHeaders;
 
     // --- Gestione Sicurezza Caveau & Lock Screen ---
     function togglePasswordVisibility() {
@@ -5286,38 +5288,62 @@
     // --- Export / Backup Caveau ---
     async function exportVault() {
       const btn = document.getElementById('exportVaultBtn');
+      const originalContent = btn ? btn.innerHTML : '';
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[11px]"></i> <span class="font-semibold text-xs hidden sm:inline">Preparazione...</span>';
+        btn.innerHTML = `
+          <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-xs shrink-0">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+          </div>
+          <div class="text-left">
+            <div class="text-slate-800 font-semibold text-xs">Preparazione ZIP...</div>
+            <div class="text-[10px] text-slate-400">Generazione in corso</div>
+          </div>
+        `;
+      }
+      if (typeof showToast === 'function') {
+        showToast('📦 Preparazione archivio ZIP in corso...', 'info', 3000);
       }
       try {
-        // Usa fetch per verificare la risposta prima di triggerare il download
         const res = await fetch('/api/export/vault', {
-          headers: getAuthHeaders()
+          headers: typeof authHeaders === 'function' ? authHeaders() : {}
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({ detail: 'Errore sconosciuto' }));
-          alert('Errore durante l\'esportazione: ' + (err.detail || res.statusText));
+          const errMsg = 'Errore durante l\'esportazione: ' + (err.detail || res.statusText);
+          if (typeof showToast === 'function') {
+            showToast(errMsg, 'error', 4500);
+          } else {
+            alert(errMsg);
+          }
           return;
         }
-        // Trigger download creando un link temporaneo
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         const cd = res.headers.get('Content-Disposition') || '';
         const fnMatch = cd.match(/filename[^;=\n]*=["']?([^"'\n]+)/i);
-        a.download = fnMatch ? fnMatch[1] : 'caveau_backup.zip';
+        const filename = fnMatch ? fnMatch[1] : 'caveau_backup.zip';
+        a.download = filename;
         a.href = url;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        if (typeof showToast === 'function') {
+          showToast(`✅ Backup scaricato con successo: ${filename}`, 'success', 4500);
+        }
       } catch (err) {
-        alert('Errore durante l\'esportazione: ' + err.message);
+        const errMsg = 'Errore durante l\'esportazione: ' + err.message;
+        if (typeof showToast === 'function') {
+          showToast(errMsg, 'error', 4500);
+        } else {
+          alert(errMsg);
+        }
       } finally {
-        if (btn) {
+        if (btn && originalContent) {
           btn.disabled = false;
-          btn.innerHTML = '<i class="fa-solid fa-file-zipper text-blue-500 text-[11px]"></i> <span class="font-semibold text-xs hidden sm:inline">Esporta ZIP</span><span class="font-semibold text-xs sm:hidden">ZIP</span>';
+          btn.innerHTML = originalContent;
         }
       }
     }
