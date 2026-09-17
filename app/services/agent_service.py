@@ -169,10 +169,19 @@ TOOLS_DEFINITION = [
         "type": "function",
         "function": {
             "name": "get_upcoming_deadlines",
-            "description": "Recupera l'elenco delle bollette, tributi o scadenze ancora da pagare registrate nel caveau.",
+            "description": (
+                "Recupera lo scadenzario delle bollette, tributi o pagamenti in sospeso da pagare registrati nel caveau. "
+                "Se l'utente chiede la scadenza di un documento specifico (es. patente, carta d'identità, passaporto, garanzia, contratto), "
+                "puoi indicare il parametro 'query' (es. 'patente') oppure usare direttamente search_vault."
+            ),
             "parameters": {
                 "type": "object",
-                "properties": {}
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Filtro opzionale per cercare la scadenza di un documento, persona o categoria specifica (es. 'patente', 'garanzia', 'mario rossi', 'luce')"
+                    }
+                }
             }
         }
     },
@@ -646,12 +655,21 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
     user_asks_doc = any(k in user_lower for k in [
         "document", "file", "bollett", "fattur", "contratt", "certificat", "ricevut", "cedolin",
         "patente", "carta", "f24", "730", "identit", "identificazion", "mostrami", "visualizza",
-        "apri", "scarica", "dammi", "prendi", "vedi"
+        "apri", "scarica", "dammi", "prendi", "vedi", "garanzia", "scontrino", "multa"
     ])
     if user_asks_doc and len(docs) > 0:
-        if is_singular_request:
-            return [docs[0]]
-        return docs[:4]
+        matched_relevant = []
+        for d in docs:
+            d_tit = (d.get("title") or "").lower()
+            d_iss = (d.get("issuer") or "").lower()
+            d_type = (d.get("doc_type") or "").lower()
+            d_words = [w for w in re.split(r"[^\w]+", f"{d_tit} {d_iss} {d_type}") if len(w) > 2 and w not in ITALIAN_STOPWORDS]
+            if any(w in user_lower or w in asst_lower for w in d_words):
+                matched_relevant.append(d)
+        if matched_relevant:
+            if is_singular_request:
+                return [matched_relevant[0]]
+            return matched_relevant[:4]
 
     return None
 
@@ -1260,7 +1278,27 @@ class AgenticChatService:
             return get_current_date_info()
 
         elif name == "get_upcoming_deadlines":
-            docs = db.query(Document).filter(Document.status == "da_pagare").order_by(Document.due_date.asc().nulls_last()).all()
+            query_arg = (args.get("query") or "").strip().lower()
+            if query_arg:
+                # Se è specificata una query (es. "patente", "garanzia"), cerca tra tutti i documenti con scadenza a prescindere dallo stato
+                matched_docs = search_vault_documents(db, query_arg, thread_id=thread_id)
+                matched_ids = [m["id"] for m in matched_docs]
+                docs = (
+                    db.query(Document)
+                    .filter(Document.id.in_(matched_ids), Document.due_date.isnot(None))
+                    .order_by(Document.due_date.asc().nulls_last())
+                    .all()
+                )
+                if not docs:
+                    docs = (
+                        db.query(Document)
+                        .filter(Document.due_date.isnot(None))
+                        .order_by(Document.due_date.asc().nulls_last())
+                        .all()
+                    )
+                    docs = [d for d in docs if query_arg in (d.title or "").lower() or query_arg in (d.summary or "").lower()]
+            else:
+                docs = db.query(Document).filter(Document.status == "da_pagare").order_by(Document.due_date.asc().nulls_last()).all()
             today = date.today()
             deadlines_list = []
             for d in docs:
@@ -2465,6 +2503,14 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             ])
             or lower_t.strip(" !.?") in ["documenti", "oggetti", "tutti i documenti", "tutti gli oggetti", "tutto", "i miei documenti", "i miei oggetti"]
         )
+        # Rileva se la richiesta menziona un documento o entità specifica (es. patente, garanzia, persona)
+        has_specific_subject = any(k in lower_t for k in [
+            "patente", "garanzia", "iphone", "apple", "carta", "passaporto", "contratto", "polizza",
+            "assicurazione", "visura", "certificato", "tessera", "730", "f24", "mutuo", "multa", "verbale",
+            "mario", "rossi", "andrea", "conti", "hera", "enel", "eni", "amazon", "scontrino",
+            "della ", "del ", "dell'", "dei ", "delle ", "di ", "per "
+        ]) or any(k in lower_t for k in ["rinnovo", "rinnovare", "valida fino", "validità", "fino a quando"])
+
         is_deadline_request = (
             any(k in lower_t for k in [
                 "scadenz", "da pagare", "bollette da pagare", "tributi da pagare",
@@ -2472,6 +2518,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             ])
             and not is_listing_request
             and not is_store_or_update
+            and not has_specific_subject
         )
 
         is_rename_request = (
@@ -2510,11 +2557,18 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             any(k in lower_t for k in [
                 "document", "file", "bollett", "fattur", "contratt", "certificat", "ricevut",
                 "cedolin", "busta paga", "patente", "passaporto", "carta", "f24", "730", "estratto",
-                "identit", "identificazion", "mutuo", "visura", "tessera", "tasse", "tribut"
+                "identit", "identificazion", "mutuo", "visura", "tessera", "tasse", "tribut",
+                "garanzia", "iphone", "scontrino", "multa", "verbale"
             ])
-            and any(k in lower_t for k in [
-                "dammi", "mostra", "mostrami", "cerca", "trova", "trovami", "apri", "vedi", "prendi", "fammi vedere", "visualizza", "voglio", "scarica"
-            ])
+            and (
+                any(k in lower_t for k in [
+                    "dammi", "mostra", "mostrami", "cerca", "trova", "trovami", "apri", "vedi", "prendi",
+                    "fammi vedere", "visualizza", "voglio", "scarica",
+                    "quando scade", "data di scadenza", "scadenza di", "scadenza del", "scadenza della", "scadenza dell",
+                    "rinnovo", "rinnovare", "valida fino", "fino a quando", "quanto ho pagato", "quanti"
+                ])
+                or has_specific_subject
+            )
             and not is_where_request
             and not is_store_or_update
             and not is_listing_request
@@ -2797,14 +2851,14 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             tool_choice_cfg = {"type": "function", "function": {"name": "link_document_to_item"}}
         elif is_rename_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "rename_vault_document"}}
-        elif is_download_or_show or is_doc_search_request:
+        elif is_download_or_show:
             tool_choice_cfg = {"type": "function", "function": {"name": "show_document_card"}}
+        elif is_doc_search_request or is_where_request:
+            tool_choice_cfg = {"type": "function", "function": {"name": "search_vault"}}
         elif is_listing_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "list_vault_contents"}}
         elif is_store_or_update:
             tool_choice_cfg = {"type": "function", "function": {"name": "store_physical_item"}}
-        elif is_where_request:
-            tool_choice_cfg = {"type": "function", "function": {"name": "search_vault"}}
         elif is_deadline_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "get_upcoming_deadlines"}}
         else:
@@ -3119,16 +3173,12 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                         loc = it['primary_location'] + (f" ({it['detailed_location']})" if it['detailed_location'] else "")
                         return ChatResponse(reply=f"📍 Il tuo {it['item_name']} si trova in: {loc}.", action="search_vault", data=t_out)
 
-                    t_out2 = self.execute_tool("get_recent_vault_documents", {"limit": 3}, db, thread_id=thread_id)
-                    docs2 = t_out2.get("recent_documents", [])
-                    if docs2:
-                        lines = [f"📄 **{d['title']}** ({d['doc_type']})\n💡 {d['summary']}" for d in docs2[:2]]
-                        return ChatResponse(
-                            reply="Ho trovato nel tuo archivio documenti:\n\n" + "\n\n".join(lines),
-                            action="search_vault",
-                            data=t_out2,
-                            documents=docs2
-                        )
+                    # Se non è stato trovato nulla, rispondi con un messaggio negativo onesto e pulito (nessuna allucinazione o file recente casuale)
+                    return ChatResponse(
+                        reply="Ho cercato nel caveau, ma non ho trovato nessun documento o dato corrispondente alla tua richiesta.",
+                        action="search_vault",
+                        data=t_out
+                    )
 
                 # Pulisci sempre il testo diretto prima di usarlo (rimuove eventuali tag residui)
                 direct_reply = strip_tool_tags(direct_reply)

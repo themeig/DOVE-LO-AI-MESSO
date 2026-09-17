@@ -19,13 +19,41 @@ ITALIAN_STOPWORDS = {
     "ho", "hai", "ha", "abbiamo", "hanno", "e", "ed", "o", "od", "se", "si", "no", "non", "mio", "mia", "miei", "mie",
     "tuo", "tua", "tuoi", "tue", "suo", "sua", "suoi", "sue", "nostro", "nostra", "nostri", "nostre", "loro",
     "questo", "questa", "questi", "queste", "quello", "quella", "quelli", "quelle", "tutti", "tutte",
-    "ora", "adesso", "allora", "invece", "poi", "bene", "anche", "pure", "esattamente"
+    "ora", "adesso", "allora", "invece", "poi", "bene", "anche", "pure", "esattamente",
+    # Parole interrogative e di quantità
+    "quanti", "quanto", "quanta", "quante", "qual", "quale", "quali", "perché", "perche",
+    # Verbi ed espressioni di presenza/archiviazione
+    "risulta", "risultano", "risultare", "archiviati", "archiviato", "archiviata", "archiviate", "archiviare",
+    "presente", "presenti", "salvato", "salvati", "salvata", "salvate", "salvare",
+    "memorizzato", "memorizzati", "memorizzata", "memorizzate", "memorizzare",
+    "conservato", "conservati", "conservata", "conservate",
+    # Contenitori di sistema
+    "caveau", "database", "db", "sistema", "applicazione", "app",
+    # Metriche, conteggi e verbi ausiliari
+    "totale", "numero", "conteggio", "somma", "ammontare",
+    "c'è", "ce", "ci", "sono", "sia", "siano", "stato", "stata", "stati", "state",
+    "devo", "devi", "dobbiamo", "posso", "puoi", "possiamo", "entro"
 }
 
 GENERIC_ATTRIBUTE_TERMS = {
     "documento", "documenti", "file", "allegato", "allegati", "copia", "archivio",
     "modulo", "moduli", "modello", "modelli", "pdf",
-    "scadenza", "scadenze", "rata", "rate", "importo", "costo", "quando"
+    "foto", "fotografia", "fotografie", "immagine", "immagini", "scatto", "screenshot", "screen",
+    "scontrino", "scontrini", "ricevuta", "ricevute",
+    "scadenza", "scadenze", "scade", "scadere", "rinnovo", "rinnovare", "validità", "valido", "valida",
+    "rata", "rate", "importo", "costo", "prezzo", "quando",
+    "pagato", "pagata", "pagati", "pagate", "pagamento", "pagare", "saldato", "saldata"
+}
+
+MONTH_NAMES = {
+    "gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno",
+    "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"
+}
+
+STATUS_TERMS = {
+    "pagato", "pagata", "pagati", "pagate", "quietanzato", "quietanzata", "quietanzati",
+    "saldato", "saldata", "saldati", "saldate", "scaduto", "scaduta", "scaduti", "scadute",
+    "sospeso", "sospesi", "sospesa"
 }
 
 CONCEPT_SYNONYMS: Dict[str, List[str]] = {
@@ -37,14 +65,14 @@ CONCEPT_SYNONYMS: Dict[str, List[str]] = {
     "utenze": ["utenza", "bolletta", "bollette"],
     "luce": ["energia", "elettrica", "corrente", "enel", "eni", "bolletta"],
     "gas": ["metano", "riscaldamento", "eni", "enel", "bolletta"],
-    "acqua": ["idrico", "acquedotto", "bolletta", "mm"],
+    "acqua": ["idrico", "acquedotto", "bolletta", "mm", "hera"],
     "tassa": ["tasse", "f24", "tributo", "tributi", "irpef", "730", "fisco", "imposta", "imposte"],
     "tasse": ["tassa", "f24", "tributo", "tributi", "irpef", "730", "fisco", "imposta", "imposte"],
     "tributo": ["tributi", "tassa", "tasse", "f24", "imposta", "fisco"],
     "tributi": ["tributo", "tassa", "tasse", "f24", "imposta", "fisco"],
     "fisco": ["f24", "tributi", "irpef", "730", "tasse"],
-    "f24": ["tasse", "tributi", "irpef", "fisco", "imposte", "acconto"],
-    "730": ["dichiarazione", "precompilato", "redditi", "irpef"],
+    "f24": ["tasse", "tributi", "irpef", "fisco", "imposte", "acconto", "modello"],
+    "730": ["dichiarazione", "precompilato", "redditi", "irpef", "ricevuta", "modello"],
     "mutuo": ["mutui", "finanziamento", "prestito", "ipoteca"],
     "mutui": ["mutuo", "finanziamento", "prestito", "ipoteca"],
     "finanziamento": ["mutuo", "prestito", "rata", "rate", "banca"],
@@ -54,24 +82,36 @@ CONCEPT_SYNONYMS: Dict[str, List[str]] = {
     "moto": ["patente", "veicolo", "bollo", "assicurazione", "polizza", "scooter"],
     "assicurazione": ["auto", "moto", "veicolo", "casa", "polizza", "scadenza"],
     "polizza": ["assicurazione", "auto", "moto", "scadenza"],
-    "salute": ["visita", "cardiologo", "dottore", "medico", "ricetta", "referto", "ospedale"],
-    "medico": ["visita", "dottore", "salute", "referto", "ospedale", "ricetta"],
+    "salute": ["visita", "cardiologo", "dottore", "medico", "ricetta", "referto", "ospedale", "sanitaria"],
+    "medico": ["visita", "dottore", "salute", "referto", "ospedale", "ricetta", "sanitaria"],
     "referto": ["visita", "medico", "esame", "analisi", "ospedale", "salute"],
     "referti": ["referto", "visita", "medico", "esame", "analisi", "ospedale", "salute"],
     "chiavi": ["chiave", "porta", "scorta", "casa", "box", "garage", "cancello", "cassaforte"],
     "chiave": ["chiavi", "porta", "scorta", "casa", "box", "garage", "cancello", "cassaforte"],
     "passaporto": ["passaporti", "identità", "identificazione", "documenti"],
     "passaporti": ["passaporto", "identità", "identificazione", "documenti"],
-    "patente": ["patenti", "guida", "auto", "veicolo", "identità", "identificazione"],
-    "patenti": ["patente", "guida", "auto", "veicolo", "identità", "identificazione"],
+    "patente": ["patenti", "guida", "auto", "veicolo", "identità", "identificazione", "rinnovo"],
+    "patenti": ["patente", "guida", "auto", "veicolo", "identità", "identificazione", "rinnovo"],
+    "rinnovo": ["patente", "scadenza", "carta", "passaporto", "abbonamento", "polizza", "contratto", "validità"],
+    "rinnovare": ["patente", "scadenza", "carta", "passaporto", "abbonamento", "polizza", "contratto", "validità"],
+    "garanzia": ["garanzie", "amazon", "scontrino", "ricevuta", "acquisto", "fattura", "apple", "iphone"],
+    "garanzie": ["garanzia", "amazon", "scontrino", "ricevuta", "acquisto", "fattura", "apple", "iphone"],
+    "multa": ["multe", "verbale", "infrazione", "autovelox", "polizia", "prefettura", "stradale", "sanzione"],
+    "multe": ["multa", "verbale", "infrazione", "autovelox", "polizia", "prefettura", "stradale", "sanzione"],
+    "autovelox": ["multa", "multe", "verbale", "infrazione", "sanzione", "polizia", "stradale"],
+    "scontrino": ["scontrini", "ricevuta", "ricevute", "fattura", "fatture", "bolletta", "bollette", "pagamento", "spesa"],
+    "scontrini": ["scontrino", "ricevuta", "ricevute", "fattura", "fatture", "bolletta", "bollette", "pagamento", "spesa"],
+    "hera": ["acqua", "bolletta", "gas", "luce", "idrico", "rifiuti"],
+    "amazon": ["garanzia", "fattura", "ricevuta", "acquisto", "ordine", "iphone"],
+    "iphone": ["apple", "garanzia", "fattura", "ricevuta", "smartphone", "telefono", "cellulare", "amazon"],
     "identita": ["identità", "identificazione", "riconoscimento", "tessera", "patente", "passaporto", "carta", "anagrafici", "anagrafico", "anagrafica", "ricevuta", "personale", "codice"],
     "identità": ["identita", "identificazione", "riconoscimento", "tessera", "patente", "passaporto", "carta", "anagrafici", "anagrafico", "anagrafica", "ricevuta", "personale", "codice"],
     "identificazione": ["identità", "identita", "riconoscimento", "tessera", "patente", "passaporto", "carta", "anagrafici", "anagrafico", "anagrafica", "ricevuta", "personale"],
     "personale": ["identità", "identificazione", "anagrafici", "anagrafico", "anagrafica"],
     "personali": ["identità", "identificazione", "anagrafici", "anagrafico", "anagrafica"],
     "sanitaria": ["tessera", "salute", "medico", "sanitario", "asl", "codice", "fiscale"],
-    "ricevuta": ["ricevute", "pagamento", "iscrizione", "immatricolazione", "quietanza", "scontrino", "fattura"],
-    "ricevute": ["ricevuta", "pagamento", "iscrizione", "immatricolazione", "quietanza", "scontrino", "fattura"],
+    "ricevuta": ["ricevute", "pagamento", "iscrizione", "immatricolazione", "quietanza", "scontrino", "fattura", "730"],
+    "ricevute": ["ricevuta", "pagamento", "iscrizione", "immatricolazione", "quietanza", "scontrino", "fattura", "730"],
     "contratto": ["contratti", "accordo", "locazione", "affitto", "lavoro"],
     "contratti": ["contratto", "accordo", "locazione", "affitto", "lavoro"],
     "certificato": ["certificati", "attestato", "laurea", "residenza", "stato"],
@@ -176,6 +216,15 @@ def search_vault_documents(db: Session, query: str, thread_id: str = "general") 
     if not core_tokens:
         core_tokens = q_tokens
 
+    # Identifica i token soggetto dominanti (escludendo date, mesi, anni e stati)
+    subject_tokens = [
+        w for w in core_tokens
+        if not re.match(r"^\d{4}$", w)
+        and w not in MONTH_NAMES
+        and w not in STATUS_TERMS
+        and not re.match(r"^\d+(?:[.,]\d+)?$", w)
+    ]
+
     all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
     doc_scored = []
     q_lower = raw_query.lower()
@@ -198,13 +247,21 @@ def search_vault_documents(db: Session, query: str, thread_id: str = "general") 
 
         matched_core_count = 0
         matched_key_count = 0
+        matched_subject_count = 0
         for ct in core_tokens:
             syns = [ct] + CONCEPT_SYNONYMS.get(ct, []) + CONCEPT_SYNONYMS.get(it_stem(ct), [])
+            is_subject = (ct in subject_tokens)
+            ct_matched = False
             if any(token_matches(tok, kw)[0] for tok in syns for kw in key_words):
                 matched_core_count += 1
                 matched_key_count += 1
+                ct_matched = True
             elif any(token_matches(ct, sw)[0] for sw in s_words):
                 matched_core_count += 1
+                ct_matched = True
+
+            if ct_matched and is_subject:
+                matched_subject_count += 1
 
         # Phrase match sicuro: per stringhe brevi (2-3 caratteri come 'si') richiede word boundary
         has_phrase_match = False
@@ -216,6 +273,13 @@ def search_vault_documents(db: Session, query: str, thread_id: str = "general") 
         ):
             has_phrase_match = True
 
+        # ANCHOR SUBJECT VALIDATION:
+        # Se la query contiene uno o più soggetti specifici (es. "multa", "autovelox", "patente", "f24", "730", "enel"),
+        # il documento DEVE corrispondere ad almeno un soggetto (o suo sinonimo).
+        # Non è ammesso che un documento venga selezionato unicamente per aver fatto match con parole generiche/ausiliarie (come 'pagato', 'luglio', '2026')!
+        if subject_tokens and matched_subject_count == 0 and not has_phrase_match:
+            continue
+
         if matched_core_count == 0 and not has_phrase_match:
             continue
 
@@ -226,7 +290,16 @@ def search_vault_documents(db: Session, query: str, thread_id: str = "general") 
             if matched_key_count == 0 and not has_phrase_match and matched_core_count < len(core_tokens):
                 continue
             if matched_core_count < max(2, int(len(core_tokens) * 0.5)) and not has_phrase_match:
-                continue
+                # Eccezione: se un soggetto specifico ad alta specificità (es. 'f24', '730', 'cie', 'hera', 'patente')
+                # ha fatto match diretto nel titolo o key_words, non scartare il documento
+                has_strong_subject_match = any(
+                    token_matches(st, kw)[0]
+                    for st in subject_tokens
+                    for kw in key_words
+                    if len(st) >= 3 or re.search(r"\d", st)
+                )
+                if not has_strong_subject_match:
+                    continue
 
         score = matched_core_count * 100
         if q_lower:
@@ -234,6 +307,14 @@ def search_vault_documents(db: Session, query: str, thread_id: str = "general") 
                 score += 150
             elif (len(q_lower) >= 4 and q_lower in s_l) or bool(re.search(rf"\b{re.escape(q_lower)}\b", s_l)):
                 score += 50
+
+        # Boost per corrispondenza di formato (foto / immagine / scontrino / ricevuta)
+        is_image_query = any(k in words for k in ["foto", "fotografia", "immagine", "scatto", "screenshot"])
+        doc_is_image = (d.file_type or "").lower() in ["image", "jpg", "jpeg", "png", "webp"] or "foto" in t_l or "foto" in fn_l
+        if is_image_query and doc_is_image:
+            score += 120
+        elif is_image_query and not doc_is_image:
+            score -= 10
 
         for ct in core_tokens:
             syns = [ct] + CONCEPT_SYNONYMS.get(ct, []) + CONCEPT_SYNONYMS.get(it_stem(ct), [])
