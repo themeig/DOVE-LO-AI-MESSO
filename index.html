@@ -819,8 +819,8 @@
 
       <!-- Info Scelta Destinazione -->
       <div class="flex items-center gap-2 px-1 text-[11px] text-slate-500">
-        <i class="fa-solid fa-folder-tree text-slate-400"></i>
-        <span>Potrai scegliere la cartella o l'unità del PC in cui salvare il file.</span>
+        <i class="fa-solid fa-folder-tree text-slate-400" id="exportDestInfoIcon"></i>
+        <span id="exportDestInfoText">Potrai scegliere la cartella o l'unità del PC in cui salvare il file.</span>
       </div>
 
       <!-- Azioni Footer -->
@@ -838,8 +838,8 @@
           onclick="startVaultExport()" 
           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl font-semibold text-xs transition shadow-xs flex items-center gap-1.5 cursor-pointer"
         >
-          <i class="fa-solid fa-download"></i>
-          <span>Scegli dove salvare ed Esporta</span>
+          <i class="fa-solid fa-folder-open" id="confirmExportVaultBtnIcon"></i>
+          <span id="confirmExportVaultBtnText">Scegli dove salvare ed Esporta</span>
         </button>
       </div>
     </div>
@@ -5372,6 +5372,25 @@
         modal.classList.remove('hidden');
         modal.classList.add('flex');
       }
+      const canPick = typeof window.showSaveFilePicker === 'function';
+      const infoEl = document.getElementById('exportDestInfoText');
+      const infoIcon = document.getElementById('exportDestInfoIcon');
+      const btnSpan = document.getElementById('confirmExportVaultBtnText');
+      const btnIcon = document.getElementById('confirmExportVaultBtnIcon');
+      if (infoEl) {
+        infoEl.innerHTML = canPick 
+          ? 'Potrai scegliere la cartella o l\'unità del PC (es. Desktop, Documenti o Chiavetta USB) in cui salvare il file.'
+          : 'Il tuo browser salverà il file nella cartella predefinita <strong>Download</strong> del PC.';
+      }
+      if (infoIcon) {
+        infoIcon.className = canPick ? 'fa-solid fa-folder-tree text-emerald-600' : 'fa-solid fa-circle-info text-blue-500';
+      }
+      if (btnSpan) {
+        btnSpan.textContent = canPick ? 'Scegli dove salvare ed Esporta' : 'Scarica Archivio ZIP (Download)';
+      }
+      if (btnIcon) {
+        btnIcon.className = canPick ? 'fa-solid fa-folder-open' : 'fa-solid fa-download';
+      }
     }
 
     function closeExportVaultModal() {
@@ -5390,6 +5409,34 @@
     async function startVaultExport() {
       const btn = document.getElementById('confirmExportVaultBtn');
       const originalContent = btn ? btn.innerHTML : '';
+      const d = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const dateStr = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+      const suggestedFilename = `caveau_backup_${dateStr}.zip`;
+
+      let fileHandle = null;
+
+      // 1. Invoca SUBITO showSaveFilePicker con il gesto utente (click) attivo al 100%!
+      //    In Chromium, se viene chiamato dopo una fetch() asincrona, l'attivazione utente scade e viene bloccato.
+      if (typeof window.showSaveFilePicker === 'function') {
+        try {
+          fileHandle = await window.showSaveFilePicker({
+            suggestedName: suggestedFilename,
+            types: [{
+              description: 'Archivio ZIP (*.zip)',
+              accept: { 'application/zip': ['.zip'] }
+            }]
+          });
+        } catch (pickerErr) {
+          if (pickerErr.name === 'AbortError') {
+            // L'utente ha annullato la finestra nativa di salvataggio
+            return;
+          }
+          console.warn('showSaveFilePicker non consentito o fallito, procedo con download standard:', pickerErr);
+        }
+      }
+
+      // 2. Mostra lo stato di avanzamento e avvia il download dal backend
       if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Preparazione ZIP...</span>';
@@ -5397,6 +5444,7 @@
       if (typeof showToast === 'function') {
         showToast('📦 Generazione archivio ZIP in corso...', 'info', 3500);
       }
+
       try {
         const res = await fetch('/api/export/vault', {
           headers: typeof authHeaders === 'function' ? authHeaders() : {}
@@ -5412,54 +5460,32 @@
           return;
         }
 
-        const cd = res.headers.get('Content-Disposition') || '';
-        const fnMatch = cd.match(/filename[^;=\n]*=["']?([^"'\n]+)/i);
-        const suggestedFilename = fnMatch ? fnMatch[1] : `caveau_backup_${new Date().toISOString().slice(0,10)}.zip`;
         const blob = await res.blob();
 
-        // 1. Prova con la File System Access API nativa per far scegliere all'utente la cartella di destinazione
-        let savedWithPicker = false;
-        if (window.showSaveFilePicker) {
-          try {
-            const fileHandle = await window.showSaveFilePicker({
-              suggestedName: suggestedFilename,
-              types: [{
-                description: 'Archivio ZIP (*.zip)',
-                accept: { 'application/zip': ['.zip'] }
-              }]
-            });
-            const writableStream = await fileHandle.createWritable();
-            await writableStream.write(blob);
-            await writableStream.close();
-            savedWithPicker = true;
-            if (typeof showToast === 'function') {
-              showToast(`✅ Backup salvato con successo in: ${fileHandle.name}`, 'success', 5000);
-            }
-            closeExportVaultModal();
-          } catch (pickerErr) {
-            if (pickerErr.name === 'AbortError') {
-              // L'utente ha annullato la finestra di dialogo del salvataggio
-              if (typeof showToast === 'function') {
-                showToast('Salvataggio annullato dall\'utente.', 'warning', 3000);
-              }
-              return;
-            }
-            console.warn('showSaveFilePicker fallito o non consentito, fallback al download standard:', pickerErr);
+        if (fileHandle) {
+          // Scrittura diretta nel file scelto dall'utente tramite File System Access API
+          const writableStream = await fileHandle.createWritable();
+          await writableStream.write(blob);
+          await writableStream.close();
+          if (typeof showToast === 'function') {
+            showToast(`✅ Backup salvato con successo in: ${fileHandle.name}`, 'success', 5000);
           }
-        }
-
-        // 2. Fallback per browser che non supportano showSaveFilePicker (es. Firefox o contesti restrittivi)
-        if (!savedWithPicker) {
+          closeExportVaultModal();
+        } else {
+          // Fallback per browser che non supportano showSaveFilePicker (es. Firefox)
+          const cd = res.headers.get('Content-Disposition') || '';
+          const fnMatch = cd.match(/filename[^;=\n]*=["']?([^"'\n]+)/i);
+          const actualFilename = fnMatch ? fnMatch[1] : suggestedFilename;
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
-          a.download = suggestedFilename;
+          a.download = actualFilename;
           a.href = url;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
           if (typeof showToast === 'function') {
-            showToast(`✅ Backup scaricato con successo: ${suggestedFilename}`, 'success', 5000);
+            showToast(`✅ Backup scaricato con successo: ${actualFilename}`, 'success', 5000);
           }
           closeExportVaultModal();
         }
