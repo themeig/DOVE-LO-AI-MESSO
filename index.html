@@ -768,6 +768,83 @@
     </div>
   </div>
 
+  <!-- Modal Esporta Backup ZIP Caveau con Consiglio di Sicurezza & Selezione Cartella -->
+  <div id="exportVaultModal" onclick="if(event.target === this) closeExportVaultModal()" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 backdrop-blur-xs">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 animate-fade-in border border-slate-100">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-base">
+            <i class="fa-solid fa-file-zipper"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-800 text-sm">Esporta Backup del Caveau</h3>
+            <p class="text-[11px] text-slate-400">Archivio ZIP completo con file e indice</p>
+          </div>
+        </div>
+        <button onclick="closeExportVaultModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Contenuto Archivio -->
+      <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2 text-xs">
+        <div class="font-semibold text-slate-700 flex items-center gap-1.5">
+          <i class="fa-solid fa-box-archive text-blue-500"></i> Cosa contiene il file ZIP:
+        </div>
+        <ul class="text-[11px] text-slate-600 space-y-1.5 pl-1">
+          <li class="flex items-start gap-2">
+            <i class="fa-regular fa-folder-open text-amber-500 mt-0.5"></i>
+            <span><strong>Cartella documents/:</strong> tutti i file archiviati (PDF, bollette, F24, ricevute, foto posizioni).</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <i class="fa-regular fa-file-code text-indigo-500 mt-0.5"></i>
+            <span><strong>metadata.json:</strong> catalogo completo con importi, scadenze, fornitori e inventario posizioni oggetti.</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- TIP DI SICUREZZA SUI FILE DECIFRATI -->
+      <div class="bg-amber-50/90 border border-amber-200 rounded-xl p-3.5 space-y-1.5">
+        <div class="flex items-center gap-2 text-amber-900 font-bold text-xs">
+          <i class="fa-solid fa-shield-halved text-amber-600 text-sm"></i>
+          <span>Consiglio di Sicurezza sui Tuoi File</span>
+        </div>
+        <p class="text-[11px] text-amber-900 leading-relaxed">
+          I file all'interno dello ZIP esportato saranno <strong>decifrati in chiaro</strong> per consentirti di aprirli e consultarli su qualsiasi dispositivo o programma (senza dipendere dall'app).
+        </p>
+        <p class="text-[11px] text-amber-800 leading-relaxed font-medium">
+          💡 Conserva l'archivio ZIP in un luogo sicuro e protetto (ad es. una chiavetta USB personale o un disco cifrato).
+        </p>
+      </div>
+
+      <!-- Info Scelta Destinazione -->
+      <div class="flex items-center gap-2 px-1 text-[11px] text-slate-500">
+        <i class="fa-solid fa-folder-tree text-slate-400"></i>
+        <span>Potrai scegliere la cartella o l'unità del PC in cui salvare il file.</span>
+      </div>
+
+      <!-- Azioni Footer -->
+      <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+        <button 
+          type="button" 
+          onclick="closeExportVaultModal()" 
+          class="px-3.5 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-medium text-xs transition cursor-pointer"
+        >
+          Annulla
+        </button>
+        <button 
+          type="button" 
+          id="confirmExportVaultBtn"
+          onclick="startVaultExport()" 
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl font-semibold text-xs transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+        >
+          <i class="fa-solid fa-download"></i>
+          <span>Scegli dove salvare ed Esporta</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ================================================================= -->
   <!-- MODAL WHITE PAPER TECNICO & FUNZIONALITÀ                          -->
   <!-- ================================================================= -->
@@ -1277,7 +1354,7 @@
 
             <button 
               type="button" 
-              onclick="closeDashboardToolsMenu(); exportVault();" 
+              onclick="closeDashboardToolsMenu(); openExportVaultModal();" 
               class="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-slate-50 text-slate-700 text-xs font-medium transition cursor-pointer"
               id="exportVaultBtn"
             >
@@ -5282,27 +5359,43 @@
     }
 
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeMediaModal();
+      if (e.key === 'Escape') {
+        closeMediaModal();
+        closeExportVaultModal();
+      }
     });
 
     // --- Export / Backup Caveau ---
-    async function exportVault() {
-      const btn = document.getElementById('exportVaultBtn');
+    function openExportVaultModal() {
+      const modal = document.getElementById('exportVaultModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeExportVaultModal() {
+      const modal = document.getElementById('exportVaultModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    // Alias per compatibilità
+    function exportVault() {
+      openExportVaultModal();
+    }
+
+    async function startVaultExport() {
+      const btn = document.getElementById('confirmExportVaultBtn');
       const originalContent = btn ? btn.innerHTML : '';
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `
-          <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-xs shrink-0">
-            <i class="fa-solid fa-circle-notch fa-spin"></i>
-          </div>
-          <div class="text-left">
-            <div class="text-slate-800 font-semibold text-xs">Preparazione ZIP...</div>
-            <div class="text-[10px] text-slate-400">Generazione in corso</div>
-          </div>
-        `;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Preparazione ZIP...</span>';
       }
       if (typeof showToast === 'function') {
-        showToast('📦 Preparazione archivio ZIP in corso...', 'info', 3000);
+        showToast('📦 Generazione archivio ZIP in corso...', 'info', 3500);
       }
       try {
         const res = await fetch('/api/export/vault', {
@@ -5318,20 +5411,57 @@
           }
           return;
         }
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+
         const cd = res.headers.get('Content-Disposition') || '';
         const fnMatch = cd.match(/filename[^;=\n]*=["']?([^"'\n]+)/i);
-        const filename = fnMatch ? fnMatch[1] : 'caveau_backup.zip';
-        a.download = filename;
-        a.href = url;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        if (typeof showToast === 'function') {
-          showToast(`✅ Backup scaricato con successo: ${filename}`, 'success', 4500);
+        const suggestedFilename = fnMatch ? fnMatch[1] : `caveau_backup_${new Date().toISOString().slice(0,10)}.zip`;
+        const blob = await res.blob();
+
+        // 1. Prova con la File System Access API nativa per far scegliere all'utente la cartella di destinazione
+        let savedWithPicker = false;
+        if (window.showSaveFilePicker) {
+          try {
+            const fileHandle = await window.showSaveFilePicker({
+              suggestedName: suggestedFilename,
+              types: [{
+                description: 'Archivio ZIP (*.zip)',
+                accept: { 'application/zip': ['.zip'] }
+              }]
+            });
+            const writableStream = await fileHandle.createWritable();
+            await writableStream.write(blob);
+            await writableStream.close();
+            savedWithPicker = true;
+            if (typeof showToast === 'function') {
+              showToast(`✅ Backup salvato con successo in: ${fileHandle.name}`, 'success', 5000);
+            }
+            closeExportVaultModal();
+          } catch (pickerErr) {
+            if (pickerErr.name === 'AbortError') {
+              // L'utente ha annullato la finestra di dialogo del salvataggio
+              if (typeof showToast === 'function') {
+                showToast('Salvataggio annullato dall\'utente.', 'warning', 3000);
+              }
+              return;
+            }
+            console.warn('showSaveFilePicker fallito o non consentito, fallback al download standard:', pickerErr);
+          }
+        }
+
+        // 2. Fallback per browser che non supportano showSaveFilePicker (es. Firefox o contesti restrittivi)
+        if (!savedWithPicker) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.download = suggestedFilename;
+          a.href = url;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          if (typeof showToast === 'function') {
+            showToast(`✅ Backup scaricato con successo: ${suggestedFilename}`, 'success', 5000);
+          }
+          closeExportVaultModal();
         }
       } catch (err) {
         const errMsg = 'Errore durante l\'esportazione: ' + err.message;
