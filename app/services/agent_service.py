@@ -1701,22 +1701,23 @@ class AgenticChatService:
             for d in drive_docs:
                 folder_parts = resolve_drive_folder_path(d.doc_type, d.due_date)
                 folder_str = " / ".join(folder_parts)
-                folders_overview.setdefault(folder_str, []).append(d.title)
+                fn = Path(d.file_path).name if d.file_path else ""
+                doc_title = (d.title or "").strip() or fn or f"Documento #{d.id}"
+                folders_overview.setdefault(folder_str, []).append(doc_title)
 
                 if query and (
-                    query not in (d.title or "").lower()
+                    query not in doc_title.lower()
                     and query not in folder_str.lower()
                     and query not in (d.summary or "").lower()
                     and query not in (d.doc_type or "").lower()
                 ):
                     continue
 
-                fn = Path(d.file_path).name if d.file_path else ""
                 files_list.append({
                     "id": d.id,
                     "document_id": d.id,
                     "thread_id": d.thread_id,
-                    "title": d.title,
+                    "title": doc_title,
                     "issuer": d.issuer,
                     "doc_type": d.doc_type,
                     "amount": d.amount,
@@ -1858,7 +1859,8 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 vault_summary.append("  File attualmente presenti su Google Drive:")
                 for dd in drive_docs[:15]:
                     f_path = " / ".join(resolve_drive_folder_path(dd.doc_type, dd.due_date))
-                    vault_summary.append(f"  * 📁 {f_path} -> 📄 {dd.title} [Drive Web URL: {dd.drive_web_url or dd.drive_file_id}]")
+                    dd_title = (dd.title or "").strip() or (Path(dd.file_path).name if dd.file_path else "") or f"Documento #{dd.id}"
+                    vault_summary.append(f"  * 📁 {f_path} -> 📄 {dd_title} [Drive Web URL: {dd.drive_web_url or dd.drive_file_id}]")
         else:
             vault_summary.append(f"\n[STATO SINCRONIZZAZIONE GOOGLE DRIVE CLOUD SYNC]:")
             vault_summary.append(f"- Connessione: NON COLLEGATO (l'utente può collegare il proprio account dal menu Strumenti -> Google Drive Cloud Sync)")
