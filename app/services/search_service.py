@@ -28,7 +28,7 @@ ITALIAN_STOPWORDS = {
     "memorizzato", "memorizzati", "memorizzata", "memorizzate", "memorizzare",
     "conservato", "conservati", "conservata", "conservate",
     # Contenitori di sistema
-    "caveau", "database", "db", "sistema", "applicazione", "app",
+    "caveau", "database", "db", "sistema", "applicazione", "app", "drive", "cloud", "google",
     # Metriche, conteggi e verbi ausiliari
     "totale", "numero", "conteggio", "somma", "ammontare",
     "c'è", "ce", "ci", "sono", "sia", "siano", "stato", "stata", "stati", "state",
@@ -112,8 +112,12 @@ CONCEPT_SYNONYMS: Dict[str, List[str]] = {
     "sanitaria": ["tessera", "salute", "medico", "sanitario", "asl", "codice", "fiscale"],
     "ricevuta": ["ricevute", "pagamento", "iscrizione", "immatricolazione", "quietanza", "scontrino", "fattura", "730"],
     "ricevute": ["ricevuta", "pagamento", "iscrizione", "immatricolazione", "quietanza", "scontrino", "fattura", "730"],
-    "contratto": ["contratti", "accordo", "locazione", "affitto", "lavoro"],
-    "contratti": ["contratto", "accordo", "locazione", "affitto", "lavoro"],
+    "contratto": ["contratti", "accordo", "locazione", "affitto", "lavoro", "polizza", "assicurazione"],
+    "contratti": ["contratto", "accordo", "locazione", "affitto", "lavoro", "polizza", "assicurazione"],
+    "polizza": ["polizze", "assicurazione", "assicurazioni", "contratto", "auto", "casa"],
+    "polizze": ["polizza", "assicurazione", "assicurazioni", "contratto", "auto", "casa"],
+    "assicurazione": ["assicurazioni", "polizza", "polizze", "contratto", "auto", "casa"],
+    "assicurazioni": ["assicurazione", "polizza", "polizze", "contratto", "auto", "casa"],
     "certificato": ["certificati", "attestato", "laurea", "residenza", "stato"],
     "certificati": ["certificato", "attestato", "laurea", "residenza", "stato"]
 }

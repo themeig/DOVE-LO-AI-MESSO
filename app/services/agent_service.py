@@ -2236,9 +2236,16 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             return None
 
     def _handle_drive_intent(self, user_text: str, lower_t: str, db: Session, thread_id: str = "general") -> Optional[ChatResponse]:
-        """Intercetta e risponde in modo immediato e completo alle domande sull'integrazione Google Drive, le cartelle e i file sincronizzati."""
+        """Intercetta e risponde in modo deterministico nei test offline alle domande generali sull'integrazione Google Drive."""
+        is_specific_doc_search = any(k in lower_t for k in [
+            "polizza", "bollett", "fattur", "f24", "730", "patente", "passaporto", "carta",
+            "ricevut", "scontrino", "contratt", "certificat", "mutuo", "multa", "verbale"
+        ])
+        if is_specific_doc_search:
+            return None
+
         has_drive_mention = any(k in lower_t for k in ["google drive", "su drive", "in drive", "mio drive", "tuo drive", "nostro drive"]) or (
-            "drive" in lower_t and any(k in lower_t for k in ["cerca", "cartell", "salvat", "organizzat", "cosa", "dove", "file", "stato", "sincronizz", "come hai"])
+            "drive" in lower_t and any(k in lower_t for k in ["cartell", "salvat", "organizzat", "cosa", "dove", "file", "stato", "sincronizz", "come hai", "come funziona", "spiegami"])
         )
         if not has_drive_mention:
             return None
@@ -2313,11 +2320,6 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         del_resp = self._handle_deletion_intent(user_text, lower_t, db, thread_id=thread_id)
         if del_resp:
             return del_resp
-
-        # Intercetta domande o richieste su Google Drive, organizzazione cartelle e file salvati
-        drive_resp = self._handle_drive_intent(user_text, lower_t, db, thread_id=thread_id)
-        if drive_resp:
-            return drive_resp
 
         # Rileva se si tratta di una richiesta esplicita di lista o elenco
         is_listing_phrase = any(k in lower_t for k in [
@@ -2558,7 +2560,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 "document", "file", "bollett", "fattur", "contratt", "certificat", "ricevut",
                 "cedolin", "busta paga", "patente", "passaporto", "carta", "f24", "730", "estratto",
                 "identit", "identificazion", "mutuo", "visura", "tessera", "tasse", "tribut",
-                "garanzia", "iphone", "scontrino", "multa", "verbale"
+                "garanzia", "iphone", "scontrino", "multa", "verbale", "polizza", "polizze", "assicurazion"
             ])
             and (
                 any(k in lower_t for k in [
@@ -2596,6 +2598,11 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             del_resp = self._handle_deletion_intent(user_text, lower_t, db, thread_id=thread_id)
             if del_resp:
                 return del_resp
+
+            # Fallback deterministico per richieste Google Drive nei test offline
+            drive_resp = self._handle_drive_intent(user_text, lower_t, db, thread_id=thread_id)
+            if drive_resp:
+                return drive_resp
 
             clean_test = lower_t.replace("?", "").strip()
 
@@ -2643,6 +2650,10 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                     clean_query = re.sub(
                         r"^(?:dammi|mostrami|mostra|apri|visualizza|prendi|vedi|scarica|trovami|trova|voglio\s+vedere|fammi\s+vedere|cerca)\s*(?:il|la|lo|le|i|l'|un|una|uno)?\s*",
                         "", lower_t
+                    ).strip(" ?.")
+                    clean_query = re.sub(
+                        r"\s*(?:nel\s+drive|su\s+drive|in\s+drive|sul\s+drive|su\s+google\s+drive|in\s+google\s+drive|dal\s+drive|da\s+drive|nel\s+caveau|in\s+caveau)$",
+                        "", clean_query, flags=re.IGNORECASE
                     ).strip(" ?.")
                     s_matches = search_vault_documents(db, clean_query or user_text, thread_id=thread_id)
                     for m in s_matches[:4]:
@@ -2845,6 +2856,16 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         agent_model = get_app_setting(db, "ai_model", default=self.settings.OPENROUTER_MODEL) or "google/gemini-2.5-flash-lite"
 
 
+        is_drive_status_request = (
+            (
+                any(k in lower_t for k in ["google drive", "su drive", "in drive", "mio drive", "tuo drive", "nostro drive"])
+                or ("drive" in lower_t and any(k in lower_t for k in ["stato", "conness", "collegat", "cartell", "organizzat", "cosa c'è", "cosa ce", "quali file", "come funziona", "spiegami", "come hai"]))
+            )
+            and not is_doc_search_request
+            and not is_where_request
+            and not is_listing_request
+        )
+
         if is_delete_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "delete_vault_record"}}
         elif is_link_photo_intent:
@@ -2855,6 +2876,8 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             tool_choice_cfg = {"type": "function", "function": {"name": "show_document_card"}}
         elif is_doc_search_request or is_where_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "search_vault"}}
+        elif is_drive_status_request:
+            tool_choice_cfg = {"type": "function", "function": {"name": "get_google_drive_status"}}
         elif is_listing_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "list_vault_contents"}}
         elif is_store_or_update:
@@ -3405,6 +3428,11 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         del_resp = self._handle_deletion_intent(user_text, lower_t, db, thread_id=thread_id)
         if del_resp:
             return del_resp
+
+        # 0a. Fallback Google Drive se l'API esterna è irraggiungibile
+        drive_resp = self._handle_drive_intent(user_text, lower_t, db, thread_id=thread_id)
+        if drive_resp:
+            return drive_resp
 
         # 0a. Collegamento foto/documento a oggetto fisico
         linked_photo_item = self._extract_link_photo_item(user_text)
