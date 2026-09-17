@@ -2998,6 +2998,7 @@
 
     // Window message listener per popup OAuth
     window.addEventListener('message', (e) => {
+      if (e.origin !== window.location.origin) return;
       if (e.data && (e.data.type === 'google_drive_auth_success' || e.data.type === 'GOOGLE_DRIVE_AUTH_SUCCESS')) {
         loadGoogleDriveStatus();
         showToast(`🟢 Google Drive collegato con successo!`, 'success');

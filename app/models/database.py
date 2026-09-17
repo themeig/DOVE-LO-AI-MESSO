@@ -265,6 +265,8 @@ def init_db(engine=None):
             if "drive_file_id" not in cols:
                 conn.execute(text("ALTER TABLE documents ADD COLUMN drive_file_id VARCHAR(255)"))
                 conn.commit()
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_documents_drive_file_id ON documents(drive_file_id)"))
+            conn.commit()
             if "drive_web_url" not in cols:
                 conn.execute(text("ALTER TABLE documents ADD COLUMN drive_web_url VARCHAR(500)"))
                 conn.commit()

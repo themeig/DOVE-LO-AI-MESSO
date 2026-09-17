@@ -1,10 +1,11 @@
-﻿import html
+import html
+import json
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.models.database import get_db, GoogleDriveCredential
@@ -106,6 +107,7 @@ def drive_oauth_callback(
     accept_header = request.headers.get("accept", "")
     if "text/html" in accept_header:
         user_display = html.escape(cred.user_email or "Account Google")
+        user_email_json = json.dumps(cred.user_email or "")
         html_content = f"""<!DOCTYPE html>
 <html lang="it">
 <head>
@@ -144,7 +146,7 @@ def drive_oauth_callback(
         if (window.opener) {{
             window.opener.postMessage({{
                 type: 'GOOGLE_DRIVE_AUTH_SUCCESS',
-                email: '{cred.user_email or ""}'
+                email: {user_email_json}
             }}, '*');
             setTimeout(function() {{ window.close(); }}, 800);
         }} else {{

@@ -180,6 +180,8 @@ class RealGoogleDriveService:
         ]
         if parent_id:
             query_parts.append(f"'{parent_id}' in parents")
+        else:
+            query_parts.append("'root' in parents")
 
         q = " and ".join(query_parts)
         headers = {"Authorization": f"Bearer {access_token}"}

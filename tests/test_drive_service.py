@@ -150,3 +150,34 @@ def test_real_drive_service_upload_file():
         )
         assert res["file_id"] == "file-id-999"
         assert res["web_view_link"] == "https://drive.google.com/file/d/file-id-999/view"
+
+
+def test_real_drive_service_get_or_create_folder_queries():
+    recorded_queries = []
+
+    def mock_handler(request: httpx.Request):
+        url_str = str(request.url)
+        if "googleapis.com/drive/v3/files" in url_str and request.method == "GET":
+            q_param = request.url.params.get("q", "")
+            recorded_queries.append(q_param)
+            return httpx.Response(200, json={"files": [{"id": "found-folder-id", "name": "Test"}]})
+        return httpx.Response(404)
+
+    transport = httpx.MockTransport(mock_handler)
+    with httpx.Client(transport=transport) as client:
+        service = RealGoogleDriveService(
+            client_id="my-client-id",
+            client_secret="my-client-secret",
+            redirect_uri="http://localhost:8000/api/drive/callback",
+            http_client=client
+        )
+        # Root folder search
+        service.get_or_create_folder("DoveLoAIMesso", None, "token", client)
+        assert len(recorded_queries) == 1
+        assert "'root' in parents" in recorded_queries[0]
+
+        # Nested folder search
+        service.get_or_create_folder("2026", "parent-123", "token", client)
+        assert len(recorded_queries) == 2
+        assert "'parent-123' in parents" in recorded_queries[1]
+
