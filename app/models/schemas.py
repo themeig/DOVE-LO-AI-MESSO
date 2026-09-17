@@ -19,9 +19,12 @@ class MessageIntent(BaseModel):
     query_text: Optional[str] = None
 
 class ChatRequest(BaseModel):
-    message: str
+    message: Optional[str] = ""
     thread_id: Optional[str] = "general"
     quoted_message: Optional[dict] = None
+    audio_base64: Optional[str] = None
+    audio_format: Optional[str] = "wav"
+    audio_duration: Optional[float] = None
 
 class ChatThreadCreate(BaseModel):
     name: str = Field(..., description="Nome del gruppo o area tematica")

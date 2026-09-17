@@ -110,7 +110,7 @@ app.include_router(drive_router)
 settings = get_settings()
 
 def _serve_decrypted_file(filename: str):
-    file_path = settings.STORAGE_DIR / filename
+    file_path = get_settings().STORAGE_DIR / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File non trovato")
     decrypted_bytes = read_decrypted_file(file_path)
@@ -123,6 +123,16 @@ def _serve_decrypted_file(filename: str):
         media_type = "image/png"
     elif ext == "webp":
         media_type = "image/webp"
+    elif ext == "wav":
+        media_type = "audio/wav"
+    elif ext == "mp3":
+        media_type = "audio/mpeg"
+    elif ext in ["webm", "weba"]:
+        media_type = "audio/webm"
+    elif ext in ["ogg", "oga"]:
+        media_type = "audio/ogg"
+    elif ext == "m4a":
+        media_type = "audio/mp4"
     else:
         media_type = "application/octet-stream"
     return Response(content=decrypted_bytes, media_type=media_type)

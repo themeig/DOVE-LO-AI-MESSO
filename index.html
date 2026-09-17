@@ -525,11 +525,56 @@
           </button>
         </form>
 
+        <!-- Barra di Registrazione Vocale WhatsApp -->
+        <div id="voiceRecordingBar" class="hidden flex-1 flex items-center justify-between bg-white rounded-full px-4 py-1.5 shadow-2xs border border-red-200 min-h-[44px]">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <span class="relative flex h-3 w-3 shrink-0">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </span>
+            <i class="fa-solid fa-microphone text-red-500 text-sm shrink-0"></i>
+            <span id="voiceRecordingTimer" class="text-sm font-mono font-bold text-slate-800 tracking-wider">0:00</span>
+          </div>
+
+          <!-- Onde audio animate simulate / visualizer -->
+          <div class="flex items-center gap-1 px-2 select-none" id="voiceWaveAnimation">
+            <span class="w-1 bg-red-400 rounded-full h-2 animate-pulse"></span>
+            <span class="w-1 bg-red-500 rounded-full h-4 animate-pulse" style="animation-delay: 150ms;"></span>
+            <span class="w-1 bg-red-400 rounded-full h-5 animate-pulse" style="animation-delay: 300ms;"></span>
+            <span class="w-1 bg-red-500 rounded-full h-3 animate-pulse" style="animation-delay: 450ms;"></span>
+            <span class="w-1 bg-red-400 rounded-full h-4 animate-pulse" style="animation-delay: 200ms;"></span>
+            <span class="w-1 bg-red-500 rounded-full h-2 animate-pulse" style="animation-delay: 350ms;"></span>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <!-- Cestino / Annulla -->
+            <button 
+              type="button" 
+              onclick="cancelVoiceRecording()" 
+              title="Annulla registrazione" 
+              aria-label="Annulla registrazione vocale"
+              class="w-9 h-9 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition cursor-pointer"
+            >
+              <i class="fa-regular fa-trash-can text-base"></i>
+            </button>
+            <!-- Invia Vocale -->
+            <button 
+              type="button" 
+              onclick="stopAndSendVoiceRecording()" 
+              title="Invia messaggio vocale" 
+              aria-label="Invia messaggio vocale"
+              class="w-9 h-9 rounded-full bg-[#25D366] hover:bg-green-600 text-white flex items-center justify-center shadow-md active:scale-95 transition cursor-pointer"
+            >
+              <i class="fa-solid fa-paper-plane text-xs ml-0.5"></i>
+            </button>
+          </div>
+        </div>
+
         <!-- Microfono Vocale WhatsApp -->
         <button 
           id="micBtn" 
           type="button" 
-          onclick="handleVoice()" 
+          onclick="startVoiceRecording()" 
           title="Registra vocale" 
           aria-label="Registra messaggio vocale"
           class="bg-[#128C7E] hover:bg-[#075E54] text-white w-11 h-11 rounded-full flex items-center justify-center shadow-md active:scale-95 transition"
@@ -2468,7 +2513,11 @@
         for (const m of msgs) {
           if (m.sender === 'user') {
             const quoted = m.metadata && m.metadata.quoted_message ? m.metadata.quoted_message : null;
-            appendUserBubble(m.content, quoted);
+            if (m.message_type === 'audio' && m.metadata && m.metadata.audio_url) {
+              appendUserAudioBubble(m.metadata.audio_url, m.metadata.duration || 0, quoted);
+            } else {
+              appendUserBubble(m.content, quoted);
+            }
           } else {
             const docs = m.metadata && m.metadata.documents ? m.metadata.documents : null;
             const conf = m.metadata && m.metadata.confirmation ? m.metadata.confirmation : null;
@@ -3654,6 +3703,153 @@
       scrollBottom();
     }
 
+    function formatDurationSeconds(sec) {
+      if (!sec || isNaN(sec)) return '0:00';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    let currentPlayingAudio = null;
+    let currentPlayingBtn = null;
+
+    function togglePlayVoice(btn, audioUrl) {
+      if (currentPlayingAudio && currentPlayingBtn === btn) {
+        if (currentPlayingAudio.paused) {
+          currentPlayingAudio.play();
+          btn.innerHTML = '<i class="fa-solid fa-pause text-sm"></i>';
+        } else {
+          currentPlayingAudio.pause();
+          btn.innerHTML = '<i class="fa-solid fa-play text-sm ml-0.5"></i>';
+        }
+        return;
+      }
+
+      if (currentPlayingAudio) {
+        currentPlayingAudio.pause();
+        if (currentPlayingBtn) {
+          currentPlayingBtn.innerHTML = '<i class="fa-solid fa-play text-sm ml-0.5"></i>';
+        }
+        const prevBubble = currentPlayingBtn ? currentPlayingBtn.closest('.wa-bubble-out') : null;
+        const prevBar = prevBubble ? prevBubble.querySelector('.voice-progress-bar') : null;
+        const prevTime = prevBubble ? prevBubble.querySelector('.voice-current-time') : null;
+        if (prevBar) prevBar.style.width = '0%';
+        if (prevTime) prevTime.textContent = '0:00';
+      }
+
+      const bubble = btn.closest('.wa-bubble-out');
+      const progressBar = bubble ? bubble.querySelector('.voice-progress-bar') : null;
+      const currentTimeEl = bubble ? bubble.querySelector('.voice-current-time') : null;
+      const durationEl = bubble ? bubble.querySelector('.voice-duration-time') : null;
+
+      const audio = new Audio(audioUrl);
+      currentPlayingAudio = audio;
+      currentPlayingBtn = btn;
+      btn.innerHTML = '<i class="fa-solid fa-pause text-sm"></i>';
+
+      audio.addEventListener('timeupdate', () => {
+        if (!audio.duration || isNaN(audio.duration)) return;
+        const percent = (audio.currentTime / audio.duration) * 100;
+        if (progressBar) progressBar.style.width = `${percent}%`;
+        if (currentTimeEl) currentTimeEl.textContent = formatDurationSeconds(audio.currentTime);
+      });
+
+      audio.addEventListener('loadedmetadata', () => {
+        if (durationEl && (!durationEl.textContent || durationEl.textContent === '0:00')) {
+          durationEl.textContent = formatDurationSeconds(audio.duration);
+        }
+      });
+
+      audio.addEventListener('ended', () => {
+        btn.innerHTML = '<i class="fa-solid fa-play text-sm ml-0.5"></i>';
+        if (progressBar) progressBar.style.width = '0%';
+        if (currentTimeEl) currentTimeEl.textContent = '0:00';
+        currentPlayingAudio = null;
+        currentPlayingBtn = null;
+      });
+
+      audio.play().catch(err => {
+        console.error("Errore riproduzione vocale:", err);
+        btn.innerHTML = '<i class="fa-solid fa-play text-sm ml-0.5"></i>';
+        currentPlayingAudio = null;
+        currentPlayingBtn = null;
+      });
+    }
+
+    function seekVoiceAudio(event, trackEl) {
+      const bubble = trackEl.closest('.wa-bubble-out');
+      const playBtn = bubble ? bubble.querySelector('button') : null;
+      if (currentPlayingAudio && currentPlayingBtn === playBtn && !isNaN(currentPlayingAudio.duration)) {
+        const rect = trackEl.getBoundingClientRect();
+        const clickX = event.clientX - rect.left;
+        const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+        currentPlayingAudio.currentTime = ratio * currentPlayingAudio.duration;
+      }
+    }
+
+    function appendUserAudioBubble(audioUrl, duration = 0, quoted = null) {
+      const userBubble = document.createElement('div');
+      userBubble.className = 'flex justify-end';
+
+      let quoteHtml = '';
+      if (quoted && quoted.text) {
+        const safeSender = escapeHtml(quoted.sender || quoted.senderName || 'Messaggio');
+        const safeQuote = escapeHtml(cleanSidebarPreview(quoted.text));
+        quoteHtml = `
+          <div class="bg-black/5 hover:bg-black/10 transition rounded-lg p-2 mb-1.5 border-l-4 border-[#075E54] text-xs select-none">
+            <div class="font-bold text-[#075E54] text-[11px] mb-0.5 flex items-center gap-1">
+              <i class="fa-solid fa-reply text-[9px]"></i>
+              <span>${safeSender}</span>
+            </div>
+            <p class="text-slate-600 truncate font-normal leading-tight">${safeQuote}</p>
+          </div>
+        `;
+      }
+
+      const durationStr = formatDurationSeconds(duration);
+
+      userBubble.innerHTML = `
+        <div class="wa-bubble-out p-2.5 max-w-[85%] sm:max-w-[70%] text-sm text-gray-800 leading-snug relative group/msg select-text">
+          ${quoteHtml}
+          
+          <!-- Player Audio WhatsApp -->
+          <div class="flex items-center gap-3 py-1 px-1">
+            <button type="button" onclick="togglePlayVoice(this, '${escapeHtml(audioUrl)}')" class="w-10 h-10 rounded-full bg-[#128C7E] hover:bg-[#075E54] text-white flex items-center justify-center shrink-0 shadow-2xs active:scale-95 transition cursor-pointer" title="Ascolta vocale">
+              <i class="fa-solid fa-play text-sm ml-0.5"></i>
+            </button>
+            
+            <div class="flex-1 min-w-[140px] sm:min-w-[190px]">
+              <!-- Barra avanzamento / scrubber -->
+              <div class="relative w-full flex items-center h-4 cursor-pointer" onclick="seekVoiceAudio(event, this)">
+                <div class="w-full bg-emerald-200/90 rounded-full h-1.5 overflow-hidden pointer-events-none">
+                  <div class="voice-progress-bar bg-[#128C7E] h-full w-0 rounded-full transition-[width] duration-100"></div>
+                </div>
+              </div>
+              
+              <div class="flex justify-between items-center text-[10px] text-slate-500 font-mono mt-0.5 select-none">
+                <span class="voice-current-time">0:00</span>
+                <span class="voice-duration-time">${durationStr}</span>
+              </div>
+            </div>
+            
+            <div class="relative w-9 h-9 rounded-full bg-emerald-100 text-[#128C7E] flex items-center justify-center shrink-0 text-sm select-none border border-emerald-300/60 shadow-2xs">
+              <i class="fa-solid fa-microphone"></i>
+            </div>
+          </div>
+
+          <div class="flex justify-end items-center gap-1.5 mt-1 select-none">
+            <button type="button" onclick="replyToMessage(this, 'user', '🎤 Messaggio vocale')" class="copy-msg-btn hover:text-[#075E54] text-slate-500 text-[11px] p-0.5 rounded transition cursor-pointer" title="Rispondi / Quota">
+              <i class="fa-solid fa-reply"></i>
+            </button>
+            <span class="text-[10px] text-gray-500">${getTime()}</span>
+            <i class="fa-solid fa-check-double text-[11px] text-[#53bdeb]"></i>
+          </div>
+        </div>
+      `;
+      chatFeed.appendChild(userBubble);
+      scrollBottom();
+    }
+
     function appendUserFileBubble(fileName, fileSize, previewUrl = null, isImage = false, isPdf = false) {
       const userBubble = document.createElement('div');
       userBubble.className = 'flex justify-end';
@@ -4709,69 +4905,302 @@
       dashboardDragDropOverlay.addEventListener('drop', handleDashDrop);
     }
 
-    // --- Riconoscimento Vocale Reale & Fallback ---
-    let recognition = null;
-    let isRecording = false;
+    // --- Registratore Vocale WhatsApp Reale & Elaborazione Multimodale AI ---
+    let voiceMediaStream = null;
+    let voiceMediaRecorder = null;
+    let voiceAudioChunks = [];
+    let voiceTimerInterval = null;
+    let voiceRecordStartTime = null;
 
-    function handleVoice() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        fallbackVoicePrompt();
-        return;
-      }
-
-      if (isRecording && recognition) {
-        recognition.stop();
+    async function startVoiceRecording() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast("⚠️ Il microfono non è supportato dal tuo browser.", "error");
         return;
       }
 
       try {
-        recognition = new SpeechRecognition();
-        recognition.lang = 'it-IT';
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-
-        recognition.onstart = () => {
-          isRecording = true;
-          micBtn.classList.add('animate-pulse', 'bg-red-500');
-          micBtn.classList.remove('bg-[#128C7E]');
-          input.placeholder = "In ascolto... Parla adesso...";
-        };
-
-        recognition.onresult = (event) => {
-          const transcript = event.results[0][0].transcript;
-          input.value = transcript;
-          input.dispatchEvent(new Event('input'));
-        };
-
-        recognition.onerror = (event) => {
-          console.warn("Speech recognition error:", event.error);
-          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-            fallbackVoicePrompt();
-          }
-        };
-
-        recognition.onend = () => {
-          isRecording = false;
-          micBtn.classList.remove('animate-pulse', 'bg-red-500');
-          micBtn.classList.add('bg-[#128C7E]');
-          input.placeholder = "Scrivi un messaggio...";
-        };
-
-        recognition.start();
+        voiceMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       } catch (err) {
-        console.warn("Speech recognition exception:", err);
-        fallbackVoicePrompt();
+        console.error("Accesso microfono negato:", err);
+        showToast("⚠️ Permesso microfono negato. Abilita il microfono per registrare vocali.", "error");
+        return;
+      }
+
+      voiceAudioChunks = [];
+      try {
+        let mimeType = '';
+        if (typeof MediaRecorder !== 'undefined') {
+          if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) mimeType = 'audio/webm;codecs=opus';
+          else if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
+          else if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+          else if (MediaRecorder.isTypeSupported('audio/ogg')) mimeType = 'audio/ogg';
+        }
+        voiceMediaRecorder = mimeType ? new MediaRecorder(voiceMediaStream, { mimeType }) : new MediaRecorder(voiceMediaStream);
+      } catch (e) {
+        voiceMediaRecorder = new MediaRecorder(voiceMediaStream);
+      }
+
+      voiceMediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          voiceAudioChunks.push(e.data);
+        }
+      };
+
+      voiceMediaRecorder.start(250);
+      voiceRecordStartTime = Date.now();
+
+      // UI: mostra la barra di registrazione WhatsApp
+      const chatForm = document.getElementById('chatForm');
+      const voiceBar = document.getElementById('voiceRecordingBar');
+      const micBtn = document.getElementById('micBtn');
+      const sendBtn = document.getElementById('sendBtn');
+      const timerEl = document.getElementById('voiceRecordingTimer');
+
+      if (chatForm) chatForm.classList.add('hidden');
+      if (micBtn) micBtn.classList.add('hidden');
+      if (sendBtn) sendBtn.classList.add('hidden');
+      if (voiceBar) voiceBar.classList.remove('hidden');
+      if (timerEl) timerEl.textContent = '0:00';
+
+      clearInterval(voiceTimerInterval);
+      voiceTimerInterval = setInterval(() => {
+        const elapsedSec = Math.floor((Date.now() - voiceRecordStartTime) / 1000);
+        if (timerEl) timerEl.textContent = formatDurationSeconds(elapsedSec);
+      }, 500);
+    }
+
+    function cancelVoiceRecording() {
+      cleanupVoiceRecording();
+      voiceAudioChunks = [];
+      showToast("Registrazione vocale annullata", "info");
+    }
+
+    function cleanupVoiceRecording() {
+      clearInterval(voiceTimerInterval);
+      voiceTimerInterval = null;
+
+      if (voiceMediaRecorder && voiceMediaRecorder.state !== 'inactive') {
+        try {
+          voiceMediaRecorder.stop();
+        } catch (e) {}
+      }
+      if (voiceMediaStream) {
+        voiceMediaStream.getTracks().forEach(t => t.stop());
+        voiceMediaStream = null;
+      }
+
+      const chatForm = document.getElementById('chatForm');
+      const voiceBar = document.getElementById('voiceRecordingBar');
+      const micBtn = document.getElementById('micBtn');
+      const inputEl = document.getElementById('messageInput');
+
+      if (voiceBar) voiceBar.classList.add('hidden');
+      if (chatForm) chatForm.classList.remove('hidden');
+      if (micBtn) micBtn.classList.remove('hidden');
+
+      if (inputEl && inputEl.value.trim().length > 0) {
+        const sendBtn = document.getElementById('sendBtn');
+        if (sendBtn) sendBtn.classList.remove('hidden');
+        if (micBtn) micBtn.classList.add('hidden');
       }
     }
 
-    function fallbackVoicePrompt() {
-      const v = prompt("Simula Vocale:\nCosa dici al microfono?", "Ho messo le chiavi di scorta nella cassaforte in corridoio");
-      if (v) {
-        input.value = v;
-        input.dispatchEvent(new Event('input'));
-        handleSend();
+    async function stopAndSendVoiceRecording() {
+      if (!voiceMediaRecorder || voiceMediaRecorder.state === 'inactive') {
+        cleanupVoiceRecording();
+        return;
       }
+
+      const durationSec = Math.max(1, Math.round((Date.now() - voiceRecordStartTime) / 1000));
+
+      const stopPromise = new Promise(resolve => {
+        voiceMediaRecorder.onstop = resolve;
+      });
+
+      voiceMediaRecorder.stop();
+      if (voiceMediaStream) {
+        voiceMediaStream.getTracks().forEach(t => t.stop());
+        voiceMediaStream = null;
+      }
+      clearInterval(voiceTimerInterval);
+
+      // Ripristina l'interfaccia chat standard
+      const chatForm = document.getElementById('chatForm');
+      const voiceBar = document.getElementById('voiceRecordingBar');
+      const micBtn = document.getElementById('micBtn');
+      if (voiceBar) voiceBar.classList.add('hidden');
+      if (chatForm) chatForm.classList.remove('hidden');
+      if (micBtn) micBtn.classList.remove('hidden');
+
+      await stopPromise;
+
+      const rawBlob = new Blob(voiceAudioChunks, { type: voiceMediaRecorder.mimeType || 'audio/webm' });
+      voiceAudioChunks = [];
+
+      if (rawBlob.size === 0) {
+        showToast("⚠️ Nessun audio rilevato nel microfono", "warning");
+        return;
+      }
+
+      const targetThreadId = currentThreadId;
+      const quotedToSend = currentQuotedMessage;
+      cancelQuoteReply();
+
+      // Converti raw audio in WAV PCM 16-bit 16kHz compatibile al 100% con Gemini e OpenRouter
+      let wavBlob = rawBlob;
+      let base64Audio = '';
+      try {
+        const arrayBuffer = await rawBlob.arrayBuffer();
+        const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtxClass) {
+          const ctx = new AudioCtxClass();
+          const decodedBuffer = await ctx.decodeAudioData(arrayBuffer);
+          wavBlob = audioBufferToWav(decodedBuffer, 16000);
+          base64Audio = await blobToBase64(wavBlob);
+          await ctx.close();
+        } else {
+          base64Audio = await blobToBase64(rawBlob);
+        }
+      } catch (convErr) {
+        console.warn("Conversione in WAV fallback su raw blob:", convErr);
+        wavBlob = rawBlob;
+        base64Audio = await blobToBase64(rawBlob);
+      }
+
+      const localAudioUrl = URL.createObjectURL(wavBlob);
+
+      // Mostra all'istante la bolla vocale WhatsApp con player nella chat
+      appendUserAudioBubble(localAudioUrl, durationSec, quotedToSend);
+
+      // Feedback assistente
+      setGenerationActive(true, "L'assistente sta ascoltando il tuo messaggio vocale...", null, targetThreadId);
+      const taskSignal = activeThreadTasks[targetThreadId]?.abortController?.signal;
+
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            message: "",
+            audio_base64: base64Audio,
+            audio_format: "wav",
+            audio_duration: durationSec,
+            thread_id: targetThreadId,
+            quoted_message: quotedToSend ? { sender: quotedToSend.senderName, text: quotedToSend.text } : null
+          }),
+          signal: taskSignal
+        });
+
+        setGenerationActive(false, "", null, targetThreadId);
+        if (!res.ok) throw new Error('Errore nella risposta del server');
+        const data = await res.json();
+
+        let itemPhoto = null;
+        let storeItem = null;
+        if (data.data) {
+          if (data.action === "store_physical_item" && data.data.item_id) {
+            if (data.data.image_url) {
+              itemPhoto = { item_name: data.data.item_name, image_url: data.data.image_url };
+            } else {
+              storeItem = { item_id: data.data.item_id, item_name: data.data.item_name };
+            }
+          }
+        }
+
+        if (currentThreadId === targetThreadId) {
+          appendAssistantBubble(data.reply, data.documents, data.confirmation, itemPhoto, storeItem);
+          scrollBottom();
+        } else {
+          const th = threadsCache.find(t => t.id === targetThreadId);
+          showToast(`💬 Nuova risposta in "${th?.name || targetThreadId}"`, 'info', 4000);
+        }
+        loadDashboard(currentFilter);
+      } catch (err) {
+        if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+          setGenerationActive(false, "", null, targetThreadId);
+          return;
+        }
+        setGenerationActive(false, "", null, targetThreadId);
+        console.error('Errore /api/chat vocale:', err);
+        if (currentThreadId === targetThreadId) {
+          appendAssistantBubble("⚠️ Errore durante l'ascolto o l'elaborazione del messaggio vocale.");
+          scrollBottom();
+        }
+      }
+    }
+
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result;
+          const base64 = (typeof result === 'string' && result.includes(',')) ? result.split(',')[1] : result;
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function audioBufferToWav(audioBuffer, targetSampleRate = 16000) {
+      const numChannels = 1;
+      const sourceData = audioBuffer.getChannelData(0);
+      const sourceSampleRate = audioBuffer.sampleRate;
+
+      let samples;
+      if (sourceSampleRate === targetSampleRate) {
+        samples = sourceData;
+      } else {
+        const ratio = sourceSampleRate / targetSampleRate;
+        const newLength = Math.round(sourceData.length / ratio);
+        samples = new Float32Array(newLength);
+        for (let i = 0; i < newLength; i++) {
+          const pos = i * ratio;
+          const idx = Math.floor(pos);
+          const frac = pos - idx;
+          const s1 = sourceData[idx] || 0;
+          const s2 = sourceData[idx + 1] || s1;
+          samples[i] = s1 + frac * (s2 - s1);
+        }
+      }
+
+      const byteRate = targetSampleRate * 2;
+      const blockAlign = 2;
+      const buffer = new ArrayBuffer(44 + samples.length * 2);
+      const view = new DataView(buffer);
+
+      function writeStr(v, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+          v.setUint8(offset + i, string.charCodeAt(i));
+        }
+      }
+
+      writeStr(view, 0, 'RIFF');
+      view.setUint32(4, 36 + samples.length * 2, true);
+      writeStr(view, 8, 'WAVE');
+      writeStr(view, 12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, targetSampleRate, true);
+      view.setUint32(28, byteRate, true);
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, 16, true);
+      writeStr(view, 36, 'data');
+      view.setUint32(40, samples.length * 2, true);
+
+      let offset = 44;
+      for (let i = 0; i < samples.length; i++, offset += 2) {
+        const s = Math.max(-1, Math.min(1, samples[i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      }
+
+      return new Blob([view], { type: 'audio/wav' });
+    }
+
+    // Alias per compatibilità con eventuali vecchie chiamate inline
+    function handleVoice() {
+      startVoiceRecording();
     }
 
     // --- Fetch Dashboard Live: GET /api/dashboard ---

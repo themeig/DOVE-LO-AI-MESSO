@@ -2307,7 +2307,15 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             documents=matching_files[:5]
         )
 
-    def run_turn(self, user_text: str, db: Session, thread_id: str = "general", quoted_message: Optional[dict] = None) -> ChatResponse:
+    def run_turn(
+        self,
+        user_text: str,
+        db: Session,
+        thread_id: str = "general",
+        quoted_message: Optional[dict] = None,
+        audio_base64: Optional[str] = None,
+        audio_format: Optional[str] = "wav"
+    ) -> ChatResponse:
         """Esegue un turno conversazionale con tool-calling dell'agente."""
         lower_t = user_text.lower()
 
@@ -2804,6 +2812,12 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                     return ChatResponse(reply="📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines), action="get_upcoming_deadlines", data=t_out, documents=docs)
                 return ChatResponse(reply="✅ Non ci sono scadenze o pagamenti in sospeso al momento.", action="get_upcoming_deadlines", data=t_out)
 
+            if audio_base64:
+                return ChatResponse(
+                    reply="🎤 Ho ascoltato il tuo messaggio vocale! Tutto chiaro, richiesta registrata con successo.",
+                    action="REPLY"
+                )
+
             ai = MockAIService()
             intent = ai.classify_and_extract_intent(user_text)
             reply = ai.generate_conversational_reply(user_text)
@@ -2841,7 +2855,28 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         else:
             user_llm_content = user_text
 
-        history_messages.append({"role": "user", "content": user_llm_content})
+        if audio_base64:
+            clean_fmt = (audio_format or "wav").lower().lstrip(".")
+            voice_prompt = (
+                user_llm_content
+                if user_llm_content and user_llm_content != "🎤 Messaggio vocale"
+                else "Ascolta attentamente questo messaggio vocale dell'utente in italiano ed esegui le azioni necessarie tramite gli strumenti o rispondi in modo naturale e preciso."
+            )
+            history_messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": voice_prompt},
+                    {
+                        "type": "input_audio",
+                        "input_audio": {
+                            "data": audio_base64,
+                            "format": clean_fmt
+                        }
+                    }
+                ]
+            })
+        else:
+            history_messages.append({"role": "user", "content": user_llm_content})
 
         headers = {
             "Authorization": f"Bearer {self.settings.OPENROUTER_API_KEY.strip()}",
