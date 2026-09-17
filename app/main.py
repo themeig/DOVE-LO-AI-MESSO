@@ -22,6 +22,7 @@ from app.api.deadlines import router as deadlines_router
 from app.api.telemetry import router as telemetry_router
 from app.api.folders import router as folders_router
 from app.api.export import router as export_router
+from app.api.drive import router as drive_router
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +105,7 @@ app.include_router(deadlines_router)
 app.include_router(telemetry_router)
 app.include_router(folders_router)
 app.include_router(export_router)
+app.include_router(drive_router)
 
 settings = get_settings()
 
