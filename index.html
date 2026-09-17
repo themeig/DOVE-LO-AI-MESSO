@@ -195,6 +195,15 @@
           >
             <i class="fa-solid fa-sliders text-sm"></i>
           </button>
+
+          <!-- Google Drive Cloud Sync -->
+          <button 
+            onclick="openGoogleDriveModal()" 
+            class="text-white/80 hover:text-white p-1.5 hover:bg-white/10 rounded-full transition" 
+            title="Google Drive Cloud Sync"
+          >
+            <i class="fa-brands fa-google-drive text-sm text-emerald-300"></i>
+          </button>
         </div>
       </div>
 
@@ -945,6 +954,125 @@
   </div>
 
   <!-- ================================================================= -->
+  <!-- MODAL GOOGLE DRIVE CLOUD SYNC                                     -->
+  <!-- ================================================================= -->
+  <div id="googleDriveModal" onclick="if(event.target === this) closeGoogleDriveModal()" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 backdrop-blur-xs">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 animate-fade-in border border-slate-100">
+      <!-- Header -->
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-base">
+            <i class="fa-brands fa-google-drive"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-800 text-sm">Google Drive Cloud Sync</h3>
+            <p class="text-[11px] text-slate-400">Sincronizzazione e backup su cloud personale</p>
+          </div>
+        </div>
+        <button onclick="closeGoogleDriveModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Loading State -->
+      <div id="driveLoadingState" class="py-6 text-center text-slate-500 space-y-2">
+        <i class="fa-solid fa-spinner fa-spin text-xl text-emerald-600"></i>
+        <p class="text-xs">Caricamento stato Google Drive...</p>
+      </div>
+
+      <!-- Disconnected State -->
+      <div id="driveDisconnectedState" class="hidden space-y-4">
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2 text-xs">
+          <div class="font-semibold text-slate-700 flex items-center gap-1.5">
+            <i class="fa-solid fa-cloud-arrow-up text-emerald-600"></i> Archiviazione Smart nel Cloud
+          </div>
+          <p class="text-[11px] text-slate-600 leading-relaxed">
+            Collega il tuo account personale Google Drive per archiviare e organizzare automaticamente i tuoi documenti in cartelle intelligenti.
+          </p>
+        </div>
+
+        <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 space-y-1 text-[11px] text-emerald-800">
+          <div class="font-semibold flex items-center gap-1.5">
+            <i class="fa-solid fa-shield-check text-emerald-600"></i> Sicuro & Privato
+          </div>
+          <p class="text-emerald-700">I file vengono caricati direttamente sul tuo Google Drive nella cartella <strong>"Dove lo AI messo"</strong>.</p>
+        </div>
+
+        <button 
+          id="connectDriveBtn"
+          type="button" 
+          onclick="connectGoogleDrive()" 
+          class="w-full bg-[#075E54] hover:bg-[#128C7E] text-white font-bold py-2.5 px-4 rounded-xl transition shadow-xs flex items-center justify-center gap-2 cursor-pointer text-xs active:scale-98"
+        >
+          <i class="fa-brands fa-google-drive text-sm"></i>
+          <span>Collega il tuo Google Drive</span>
+        </button>
+      </div>
+
+      <!-- Connected State -->
+      <div id="driveConnectedState" class="hidden space-y-4">
+        <!-- Account Status Badge & Disconnect -->
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm shrink-0">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div class="min-w-0 text-xs">
+              <span class="text-[10px] text-emerald-700 font-semibold block uppercase tracking-wider">Account Connesso</span>
+              <span class="font-bold text-slate-800 truncate block">Connesso come <span id="driveConnectedEmail">email@gmail.com</span></span>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            onclick="disconnectGoogleDrive()" 
+            class="px-2.5 py-1.5 bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold transition shrink-0 cursor-pointer flex items-center gap-1 active:scale-95"
+          >
+            <i class="fa-solid fa-link-slash text-[10px]"></i>
+            <span>Disconnetti</span>
+          </button>
+        </div>
+
+        <!-- Storage Mode Selector -->
+        <div class="space-y-2">
+          <label class="text-xs font-bold text-slate-700 block">Modalità di Archiviazione:</label>
+          
+          <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-white hover:border-emerald-500 cursor-pointer transition">
+            <input 
+              type="radio" 
+              name="driveStorageMode" 
+              value="dual" 
+              onchange="updateDriveStorageMode('dual')"
+              class="mt-1 text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+            >
+            <div class="text-xs">
+              <div class="font-bold text-slate-800 flex items-center gap-1.5">
+                <span>🟢 Conserva copia locale cifrata + Google Drive (Consigliato)</span>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-0.5">I file sono sia nel Caveau locale crittografato sul tuo PC sia sincronizzati sul tuo Google Drive.</p>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-white hover:border-emerald-500 cursor-pointer transition">
+            <input 
+              type="radio" 
+              name="driveStorageMode" 
+              value="cloud_only" 
+              onchange="updateDriveStorageMode('cloud_only')"
+              class="mt-1 text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+            >
+            <div class="text-xs">
+              <div class="font-bold text-slate-800">
+                ☁️ Solo Google Drive (Risparmia spazio disco)
+              </div>
+              <p class="text-[11px] text-slate-500 mt-0.5">I file vengono caricati solo su Google Drive, lasciando un puntatore leggero nel database locale.</p>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
   <!-- MODAL WHITE PAPER TECNICO & FUNZIONALITÀ                          -->
   <!-- ================================================================= -->
   <div id="whitePaperModal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-3 sm:p-6 backdrop-blur-xs">
@@ -1434,6 +1562,23 @@
             id="dashboardToolsMenu" 
             class="hidden absolute right-0 mt-1.5 w-60 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 select-none"
           >
+            <button 
+              type="button" 
+              onclick="closeDashboardToolsMenu(); openGoogleDriveModal();" 
+              class="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-slate-50 text-slate-700 text-xs font-medium transition cursor-pointer"
+            >
+              <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs shrink-0">
+                <i class="fa-brands fa-google-drive"></i>
+              </div>
+              <div class="text-left flex-1 min-w-0">
+                <div class="flex items-center justify-between w-full gap-2">
+                  <span class="text-slate-800 font-semibold text-xs truncate">Google Drive Cloud Sync</span>
+                  <span id="toolsDriveBadge" class="hidden bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0">Attivo</span>
+                </div>
+                <div class="text-[10px] text-slate-400">Archiviazione cloud e backup</div>
+              </div>
+            </button>
+
             <button 
               type="button" 
               onclick="closeDashboardToolsMenu(); openWatchedFoldersModal();" 
@@ -2728,6 +2873,137 @@
       }
     }
 
+    // --- Google Drive Cloud Sync Handlers ---
+    let googleDriveStatusCache = null;
+
+    function openGoogleDriveModal() {
+      const modal = document.getElementById('googleDriveModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        loadGoogleDriveStatus();
+      }
+    }
+
+    function closeGoogleDriveModal() {
+      const modal = document.getElementById('googleDriveModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    async function loadGoogleDriveStatus() {
+      const loadingEl = document.getElementById('driveLoadingState');
+      const disconnectedEl = document.getElementById('driveDisconnectedState');
+      const connectedEl = document.getElementById('driveConnectedState');
+      const emailEl = document.getElementById('driveConnectedEmail');
+      const toolsBadge = document.getElementById('toolsDriveBadge');
+
+      if (loadingEl) loadingEl.classList.remove('hidden');
+      if (disconnectedEl) disconnectedEl.classList.add('hidden');
+      if (connectedEl) connectedEl.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/drive/status', {
+          headers: authHeaders()
+        });
+        if (!res.ok) throw new Error("Errore recupero stato Google Drive");
+        const data = await res.json();
+        googleDriveStatusCache = data;
+
+        if (loadingEl) loadingEl.classList.add('hidden');
+
+        if (data.connected) {
+          if (connectedEl) connectedEl.classList.remove('hidden');
+          if (disconnectedEl) disconnectedEl.classList.add('hidden');
+          if (emailEl) emailEl.textContent = data.user_email || 'Account Google';
+
+          const targetMode = data.storage_mode || 'dual';
+          const radio = document.querySelector(`input[name="driveStorageMode"][value="${targetMode}"]`);
+          if (radio) radio.checked = true;
+
+          if (toolsBadge) {
+            toolsBadge.classList.remove('hidden');
+          }
+        } else {
+          if (connectedEl) connectedEl.classList.add('hidden');
+          if (disconnectedEl) disconnectedEl.classList.remove('hidden');
+          if (toolsBadge) {
+            toolsBadge.classList.add('hidden');
+          }
+        }
+      } catch (err) {
+        console.error("Errore loadGoogleDriveStatus:", err);
+        if (loadingEl) loadingEl.classList.add('hidden');
+        if (disconnectedEl) disconnectedEl.classList.remove('hidden');
+      }
+    }
+
+    async function connectGoogleDrive() {
+      try {
+        const res = await fetch('/api/drive/auth-url', {
+          headers: authHeaders()
+        });
+        if (!res.ok) throw new Error("Errore recupero URL di autorizzazione");
+        const data = await res.json();
+        if (data.auth_url) {
+          window.open(data.auth_url, 'google_oauth', 'width=600,height=700');
+        } else {
+          throw new Error("URL autorizzazione non valido");
+        }
+      } catch (err) {
+        console.error("Errore connectGoogleDrive:", err);
+        showToast("⚠️ Impossibile avviare il collegamento con Google Drive", "error");
+      }
+    }
+
+    async function disconnectGoogleDrive() {
+      if (!confirm("Sei sicuro di voler disconnettere il tuo account Google Drive?")) {
+        return;
+      }
+      try {
+        const res = await fetch('/api/drive/disconnect', {
+          method: 'POST',
+          headers: authHeaders()
+        });
+        if (!res.ok) throw new Error("Errore durante la disconnessione");
+        await loadGoogleDriveStatus();
+        showToast("Google Drive disconnesso con successo", "info");
+      } catch (err) {
+        console.error("Errore disconnectGoogleDrive:", err);
+        showToast("⚠️ Errore durante la disconnessione di Google Drive", "error");
+      }
+    }
+
+    async function updateDriveStorageMode(mode) {
+      try {
+        const res = await fetch('/api/drive/settings', {
+          method: 'PATCH',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ storage_mode: mode })
+        });
+        if (!res.ok) throw new Error("Errore aggiornamento impostazioni Google Drive");
+        const data = await res.json();
+        if (googleDriveStatusCache) {
+          googleDriveStatusCache.storage_mode = data.storage_mode;
+        }
+        showToast("Modalità archiviazione aggiornata", "success");
+      } catch (err) {
+        console.error("Errore updateDriveStorageMode:", err);
+        showToast("⚠️ Impossibile aggiornare la modalità di archiviazione", "error");
+        loadGoogleDriveStatus();
+      }
+    }
+
+    // Window message listener per popup OAuth
+    window.addEventListener('message', (e) => {
+      if (e.data && (e.data.type === 'google_drive_auth_success' || e.data.type === 'GOOGLE_DRIVE_AUTH_SUCCESS')) {
+        loadGoogleDriveStatus();
+        showToast(`🟢 Google Drive collegato con successo!`, 'success');
+      }
+    });
+
     // --- White Paper Modal Handlers ---
     function openWhitePaperModal() {
       const modal = document.getElementById('whitePaperModal');
@@ -3531,6 +3807,7 @@
                   const url = doc.file_url || '';
                   const fileType = doc.file_type || (isPdf ? 'application/pdf' : 'image');
                   const docId = doc.document_id || doc.id;
+                  const docItem = doc;
                   const downloadUrl = doc.download_url || (docId ? `/api/documents/${docId}/download` : url);
                   const safeDownloadName = (doc.title || 'documento').replace(/[^a-zA-Z0-9_\-]/g, '_') + (isPdf ? '.pdf' : '');
 
@@ -3561,6 +3838,11 @@
                           </div>
                         </div>
                         <div class="flex items-center gap-1.5 shrink-0">
+                          ${docItem.drive_web_url ? `
+                            <a href="${docItem.drive_web_url}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition">
+                              <i class="fa-brands fa-google-drive text-xs"></i> <span>Drive ↗</span>
+                            </a>
+                          ` : ''}
                           ${url ? `
                             <button type="button" onclick="openMediaModal('${url}', '${title.replace(/'/g, "\\'")}', '${fileType}', '${downloadUrl}')" class="bg-[#075E54] hover:bg-[#128C7E] text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-2xs transition flex items-center gap-1 active:scale-95 cursor-pointer" title="Visualizza anteprima">
                               <i class="fa-regular fa-eye text-xs"></i>
@@ -3600,7 +3882,14 @@
                   return `
                     <div class="bg-amber-50 border border-amber-200 rounded-xl p-2 flex items-center justify-between text-xs">
                       <span class="font-semibold text-slate-800">${escapeHtml(doc.title || 'Documento')}</span>
-                      <a href="${fallbackDl}" class="bg-emerald-600 text-white px-2.5 py-1 rounded-md text-xs font-bold" download>⬇️ Scarica</a>
+                      <div class="flex items-center gap-1.5">
+                        ${doc.drive_web_url ? `
+                          <a href="${doc.drive_web_url}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition">
+                            <i class="fa-brands fa-google-drive text-xs"></i> <span>Drive ↗</span>
+                          </a>
+                        ` : ''}
+                        <a href="${fallbackDl}" class="bg-emerald-600 text-white px-2.5 py-1 rounded-md text-xs font-bold" download>⬇️ Scarica</a>
+                      </div>
                     </div>
                   `;
                 }
@@ -4035,6 +4324,7 @@
             summary: data.summary,
             file_url: data.file_url || blobUrl,
             download_url: data.download_url,
+            drive_web_url: data.drive_web_url,
             file_type: data.file_type || (isPdf ? 'application/pdf' : 'image')
           };
 
@@ -4121,6 +4411,7 @@
                     summary: data.summary,
                     file_url: data.file_url,
                     download_url: data.download_url,
+                    drive_web_url: data.drive_web_url,
                     file_type: data.file_type
                   });
                 } else {
@@ -4789,7 +5080,13 @@
               const escapedUrl = escapeHtml(rec.file_url);
               const escapedType = escapeHtml(rec.file_type || 'application/pdf');
               const downloadUrl = `/api/documents/${rec.id}/download`;
+              const driveBtn = rec.drive_web_url ? `
+                <a href="${rec.drive_web_url}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition" title="Apri su Google Drive">
+                  <i class="fa-brands fa-google-drive text-xs"></i> <span>Drive ↗</span>
+                </a>
+              ` : '';
               previewBtn = `
+                ${driveBtn}
                 <button onclick="openMediaModal('${escapedUrl}', '${escapedTitle}', '${escapedType}', '${downloadUrl}')" title="Anteprima documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-2 py-1 rounded-lg transition active:scale-95 flex items-center gap-1 cursor-pointer">
                   <i class="fa-regular fa-eye text-xs"></i> Vedi
                 </button>
@@ -5163,7 +5460,13 @@
             const escapedUrl = escapeHtml(rec.file_url);
             const escapedType = escapeHtml(rec.file_type || 'application/pdf');
             const downloadUrl = `/api/documents/${rec.id}/download`;
+            const driveBtn = rec.drive_web_url ? `
+              <a href="${rec.drive_web_url}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition" title="Apri su Google Drive">
+                <i class="fa-brands fa-google-drive text-xs"></i> <span>Drive ↗</span>
+              </a>
+            ` : '';
             previewBtn = `
+              ${driveBtn}
               <button onclick="openMediaModal('${escapedUrl}', '${escapedTitle}', '${escapedType}', '${downloadUrl}')" title="Anteprima documento" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-lg transition active:scale-95 flex items-center gap-1 cursor-pointer">
                 <i class="fa-regular fa-eye text-xs"></i> Vedi
               </button>
@@ -6394,6 +6697,12 @@
       loadDashboard('all');
       checkDeadlineAlerts();
       checkPendingProposalsBanner();
+      loadGoogleDriveStatus();
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('drive_connected') === 'true') {
+        showToast('🟢 Google Drive collegato con successo!', 'success');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
       // Polling periodico per rilevare nuovi file sensibili segnalati dal monitor di background
       setInterval(checkPendingProposalsBanner, 20000);
     }
