@@ -278,7 +278,10 @@ def search_vault_documents(db: Session, query: str, thread_id: str = "general") 
                 "filename": fn,
                 "file_url": f"/uploads/{fn}",
                 "download_url": f"/api/documents/{d.id}/download",
-                "file_type": d.file_type
+                "file_type": d.file_type,
+                "drive_file_id": d.drive_file_id,
+                "drive_web_url": d.drive_web_url,
+                "is_on_drive": bool(d.drive_file_id or d.drive_web_url)
             }))
 
     doc_scored.sort(key=lambda x: (x[1], x[0]), reverse=True)

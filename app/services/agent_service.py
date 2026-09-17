@@ -9,9 +9,19 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from app.config import get_settings
-from app.models.database import Document, PhysicalItem, ChatMessage, ChatThread, get_app_setting, UIEvent, WatchedFolder
+from app.models.database import (
+    Document,
+    PhysicalItem,
+    ChatMessage,
+    ChatThread,
+    get_app_setting,
+    UIEvent,
+    WatchedFolder,
+    GoogleDriveCredential,
+)
 from app.models.schemas import ChatResponse
 from app.services.ai_service import get_ai_service, MockAIService
+from app.services.drive_service import resolve_drive_folder_path
 from app.services.search_service import (
     search_vault_documents,
     search_vault_items,
@@ -406,6 +416,29 @@ TOOLS_DEFINITION = [
                 }
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_google_drive_status",
+            "description": (
+                "Recupera lo stato attuale della connessione Google Drive Cloud Sync, la modalità di archiviazione "
+                "('dual' = locale + cloud, o 'cloud_only' = solo Google Drive), l'account Google associato, "
+                "e l'elenco dei documenti e file sincronizzati su Google Drive con la relativa cartella (es. 'DoveLoAIMesso / 2026 / Bollette & Utenze / ...' "
+                "o 'DoveLoAIMesso / Documenti & Foto / ...') e il link diretto di apertura [Drive ↗]. "
+                "Usalo SEMPRE quando l'utente chiede cosa c'è su Google Drive, come hai organizzato le cartelle su Drive, "
+                "o chiede di cercare documenti salvati su Google Drive."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Termine opzionale di ricerca per filtrare file o cartelle su Google Drive"
+                    }
+                }
+            }
+        }
     }
 ]
 
@@ -494,6 +527,28 @@ REGOLE OPERATIVE:
 15. ESTRAZIONE E DECOMPRESSIONE ARCHIVI (unzip_vault_archive):
     - Se l'utente chiede di estrarre, scompattare o fare l'unzip di un file .zip presente nel caveau (es. 'scompatta il file zip che ho caricato', 'estrai l'archivio fatture.zip', 'fai l'unzip dello zip', 'estrai tutti i file'): DEVI SEMPRE USARE LO STRUMENTO `unzip_vault_archive(document_title=..., document_id=...)`!
     - Tutti i file estratti (PDF, immagini, documenti Word, fogli Excel) verranno analizzati con l'AI e catalogati automaticamente nel caveau.
+
+16. INTEGRAZIONE GOOGLE DRIVE CLOUD SYNC & ARCHIVIAZIONE CLOUD:
+    - L'applicazione "Dove lo AI messo" include la sincronizzazione con Google Drive Cloud Sync (tramite API ufficiale Google con scope sicuro `drive.file`).
+    - L'utente può collegare Google Drive dal menu "Strumenti -> ☁️ Google Drive Cloud Sync" o aprire direttamente qualsiasi documento cliccando sul pulsante [Drive ↗] visibile nella scheda del documento.
+    - MODALITÀ DI ARCHIVIAZIONE DISPONIBILI:
+      * "dual" (Copia locale cifrata nel caveau + Google Drive): conserva sia il file cifrato locale nel caveau, sia la copia organizzata su Google Drive.
+      * "cloud_only" (Solo Google Drive): il file fisico originale risiede unicamente su Google Drive (zero file locali su disco); nel caveau locale rimangono i metadati, l'estrazione AI e il link diretto `drive_web_url`.
+    - STRUTTURA AD ALBERO DELLE CARTELLE SU GOOGLE DRIVE:
+      Tutti i file sincronizzati su Drive sono archiviati in modo strutturato dentro la cartella principale `DoveLoAIMesso`:
+      * Con data di scadenza (es. bollette, F24, tributi, rate): `DoveLoAIMesso / <Anno> / <Categoria> / <NomeFile>` (es. `DoveLoAIMesso/2026/Bollette & Utenze/2026-10-28_Enel_64.20eur.pdf`).
+      * Senza data di scadenza (es. ricevute generiche, credenziali, contratti, certificati, foto): `DoveLoAIMesso / <Categoria> / <NomeFile>` (es. `DoveLoAIMesso/Documenti & Foto/client_secret_...json`).
+      * Categorie cartella standard:
+        - `Bollette & Utenze` (bollette luce, gas, acqua, utenze)
+        - `Fisco & Tasse` (F24, tributi, modello unico, tasse)
+        - `Fatture & Spese` (fatture, ricevute d'acquisto, scontrini)
+        - `Contratti & Polizze` (contratti d'affitto, lavoro, polizze, assicurazioni)
+        - `Documenti & Foto` (credenziali, documenti personali, foto)
+    - QUANDO L'UTENTE CHIEDE DI GOOGLE DRIVE (es. 'cosa c'è su Drive?', 'come hai organizzato le cartelle su Drive?', 'cerca su Drive', 'è salvato su Drive?'):
+      * DEVI SEMPRE USARE LO STRUMENTO `get_google_drive_status` o `search_vault`!
+      * Conosci lo stato di sincronizzazione, la modalità attiva (solo Drive o duale) e l'account Google associato.
+      * Spiega con precisione all'utente come sono organizzate le cartelle su Google Drive, quali file sono stati salvati e in quali cartelle, e che può aprirli su Drive cliccando su [Drive ↗].
+      * MAI DIRE "Non posso accedere a Google Drive" o "Non ho la capacità di connettermi a Google Drive": l'integrazione Google Drive Cloud Sync è parte fondamentale dell'app e ne conosci lo stato reale in tempo reale!
 """
 
 def strip_tool_tags(text: str) -> str:
@@ -889,7 +944,10 @@ class AgenticChatService:
                         "filename": Path(d.file_path).name if d.file_path else "",
                         "file_url": f"/uploads/{Path(d.file_path).name}" if d.file_path else None,
                         "download_url": f"/api/documents/{d.id}/download",
-                        "file_type": d.file_type
+                        "file_type": d.file_type,
+                        "drive_file_id": d.drive_file_id,
+                        "drive_web_url": d.drive_web_url,
+                        "is_on_drive": bool(d.drive_file_id or d.drive_web_url)
                     }
                     for d in docs
                 ]
@@ -1253,7 +1311,10 @@ class AgenticChatService:
                         "status": d.status,
                         "file_url": f"/uploads/{fn}" if fn else None,
                         "download_url": f"/api/documents/{d.id}/download",
-                        "file_type": d.file_type
+                        "file_type": d.file_type,
+                        "drive_file_id": d.drive_file_id,
+                        "drive_web_url": d.drive_web_url,
+                        "is_on_drive": bool(d.drive_file_id or d.drive_web_url)
                     })
 
             if target_type in ["all", "physical_items"]:
@@ -1318,7 +1379,10 @@ class AgenticChatService:
                 "status": doc.status,
                 "file_url": f"/uploads/{fn}" if fn else None,
                 "download_url": f"/api/documents/{doc.id}/download",
-                "file_type": doc.file_type
+                "file_type": doc.file_type,
+                "drive_file_id": doc.drive_file_id,
+                "drive_web_url": doc.drive_web_url,
+                "is_on_drive": bool(doc.drive_file_id or doc.drive_web_url)
             }
 
             return {
@@ -1402,7 +1466,10 @@ class AgenticChatService:
                     "status": d.status,
                     "file_url": f"/uploads/{fn}" if fn else None,
                     "download_url": f"/api/documents/{d.id}/download",
-                    "file_type": d.file_type
+                    "file_type": d.file_type,
+                    "drive_file_id": d.drive_file_id,
+                    "drive_web_url": d.drive_web_url,
+                    "is_on_drive": bool(d.drive_file_id or d.drive_web_url)
                 })
 
             return {
@@ -1589,6 +1656,116 @@ class AgenticChatService:
                 ]
             }
 
+        elif name == "get_google_drive_status":
+            cred = db.query(GoogleDriveCredential).first() if db else None
+            if not cred:
+                return {
+                    "connected": False,
+                    "message": "Google Drive non è attualmente collegato. L'utente può collegarlo in ogni momento dal menu Strumenti -> ☁️ Google Drive Cloud Sync.",
+                    "root_folder": "DoveLoAIMesso",
+                    "folder_structure_rules": {
+                        "with_due_date": "DoveLoAIMesso / <Anno> / <Categoria> / <NomeFile>",
+                        "without_due_date": "DoveLoAIMesso / <Categoria> / <NomeFile>"
+                    },
+                    "standard_categories": [
+                        "Bollette & Utenze",
+                        "Fisco & Tasse",
+                        "Fatture & Spese",
+                        "Contratti & Polizze",
+                        "Documenti & Foto"
+                    ],
+                    "categories": [
+                        "Bollette & Utenze",
+                        "Fisco & Tasse",
+                        "Fatture & Spese",
+                        "Contratti & Polizze",
+                        "Documenti & Foto"
+                    ],
+                    "total_files_on_drive": 0,
+                    "matching_files": [],
+                    "folders_overview": {},
+                    "documents": []
+                }
+
+            query = (args.get("query") or "").strip().lower()
+            q_drive = db.query(Document).filter(
+                or_(Document.drive_file_id.isnot(None), Document.drive_web_url.isnot(None))
+            )
+            if thread_id and thread_id not in ["general", "all"]:
+                q_drive = q_drive.filter(Document.thread_id == thread_id)
+
+            drive_docs = q_drive.order_by(Document.id.desc()).all()
+
+            files_list = []
+            folders_overview = {}
+            for d in drive_docs:
+                folder_parts = resolve_drive_folder_path(d.doc_type, d.due_date)
+                folder_str = " / ".join(folder_parts)
+                folders_overview.setdefault(folder_str, []).append(d.title)
+
+                if query and (
+                    query not in (d.title or "").lower()
+                    and query not in folder_str.lower()
+                    and query not in (d.summary or "").lower()
+                    and query not in (d.doc_type or "").lower()
+                ):
+                    continue
+
+                fn = Path(d.file_path).name if d.file_path else ""
+                files_list.append({
+                    "id": d.id,
+                    "document_id": d.id,
+                    "thread_id": d.thread_id,
+                    "title": d.title,
+                    "issuer": d.issuer,
+                    "doc_type": d.doc_type,
+                    "amount": d.amount,
+                    "due_date": d.due_date.isoformat() if d.due_date else None,
+                    "status": d.status,
+                    "summary": d.summary,
+                    "folder_path": folder_str,
+                    "folder_parts": folder_parts,
+                    "drive_file_id": d.drive_file_id,
+                    "drive_web_url": d.drive_web_url,
+                    "is_on_drive": True,
+                    "file_url": f"/uploads/{fn}" if fn else None,
+                    "download_url": f"/api/documents/{d.id}/download",
+                    "file_type": d.file_type
+                })
+
+            mode_desc = "Solo Google Drive (i file fisici risiedono su Google Drive, metadati nel caveau)" if cred.storage_mode == "cloud_only" else "Copia locale cifrata nel caveau + Google Drive (doppia copia)"
+
+            return {
+                "connected": True,
+                "user_email": cred.user_email,
+                "storage_mode": cred.storage_mode,
+                "storage_mode_description": mode_desc,
+                "root_folder": "DoveLoAIMesso",
+                "folder_structure_rules": {
+                    "with_due_date": "DoveLoAIMesso / <Anno> / <Categoria> / <NomeFile>",
+                    "without_due_date": "DoveLoAIMesso / <Categoria> / <NomeFile>"
+                },
+                "standard_categories": [
+                    "Bollette & Utenze",
+                    "Fisco & Tasse",
+                    "Fatture & Spese",
+                    "Contratti & Polizze",
+                    "Documenti & Foto"
+                ],
+                "categories": [
+                    "Bollette & Utenze",
+                    "Fisco & Tasse",
+                    "Fatture & Spese",
+                    "Contratti & Polizze",
+                    "Documenti & Foto"
+                ],
+                "total_files_on_drive": len(drive_docs),
+                "matching_files_count": len(files_list),
+                "matching_files": files_list,
+                "folders_overview": folders_overview,
+                "documents": files_list
+            }
+
         return {"error": f"Strumento non riconosciuto: {name}"}
 
     def build_system_prompt(self, db: Session, thread_id: str = "general") -> str:
@@ -1659,6 +1836,32 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             vault_summary.append(f"\n[CARTELLE PC MONITORATE ({len(watched_folders)})]:")
             for wf in watched_folders:
                 vault_summary.append(f"- 📁 {wf.name}: {wf.path} ({wf.file_count} file indicizzati, ultima scansione: {wf.last_scanned_at.strftime('%d/%m/%Y %H:%M') if wf.last_scanned_at else 'Mai'})")
+
+        # Stato Sincronizzazione Google Drive Cloud Sync
+        drive_cred = db.query(GoogleDriveCredential).first() if db else None
+        q_drive = db.query(Document).filter(
+            or_(Document.drive_file_id.isnot(None), Document.drive_web_url.isnot(None))
+        )
+        if thread_id and thread_id not in ["general", "all"]:
+            q_drive = q_drive.filter(Document.thread_id == thread_id)
+        drive_docs = q_drive.order_by(Document.id.desc()).all() if db else []
+
+        if drive_cred:
+            mode_desc = "Solo Google Drive (i file fisici risiedono su Google Drive, metadati nel caveau)" if drive_cred.storage_mode == "cloud_only" else "Copia locale cifrata nel caveau + Google Drive (doppia copia)"
+            vault_summary.append(f"\n[STATO SINCRONIZZAZIONE GOOGLE DRIVE CLOUD SYNC]:")
+            vault_summary.append(f"- Connessione: ATTIVA E COLLEGATA")
+            vault_summary.append(f"- Account Google associato: {drive_cred.user_email or 'Account collegato'}")
+            vault_summary.append(f"- Modalità archiviazione: {drive_cred.storage_mode} ({mode_desc})")
+            vault_summary.append(f"- File totali archiviati su Google Drive per questo canale: {len(drive_docs)}")
+            vault_summary.append(f"- Regola cartelle Drive: 'DoveLoAIMesso / <Anno> / <Categoria> / <File>' (o 'DoveLoAIMesso / <Categoria> / <File>' senza scadenza)")
+            if drive_docs:
+                vault_summary.append("  File attualmente presenti su Google Drive:")
+                for dd in drive_docs[:15]:
+                    f_path = " / ".join(resolve_drive_folder_path(dd.doc_type, dd.due_date))
+                    vault_summary.append(f"  * 📁 {f_path} -> 📄 {dd.title} [Drive Web URL: {dd.drive_web_url or dd.drive_file_id}]")
+        else:
+            vault_summary.append(f"\n[STATO SINCRONIZZAZIONE GOOGLE DRIVE CLOUD SYNC]:")
+            vault_summary.append(f"- Connessione: NON COLLEGATO (l'utente può collegare il proprio account dal menu Strumenti -> Google Drive Cloud Sync)")
 
         vault_summary.append("\n[REGOLA SULL'USO DEI DATI DEL DATABASE]:")
         vault_summary.append("- Per conoscere, elencare o cercare documenti o oggetti, DEVI interrogare il database tramite gli appositi strumenti (`search_vault`, `list_vault_contents`, `get_upcoming_deadlines`, `scan_local_folder`, `list_watched_folders`).")
@@ -1992,6 +2195,71 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         else:
             return None
 
+    def _handle_drive_intent(self, user_text: str, lower_t: str, db: Session, thread_id: str = "general") -> Optional[ChatResponse]:
+        """Intercetta e risponde in modo immediato e completo alle domande sull'integrazione Google Drive, le cartelle e i file sincronizzati."""
+        has_drive_mention = any(k in lower_t for k in ["google drive", "su drive", "in drive", "mio drive", "tuo drive", "nostro drive"]) or (
+            "drive" in lower_t and any(k in lower_t for k in ["cerca", "cartell", "salvat", "organizzat", "cosa", "dove", "file", "stato", "sincronizz", "come hai"])
+        )
+        if not has_drive_mention:
+            return None
+
+        status_data = self.execute_tool("get_google_drive_status", {}, db=db, thread_id=thread_id)
+        if not status_data.get("connected"):
+            return ChatResponse(
+                reply=(
+                    "☁️ **Google Drive non è attualmente collegato.**\n\n"
+                    "L'integrazione con Google Drive Cloud Sync è pronta e funzionante: puoi collegare il tuo account Google in qualsiasi momento "
+                    "aprendo il menu **Strumenti $\to$ ☁️ Google Drive Cloud Sync** e cliccando su **'Collega Google Drive'**."
+                ),
+                action="get_google_drive_status",
+                data=status_data
+            )
+
+        email = status_data.get("user_email") or "Account collegato"
+        mode = status_data.get("storage_mode", "dual")
+        mode_label = "**Solo Google Drive** (i file fisici risiedono unicamente sul cloud Google Drive, nessun file memorizzato sul disco locale)" if mode == "cloud_only" else "**Copia locale cifrata nel caveau + Google Drive** (doppio salvataggio sicuro)"
+        total_files = status_data.get("total_files_on_drive", 0)
+        folders_overview = status_data.get("folders_overview") or {}
+        matching_files = status_data.get("matching_files") or []
+
+        folder_explanation = (
+            "📂 **Come organizzo le cartelle su Google Drive**:\n"
+            "Tutti i tuoi file vengono archiviati in modo strutturato dentro la cartella principale **`DoveLoAIMesso`** sul tuo Google Drive:\n"
+            "• **Documenti con scadenza**: `DoveLoAIMesso / <Anno> / <Categoria> / <File>` (es. `DoveLoAIMesso/2026/Bollette & Utenze/...`)\n"
+            "• **Documenti senza scadenza**: `DoveLoAIMesso / <Categoria> / <File>` (es. `DoveLoAIMesso/Documenti & Foto/...`)\n\n"
+            "Le categorie automatiche create sono:\n"
+            "- ⚡ *Bollette & Utenze* (luce, gas, acqua)\n"
+            "- 🏛️ *Fisco & Tasse* (modelli F24, tributi, tasse)\n"
+            "- 💳 *Fatture & Spese* (fatture d'acquisto, scontrini, ricevute)\n"
+            "- 📑 *Contratti & Polizze* (contratti d'affitto, polizze assicurative)\n"
+            "- 📁 *Documenti & Foto* (credenziali, file generici, foto personali)"
+        )
+
+        if total_files == 0:
+            files_explanation = "📄 **File attualmente archiviati su Google Drive**: Al momento non ci sono file sincronizzati. Non appena carichi un file qui nella chat (📎 o 📷), lo caricherò automaticamente nella sua cartella dedicata su Drive!"
+        else:
+            files_lines = []
+            for f_path, f_titles in folders_overview.items():
+                files_lines.append(f"• 📁 **{f_path}**:")
+                for t in f_titles:
+                    files_lines.append(f"  - 📄 {t}")
+            files_explanation = f"📄 **File attualmente archiviati su Google Drive ({total_files} file)**:\n" + "\n".join(files_lines)
+
+        reply_text = (
+            f"☁️ **Google Drive Cloud Sync è attivo e collegato** all'account **`{email}`**!\n\n"
+            f"⚙️ **Modalità di archiviazione attiva**: {mode_label}.\n\n"
+            f"{folder_explanation}\n\n"
+            f"{files_explanation}\n\n"
+            "💡 *Puoi aprire direttamente qualsiasi file su Google Drive cliccando sul pulsante **[Drive ↗]** presente sulla scheda del documento qui sotto!*"
+        )
+
+        return ChatResponse(
+            reply=reply_text,
+            action="get_google_drive_status",
+            data=status_data,
+            documents=matching_files[:5]
+        )
+
     def run_turn(self, user_text: str, db: Session, thread_id: str = "general", quoted_message: Optional[dict] = None) -> ChatResponse:
         """Esegue un turno conversazionale con tool-calling dell'agente."""
         lower_t = user_text.lower()
@@ -2005,6 +2273,11 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         del_resp = self._handle_deletion_intent(user_text, lower_t, db, thread_id=thread_id)
         if del_resp:
             return del_resp
+
+        # Intercetta domande o richieste su Google Drive, organizzazione cartelle e file salvati
+        drive_resp = self._handle_drive_intent(user_text, lower_t, db, thread_id=thread_id)
+        if drive_resp:
+            return drive_resp
 
         # Rileva se si tratta di una richiesta esplicita di lista o elenco
         is_listing_phrase = any(k in lower_t for k in [
