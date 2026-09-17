@@ -1,18 +1,22 @@
+import logging
 import re
 import unicodedata
 from datetime import datetime
 from pathlib import Path
+from typing import List
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.models.database import get_db, Document, ChatMessage
+from app.models.database import get_db, Document, ChatMessage, GoogleDriveCredential
 from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDeleteResponse
 from app.services.ai_service import get_ai_service
 from app.services.document_service import save_uploaded_file
+from app.services.drive_service import get_drive_service, resolve_drive_folder_path
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
-from typing import List
 
 
 def _process_and_save_single_doc(
@@ -51,6 +55,26 @@ def _process_and_save_single_doc(
     is_payable = (extracted.amount is not None) and (extracted.doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"])
     doc_status = "da_pagare" if is_payable else "archiviato"
 
+    drive_file_id = None
+    drive_web_url = None
+    active_cred = db.query(GoogleDriveCredential).first()
+    if active_cred:
+        try:
+            drive_service = get_drive_service()
+            folder_path = resolve_drive_folder_path(extracted.doc_type, due_date_obj)
+            clean_filename = Path(filename).name
+            drive_res = drive_service.upload_file(
+                file_bytes=contents,
+                filename=clean_filename,
+                mime_type=content_type,
+                folder_path=folder_path,
+                access_token=active_cred.access_token
+            )
+            drive_file_id = drive_res.get("file_id")
+            drive_web_url = drive_res.get("web_view_link")
+        except Exception as e:
+            logger.warning(f"Errore durante l'upload su Google Drive per '{filename}': {e}")
+
     doc = Document(
         thread_id=thread_id,
         title=title,
@@ -61,7 +85,9 @@ def _process_and_save_single_doc(
         amount=extracted.amount,
         due_date=due_date_obj,
         status=doc_status,
-        summary=extracted.summary
+        summary=extracted.summary,
+        drive_file_id=drive_file_id,
+        drive_web_url=drive_web_url
     )
     db.add(doc)
     db.flush()
@@ -128,7 +154,9 @@ async def upload_document(
         "file_url": f"/uploads/{fn}",
         "download_url": f"/api/documents/{doc.id}/download",
         "file_type": doc.file_type,
-        "summary": doc.summary
+        "summary": doc.summary,
+        "drive_file_id": doc.drive_file_id,
+        "drive_web_url": doc.drive_web_url
     }
 
 
@@ -225,7 +253,9 @@ async def upload_documents_batch(
             "file_url": f"/uploads/{fn}",
             "download_url": f"/api/documents/{d.id}/download",
             "file_type": d.file_type,
-            "summary": d.summary
+            "summary": d.summary,
+            "drive_file_id": d.drive_file_id,
+            "drive_web_url": d.drive_web_url
         })
 
     return {
