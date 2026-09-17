@@ -846,6 +846,105 @@
   </div>
 
   <!-- ================================================================= -->
+  <!-- MODAL IMPORTAZIONE BACKUP ZIP NEL CAVEAU                          -->
+  <!-- ================================================================= -->
+  <div id="importVaultModal" onclick="if(event.target === this) closeImportVaultModal()" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 backdrop-blur-xs">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150 p-6 flex flex-col gap-4">
+      
+      <!-- Top Bar Modal -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-sm shadow-xs">
+            <i class="fa-solid fa-file-import"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">Importa Backup ZIP</h3>
+            <p class="text-[11px] text-slate-400">Ripristina documenti, scadenze e oggetti</p>
+          </div>
+        </div>
+        <button onclick="closeImportVaultModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Area Selezione File ZIP -->
+      <div 
+        id="importZipDropZone"
+        onclick="document.getElementById('importZipFileInput').click()"
+        class="border-2 border-dashed border-purple-200 hover:border-purple-400 hover:bg-purple-50/40 rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 group"
+      >
+        <input 
+          type="file" 
+          id="importZipFileInput" 
+          accept=".zip,application/zip" 
+          class="hidden" 
+          onchange="handleImportZipSelected(event)"
+        />
+        <div class="w-12 h-12 rounded-2xl bg-purple-100 group-hover:scale-110 text-purple-600 flex items-center justify-center text-xl transition shadow-xs">
+          <i class="fa-solid fa-file-zipper"></i>
+        </div>
+        <div class="text-xs font-semibold text-slate-700 mt-1">
+          Clicca qui o trascina il tuo archivio .zip
+        </div>
+        <p class="text-[11px] text-slate-400">
+          Supporta backup di <em>Dove lo AI messo</em> o archivi ZIP con documenti/PDF
+        </p>
+      </div>
+
+      <!-- File Selezionato Info -->
+      <div id="importZipFileInfo" class="hidden flex items-center justify-between bg-purple-50/70 border border-purple-200 rounded-xl px-3.5 py-2.5">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <i class="fa-solid fa-check-circle text-purple-600 text-sm shrink-0"></i>
+          <div class="min-w-0">
+            <div id="importZipFileName" class="text-xs font-semibold text-purple-900 truncate">backup.zip</div>
+            <div id="importZipFileSize" class="text-[10px] text-purple-600 font-medium">0 KB</div>
+          </div>
+        </div>
+        <button 
+          type="button" 
+          onclick="resetImportZipSelection(event)" 
+          class="text-purple-400 hover:text-purple-700 p-1 rounded-lg transition text-xs cursor-pointer"
+          title="Rimuovi"
+        >
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Info Box di Sicurezza & Dati -->
+      <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex flex-col gap-1.5">
+        <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+          <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+          <span>Crittografia e Integrità Automatica</span>
+        </div>
+        <p class="text-[11px] text-slate-500 leading-relaxed">
+          I file estratti dal backup verranno ricifrati e salvati al sicuro nel tuo caveau locale. Gli elementi già presenti non verranno duplicati.
+        </p>
+      </div>
+
+      <!-- Azioni Footer -->
+      <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+        <button 
+          type="button" 
+          onclick="closeImportVaultModal()" 
+          class="px-3.5 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-medium text-xs transition cursor-pointer"
+        >
+          Annulla
+        </button>
+        <button 
+          type="button" 
+          id="confirmImportVaultBtn"
+          onclick="submitVaultImport()" 
+          disabled
+          class="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 text-white rounded-xl font-semibold text-xs transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+        >
+          <i class="fa-solid fa-file-import" id="confirmImportVaultBtnIcon"></i>
+          <span id="confirmImportVaultBtnText">Avvia Ripristino</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
   <!-- MODAL WHITE PAPER TECNICO & FUNZIONALITÀ                          -->
   <!-- ================================================================= -->
   <div id="whitePaperModal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-3 sm:p-6 backdrop-blur-xs">
@@ -1364,6 +1463,21 @@
               <div class="text-left">
                 <div class="text-slate-800 font-semibold text-xs">Esporta Backup ZIP</div>
                 <div class="text-[10px] text-slate-400">Tutti i file e indice metadata</div>
+              </div>
+            </button>
+
+            <button 
+              type="button" 
+              onclick="closeDashboardToolsMenu(); openImportVaultModal();" 
+              class="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-slate-50 text-slate-700 text-xs font-medium transition cursor-pointer"
+              id="importVaultBtn"
+            >
+              <div class="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center text-xs shrink-0">
+                <i class="fa-solid fa-file-import"></i>
+              </div>
+              <div class="text-left">
+                <div class="text-slate-800 font-semibold text-xs">Importa Backup ZIP</div>
+                <div class="text-[10px] text-slate-400">Ripristina file, scadenze e oggetti</div>
               </div>
             </button>
 
@@ -5495,6 +5609,147 @@
           showToast(errMsg, 'error', 4500);
         } else {
           alert(errMsg);
+        }
+      } finally {
+        if (btn && originalContent) {
+          btn.disabled = false;
+          btn.innerHTML = originalContent;
+        }
+      }
+    }
+
+    // --- Import / Ripristino Backup Caveau ---
+    let selectedImportZipFile = null;
+
+    function openImportVaultModal() {
+      const modal = document.getElementById('importVaultModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+      resetImportZipSelection();
+      setupImportZipDropZone();
+    }
+
+    function closeImportVaultModal() {
+      const modal = document.getElementById('importVaultModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      resetImportZipSelection();
+    }
+
+    function resetImportZipSelection(e) {
+      if (e) e.stopPropagation();
+      selectedImportZipFile = null;
+      const input = document.getElementById('importZipFileInput');
+      if (input) input.value = '';
+      const infoEl = document.getElementById('importZipFileInfo');
+      if (infoEl) infoEl.classList.add('hidden');
+      const btn = document.getElementById('confirmImportVaultBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-file-import" id="confirmImportVaultBtnIcon"></i> <span id="confirmImportVaultBtnText">Avvia Ripristino</span>';
+      }
+    }
+
+    function handleImportZipSelected(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith('.zip')) {
+        if (typeof showToast === 'function') {
+          showToast('Seleziona un archivio compresso in formato .zip', 'warning');
+        }
+        return;
+      }
+      selectedImportZipFile = file;
+      const infoEl = document.getElementById('importZipFileInfo');
+      const nameEl = document.getElementById('importZipFileName');
+      const sizeEl = document.getElementById('importZipFileSize');
+      const btn = document.getElementById('confirmImportVaultBtn');
+
+      if (infoEl) infoEl.classList.remove('hidden');
+      if (nameEl) nameEl.textContent = file.name;
+      if (sizeEl) sizeEl.textContent = typeof formatBytes === 'function' ? formatBytes(file.size) : `${Math.round(file.size / 1024)} KB`;
+      if (btn) {
+        btn.disabled = false;
+      }
+    }
+
+    let isImportZipDropZoneSetup = false;
+    function setupImportZipDropZone() {
+      if (isImportZipDropZoneSetup) return;
+      const dz = document.getElementById('importZipDropZone');
+      if (!dz) return;
+      isImportZipDropZoneSetup = true;
+
+      dz.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dz.classList.add('border-purple-500', 'bg-purple-100/50');
+      });
+      dz.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dz.classList.remove('border-purple-500', 'bg-purple-100/50');
+      });
+      dz.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dz.classList.remove('border-purple-500', 'bg-purple-100/50');
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          handleImportZipSelected({ target: { files: e.dataTransfer.files } });
+        }
+      });
+    }
+
+    async function submitVaultImport() {
+      if (!selectedImportZipFile) {
+        if (typeof showToast === 'function') {
+          showToast('Seleziona un file ZIP da ripristinare', 'warning');
+        }
+        return;
+      }
+
+      const btn = document.getElementById('confirmImportVaultBtn');
+      const originalContent = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> <span>Ripristino in corso...</span>';
+      }
+      if (typeof showToast === 'function') {
+        showToast('📦 Elaborazione e ripristino dell\'archivio ZIP in corso...', 'info', 4000);
+      }
+
+      const formData = new FormData();
+      formData.append('file', selectedImportZipFile);
+
+      try {
+        const res = await fetch('/api/export/import', {
+          method: 'POST',
+          headers: typeof authHeaders === 'function' ? authHeaders() : {},
+          body: formData
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: 'Errore durante l\'importazione' }));
+          throw new Error(err.detail || res.statusText);
+        }
+
+        const data = await res.json();
+        const docs = data.restored?.documents || 0;
+        const items = data.restored?.physical_items || 0;
+        if (typeof showToast === 'function') {
+          showToast(`✅ Ripristino completato! ${docs} documenti e ${items} oggetti registrati nel caveau.`, 'success', 6000);
+        }
+
+        closeImportVaultModal();
+        if (typeof loadDashboard === 'function') loadDashboard(currentFilter);
+        if (typeof loadThreads === 'function') loadThreads();
+      } catch (err) {
+        console.error('Errore import backup:', err);
+        if (typeof showToast === 'function') {
+          showToast(`⚠️ ${err.message}`, 'error', 5000);
+        } else {
+          alert(`Errore: ${err.message}`);
         }
       } finally {
         if (btn && originalContent) {

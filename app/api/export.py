@@ -4,7 +4,7 @@ import zipfile
 import logging
 from datetime import datetime
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -117,3 +117,228 @@ def export_metadata_json(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Errore export metadata: {e}")
         raise HTTPException(status_code=500, detail=f"Errore esportazione: {str(e)}")
+
+
+@router.post("/import")
+async def import_vault_zip(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Importa e ripristina un archivio ZIP nel caveau.
+    Se contiene metadata.json, ripristina la struttura completa (documenti, scadenze, oggetti).
+    Se è uno ZIP generico di file, estrae e cataloga ciascun file con l'AI.
+    """
+    from datetime import timezone
+    from app.services.document_service import save_uploaded_file
+    from app.services.archive_service import fast_extract_document_metadata
+
+    contents = await file.read()
+    if not contents or not zipfile.is_zipfile(io.BytesIO(contents)):
+        raise HTTPException(status_code=400, detail="Il file fornito non è un archivio ZIP valido.")
+
+    restored_docs = 0
+    restored_items = 0
+    restored_folders = 0
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(contents), "r") as zf:
+            namelist = zf.namelist()
+
+            if "metadata.json" in namelist:
+                # 1. Archivio di backup completo di Dove lo AI messo
+                try:
+                    meta = json.loads(zf.read("metadata.json").decode("utf-8"))
+                except Exception as e:
+                    raise HTTPException(status_code=400, detail=f"Errore lettura metadata.json: {str(e)}")
+
+                id_map = {}
+
+                for d in meta.get("documents", []):
+                    # Ricerca del file corrispondente nella cartella documents/ dello ZIP
+                    matched_entry = None
+                    orig_name = Path(d.get("original_path") or "").name
+                    for candidate in namelist:
+                        if candidate.startswith("documents/") and not candidate.endswith("/"):
+                            cand_name = Path(candidate).name
+                            if orig_name and cand_name == orig_name:
+                                matched_entry = candidate
+                                break
+                    if not matched_entry:
+                        for candidate in namelist:
+                            if candidate.startswith("documents/") and not candidate.endswith("/") and not candidate.startswith("documents/_errore"):
+                                cand_name = Path(candidate).name
+                                if d.get("file_type") and cand_name.endswith(f".{d['file_type']}"):
+                                    matched_entry = candidate
+                                    break
+
+                    saved_path = ""
+                    if matched_entry:
+                        try:
+                            file_bytes = zf.read(matched_entry)
+                            fname = Path(matched_entry).name
+                            saved_path = save_uploaded_file(file_bytes, fname)
+                        except Exception as fe:
+                            logger.warning(f"Errore salvataggio file {matched_entry}: {fe}")
+
+                    due_date_obj = None
+                    if d.get("due_date"):
+                        try:
+                            due_date_obj = datetime.strptime(d["due_date"][:10], "%Y-%m-%d").date()
+                        except Exception:
+                            due_date_obj = None
+
+                    created_at_obj = datetime.now(timezone.utc)
+                    if d.get("created_at"):
+                        try:
+                            created_at_obj = datetime.fromisoformat(d["created_at"])
+                        except Exception:
+                            pass
+
+                    # Verifica duplicato
+                    existing_doc = db.query(Document).filter(
+                        Document.title == d.get("title"),
+                        Document.amount == d.get("amount"),
+                        Document.due_date == due_date_obj
+                    ).first()
+
+                    if existing_doc:
+                        id_map[d.get("id")] = existing_doc.id
+                        restored_docs += 1
+                    else:
+                        new_doc = Document(
+                            thread_id=d.get("thread_id") or "general",
+                            title=d.get("title") or "Documento Ripristinato",
+                            file_path=saved_path or "storage/uploads/placeholder.bin",
+                            file_type=d.get("file_type") or "pdf",
+                            doc_type=d.get("doc_type") or "generico",
+                            issuer=d.get("issuer"),
+                            amount=d.get("amount"),
+                            due_date=due_date_obj,
+                            status=d.get("status") or "archiviato",
+                            summary=d.get("summary") or "",
+                            is_local_file=bool(d.get("is_local_file", False)),
+                            original_path=d.get("original_path"),
+                            created_at=created_at_obj
+                        )
+                        db.add(new_doc)
+                        db.flush()
+                        id_map[d.get("id")] = new_doc.id
+                        restored_docs += 1
+
+                for i in meta.get("physical_items", []):
+                    existing_item = db.query(PhysicalItem).filter(
+                        PhysicalItem.item_name == i.get("item_name"),
+                        PhysicalItem.primary_location == i.get("primary_location")
+                    ).first()
+
+                    if not existing_item:
+                        doc_id_ref = id_map.get(i.get("document_id")) if i.get("document_id") else None
+                        new_item = PhysicalItem(
+                            item_name=i.get("item_name") or "Oggetto",
+                            primary_location=i.get("primary_location") or "Casa",
+                            detailed_location=i.get("detailed_location"),
+                            category=i.get("category") or "Altro",
+                            notes=i.get("notes"),
+                            thread_id=i.get("thread_id") or "general",
+                            document_id=doc_id_ref
+                        )
+                        db.add(new_item)
+                        restored_items += 1
+
+                for f in meta.get("watched_folders", []):
+                    if f.get("path"):
+                        existing_folder = db.query(WatchedFolder).filter(WatchedFolder.path == f.get("path")).first()
+                        if not existing_folder:
+                            new_folder = WatchedFolder(
+                                name=f.get("name") or Path(f["path"]).name,
+                                path=f["path"],
+                                is_active=bool(f.get("is_active", True)),
+                                auto_scan=bool(f.get("auto_scan", True))
+                            )
+                            db.add(new_folder)
+                            restored_folders += 1
+
+                db.commit()
+                return {
+                    "success": True,
+                    "type": "backup",
+                    "message": f"Backup ripristinato con successo: {restored_docs} documenti, {restored_items} oggetti.",
+                    "restored": {
+                        "documents": restored_docs,
+                        "physical_items": restored_items,
+                        "watched_folders": restored_folders
+                    }
+                }
+
+            else:
+                # 2. ZIP Generico: estrazione e catalogazione immediata dei singoli file
+                for info in zf.infolist():
+                    if info.is_dir() or "__MACOSX" in info.filename or Path(info.filename).name.startswith("."):
+                        continue
+                    if Path(info.filename).name == "INDICE_DOCUMENTI.txt":
+                        continue
+
+                    raw_inner_bytes = zf.read(info.filename)
+                    if not raw_inner_bytes:
+                        continue
+
+                    inner_filename = Path(info.filename).name
+                    saved_path = save_uploaded_file(raw_inner_bytes, inner_filename)
+
+                    file_ext = Path(inner_filename).suffix.lstrip(".").lower() or "bin"
+                    mime = "application/pdf" if file_ext == "pdf" else (
+                        f"image/{file_ext}" if file_ext in ["jpg", "jpeg", "png", "webp"] else "application/octet-stream"
+                    )
+
+                    extracted = fast_extract_document_metadata(raw_inner_bytes, inner_filename, mime)
+
+                    due_date_obj = None
+                    if extracted.due_date:
+                        try:
+                            due_date_obj = datetime.strptime(extracted.due_date, "%Y-%m-%d").date()
+                        except ValueError:
+                            due_date_obj = None
+
+                    title = (extracted.title or "").strip()
+                    if not title:
+                        clean_stem = Path(inner_filename).stem.replace("_", " ").strip()
+                        title = clean_stem.capitalize()
+
+                    is_payable = (extracted.amount is not None) and (extracted.doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"])
+                    doc_status = "da_pagare" if is_payable else "archiviato"
+
+                    new_doc = Document(
+                        thread_id="general",
+                        title=title,
+                        file_path=saved_path,
+                        file_type=file_ext,
+                        doc_type=extracted.doc_type,
+                        issuer=extracted.issuer,
+                        amount=extracted.amount,
+                        due_date=due_date_obj,
+                        status=doc_status,
+                        summary=extracted.summary,
+                        created_at=datetime.now(timezone.utc)
+                    )
+                    db.add(new_doc)
+                    restored_docs += 1
+
+                db.commit()
+                return {
+                    "success": True,
+                    "type": "archive",
+                    "message": f"Archivio ZIP importato: {restored_docs} documenti estratti e catalogati nel caveau.",
+                    "restored": {
+                        "documents": restored_docs,
+                        "physical_items": 0,
+                        "watched_folders": 0
+                    }
+                }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Errore importazione ZIP: {e}")
+        raise HTTPException(status_code=500, detail=f"Errore importazione archivio: {str(e)}")
+

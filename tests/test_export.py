@@ -1,4 +1,4 @@
-﻿"""Test per l'endpoint di esportazione del caveau ZIP."""
+"""Test per l'endpoint di esportazione del caveau ZIP."""
 import io
 import json
 import zipfile
@@ -94,3 +94,60 @@ def test_export_vault_zip_contains_uploaded_file():
         assert len(doc_files) >= 1
         # metadata.json deve sempre esserci
         assert "metadata.json" in names
+
+
+def test_import_vault_zip_restore():
+    """Esporta un backup ZIP e poi lo reimporta tramite /api/export/import."""
+    # 1. Carica un documento specifico per il test
+    dummy = io.BytesIO(b"%PDF-1.4 unique restore test content")
+    res_up = client.post(
+        "/api/documents/upload",
+        files={"file": ("restore_test_doc.pdf", dummy, "application/pdf")},
+        data={"thread_id": "general"},
+    )
+    assert res_up.status_code in (200, 201)
+
+    # 2. Esporta il backup ZIP
+    res_export = client.get("/api/export/vault")
+    assert res_export.status_code == 200
+    zip_bytes = res_export.content
+
+    # 3. Reimporta lo ZIP
+    res_import = client.post(
+        "/api/export/import",
+        files={"file": ("backup.zip", io.BytesIO(zip_bytes), "application/zip")}
+    )
+    assert res_import.status_code == 200
+    data = res_import.json()
+    assert data["success"] is True
+    assert data["type"] == "backup"
+    assert "restored" in data
+    assert "documents" in data["restored"]
+
+
+def test_import_invalid_file():
+    """Verifica che un file non-ZIP venga rifiutato con 400."""
+    res = client.post(
+        "/api/export/import",
+        files={"file": ("fake.zip", io.BytesIO(b"not a valid zip content"), "application/zip")}
+    )
+    assert res.status_code == 400
+
+
+def test_import_generic_zip():
+    """Verifica l'importazione di uno ZIP generico senza metadata.json."""
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, "w") as zf:
+        zf.writestr("test1.pdf", b"%PDF-1.4 file 1")
+        zf.writestr("test2.txt", b"plain text notes")
+    zip_buf.seek(0)
+
+    res = client.post(
+        "/api/export/import",
+        files={"file": ("generic_docs.zip", zip_buf, "application/zip")}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert data["restored"]["documents"] == 2
+
