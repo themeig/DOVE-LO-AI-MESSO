@@ -709,32 +709,44 @@ def fast_extract_document_metadata(file_bytes: bytes, filename: str, mime_type: 
     tags = []
 
     # Classificazione per tipo ed emittente
-    if any(k in combo for k in ["bolletta", "fattura energia", "servizio elettrico", "luce", "gas", "acqua", "utenza", "enel", "a2a", "eni", "iren", "hera", "sorgenia", "acea", "edison", "tim", "vodafone", "wind", "iliad", "fastweb"]):
+    # 0. Canzoni, musica, poesie e testi personali (PRIORITÀ)
+    is_song_or_art = bool(re.search(
+        r"\b(?:canzon[ei]|brano\s+musicale|testo\s+musicale|testo\s+di\s+un\s+brano|poesi[ae]|liric[ae]|strof[ae]|ritornell[oi]|cantautor[ei]|sfogo\s+emotivo|riflessioni\s+personali|pensieri\s+e\s+rimpianti|spartito|accordi)\b",
+        combo
+    ))
+    if is_song_or_art:
+        doc_type = "testo_personale"
+        tags.extend(["musica", "testo", "canzone", "personale"])
+
+    elif bool(re.search(r"\b(?:bollett[ae]|utenz[ae]|fornitur[ae]|servizio\s+elettrico|servizio\s+idrico|energia\s+elettrica)\b", combo)) or (
+        bool(re.search(r"\b(?:enel|a2a|plenitude|eni\s+gas|iren|hera|sorgenia|acea|edison|vodafone|fastweb|iliad|windtre|\btim\b)\b", combo))
+        and bool(re.search(r"\b(?:bollett[ae]|utenz[ae]|fornitur[ae]|fattur[ae]|consum[oi]|contatore|luce|gas|acqua)\b", combo))
+    ):
         doc_type = "bolletta"
         tags.extend(["bolletta", "utenza", "energia"])
-        if "enel" in combo:
+        if re.search(r"\benel\b", combo):
             issuer = "Enel Energia"
-        elif "a2a" in combo:
+        elif re.search(r"\ba2a\b", combo):
             issuer = "A2A"
-        elif "eni" in combo or "plenitude" in combo:
+        elif re.search(r"\b(?:eni|plenitude)\b", combo):
             issuer = "Eni Plenitude"
-        elif "iren" in combo:
+        elif re.search(r"\biren\b", combo):
             issuer = "Iren"
-        elif "hera" in combo:
+        elif re.search(r"\bhera\b", combo):
             issuer = "Hera"
-        elif "sorgenia" in combo:
+        elif re.search(r"\bsorgenia\b", combo):
             issuer = "Sorgenia"
-        elif "acea" in combo:
+        elif re.search(r"\bacea\b", combo):
             issuer = "Acea"
-        elif "tim" in combo:
+        elif re.search(r"\btim\b", combo):
             issuer = "TIM"
-        elif "vodafone" in combo:
+        elif re.search(r"\bvodafone\b", combo):
             issuer = "Vodafone"
-        elif "wind" in combo:
+        elif re.search(r"\bwind\b", combo):
             issuer = "WindTre"
-        elif "iliad" in combo:
+        elif re.search(r"\biliad\b", combo):
             issuer = "Iliad"
-        elif "fastweb" in combo:
+        elif re.search(r"\bfastweb\b", combo):
             issuer = "Fastweb"
 
     elif any(k in combo for k in ["f24", "agenzia delle entrate", "modello f24", "tributo", "versamento unificato", "imu", "tari", "irpef", "iva"]):

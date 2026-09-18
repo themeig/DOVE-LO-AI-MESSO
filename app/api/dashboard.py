@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 from pathlib import Path
 from fastapi import APIRouter, Depends, Query
@@ -12,26 +13,68 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 def classify_document_category(doc: Document) -> tuple[str, str, str]:
     """Restituisce (category_key, category_label, category_icon) per un documento."""
-    t = f"{doc.title} {doc.doc_type} {doc.issuer or ''} {doc.summary or ''}".lower()
-    
-    if any(k in t for k in ["bollett", "luce", "gas", "acqua", "telefoni", "internet", "fibra", "utenz", "enel", "eni", "a2a", "tim", "vodafone", "iliad", "fastweb", "servizio elettrico"]):
+    t = f"{doc.title or ''} {doc.doc_type or ''} {doc.issuer or ''} {doc.summary or ''}".lower()
+    clean_type = (doc.doc_type or "").strip().lower()
+
+    # 1. Canzoni, Musica, Poesie e Testi Personali (PRIORITÀ: evita che parole emotive come 'sentimenti', 'ultimo', 'luce', 'acqua' finiscano in bollette)
+    is_song_or_art = (
+        clean_type in ["canzone", "musica", "poesia", "testo_canzone", "testo_personale", "note_personali", "brano"]
+        or bool(re.search(r"\b(?:canzon[ei]|brano\s+musicale|testo\s+musicale|testo\s+di\s+un\s+brano|poesi[ae]|liric[ae]|strof[ae]|ritornell[oi]|cantautor[ei]|sfogo\s+emotivo|riflessioni\s+personali|pensieri\s+e\s+rimpianti|spartito|accordi|parole\s+della\s+canzone)\b", t))
+    )
+    if is_song_or_art:
+        return "note_testi", "Note, Canzoni & Testi Personali", "fa-music"
+
+    # 2. Utenze & Bollette (Richiede contesto reale di utenza, fornitura o gestore con confine di parola)
+    has_utility_provider = bool(re.search(
+        r"\b(?:enel|a2a|plenitude|eni\s+gas|iren|hera|sorgenia|acea|edison|servizio\s+elettrico|servizio\s+idrico|acquedotto|vodafone|fastweb|iliad|windtre|\btim\b|telecom)\b",
+        t
+    ))
+    has_utility_terms = bool(re.search(
+        r"\b(?:bollett[ae]|utenz[ae]|fornitur[ae]|contatore|consumi|smc|kwh?|maggior\s+tutela|mercato\s+libero|energia\s+elettrica|luce\s+e\s+gas)\b",
+        t
+    ))
+    if clean_type in ["bolletta", "utenza"]:
         return "utenze", "Utenze & Bollette", "fa-bolt"
-    
-    if any(k in t for k in ["f24", "imu", "tari", "tribut", "730", "agenzia delle entrate", "iva", "inps", "tassa", "tasse", "redditi", "cu "]):
+    if has_utility_provider and (has_utility_terms or clean_type in ["fattura", "ricevuta", "spese"]):
+        return "utenze", "Utenze & Bollette", "fa-bolt"
+    if has_utility_terms and any(w in t for w in ["luce", "gas", "acqua", "elettric", "internet", "fibra"]):
+        return "utenze", "Utenze & Bollette", "fa-bolt"
+
+    # 3. Fisco, Tributi & F24 (Confini di parola per evitare che 'attiva', 'creativa' o 'viva' corrispondano a 'iva')
+    if clean_type in ["f24", "tributo", "fiscale", "modello_unico", "dichiarazione_redditi"] or bool(re.search(
+        r"\b(?:f24|imu|tari|tasi|irpef|tribut[oi]|730|modello\s+unico|redditi\s+pf|agenzia\s+delle\s+entrate|inps|tass[ae]|impost[ae]|certificazione\s+unica|\bcu\s*20\d\d\b|\biva\b)\b",
+        t
+    )):
         return "fisco", "Fisco, Tributi & F24", "fa-landmark"
-        
-    if any(k in t for k in ["carta d'identit", "patente", "passaport", "tessera sanitaria", "codice fiscale", "immatricolazione", "universit", "scuola", "anagrafic", "identit"]):
+
+    # 4. Documenti Personali & Identità
+    if clean_type in ["carta_identita", "patente", "passaporto", "documento_identita", "tessera_sanitaria", "certificato"] or bool(re.search(
+        r"\b(?:carta\s+d['’]identit[àa]|patente|passaport[oi]|tessera\s+sanitaria|codice\s+fiscale|permesso\s+di\s+soggiorno|anagrafic[ao]|certificato\s+di\s+nascita|certificato\s+di\s+residenza|stato\s+di\s+famiglia|immatricolazione|iscrizione\s+universit[àa]|tolc|diploma|laurea)\b",
+        t
+    )):
         return "identita", "Documenti Personali & Identità", "fa-id-card"
-        
-    if any(k in t for k in ["polizza", "assicura", "rca", "contratt", "locazione", "affitto", "lavoro", "garanzia", "clausola"]):
+
+    # 5. Contratti, Polizze & Assicurazioni
+    if clean_type in ["contratto", "polizza", "assicurazione"] or bool(re.search(
+        r"\b(?:polizz[ae]|assicurazion[ei]|rca|contratt[oi]|locazione|affitto|comodato|assunzione|busta\s+paga|cedolino|stipendio|garanzia|clausol[ae])\b",
+        t
+    )):
         return "contratti", "Contratti, Polizze & Assicurazioni", "fa-file-contract"
-        
-    if any(k in t for k in ["fattur", "ricevut", "scontrin", "tagliando", "officina", "meccanico", "acquisto", "spesa", "ordine", "mediaworld", "amazon", "apple"]):
+
+    # 6. Fatture, Spese & Ricevute
+    if clean_type in ["fattura", "ricevuta", "scontrino", "spese"] or bool(re.search(
+        r"\b(?:fattur[ae]|ricevut[ae]|scontrin[oi]|tagliando|officina|meccanico|acquisto|spesa\s+sostenuta|ordine\s+d['’]acquisto|giustificativo|mediaworld|amazon|apple\s+store)\b",
+        t
+    )):
         return "spese", "Fatture, Spese & Ricevute", "fa-receipt"
-        
-    if any(k in t for k in ["sanit", "medic", "salute", "refert", "ticket", "visita", "farmac", "dentist", "esame", "analisi del sangue", "ospedale"]):
+
+    # 7. Sanità & Spese Mediche
+    if clean_type in ["medico", "sanitario", "referto"] or bool(re.search(
+        r"\b(?:sanit[àa]|medic[aoie]|salute|refert[oi]|ticket\s+sanitario|visita\s+medica|farmac[oi]|dentist[ae]|analisi\s+del\s+sangue|ospedal[ei]|clinica|prescrizione|ricetta\s+medica)\b",
+        t
+    )):
         return "sanita", "Sanità & Spese Mediche", "fa-heart-pulse"
-        
+
     return "altro", "Altri Documenti Archiviati", "fa-folder-closed"
 
 

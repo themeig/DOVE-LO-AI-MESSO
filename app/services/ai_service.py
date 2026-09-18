@@ -95,7 +95,19 @@ class MockAIService:
                 tags=["f24", "fisco", "iva"],
                 suggest_rename=False
             )
-        if "bollett" in fn or "enel" in fn or "luce" in fn or "gas" in fn:
+        clean_name = Path(filename).stem.replace("_", " ").replace("-", " ").strip().title()
+        if any(k in fn for k in ["canzon", "music", "poesi", "brano", "strof", "liric"]):
+            return ExtractedDocument(
+                title=f"Testo di {clean_name or 'Canzone'}",
+                doc_type="testo_personale",
+                issuer=None,
+                amount=None,
+                due_date=None,
+                summary=f"Testo o brano musicale '{filename}' archiviato nel caveau.",
+                tags=["musica", "testo", "canzone", "personale"],
+                suggest_rename=False
+            )
+        if any(k in fn for k in ["bollett", "enel", "utenza", "facture"]) or (("luce" in fn or "gas" in fn or "acqua" in fn) and any(w in fn for w in ["bollett", "fattur", "enel", "servizio", "utenz", "bimestre"])):
             return ExtractedDocument(
                 title="Bolletta Enel Energia",
                 doc_type="bolletta",
@@ -345,7 +357,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
 
 Identifica con la massima precisione:
 1. 'title': un titolo chiaro, elegante e sintetico (es. 'Contratto di Consulenza Software', 'Foglio Spese e Scadenze Aziendali', 'Elenco Fornitori')
-2. 'doc_type': scegli tra 'contratto', 'foglio_calcolo', 'spese', 'fattura', 'ricevuta', 'documento_word', 'report', 'generico'
+2. 'doc_type': scegli tra 'contratto', 'foglio_calcolo', 'spese', 'fattura', 'ricevuta', 'documento_word', 'testo_personale', 'report', 'generico' (se il testo è una canzone, poesia, brano musicale o testo personale scegli 'testo_personale')
 3. 'issuer': nome ente, azienda, autore o controparte (oppure null)
 4. Se contiene importi da pagare o scadenze specifiche di pagamento, estrai 'amount' e 'due_date' (YYYY-MM-DD), altrimenti null.
 5. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano con i punti chiave, intestatari, colonne o dati più importanti.
@@ -354,7 +366,7 @@ Identifica con la massima precisione:
 Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
 {{
   "title": "titolo chiaro ed elegante",
-  "doc_type": "contratto" | "foglio_calcolo" | "spese" | "fattura" | "ricevuta" | "documento_word" | "report" | "generico",
+  "doc_type": "contratto" | "foglio_calcolo" | "spese" | "fattura" | "ricevuta" | "documento_word" | "testo_personale" | "report" | "generico",
   "issuer": "nome ente o fornitore" o null,
   "amount": null oppure numero decimale,
   "due_date": null oppure "YYYY-MM-DD",

@@ -22,7 +22,9 @@ def resolve_drive_folder_path(doc_type: str, due_date: Optional[date] = None) ->
     """
     clean_type = (doc_type or "").strip().lower()
 
-    if clean_type in ("bolletta", "utenza"):
+    if clean_type in ("canzone", "testo_personale", "musica", "poesia"):
+        category = "Note & Testi Personali"
+    elif clean_type in ("bolletta", "utenza"):
         category = "Bollette & Utenze"
     elif clean_type in ("f24", "tributo", "fiscale", "modello_unico"):
         category = "Fisco & Tasse"

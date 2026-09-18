@@ -240,3 +240,50 @@ def test_question_about_message_does_not_trigger_store_physical_item():
     data = res.json()
     assert data.get("action") != "store_physical_item"
     assert "memorizzato" not in data.get("reply", "").lower()
+
+
+def test_classify_document_category_songs_vs_utilities():
+    """Verifica che i file di testo con canzoni/poesie non vengano classificati come bollette."""
+    from app.api.dashboard import classify_document_category
+    from app.models.database import Document
+
+    # 1. Canzone che menziona sentimenti, ultima volta, luce e acqua
+    song_doc = Document(
+        title="Testo di un Brano Musicale",
+        doc_type="generico",
+        summary="Il brano esprime sentimenti profondi, parla dell'ultimo amore, della luce e dell'acqua.",
+        issuer=None,
+        file_path="uploads/song.txt",
+        file_type="txt"
+    )
+    cat_key, cat_label, cat_icon = classify_document_category(song_doc)
+    assert cat_key == "note_testi"
+    assert cat_label == "Note, Canzoni & Testi Personali"
+    assert cat_icon == "fa-music"
+
+    # 2. Poesia o sfogo emotivo
+    poem_doc = Document(
+        title="Pensieri e Rimpianti",
+        doc_type="documento_word",
+        summary="Sfogo emotivo con riflessioni personali e poesie interiori.",
+        issuer=None,
+        file_path="uploads/pensieri.txt",
+        file_type="txt"
+    )
+    p_key, p_label, _ = classify_document_category(poem_doc)
+    assert p_key == "note_testi"
+
+    # 3. Vera bolletta con gestore TIM
+    tim_doc = Document(
+        title="Bolletta TIM Fibra",
+        doc_type="bolletta",
+        summary="Fattura TIM per la fornitura linea fissa e fibra di ottobre.",
+        issuer="TIM",
+        amount=29.90,
+        file_path="uploads/tim.pdf",
+        file_type="pdf"
+    )
+    t_key, t_label, _ = classify_document_category(tim_doc)
+    assert t_key == "utenze"
+    assert t_label == "Utenze & Bollette"
+
