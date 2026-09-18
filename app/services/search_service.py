@@ -32,7 +32,8 @@ ITALIAN_STOPWORDS = {
     # Metriche, conteggi e verbi ausiliari
     "totale", "numero", "conteggio", "somma", "ammontare",
     "c'è", "ce", "ci", "sono", "sia", "siano", "stato", "stata", "stati", "state",
-    "devo", "devi", "dobbiamo", "posso", "puoi", "possiamo", "entro"
+    "devo", "devi", "dobbiamo", "posso", "puoi", "possiamo", "entro",
+    "fare", "fai", "fatto", "serve", "servi", "sai"
 }
 
 GENERIC_ATTRIBUTE_TERMS = {

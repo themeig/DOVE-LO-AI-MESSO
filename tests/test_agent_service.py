@@ -147,6 +147,80 @@ def test_filter_relevant_documents():
     filtered5 = filter_relevant_documents(docs_unrelated, text5, "dove è la collana rossa?")
     assert filtered5 is None
 
+    # Scenario 6: Richiesta meta/capacità ("cosa puoi fare?") con risposta esplicativa che cita parole come "cucina", "documenti", "bolletta"
+    docs_caveau = [
+        {"title": "Certificazione Unica CU 2026", "issuer": "Datore di Lavoro"},
+        {"title": "Ricevuta Pre-Immatricolazione Università di Pavia", "issuer": "Università di Pavia"},
+    ]
+    text6 = (
+        "Certo, ti spiego subito cosa posso fare per te! Sono il tuo assistente per il caveau.\n"
+        "Per i tuoi oggetti fisici: Dimmi 'Ho messo le chiavi di scorta in cucina' e io lo terrò a mente.\n"
+        "Per i tuoi documenti digitali: Chiedimi 'Trovami la bolletta Enel' e te li mostrerò subito."
+    )
+    filtered6 = filter_relevant_documents(docs_caveau, text6, "cosa puoi fare?")
+    assert filtered6 is None, "Non deve allegare documenti a domande meta/help ('cosa puoi fare?')"
+
+    # Scenario 7: Prevenzione falsi positivi di sottostringa (es. acronimo 'cu' dentro 'cucina' o 'di' in parole italiane)
+    text7 = "Ho annotato che le posizioni in cucina e salotto sono state aggiornate digitalmente."
+    filtered7 = filter_relevant_documents(docs_caveau, text7, "dove sono le posizioni?")
+    assert filtered7 is None, "'cu' in 'cucina' e 'di' in 'digitalmente' non devono provocare falsi positivi"
+
+
+def test_agent_meta_question_does_not_attach_documents():
+    """Verifica che a fronte di 'cosa puoi fare?' non vengano allegati documenti dal DB."""
+    from app.models.database import Document, init_db, get_engine
+    from sqlalchemy.orm import Session
+    from unittest.mock import patch, MagicMock
+
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        doc1 = Document(
+            title="Certificazione Unica CU 2026",
+            file_path="uploads/cu2026.pdf",
+            file_type="pdf",
+            doc_type="fiscale",
+            thread_id="t_meta",
+            summary="Certificazione unica CU per redditi di lavoro dipendente"
+        )
+        doc2 = Document(
+            title="Ricevuta Pre-Immatricolazione Università di Pavia",
+            file_path="uploads/unipv.pdf",
+            file_type="pdf",
+            doc_type="ricevuta",
+            thread_id="t_meta",
+            summary="Ricevuta immatricolazione tasse universitarie da pagare"
+        )
+        session.add_all([doc1, doc2])
+        session.commit()
+
+        agent = AgenticChatService()
+
+        # Simula una risposta diretta dell'assistente che spiega cosa può fare citando esempi di cucina e bolletta
+        mock_reply = (
+            "Certo, ti spiego subito cosa posso fare per te! Sono il tuo assistente personale per il caveau 'Dove lo AI messo'. "
+            "Memorizzo la posizione: Dimmi 'Ho messo le chiavi di scorta in cucina'. "
+            "Trovo i documenti all'istante: Chiedimi 'Trovami la bolletta Enel' o 'Dammi i documenti di identità'."
+        )
+
+        with patch("httpx.Client.post") as mock_post:
+            mock_post.return_value = MagicMock(
+                status_code=200,
+                json=lambda: {
+                    "candidates": [
+                        {
+                            "content": {
+                                "parts": [{"text": mock_reply}]
+                            }
+                        }
+                    ]
+                }
+            )
+
+            res = agent.run_turn("cosa puoi fare?", session, thread_id="t_meta")
+            assert res.documents is None or len(res.documents) == 0, f"Attesi 0 documenti allegati, trovati: {res.documents}"
+
+
 
 def test_agent_service_bulk_deletion_intent():
     engine = get_engine("sqlite:///:memory:")

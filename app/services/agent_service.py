@@ -583,20 +583,54 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
     asst_lower = assistant_text.lower() if assistant_text else ""
     user_lower = user_text.lower() if user_text else ""
 
+    # 0. Se la richiesta dell'utente è una domanda meta, informativa, di aiuto o di presentazione/saluto, non allegare documenti
+    is_meta_or_help = any(
+        p in user_lower for p in [
+            "cosa puoi fare", "cosa sai fare", "chi sei", "come funzioni", "come ti chiami",
+            "cosa posso chiederti", "a cosa servi", "cosa fai", "spiegami cosa puoi fare",
+            "aiuto", "help", "funzionalità", "istruzioni", "presentati"
+        ]
+    ) or user_lower.strip(" ?.!").lower() in [
+        "ciao", "buongiorno", "buonasera", "salve", "ehi", "hey", "help", "aiuto", "info"
+    ]
+    if is_meta_or_help:
+        return None
+
     # 1. Verifica quali documenti sono esplicitamente citati nel testo della risposta dell'assistente
     title_matches = []
     issuer_matches = []
     for d in docs:
         title = (d.get("title") or "").strip().lower()
         issuer = (d.get("issuer") or "").strip().lower()
-        title_words = [w for w in re.split(r"[^\w]+", title) if len(w) > 3 and w not in ITALIAN_STOPWORDS]
-        title_match = (title and title in asst_lower) or (title_words and sum(1 for w in title_words if w in asst_lower) >= max(1, len(title_words) * 0.5))
-        # Supporta numeri/acronimi specifici nel titolo (es. "730", "f24")
-        acronyms = [w for w in re.split(r"[^\w]+", title) if re.search(r"\d+", w) or len(w) in (2, 3)]
+        title_words = [
+            w for w in re.split(r"[^\w]+", title)
+            if len(w) > 3 and w not in ITALIAN_STOPWORDS and not re.match(r"^(?:19|20)\d{2}$", w)
+        ]
+        title_match = (title and re.search(rf"\b{re.escape(title)}\b", asst_lower)) or (
+            title_words and sum(1 for w in title_words if re.search(rf"\b{re.escape(w)}\b", asst_lower)) >= max(1, len(title_words) * 0.5)
+        )
+        # Supporta numeri/acronimi specifici nel titolo (es. "730", "f24", "cu")
+        # Escludi anni a 4 cifre (es. 2024, 2025, 2026) e stopwords italiane (es. "di", "in", "su")
+        acronyms = [
+            w for w in re.split(r"[^\w]+", title)
+            if w not in ITALIAN_STOPWORDS
+            and not re.match(r"^(?:19|20)\d{2}$", w)
+            and (re.search(r"\d+", w) or len(w) in (2, 3))
+        ]
         if not title_match and acronyms:
-            title_match = any(a in asst_lower for a in acronyms if len(a) >= 2)
+            for a in acronyms:
+                if re.search(rf"\b{re.escape(a)}\b", asst_lower):
+                    if re.search(r"\d+", a):
+                        title_match = True
+                        break
+                    elif title_words and any(re.search(rf"\b{re.escape(w)}\b", asst_lower) for w in title_words):
+                        title_match = True
+                        break
+                    elif not title_words:
+                        title_match = True
+                        break
 
-        issuer_match = bool(issuer and len(issuer) > 3 and (issuer in asst_lower))
+        issuer_match = bool(issuer and len(issuer) > 3 and (re.search(rf"\b{re.escape(issuer)}\b", asst_lower)))
         if title_match:
             title_matches.append(d)
         elif issuer_match:
@@ -645,9 +679,12 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
     )
     if is_singular_request and len(docs) > 0:
         top_title = (docs[0].get("title") or "").lower()
-        top_words = [w for w in re.split(r"[^\w]+", top_title) if len(w) > 3 and w not in ITALIAN_STOPWORDS]
+        top_words = [
+            w for w in re.split(r"[^\w]+", top_title)
+            if len(w) > 3 and w not in ITALIAN_STOPWORDS and not re.match(r"^(?:19|20)\d{2}$", w)
+        ]
         user_asks_doc = any(k in user_lower for k in ["document", "file", "bollett", "fattur", "contratt", "certificat", "ricevut", "cedolin", "patente", "carta", "f24", "730", "estratto"])
-        user_mentions_title = any(w in user_lower for w in top_words)
+        user_mentions_title = any(re.search(rf"\b{re.escape(w)}\b", user_lower) for w in top_words)
         if user_mentions_title or user_asks_doc:
             return [docs[0]]
 
@@ -663,8 +700,11 @@ def filter_relevant_documents(docs: Optional[List[dict]], assistant_text: str, u
             d_tit = (d.get("title") or "").lower()
             d_iss = (d.get("issuer") or "").lower()
             d_type = (d.get("doc_type") or "").lower()
-            d_words = [w for w in re.split(r"[^\w]+", f"{d_tit} {d_iss} {d_type}") if len(w) > 2 and w not in ITALIAN_STOPWORDS]
-            if any(w in user_lower or w in asst_lower for w in d_words):
+            d_words = [
+                w for w in re.split(r"[^\w]+", f"{d_tit} {d_iss} {d_type}")
+                if len(w) > 2 and w not in ITALIAN_STOPWORDS and not re.match(r"^(?:19|20)\d{2}$", w)
+            ]
+            if any(re.search(rf"\b{re.escape(w)}\b", user_lower) or re.search(rf"\b{re.escape(w)}\b", asst_lower) for w in d_words):
                 matched_relevant.append(d)
         if matched_relevant:
             if is_singular_request:
@@ -3489,14 +3529,23 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                 documents=c_docs
                             )
 
+                    # Se la richiesta è di aiuto, presentazione o meta, non allegare documenti di default
+                    is_meta_or_help = any(
+                        p in lower_t for p in [
+                            "cosa puoi fare", "cosa sai fare", "chi sei", "come funzioni", "come ti chiami",
+                            "cosa posso chiederti", "a cosa servi", "cosa fai", "spiegami cosa puoi fare",
+                            "aiuto", "help", "funzionalità", "istruzioni", "presentati"
+                        ]
+                    ) or lower_t.strip(" ?.!").lower() in [
+                        "ciao", "buongiorno", "buonasera", "salve", "ehi", "hey", "help", "aiuto", "info"
+                    ]
+
                     # Se il modello ha risposto direttamente senza tool_calls (es. usando la cronologia chat),
-                    # ma l'utente chiedeva un documento o la risposta ne cita uno, recuperiamo e alleghiamo il widget del file!
-                    is_doc_intent = any(k in lower_t for k in [
+                    # ma l'utente chiedeva un documento specifico, recuperiamo e alleghiamo il widget del file!
+                    is_doc_intent = (not is_meta_or_help) and any(k in lower_t for k in [
                         "document", "file", "mutuo", "bollett", "fattur", "contratt", "certificat",
                         "f24", "730", "dichiarazion", "ricevut", "cedolin", "busta paga", "patente", "carta", "estratto",
                         "dammi", "mostra", "apri", "fammi vedere", "scarica", "vedi", "prendi"
-                    ]) or any(k in direct_reply.lower() for k in [
-                        "documento", "estratto conto", "bolletta", "fattura", "certificato", "allegato", "730", "f24"
                     ])
 
                     fallback_docs = None
@@ -3509,11 +3558,11 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             fallback_docs = filter_relevant_documents(f_docs, direct_reply, user_text)
 
                     # Auto-attachment: se la risposta cita documenti presenti nel DB e documents è vuoto o incompleto
-                    if not fallback_docs and (is_doc_intent or is_download_or_show):
+                    if not fallback_docs and not is_meta_or_help and (is_doc_intent or is_download_or_show):
                         all_d = db.query(Document).order_by(Document.created_at.desc()).all()
                         found_in_text = []
                         for d in all_d:
-                            if d.title and len(d.title) >= 3 and d.title.lower() in direct_reply.lower():
+                            if d.title and len(d.title) >= 4 and re.search(rf"\b{re.escape(d.title.lower())}\b", direct_reply.lower()):
                                 fn = Path(d.file_path).name if d.file_path else ""
                                 found_in_text.append({
                                     "id": d.id, "document_id": d.id, "thread_id": d.thread_id,
