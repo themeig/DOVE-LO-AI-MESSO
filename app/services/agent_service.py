@@ -465,14 +465,16 @@ IDENTITÀ, AMBIENTE OPERATIVO E INTERFACCIA UTENTE (DOVE SEI E COME FUNZIONI):
      * [👁️ Vedi]: apre l'anteprima istantanea a schermo intero del documento.
      * [⬇️ Scarica]: scarica direttamente il file originale sul dispositivo (computer o smartphone) dell'utente.
 
-3. COSA DEVI FARE (OBBLIGHI E REGOLE TASSATIVE - NLU PROATTIVA & RIDUZIONE DEI PASSAGGI):
-   - QUANDO L'UTENTE CHIEDE DOCUMENTI, VUOLE VEDERLI O SCARICARLI (es. "dammi i documenti di identità", "mostrami la tessera", "voglio fare il download", "scarica", "scaricali", "entrambi"):
-     DEVI SEMPRE E SUBITO INVOCARE `show_document_card` O ALLEGARE TUTTE LE SCHEDE!
-   - PROATTIVITÀ MULTI-SCHEDA (DIVIETO DI CONFERME INUTILI): Se una ricerca (`search_vault`) o richiesta restituisce un numero limitato di risultati altamente pertinenti (es. 2-3 documenti come Tessera Sanitaria e Ricevuta per l'identificazione), DEVI INVOCARE `show_document_card` PER TUTTI I RISULTATI IN AUTOMATICO.
-   - DIVIETO ASSOLUTO DI CHIEDERE IL PERMESSO O FARE DOMANDE SUPERFLUE: MAI chiedere "Quale vuoi?", "Quale preferisci?", "Desideri che ti mostri la scheda di uno in particolare?", "Quale desideri scaricare?". Questo aggiunge passaggi inutili e contrari all'esperienza d'uso. MOSTRA SUBITO LE SCHEDE DI TUTTI I DOCUMENTI PERTINENTI!
-   - GESTIONE COLLETTIVA DI "SCARICALI", "ENTRAMBI", "TUTTI E DUE", "TUTTI", "SI DI ENTRAMBI": Se l'utente dice "scaricali", "scaricale", "scaricalo", "entrambi", "tutti e due", "tutti", "mostrali tutti", "download" subito dopo che hai elencato dei documenti, capisci immediatamente che si riferisce a TUTTI quelli appena menzionati e mostra le schede per tutti contemporaneamente!
-   - DIVIETO ASSOLUTO DI DIRE "dovrai farlo singolarmente": l'interfaccia supporta l'invio contemporaneo di 2, 3 o più schede contemporaneamente con il rispettivo pulsante di download su ciascuna!
-   - DIVIETO ASSOLUTO DI RISPONDERE SOLO A PAROLE: l'utente NON può cliccare sulle tue frasi per scaricare un file. Ha bisogno della CARD GRAFICA con il pulsante [Scarica]!
+3. GESTIONE DELLE SCHEDE DOCUMENTO (NESSUN AUTOMATISMO, DECIDI TU IN AUTONOMIA SE HA SENSO):
+   - DECIDI TU IN AUTONOMIA QUANDO HA SENSO MOSTRARE I WIDGET / SCHEDE: Spetta a te valutare se il contesto richiede di mostrare le schede documento interattive (`show_document_card`) oppure no. Non esistono automatismi.
+   - QUANDO HA SENSO MOSTRARE LE SCHEDE:
+     * Quando l'utente chiede esplicitamente di trovare, vedere, aprire o scaricare uno o più documenti (es. "dammi la bolletta Enel", "mostrami la tessera sanitaria", "scarica il 730", "cerca il contratto", "scaricali entrambi", "download").
+     * In questi casi, invoca subito `show_document_card` con tutti i documenti pertinenti, senza chiedere conferme superflue come "vuoi che ti mostri la scheda?".
+     * Gestione collettiva di "scaricali", "entrambi", "tutti e due", "tutti": mostra le schede per tutti contemporaneamente senza dire "devi farlo singolarmente".
+   - QUANDO NON HA SENSO E NON DEVI MAI MOSTRARE SCHEDE O WIDGET:
+     * Domande generali, informative, meta o di aiuto sulle tue capacità (es. "cosa puoi fare?", "chi sei?", "cosa sai fare?", "come funzioni?", "aiuto", saluti, spiegazioni generali).
+     * Quando citi documenti, ricevute o bollette solo come ESEMPIO descrittivo per illustrare le tue funzionalità: NON chiamare MAI `show_document_card` e NON allegare schede!
+     * Domande relative alla posizione di oggetti fisici (es. "dove sono le chiavi?", "dov'è la collana?").
 
 REGOLE OPERATIVE:
 0. PRIMATO ASSOLUTO DEL DATABASE SULLA CHAT (DATI REALI > CONTESTO):
@@ -3270,10 +3272,18 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                 if n_title and n_title.lower() not in final_text.lower():
                                     final_text = f"✅ Ho rinominato il file in '**{n_title}**'!\n{final_text}"
 
-                        # Sanitizzazione anti-esitazione e proattività NLU:
+                        # Sanitizzazione anti-esitazione:
                         final_text = re.sub(r"per scaricare entrambi i documenti,?\s*dovrai farlo singolarmente\.?", "", final_text, flags=re.IGNORECASE).strip()
+                        is_meta_or_help = any(
+                            p in user_text.lower() for p in [
+                                "cosa puoi fare", "cosa sai fare", "chi sei", "come funzioni", "come ti chiami",
+                                "cosa posso chiederti", "a cosa servi", "cosa fai", "spiegami cosa puoi fare",
+                                "aiuto", "help", "funzionalità", "istruzioni", "presentati"
+                            ]
+                        ) or user_text.strip(" ?.!").lower() in ["ciao", "buongiorno", "buonasera", "salve", "ehi", "hey", "help", "aiuto", "info"]
+
                         hesitation_pattern = r"(?:desideri\s+che\s+ti\s+mostri\s+la\s+scheda\s+di\s+uno\s+(?:di\s+questi\s+documenti\s+)?in\s+particolare\??|quale\s+(?:di\s+questi\s+)?(?:vuoi|desideri|preferisci)\s*(?:vedere|scaricare|aprire)?\??|vuoi\s+che\s+ti\s+mostri\s+la\s+scheda\??|quale\s+vuoi\??|quale\s+preferisci\??)"
-                        if docs_found and len(docs_found) > 0 and re.search(hesitation_pattern, final_text, flags=re.IGNORECASE):
+                        if not is_meta_or_help and docs_found and len(docs_found) > 0 and re.search(hesitation_pattern, final_text, flags=re.IGNORECASE):
                             final_text = re.sub(
                                 hesitation_pattern,
                                 "Ecco le schede con i pulsanti 'Vedi' e 'Scarica' per ciascun documento qui sotto! ⬇️",
@@ -3283,10 +3293,14 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             filtered_docs = docs_found[:4]
                             tool_action = "show_document_card"
 
+                        # Niente automatismi: se il modello ha chiamato show_document_card, allega le schede.
+                        # Se ha chiamato search_vault, allega solo se l'utente chiedeva documenti specifici ed erano pertinenti.
                         if tool_action == "show_document_card":
                             filtered_docs = docs_found
-                        else:
+                        elif tool_action == "search_vault":
                             filtered_docs = filter_relevant_documents(docs_found, final_text, user_text)
+                        else:
+                            filtered_docs = None
 
                         conf_box = None
                         if isinstance(tool_data, dict) and "confirmation" in tool_data:
@@ -3529,59 +3543,14 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                 documents=c_docs
                             )
 
-                    # Se la richiesta è di aiuto, presentazione o meta, non allegare documenti di default
-                    is_meta_or_help = any(
-                        p in lower_t for p in [
-                            "cosa puoi fare", "cosa sai fare", "chi sei", "come funzioni", "come ti chiami",
-                            "cosa posso chiederti", "a cosa servi", "cosa fai", "spiegami cosa puoi fare",
-                            "aiuto", "help", "funzionalità", "istruzioni", "presentati"
-                        ]
-                    ) or lower_t.strip(" ?.!").lower() in [
-                        "ciao", "buongiorno", "buonasera", "salve", "ehi", "hey", "help", "aiuto", "info"
-                    ]
-
-                    # Se il modello ha risposto direttamente senza tool_calls (es. usando la cronologia chat),
-                    # ma l'utente chiedeva un documento specifico, recuperiamo e alleghiamo il widget del file!
-                    is_doc_intent = (not is_meta_or_help) and any(k in lower_t for k in [
-                        "document", "file", "mutuo", "bollett", "fattur", "contratt", "certificat",
-                        "f24", "730", "dichiarazion", "ricevut", "cedolin", "busta paga", "patente", "carta", "estratto",
-                        "dammi", "mostra", "apri", "fammi vedere", "scarica", "vedi", "prendi"
-                    ])
-
-                    fallback_docs = None
-                    s_res = None
-                    is_list_query = any(k in lower_t for k in ["elenc", "lista", "tutti", "tutte", "quali", "cosa c'è", "cosa hai", "tutto il", "archivio"])
-                    if is_doc_intent and not is_list_query:
-                        s_res = self.execute_tool("search_vault", {"query": user_text}, db=db, thread_id=thread_id)
-                        f_docs = s_res.get("found_documents", [])
-                        if f_docs:
-                            fallback_docs = filter_relevant_documents(f_docs, direct_reply, user_text)
-
-                    # Auto-attachment: se la risposta cita documenti presenti nel DB e documents è vuoto o incompleto
-                    if not fallback_docs and not is_meta_or_help and (is_doc_intent or is_download_or_show):
-                        all_d = db.query(Document).order_by(Document.created_at.desc()).all()
-                        found_in_text = []
-                        for d in all_d:
-                            if d.title and len(d.title) >= 4 and re.search(rf"\b{re.escape(d.title.lower())}\b", direct_reply.lower()):
-                                fn = Path(d.file_path).name if d.file_path else ""
-                                found_in_text.append({
-                                    "id": d.id, "document_id": d.id, "thread_id": d.thread_id,
-                                    "title": d.title, "issuer": d.issuer, "amount": d.amount,
-                                    "due_date": d.due_date.isoformat() if d.due_date else None,
-                                    "summary": d.summary, "doc_type": d.doc_type, "status": d.status,
-                                    "file_url": f"/uploads/{fn}" if fn else None,
-                                    "download_url": f"/api/documents/{d.id}/download", "file_type": d.file_type
-                                })
-                        if found_in_text:
-                            fallback_docs = found_in_text
-
-                    direct_clean = re.sub(r"\[(?:Link per scaricare|Scarica|Download)[^\]]*\]", "la scheda allegata qui sotto", direct_reply, flags=re.IGNORECASE)
-                    direct_clean = re.sub(r"per scaricare entrambi i documenti,?\s*dovrai farlo singolarmente\.?", "", direct_clean, flags=re.IGNORECASE).strip()
+                    # Se il modello ha risposto direttamente con testo senza chiamare strumenti:
+                    # NIENTE AUTOMATISMI: l'assistente ha scelto autonomamente di rispondere con testo.
+                    direct_clean = (direct_reply or "").strip()
                     return ChatResponse(
                         reply=direct_clean,
-                        action="search_vault" if fallback_docs else "REPLY",
-                        data=s_res if fallback_docs else None,
-                        documents=fallback_docs
+                        action="REPLY",
+                        data=None,
+                        documents=None
                     )
 
         except Exception as e:
