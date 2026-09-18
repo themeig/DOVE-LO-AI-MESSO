@@ -4048,13 +4048,14 @@
           const renderDocCardHtml = (doc) => {
             try {
               const isPdf = (doc.file_type && doc.file_type.includes('pdf')) || (doc.file_url && doc.file_url.toLowerCase().endsWith('.pdf'));
-              const iconClass = isPdf ? 'fa-solid fa-file-pdf text-red-600' : 'fa-solid fa-file-lines text-blue-600';
-              const iconBg = isPdf ? 'bg-red-50' : 'bg-blue-50';
+              const isZip = (doc.file_type && doc.file_type.includes('zip')) || (doc.file_url && doc.file_url.toLowerCase().endsWith('.zip')) || (doc.title && doc.title.toLowerCase().endsWith('.zip'));
+              const iconClass = isPdf ? 'fa-solid fa-file-pdf text-red-600' : (isZip ? 'fa-solid fa-file-zipper text-amber-600' : 'fa-solid fa-file-lines text-blue-600');
+              const iconBg = isPdf ? 'bg-red-50' : (isZip ? 'bg-amber-50' : 'bg-blue-50');
               const title = escapeHtml(doc.title || 'Documento');
               const issuer = escapeHtml(doc.issuer || 'Ente / Mittente');
               const summary = doc.summary || '';
               const url = doc.file_url || '';
-              const fileType = doc.file_type || (isPdf ? 'application/pdf' : 'image');
+              const fileType = doc.file_type || (isPdf ? 'application/pdf' : (isZip ? 'zip' : 'image'));
               const docId = doc.document_id || doc.id;
               const docItem = doc;
               const downloadUrl = doc.download_url || (docId ? `/api/documents/${docId}/download` : url);
@@ -6293,46 +6294,43 @@
       pdfFrame.src = '';
       imgPreview.classList.add('hidden');
       imgPreview.src = '';
+      imgPreview.onerror = null;
       if (officePreview) officePreview.classList.add('hidden');
       if (officeContent) officeContent.innerHTML = '';
       fallback.classList.add('hidden');
 
       const lowerType = (fileType || '').toLowerCase();
       const lowerUrl = (url || '').toLowerCase();
+      const cleanUrl = lowerUrl.split('?')[0];
       const lowerTitle = (safeTitle || '').toLowerCase();
 
-      const isPdf = lowerType.includes('pdf') || lowerUrl.endsWith('.pdf');
-      const isImg = lowerType.includes('image') || lowerType.includes('png') || lowerType.includes('jpg') || lowerType.includes('jpeg') || lowerType.includes('webp') || /\.(png|jpe?g|webp|gif)$/i.test(lowerUrl);
-      const isZip = lowerType.includes('zip') || lowerUrl.endsWith('.zip') || lowerTitle.endsWith('.zip');
-      const isOffice = lowerType.includes('officedocument') ||
-                       lowerType.includes('excel') ||
-                       lowerType.includes('word') ||
-                       lowerType.includes('sheet') ||
-                       lowerType.includes('spreadsheet') ||
-                       lowerType.includes('csv') ||
-                       /\.(xlsx?|xlsm|docx?|csv|tsv|txt|json|md)$/i.test(lowerUrl) ||
-                       /\.(xlsx?|xlsm|docx?|csv|tsv)$/i.test(lowerTitle);
-
-      imgPreview.onerror = function() {
-        sendUITelemetry('MEDIA_PREVIEW_ERROR', {
-          title: safeTitle,
-          error_details: `Impossibile caricare anteprima immagine per '${safeTitle}' da ${url}`
-        });
-        imgPreview.classList.add('hidden');
-        fallback.classList.remove('hidden');
-        subtitleEl.textContent = "Errore anteprima - Usa il pulsante Scarica in alto";
-      };
+      const isZip = lowerType.includes('zip') || cleanUrl.endsWith('.zip') || lowerTitle.endsWith('.zip');
+      const isPdf = !isZip && (lowerType.includes('pdf') || cleanUrl.endsWith('.pdf') || lowerTitle.endsWith('.pdf'));
+      const isOffice = !isZip && !isPdf && (
+        lowerType.includes('officedocument') ||
+        lowerType.includes('excel') ||
+        lowerType.includes('word') ||
+        lowerType.includes('sheet') ||
+        lowerType.includes('spreadsheet') ||
+        lowerType.includes('csv') ||
+        /\.(xlsx?|xlsm|docx?|csv|tsv|txt|json|md)$/i.test(cleanUrl) ||
+        /\.(xlsx?|xlsm|docx?|csv|tsv)$/i.test(lowerTitle)
+      );
+      const isImg = !isZip && !isPdf && !isOffice && (
+        lowerType.includes('image') ||
+        lowerType.includes('png') ||
+        lowerType.includes('jpg') ||
+        lowerType.includes('jpeg') ||
+        lowerType.includes('webp') ||
+        /\.(png|jpe?g|webp|gif|svg)$/i.test(cleanUrl)
+      );
 
       if (isPdf) {
         subtitleEl.textContent = "Documento PDF protetto";
         pdfFrame.src = url;
         pdfFrame.classList.remove('hidden');
-      } else if (isImg) {
-        subtitleEl.textContent = "Immagine / Scansione";
-        imgPreview.src = url;
-        imgPreview.classList.remove('hidden');
-      } else if (isOffice || isZip) {
-        const isExcel = /\.(xlsx?|xlsm|csv|tsv)$/i.test(lowerUrl) || /\.(xlsx?|xlsm|csv|tsv)$/i.test(lowerTitle) || lowerType.includes('excel') || lowerType.includes('sheet') || lowerType.includes('spreadsheet');
+      } else if (isZip || isOffice) {
+        const isExcel = /\.(xlsx?|xlsm|csv|tsv)$/i.test(cleanUrl) || /\.(xlsx?|xlsm|csv|tsv)$/i.test(lowerTitle) || lowerType.includes('excel') || lowerType.includes('sheet') || lowerType.includes('spreadsheet');
         if (isZip) {
           subtitleEl.textContent = "Archivio compresso ZIP";
         } else if (isExcel) {
@@ -6342,6 +6340,7 @@
         }
         if (officePreview && officeContent) {
           officePreview.classList.remove('hidden');
+          fallback.classList.add('hidden');
           officeContent.innerHTML = `
             <div class="flex flex-col items-center justify-center p-12 text-slate-500 gap-3">
               <i class="fa-solid fa-circle-notch fa-spin text-2xl text-[#128C7E]"></i>
@@ -6354,8 +6353,12 @@
               return res.json();
             })
             .then(data => {
+              fallback.classList.add('hidden');
               if (data.html_content) {
                 officeContent.innerHTML = data.html_content;
+                if (isZip && data.file_count != null) {
+                  subtitleEl.textContent = `Archivio compresso ZIP (${data.file_count} file)`;
+                }
               } else {
                 officeContent.innerHTML = `
                   <div class="p-8 text-center text-slate-500">
@@ -6367,6 +6370,7 @@
             })
             .catch(err => {
               console.warn("Errore caricamento anteprima:", err);
+              fallback.classList.add('hidden');
               officeContent.innerHTML = `
                 <div class="p-8 text-center text-slate-500">
                   <i class="fa-solid fa-triangle-exclamation text-amber-500 text-2xl mb-2"></i>
@@ -6379,6 +6383,19 @@
               `;
             });
         }
+      } else if (isImg) {
+        subtitleEl.textContent = "Immagine / Scansione";
+        imgPreview.onerror = function() {
+          sendUITelemetry('MEDIA_PREVIEW_ERROR', {
+            title: safeTitle,
+            error_details: `Impossibile caricare anteprima immagine per '${safeTitle}' da ${url}`
+          });
+          imgPreview.classList.add('hidden');
+          fallback.classList.remove('hidden');
+          subtitleEl.textContent = "Errore anteprima - Usa il pulsante Scarica in alto";
+        };
+        imgPreview.src = url;
+        imgPreview.classList.remove('hidden');
       } else if (url) {
         subtitleEl.textContent = "Visualizzazione file";
         pdfFrame.src = url;
