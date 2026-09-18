@@ -181,6 +181,7 @@ def render_office_file_to_html(file_bytes: bytes, filename: str) -> dict:
     is_xls = fn.endswith(".xls")
     is_csv = fn.endswith((".csv", ".tsv"))
     is_txt = fn.endswith((".txt", ".md", ".json", ".xml", ".log", ".yaml", ".yml"))
+    is_zip = fn.endswith(".zip") or ("zip" in fn and not (is_docx or is_xlsx))
 
     # Se archivio zip non marcato, controlla se ha cartella xl/ o word/
     if not (is_docx or is_xlsx or is_xls or is_csv or is_txt) and file_bytes.startswith(b"PK\x03\x04"):
@@ -191,6 +192,8 @@ def render_office_file_to_html(file_bytes: bytes, filename: str) -> dict:
                     is_xlsx = True
                 elif any(n.startswith("word/") for n in names):
                     is_docx = True
+                else:
+                    is_zip = True
         except Exception:
             pass
 
@@ -429,7 +432,120 @@ def render_office_file_to_html(file_bytes: bytes, filename: str) -> dict:
             "error": None
         }
 
-    # C. FILE DI TESTO GENERICO (.txt, .md, .json, .xml)
+    # C. ARCHIVI COMPRESSI ZIP (.zip)
+    elif is_zip:
+        zip_entries = []
+        total_uncompressed_size = 0
+        try:
+            with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as zf:
+                for info in zf.infolist():
+                    if info.is_dir() or "__MACOSX" in info.filename or Path(info.filename).name.startswith("."):
+                        continue
+                    fname = Path(info.filename).name
+                    fext = Path(fname).suffix.lstrip(".").lower()
+                    size_kb = max(1, round(info.file_size / 1024))
+                    total_uncompressed_size += info.file_size
+
+                    if fext == "pdf":
+                        icon = "fa-solid fa-file-pdf text-red-500"
+                        bg_icon = "bg-red-50"
+                    elif fext in ["xlsx", "xls", "csv"]:
+                        icon = "fa-solid fa-file-excel text-emerald-600"
+                        bg_icon = "bg-emerald-50"
+                    elif fext in ["docx", "doc"]:
+                        icon = "fa-solid fa-file-word text-blue-600"
+                        bg_icon = "bg-blue-50"
+                    elif fext in ["jpg", "jpeg", "png", "webp", "gif"]:
+                        icon = "fa-solid fa-file-image text-purple-600"
+                        bg_icon = "bg-purple-50"
+                    elif fext in ["mp3", "wav", "m4a"]:
+                        icon = "fa-solid fa-file-audio text-amber-500"
+                        bg_icon = "bg-amber-50"
+                    else:
+                        icon = "fa-regular fa-file-lines text-slate-500"
+                        bg_icon = "bg-slate-100"
+
+                    zip_entries.append({
+                        "name": fname,
+                        "path": info.filename,
+                        "size_bytes": info.file_size,
+                        "size_kb": size_kb,
+                        "ext": fext,
+                        "icon": icon,
+                        "bg_icon": bg_icon
+                    })
+        except Exception as z_err:
+            logger.error(f"Errore lettura archivio zip {filename}: {z_err}")
+
+        total_mb = f"{total_uncompressed_size / (1024 * 1024):.1f} MB" if total_uncompressed_size > 1024 * 1024 else f"{max(1, round(total_uncompressed_size / 1024))} KB"
+
+        entries_html = []
+        for e in zip_entries:
+            entries_html.append(f"""
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100/90 border border-slate-200/80 transition">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-8 h-8 rounded-lg {e['bg_icon']} flex items-center justify-center shrink-0">
+                        <i class="{e['icon']} text-sm"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold text-slate-800 truncate" title="{html.escape(e['path'])}">{html.escape(e['name'])}</p>
+                        <p class="text-[10px] text-slate-400 font-mono">{e['ext'].upper()} • {e['size_kb']} KB</p>
+                    </div>
+                </div>
+            </div>
+            """)
+
+        zip_html = f"""
+        <div class="max-w-3xl mx-auto bg-white p-5 sm:p-7 rounded-xl border border-slate-200 shadow-2xs space-y-4 font-sans overflow-auto max-h-[68vh]">
+            <!-- Header Archivio -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-lg shadow-2xs">
+                        <i class="fa-solid fa-file-zipper"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-900">{html.escape(filename)}</h2>
+                        <p class="text-[11px] text-slate-500">Archivio compresso ZIP • <strong>{len(zip_entries)} file</strong> ({total_mb})</p>
+                    </div>
+                </div>
+                <!-- Pulsante Azione Decomprimi ed Estrai -->
+                <button type="button" onclick="unzipCurrentModalArchive()" class="px-4 py-2 bg-[#075E54] hover:bg-[#128C7E] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition active:scale-95 cursor-pointer shrink-0">
+                    <i class="fa-solid fa-bolt text-amber-300"></i>
+                    <span>Estrai tutti i file nel Caveau</span>
+                </button>
+            </div>
+
+            <!-- Banner Informativo -->
+            <div class="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl flex items-start gap-2.5 text-xs text-amber-900">
+                <i class="fa-solid fa-circle-info text-amber-600 mt-0.5 shrink-0"></i>
+                <div class="leading-relaxed">
+                    Puoi estrarre automaticamente tutti i file contenuti in questo archivio: l'AI analizzerà ed indicizzerà ciascun documento, bolletta o immagine singolarmente.
+                </div>
+            </div>
+
+            <!-- Elenco File Contenuti -->
+            <div class="space-y-2">
+                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">File contenuti nell'archivio ({len(zip_entries)})</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[42vh] overflow-y-auto pr-1">
+                    {"".join(entries_html) if entries_html else '<p class="text-slate-400 italic text-xs col-span-2 p-4 text-center">Nessun file trovato nell\'archivio.</p>'}
+                </div>
+            </div>
+        </div>
+        """
+
+        return {
+            "success": True,
+            "format": "zip",
+            "filename": filename,
+            "title": clean_title,
+            "file_count": len(zip_entries),
+            "files": zip_entries,
+            "sheets": [],
+            "html_content": zip_html,
+            "error": None
+        }
+
+    # D. FILE DI TESTO GENERICO (.txt, .md, .json, .xml)
     else:
         raw_text = extract_text_from_office_file(file_bytes, filename)
         safe_text = html.escape(raw_text) if raw_text else "File vuoto o formato non testuale."
@@ -560,26 +676,6 @@ def create_zip_from_documents(
 
     return zip_doc
 
-
-def unzip_document_to_vault(
-    db: Session,
-    document_id: Optional[int] = None,
-    document_title: Optional[str] = None,
-    thread_id: str = "general"
-) -> List[Document]:
-    """
-    Estrae tutti i file contenuti all'interno di un documento ZIP del caveau,
-    analizza ciascun file con l'AI e registra i nuovi documenti nel database.
-    """
-    doc = None
-    if document_id:
-        doc = db.query(Document).filter(Document.id == document_id).first()
-    elif document_title:
-        term = document_title.strip().lower()
-        all_zips = db.query(Document).filter(
-            or_(Document.file_type == "zip", Document.doc_type == "archivio_zip")
-        ).all()
-        doc = next((d for d in all_zips if term in (d.title or "").lower() or term in (d.summary or "").lower()), None)
 
 def fast_extract_document_metadata(file_bytes: bytes, filename: str, mime_type: str = "") -> ExtractedDocument:
     """

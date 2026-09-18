@@ -54,6 +54,14 @@ def create_dummy_csv() -> bytes:
     return content.encode("utf-8")
 
 
+def create_dummy_zip() -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("fattura_fornitore.txt", "Fattura numero 104 per consulenza software importo 1200 euro scadenza 2026-11-30")
+        zf.writestr("riassunto_spese.csv", "Descrizione,Importo\nInternet,50\nCancelleria,25\n")
+    return buf.getvalue()
+
+
 def test_office_extraction_docx():
     """Test estrazione testo da documento Word (.docx)."""
     docx_bytes = create_dummy_docx()
@@ -311,5 +319,74 @@ def test_office_extraction_and_rendering_xls_legacy():
         assert rendered["format"] == "excel"
         assert "Affitto Ufficio" in rendered["html_content"]
         assert "Spese Legacy" in rendered["sheets"][0]["name"]
+
+
+def test_render_office_file_to_html_zip():
+    """Verifica il rendering dell'anteprima esplorabile per archivi ZIP."""
+    zip_bytes = create_dummy_zip()
+    res = render_office_file_to_html(zip_bytes, "documenti_progetto.zip")
+    assert res["success"] is True
+    assert res["format"] == "zip"
+    assert res["file_count"] == 2
+    assert "fattura_fornitore.txt" in res["html_content"]
+    assert "riassunto_spese.csv" in res["html_content"]
+    assert "unzipCurrentModalArchive()" in res["html_content"]
+    assert "Estrai tutti i file nel Caveau" in res["html_content"]
+
+
+def test_unzip_document_endpoint_post():
+    """Verifica gli endpoint REST POST /api/documents/{document_id}/unzip e POST /api/documents/unzip."""
+    zip_bytes = create_dummy_zip()
+    res_up = client.post(
+        "/api/documents/upload",
+        files={"file": ("archivio_da_scompattare.zip", io.BytesIO(zip_bytes), "application/zip")},
+        data={"thread_id": "general"}
+    )
+    assert res_up.status_code == 201
+    zip_id = res_up.json()["document_id"]
+
+    # 1. Unzip via POST /{document_id}/unzip
+    res_unzip = client.post(f"/api/documents/{zip_id}/unzip")
+    assert res_unzip.status_code == 200
+    data = res_unzip.json()
+    assert data["success"] is True
+    assert data["count"] == 2
+    assert len(data["documents"]) == 2
+    doc_titles = [d["title"] for d in data["documents"]]
+    assert any("fattura" in t.lower() for t in doc_titles)
+    assert any("spese" in t.lower() or "riassunto" in t.lower() for t in doc_titles)
+
+    # 2. Verifica che i documenti estratti abbiano un download url valido
+    first_id = data["documents"][0]["id"]
+    res_dl = client.get(f"/api/documents/{first_id}/download")
+    assert res_dl.status_code == 200
+    assert len(res_dl.content) > 0
+
+
+def test_chat_unzip_turn_interception():
+    """Verifica che l'assistente riconosca i comandi conversazionali di scompattamento ZIP."""
+    from app.models.database import get_db
+    get_db_func = app.dependency_overrides.get(get_db, get_db)
+    db = next(get_db_func())
+    try:
+        zip_bytes = create_dummy_zip()
+        res_up = client.post(
+            "/api/documents/upload",
+            files={"file": ("archivio_chat_test.zip", io.BytesIO(zip_bytes), "application/zip")},
+            data={"thread_id": "chat_unzip_test"}
+        )
+        assert res_up.status_code == 201
+
+        agent = AgenticChatService()
+        turn_res = agent.run_turn(
+            user_text="scompatta lo zip per favore",
+            db=db,
+            thread_id="chat_unzip_test"
+        )
+        assert "scompattato" in turn_res.reply.lower() or "estratti" in turn_res.reply.lower()
+        assert turn_res.documents is not None
+        assert len(turn_res.documents) >= 2
+    finally:
+        db.close()
 
 

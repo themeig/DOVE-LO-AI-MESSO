@@ -2456,6 +2456,64 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         if del_resp:
             return del_resp
 
+        # Intercetta immediatamente richieste di scompattazione / estrazione archivi ZIP
+        is_unzip_phrase = any(k in lower_t for k in [
+            "scompatta", "scompattami", "scompattalo", "scompattare",
+            "decomprimi", "decomprimimi", "decomprimilo", "decomprimere",
+            "unzip", "fai l'unzip", "fai unzip",
+            "estrai lo zip", "estrai l'archivio", "estrai archivio", "estrai i file dallo zip", "estrai tutti i file dallo zip"
+        ])
+        if is_unzip_phrase:
+            from app.services.archive_service import unzip_document_to_vault
+            m_id = re.search(r"\b(?:id\s*[:=]?\s*|numero\s+)?(\d+)\b", lower_t)
+            target_id = int(m_id.group(1)) if m_id else None
+            m_name = re.search(r"[\"']([a-zA-Z0-9_\-.]+\.zip)[\"']", lower_t)
+            target_name = m_name.group(1) if m_name else None
+
+            extracted = unzip_document_to_vault(
+                db=db,
+                document_id=target_id,
+                document_title=target_name,
+                thread_id=thread_id
+            )
+            if extracted:
+                lines = [f"- 📄 **{d.title}** ({d.doc_type})" for d in extracted[:8]]
+                more_str = f"\n... ed altri {len(extracted) - 8} documenti" if len(extracted) > 8 else ""
+                reply = (
+                    f"⚡ Ho scompattato con successo l'archivio ed estratto **{len(extracted)} nuovi documenti** nel caveau:\n\n"
+                    + "\n".join(lines) + more_str +
+                    "\n\nPuoi visualizzarli con il pulsante 'Vedi' o scaricarli direttamente nelle schede sottostanti! ⬇️"
+                )
+                docs_info = [
+                    {
+                        "id": d.id,
+                        "document_id": d.id,
+                        "title": d.title,
+                        "issuer": d.issuer,
+                        "doc_type": d.doc_type,
+                        "amount": d.amount,
+                        "due_date": d.due_date.isoformat() if d.due_date else None,
+                        "status": d.status,
+                        "summary": d.summary,
+                        "file_url": f"/uploads/{Path(d.file_path).name}" if d.file_path else None,
+                        "download_url": f"/api/documents/{d.id}/download",
+                        "file_type": d.file_type
+                    }
+                    for d in extracted
+                ]
+                return ChatResponse(
+                    reply=reply,
+                    action="show_document_card",
+                    data={"extracted_count": len(extracted), "documents": docs_info},
+                    documents=docs_info
+                )
+            else:
+                return ChatResponse(
+                    reply="⚠️ Non ho trovato alcun archivio ZIP nel caveau da decomprimere, oppure l'archivio non contiene file validi. Puoi caricare un file .zip con l'icona della graffetta 📎 in basso!",
+                    action="unzip_vault_archive",
+                    data={"success": False}
+                )
+
         # Rileva se si tratta di una richiesta esplicita di lista o elenco
         is_listing_phrase = any(k in lower_t for k in [
             "lista", "elenco", "elencami", "quali documenti", "quali oggetti",

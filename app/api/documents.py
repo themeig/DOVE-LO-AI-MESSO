@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.models.database import get_db, Document, ChatMessage, GoogleDriveCredential, get_app_setting
-from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDeleteResponse
+from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDeleteResponse, UnzipVaultRequest
 from app.services.ai_service import get_ai_service
 from app.services.document_service import save_uploaded_file, read_decrypted_file
 from app.services.drive_service import get_drive_service, resolve_drive_folder_path
@@ -111,10 +111,17 @@ async def upload_document(
     db.refresh(doc)
 
     is_payable = (doc.amount is not None) and (doc.doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"])
+    is_zip = doc.file_type == "zip" or doc.doc_type == "archivio_zip" or filename.lower().endswith(".zip")
     if is_payable:
         amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
         due_str = f" con scadenza {doc.due_date.strftime('%d/%m/%Y')}" if doc.due_date else ""
         chat_reply = f"📄 Ho registrato la bolletta/scadenza: {doc.title}{amount_str}{due_str}."
+    elif is_zip:
+        chat_reply = (
+            f"📦 Ho archiviato l'archivio compresso: **{doc.title}**.\n"
+            f"💡 {doc.summary}\n\n"
+            f"⚡ *Vuoi che lo scompatti per te per analizzare e registrare singolarmente ogni documento? Clicca su **'Estrai'** qui sotto oppure dimmi 'scompatta lo zip'!*"
+        )
     else:
         should_ask_rename = doc.doc_type in ["foto", "foto_oggetto", "oggetto_fisico", "screenshot", "generico"]
         if should_ask_rename:
@@ -317,6 +324,112 @@ def get_document_preview_content(
     from app.services.archive_service import render_office_file_to_html
     preview_data = render_office_file_to_html(file_bytes, target_filename)
     return preview_data
+
+def _handle_unzip_vault_document(
+    target_id: Optional[int],
+    file_url: Optional[str],
+    thread_id: Optional[str],
+    db: Session
+):
+    from app.services.archive_service import unzip_document_to_vault
+    target_doc = None
+    if target_id:
+        target_doc = db.query(Document).filter(Document.id == target_id).first()
+    if not target_doc and file_url:
+        raw_name = file_url.split("?")[0].split("/")[-1]
+        target_doc = db.query(Document).filter(Document.file_path.like(f"%{raw_name}%")).first()
+
+    if not target_doc:
+        # Prendi l'ultimo archivio ZIP presente nel thread
+        q = db.query(Document).filter(
+            (Document.file_type == "zip") | (Document.doc_type == "archivio_zip")
+        )
+        if thread_id and thread_id not in ["general", "all"]:
+            q = q.filter(Document.thread_id == thread_id)
+        target_doc = q.order_by(Document.id.desc()).first()
+
+    if not target_doc:
+        raise HTTPException(status_code=404, detail="Nessun archivio ZIP trovato nel caveau da decomprimere")
+
+    effective_thread = thread_id or target_doc.thread_id or "general"
+    extracted_docs = unzip_document_to_vault(
+        db=db,
+        document_id=target_doc.id,
+        thread_id=effective_thread
+    )
+
+    if not extracted_docs:
+        raise HTTPException(status_code=400, detail="Impossibile estrarre l'archivio ZIP o nessun file valido trovato all'interno.")
+
+    doc_lines = [f"- 📄 **{d.title}** ({d.doc_type})" for d in extracted_docs[:6]]
+    more_str = f"\n... ed altri {len(extracted_docs) - 6} documenti" if len(extracted_docs) > 6 else ""
+    chat_content = (
+        f"⚡ Ho scompattato con successo l'archivio **{target_doc.title}**!\n"
+        f"Sono stati catalogati ed estratti **{len(extracted_docs)} nuovi documenti** nel caveau:\n\n"
+        + "\n".join(doc_lines) + more_str +
+        "\n\nTutti i documenti sono ora visualizzabili e scaricabili singolarmente."
+    )
+
+    extracted_ids = [d.id for d in extracted_docs]
+    meta_json = json.dumps({"document_ids": extracted_ids, "unzipped_from_id": target_doc.id})
+
+    asst_msg = ChatMessage(
+        thread_id=effective_thread,
+        sender="assistant",
+        message_type="document",
+        content=chat_content,
+        metadata_json=meta_json
+    )
+    db.add(asst_msg)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Estratti con successo {len(extracted_docs)} documenti dall'archivio ZIP",
+        "archive_id": target_doc.id,
+        "archive_title": target_doc.title,
+        "count": len(extracted_docs),
+        "documents": [
+            {
+                "id": d.id,
+                "document_id": d.id,
+                "title": d.title,
+                "doc_type": d.doc_type,
+                "issuer": d.issuer,
+                "amount": d.amount,
+                "due_date": d.due_date.isoformat() if d.due_date else None,
+                "status": d.status,
+                "summary": d.summary,
+                "file_url": f"/uploads/{Path(d.file_path).name}" if d.file_path else None,
+                "download_url": f"/api/documents/{d.id}/download",
+                "file_type": d.file_type
+            }
+            for d in extracted_docs
+        ]
+    }
+
+@router.post("/{document_id}/unzip")
+def unzip_vault_document_by_id(
+    document_id: int,
+    thread_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Decomprime un archivio ZIP specificato per ID nel caveau."""
+    return _handle_unzip_vault_document(target_id=document_id, file_url=None, thread_id=thread_id, db=db)
+
+@router.post("/unzip")
+def unzip_vault_document_generic(
+    payload: Optional[UnzipVaultRequest] = None,
+    document_id: Optional[int] = None,
+    file_url: Optional[str] = None,
+    thread_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Decomprime un archivio ZIP specificato via JSON body, query param o deduce l'ultimo archivio."""
+    target_id = payload.document_id if (payload and payload.document_id) else document_id
+    target_url = payload.file_url if (payload and payload.file_url) else file_url
+    target_thread = payload.thread_id if (payload and payload.thread_id) else thread_id
+    return _handle_unzip_vault_document(target_id=target_id, file_url=target_url, thread_id=target_thread, db=db)
 
 @router.get("/{document_id}/file")
 def get_document_file(document_id: int, db: Session = Depends(get_db)):

@@ -139,6 +139,11 @@ class BulkDeleteResponse(BaseModel):
     message: str
     deleted_ids: List[int]
 
+class UnzipVaultRequest(BaseModel):
+    document_id: Optional[int] = None
+    file_url: Optional[str] = None
+    thread_id: Optional[str] = None
+
 class UIEventCreate(BaseModel):
     thread_id: Optional[str] = "general"
     event_type: str
