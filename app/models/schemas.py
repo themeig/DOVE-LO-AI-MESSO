@@ -13,6 +13,7 @@ class ExtractedDocument(BaseModel):
     category: Optional[str] = Field(default=None, description="Slug della sezione/categoria scelto dall'AI (es. canzoni_testi, ricette, utenze)")
     category_label: Optional[str] = Field(default=None, description="Titolo visibile della sezione creato o scelto dall'AI (es. Canzoni & Testi Musicali, Ricette & Cucina)")
     category_icon: Optional[str] = Field(default=None, description="Icona FontAwesome adatta scelta dall'AI (es. fa-music, fa-utensils, fa-graduation-cap)")
+    subfolder: Optional[str] = Field(default=None, description="Sottocartella tematica o temporale (es. '2026', '2025', 'Locazioni', 'Bozze')")
 
 class MessageIntent(BaseModel):
     intent: Literal["STORE_LOCATION", "QUERY_LOCATION", "QUERY_DEADLINES", "GENERAL"]
@@ -86,6 +87,7 @@ class RecordItem(BaseModel):
     category: Optional[str] = None
     category_label: Optional[str] = None
     category_icon: Optional[str] = None
+    subfolder: Optional[str] = None
     room: Optional[str] = None
     detailed_location: Optional[str] = None
     document_id: Optional[int] = None

@@ -475,9 +475,10 @@ def recategorize_vault_document(
     document_id: Optional[int] = None,
     document_title: str = "",
     category: str = "",
-    category_icon: str = ""
+    category_icon: str = "",
+    subfolder: Optional[str] = None
 ) -> str:
-    """Modifica o assegna la sezione/categoria tematica di un documento nel caveau (es. 'Canzoni & Testi Musicali', 'Ricette & Cucina', 'Appunti Universitari', 'Automobili & Manutenzione', 'Utenze & Bollette'). Può creare qualsiasi nuova sezione a tua discrezione."""
+    """Modifica o assegna la sezione/categoria tematica e l'eventuale sottocartella (es. '2026', '2025', 'Locazioni') di un documento nel caveau (es. 'Canzoni & Testi Musicali', 'Ricette & Cucina', 'Appunti Universitari', 'Automobili & Manutenzione', 'Utenze & Bollette'). Ispeziona le cartelle esistenti per evitare doppioni."""
     with _get_db_session() as db:
         doc = None
         if document_id:
@@ -494,38 +495,29 @@ def recategorize_vault_document(
 
         old_label = doc.category_label or "Non categorizzato"
         clean_label = category_label.strip()
-        doc.category_label = clean_label
 
-        if category and category.strip():
-            doc.category = category.strip().lower()
-        else:
-            doc.category = re.sub(r"[^a-zA-Z0-9]+", "_", clean_label.lower()).strip("_")
+        from app.services.category_service import resolve_or_create_category_and_subfolder
+        slug, label, icon, resolved_subfolder = resolve_or_create_category_and_subfolder(
+            proposed_label=clean_label,
+            document_text=doc.summary,
+            doc_type=doc.doc_type,
+            due_date=doc.due_date,
+            db=db,
+            proposed_slug=category,
+            proposed_icon=category_icon,
+            proposed_subfolder=subfolder,
+            filename=doc.file_path
+        )
 
-        if category_icon and category_icon.strip():
-            doc.category_icon = category_icon.strip()
-        elif not doc.category_icon or doc.category_icon == "fa-folder-closed":
-            cl_low = clean_label.lower()
-            if any(k in cl_low for k in ["canzon", "music", "brano", "spartit"]):
-                doc.category_icon = "fa-music"
-            elif any(k in cl_low for k in ["ricett", "cucin", "piatt"]):
-                doc.category_icon = "fa-utensils"
-            elif any(k in cl_low for k in ["universit", "studio", "laurea", "appunt"]):
-                doc.category_icon = "fa-graduation-cap"
-            elif any(k in cl_low for k in ["auto", "veicol", "motoc"]):
-                doc.category_icon = "fa-car"
-            elif any(k in cl_low for k in ["animal", "veterinari", "cane", "gatto"]):
-                doc.category_icon = "fa-paw"
-            elif any(k in cl_low for k in ["viagg", "vacanz", "volo"]):
-                doc.category_icon = "fa-plane"
-            elif any(k in cl_low for k in ["bollett", "utenz", "luce", "gas"]):
-                doc.category_icon = "fa-bolt"
-            elif any(k in cl_low for k in ["fisco", "tribut", "f24"]):
-                doc.category_icon = "fa-landmark"
-            else:
-                doc.category_icon = "fa-folder-open"
+        doc.category = slug
+        doc.category_label = label
+        doc.category_icon = icon
+        if resolved_subfolder:
+            doc.subfolder = resolved_subfolder
 
         db.commit()
-        return f"Documento #{doc.id} '{doc.title}' spostato con successo da '{old_label}' alla sezione '{doc.category_label}' (icona: {doc.category_icon})."
+        sub_str = f" (sottocartella: {doc.subfolder})" if doc.subfolder else ""
+        return f"Documento #{doc.id} '{doc.title}' spostato con successo da '{old_label}' alla sezione '{doc.category_label}'{sub_str} (icona: {doc.category_icon})."
 
 @mcp.tool()
 def delete_vault_record(

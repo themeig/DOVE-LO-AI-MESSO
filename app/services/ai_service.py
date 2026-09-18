@@ -72,6 +72,25 @@ def _extract_json_object(raw_text: str) -> dict:
 class MockAIService:
     """Motore offline deterministico per test e sviluppo senza consumo di token."""
     def extract_document(self, file_bytes: bytes, mime_type: str, filename: str = "") -> ExtractedDocument:
+        doc = self._raw_extract_document(file_bytes, mime_type, filename)
+        from app.services.category_service import resolve_or_create_category_and_subfolder
+        slug, label, icon, subfolder = resolve_or_create_category_and_subfolder(
+            proposed_label=doc.category_label,
+            document_text=doc.summary,
+            doc_type=doc.doc_type,
+            due_date=doc.due_date,
+            proposed_slug=doc.category,
+            proposed_icon=doc.category_icon,
+            proposed_subfolder=doc.subfolder,
+            filename=filename
+        )
+        doc.category = slug
+        doc.category_label = label
+        doc.category_icon = icon
+        doc.subfolder = subfolder
+        return doc
+
+    def _raw_extract_document(self, file_bytes: bytes, mime_type: str, filename: str = "") -> ExtractedDocument:
         fn = filename.lower()
         if "tolc" in fn or "certificate" in fn or "certificat" in fn:
             return ExtractedDocument(
@@ -320,6 +339,24 @@ class OpenRouterAIService:
             mt = (mime_type or "").lower()
             is_pdf = "pdf" in mt or fn.endswith(".pdf") or file_bytes.startswith(b"%PDF")
 
+            def _finalize(doc: ExtractedDocument) -> ExtractedDocument:
+                from app.services.category_service import resolve_or_create_category_and_subfolder
+                slug, label, icon, subfolder = resolve_or_create_category_and_subfolder(
+                    proposed_label=doc.category_label,
+                    document_text=doc.summary,
+                    doc_type=doc.doc_type,
+                    due_date=doc.due_date,
+                    proposed_slug=doc.category,
+                    proposed_icon=doc.category_icon,
+                    proposed_subfolder=doc.subfolder,
+                    filename=filename
+                )
+                doc.category = slug
+                doc.category_label = label
+                doc.category_icon = icon
+                doc.subfolder = subfolder
+                return doc
+
             # 1. GESTIONE DOCUMENTI PDF (Estrazione del testo reale delle pagine)
             if is_pdf:
                 pdf_text = ""
@@ -345,9 +382,10 @@ Identifica con la massima precisione:
 4. Se è una bolletta o tributo da pagare con scadenza, estrai 'amount' e 'due_date'. Se NON è una bolletta da pagare, imposta amount=null e due_date=null!
 5. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano che riassume tutti i dettagli (punteggi, codici, esiti, intestatario, date).
 6. 'suggest_rename': false (i documenti formali hanno già un titolo chiaro).
-7. 'category_label': determina a tua completa discrezione la sezione tematica in cui archiviare il file. Se rientra nelle macro-categorie standard (es. 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Documenti Personali & Identità', 'Contratti, Polizze & Assicurazioni', 'Fatture, Spese & Ricevute', 'Sanità & Spese Mediche') usa quella; ALTRIMENTI CREA LIBERAMENTE una nuova sezione tematica specifica ed elegante adatta al contenuto reale (es. 'Canzoni & Testi Musicali', 'Appunti Universitari', 'Ricette & Cucina', 'Automobili & Manutenzione', 'Animali & Veterinario', 'Viaggi & Prenotazioni', ecc.).
+7. 'category_label': consulta PRIMA queste cartelle generali di sistema: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Fatture, Spese & Ricevute', 'Contratti, Polizze & Assicurazioni', 'Documenti Personali & Identità', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Archivi Compressi & ZIP', 'Foto, Immagini & Ricordi'. Se il file è inerente a una di esse, USA QUELLA CARTELLA per evitare doppioni! Crea una nuova sezione tematica SOLO se il file non ha alcuna pertinenza con quelle sopra.
 8. 'category': slug normalizzato in minuscolo con underscore (es. 'canzoni_musica', 'utenze_bollette', 'fisco_tributi', 'ricette_cucina').
 9. 'category_icon': l'icona FontAwesome 6 più appropriata (es. 'fa-music', 'fa-bolt', 'fa-landmark', 'fa-id-card', 'fa-file-signature', 'fa-receipt', 'fa-heart-pulse', 'fa-graduation-cap', 'fa-utensils', 'fa-car', 'fa-paw', 'fa-plane', 'fa-folder-closed').
+10. 'subfolder': estrai l'anno a 4 cifre (es. '2026', '2025', '2024') se presente una data/scadenza, oppure un sotto-tema (es. 'Locazioni', 'Album'); altrimenti imposta null.
 
 Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
 {{
@@ -361,13 +399,14 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
   "suggest_rename": false,
   "category": "slug_sezione",
   "category_label": "Titolo Sezione Scelto Dall'AI",
-  "category_icon": "fa-icon"
+  "category_icon": "fa-icon",
+  "subfolder": "2026" oppure null
 }}
 """
                     messages = [{"role": "user", "content": pdf_prompt}]
                     resp_text = self._call_openrouter(messages, max_tokens=4096, model_override=self.primary_model, temperature=0.1)
                     parsed = _extract_json_object(resp_text)
-                    return ExtractedDocument(**parsed)
+                    return _finalize(ExtractedDocument(**parsed))
                 else:
                     # PDF senza layer di testo estratto (scansione grafica, libro o PDF protetto/test)
                     return MockAIService().extract_document(file_bytes, mime_type, filename)
@@ -394,9 +433,10 @@ Identifica con la massima precisione:
 4. Se contiene importi da pagare o scadenze specifiche di pagamento, estrai 'amount' e 'due_date' (YYYY-MM-DD), altrimenti null.
 5. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano con i punti chiave, autore, argomenti, intestatari o dati più importanti.
 6. 'suggest_rename': false.
-7. 'category_label': determina a tua completa discrezione la sezione tematica in cui archiviare il file. Se rientra nelle macro-categorie standard (es. 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Documenti Personali & Identità', 'Contratti, Polizze & Assicurazioni', 'Fatture, Spese & Ricevute', 'Sanità & Spese Mediche') usa quella; ALTRIMENTI CREA LIBERAMENTE una nuova sezione tematica specifica ed elegante adatta al contenuto reale (es. 'Canzoni & Testi Musicali', 'Appunti Universitari', 'Ricette & Cucina', 'Automobili & Manutenzione', 'Animali & Veterinario', 'Viaggi & Prenotazioni', ecc.).
+7. 'category_label': consulta PRIMA queste cartelle generali di sistema: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Fatture, Spese & Ricevute', 'Contratti, Polizze & Assicurazioni', 'Documenti Personali & Identità', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Archivi Compressi & ZIP', 'Foto, Immagini & Ricordi'. Se il file è inerente a una di esse (es. testo canzone/poesia -> 'Canzoni, Musica & Testi Personali', scontrino/ricevuta -> 'Fatture, Spese & Ricevute'), USA QUELLA CARTELLA per evitare doppioni! Crea una nuova sezione tematica SOLO se il file non ha alcuna pertinenza con quelle sopra.
 8. 'category': slug normalizzato in minuscolo con underscore (es. 'canzoni_musica', 'ricette_cucina', 'fogli_calcolo', 'contratti_polizze').
 9. 'category_icon': l'icona FontAwesome 6 più appropriata (es. 'fa-music', 'fa-utensils', 'fa-graduation-cap', 'fa-car', 'fa-paw', 'fa-plane', 'fa-table', 'fa-file-lines', 'fa-bolt', 'fa-landmark', 'fa-receipt', 'fa-file-signature').
+10. 'subfolder': estrai l'anno a 4 cifre (es. '2026', '2025', '2024') se presente una data, competenza o scadenza, oppure un sotto-tema (es. 'Locazioni', 'Bozze'); altrimenti imposta null.
 
 Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
 {{
@@ -410,13 +450,14 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
   "suggest_rename": false,
   "category": "slug_sezione",
   "category_label": "Titolo Sezione Scelto Dall'AI",
-  "category_icon": "fa-icon"
+  "category_icon": "fa-icon",
+  "subfolder": "2026" oppure null
 }}
 """
                         messages = [{"role": "user", "content": office_prompt}]
                         resp_text = self._call_openrouter(messages, max_tokens=4096, model_override=self.primary_model, temperature=0.1)
                         parsed = _extract_json_object(resp_text)
-                        return ExtractedDocument(**parsed)
+                        return _finalize(ExtractedDocument(**parsed))
                     except Exception as off_err:
                         logger.warning(f"OpenRouter errore estrazione office {filename}: {off_err}. Fallback a parser locale.")
                 return MockAIService().extract_document(file_bytes, mime_type, filename)
@@ -428,7 +469,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                     with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as zf:
                         names = [n for n in zf.namelist() if not n.startswith("__MACOSX") and not Path(n).name.startswith(".")]
                         clean_stem = Path(filename).stem.replace("_", " ").capitalize()
-                        return ExtractedDocument(
+                        return _finalize(ExtractedDocument(
                             title=f"Archivio {clean_stem}",
                             doc_type="archivio_zip",
                             issuer="Dove lo AI messo",
@@ -440,7 +481,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                             category="archivi_zip",
                             category_label="Archivi Compressi & ZIP",
                             category_icon="fa-file-zipper"
-                        )
+                        ))
                 except Exception:
                     pass
 
@@ -460,9 +501,10 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                 "4. Se è una bolletta, fattura o tributo con scadenza di pagamento reale, estrai 'amount' e 'due_date' (YYYY-MM-DD). Altrimenti imposta rigorosamente amount=null e due_date=null.\n"
                 "5. 'summary': descrizione ricca ed accurata in 1-2 frasi in italiano di ciò che si vede visivamente nell'immagine (colori, forme, dettagli, marchi o testi visibili).\n"
                 "6. 'suggest_rename': imposta true se si tratta della foto di un oggetto fisico, componente, dispositivo, screenshot o allegato non formale per cui è opportuno chiedere all'utente se desidera assegnargli un nome specifico o dove lo ripone. Imposta false per bollette ed F24 con mittente certo.\n"
-                "7. 'category_label': determina a tua completa discrezione la sezione tematica in cui archiviare l'elemento (es. 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Documenti Personali & Identità', 'Fatture, Spese & Ricevute', oppure sezioni custom es. 'Oggetti Fisici & Dispositivi', 'Foto & Ricordi', 'Automobili & Manutenzione', ecc.).\n"
-                "8. 'category': slug minuscolo con underscore (es. 'utenze_bollette', 'oggetti_fisici', 'foto_ricordi').\n"
-                "9. 'category_icon': icona FontAwesome 6 adatta (es. 'fa-bolt', 'fa-landmark', 'fa-id-card', 'fa-receipt', 'fa-boxes-stacked', 'fa-camera', 'fa-image').\n\n"
+                "7. 'category_label': consulta PRIMA queste macro-cartelle generali di sistema per evitare doppioni: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Documenti Personali & Identità', 'Fatture, Spese & Ricevute', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Foto, Immagini & Ricordi', 'Archivi Compressi & ZIP'. Se il file è inerente a una di esse, USA QUELLA CARTELLA! Altrimenti crea una nuova sezione specifica.\n"
+                "8. 'category': slug minuscolo con underscore (es. 'utenze_bollette', 'oggetti_fisici', 'foto_immagini').\n"
+                "9. 'category_icon': icona FontAwesome 6 adatta (es. 'fa-bolt', 'fa-landmark', 'fa-id-card', 'fa-receipt', 'fa-boxes-stacked', 'fa-camera', 'fa-image').\n"
+                "10. 'subfolder': estrai l'anno a 4 cifre se presente una scadenza o data (es. '2026') oppure un sotto-tema; altrimenti imposta null.\n\n"
                 "Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:\n"
                 "{\n"
                 '  "title": "Titolo descrittivo intelligente",\n'
@@ -475,7 +517,8 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                 '  "suggest_rename": true,\n'
                 '  "category": "slug_sezione",\n'
                 '  "category_label": "Titolo Sezione Scelto Dall\'AI",\n'
-                '  "category_icon": "fa-icon"\n'
+                '  "category_icon": "fa-icon",\n'
+                '  "subfolder": "2026" oppure null\n'
                 "}"
             )
 
@@ -493,7 +536,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
             if not parsed.get("title"):
                 clean_name = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
                 parsed["title"] = f"Foto {clean_name}" if "foto" in parsed.get("doc_type", "") else (clean_name or "Documento")
-            return ExtractedDocument(**parsed)
+            return _finalize(ExtractedDocument(**parsed))
         except Exception as e:
             logger.error(f"Errore OpenRouter extract_document: {e}. Uso fallback Mock.")
             return MockAIService().extract_document(file_bytes, mime_type, filename)

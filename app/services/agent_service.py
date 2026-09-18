@@ -305,6 +305,10 @@ TOOLS_DEFINITION = [
                     "category_icon": {
                         "type": "string",
                         "description": "Icona FontAwesome 6 adatta (es. 'fa-music', 'fa-utensils', 'fa-graduation-cap', 'fa-car', 'fa-paw', 'fa-bolt', 'fa-landmark')"
+                    },
+                    "subfolder": {
+                        "type": "string",
+                        "description": "Sottocartella temporale o tematica opzionale (es. '2026', '2025', 'Locazioni', 'Bozze'). Se omessa, viene dedotta automaticamente dall'anno di scadenza o dal testo del documento."
                     }
                 },
                 "required": ["category_label"]
@@ -1663,6 +1667,7 @@ class AgenticChatService:
             doc_title = (args.get("document_title") or "").strip()
             category = (args.get("category") or "").strip()
             category_icon = (args.get("category_icon") or "").strip()
+            subfolder = (args.get("subfolder") or "").strip()
 
             if not category_label:
                 return {"error": "Specificare il nome della sezione o categoria (category_label).", "success": False}
@@ -1684,31 +1689,23 @@ class AgenticChatService:
                 return {"error": "Nessun documento trovato nel caveau da ricatalogare.", "success": False}
 
             old_label = doc.category_label or "Non categorizzato"
-            doc.category_label = category_label
-            doc.category = category.lower() if category else re.sub(r"[^a-zA-Z0-9]+", "_", category_label.lower()).strip("_")
-            
-            if category_icon:
-                doc.category_icon = category_icon
-            elif not doc.category_icon or doc.category_icon == "fa-folder-closed":
-                cl_low = category_label.lower()
-                if any(k in cl_low for k in ["canzon", "music", "brano", "spartit"]):
-                    doc.category_icon = "fa-music"
-                elif any(k in cl_low for k in ["ricett", "cucin", "piatt"]):
-                    doc.category_icon = "fa-utensils"
-                elif any(k in cl_low for k in ["universit", "studio", "laurea", "appunt"]):
-                    doc.category_icon = "fa-graduation-cap"
-                elif any(k in cl_low for k in ["auto", "veicol", "motoc"]):
-                    doc.category_icon = "fa-car"
-                elif any(k in cl_low for k in ["animal", "veterinari", "cane", "gatto"]):
-                    doc.category_icon = "fa-paw"
-                elif any(k in cl_low for k in ["viagg", "vacanz", "volo"]):
-                    doc.category_icon = "fa-plane"
-                elif any(k in cl_low for k in ["bollett", "utenz", "luce", "gas"]):
-                    doc.category_icon = "fa-bolt"
-                elif any(k in cl_low for k in ["fisco", "tribut", "f24"]):
-                    doc.category_icon = "fa-landmark"
-                else:
-                    doc.category_icon = "fa-folder-open"
+            from app.services.category_service import resolve_or_create_category_and_subfolder
+            slug, label, icon, resolved_subfolder = resolve_or_create_category_and_subfolder(
+                proposed_label=category_label,
+                document_text=doc.summary,
+                doc_type=doc.doc_type,
+                due_date=doc.due_date,
+                db=db,
+                proposed_slug=category,
+                proposed_icon=category_icon,
+                proposed_subfolder=subfolder,
+                filename=doc.file_path
+            )
+            doc.category = slug
+            doc.category_label = label
+            doc.category_icon = icon
+            if resolved_subfolder:
+                doc.subfolder = resolved_subfolder
 
             db.commit()
             db.refresh(doc)
@@ -1727,11 +1724,13 @@ class AgenticChatService:
                 "category": doc.category,
                 "category_label": doc.category_label,
                 "category_icon": doc.category_icon,
+                "subfolder": doc.subfolder,
                 "file_url": f"/uploads/{fn}" if fn else None,
                 "download_url": f"/api/documents/{doc.id}/download",
                 "file_type": doc.file_type
             }
 
+            sub_msg = f" (sottocartella: {doc.subfolder})" if doc.subfolder else ""
             return {
                 "success": True,
                 "document_id": doc.id,
@@ -1740,7 +1739,8 @@ class AgenticChatService:
                 "new_category_label": doc.category_label,
                 "category": doc.category,
                 "category_icon": doc.category_icon,
-                "message": f"Documento '{doc.title}' spostato con successo nella sezione '{doc.category_label}'.",
+                "subfolder": doc.subfolder,
+                "message": f"Documento '{doc.title}' spostato con successo nella sezione '{doc.category_label}'{sub_msg}.",
                 "document": doc_info,
                 "documents": [doc_info]
             }

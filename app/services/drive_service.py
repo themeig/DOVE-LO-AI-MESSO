@@ -11,16 +11,34 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
-def resolve_drive_folder_path(doc_type: str, due_date: Optional[date] = None) -> list[str]:
+def resolve_drive_folder_path(
+    doc_type: str,
+    due_date: Optional[date] = None,
+    category_label: Optional[str] = None,
+    subfolder: Optional[str] = None,
+) -> list[str]:
     """
     Risolve il percorso logico delle cartelle su Google Drive in base alla categoria
-    e alla data di scadenza (se presente).
+    e alla data di scadenza (se presente) o alla sottocartella / anno.
     
     Struttura:
-    - Con scadenza: ["DoveLoAIMesso", "<Anno>", "<Categoria>"]
-    - Senza scadenza: ["DoveLoAIMesso", "<Categoria>"]
+    - Se specificata category_label:
+      * Con sottocartella: ["DoveLoAIMesso", "<Categoria>", "<Sottocartella>"]
+      * Con scadenza: ["DoveLoAIMesso", "<Categoria>", "<Anno>"]
+      * Senza: ["DoveLoAIMesso", "<Categoria>"]
+    - Struttura standard (backward-compatible):
+      * Con scadenza: ["DoveLoAIMesso", "<Anno>", "<Categoria>"]
+      * Senza scadenza: ["DoveLoAIMesso", "<Categoria>"]
     """
     clean_type = (doc_type or "").strip().lower()
+
+    if category_label and category_label.strip():
+        cat_folder = category_label.strip()
+        if subfolder and subfolder.strip():
+            return ["DoveLoAIMesso", cat_folder, subfolder.strip()]
+        if due_date is not None:
+            return ["DoveLoAIMesso", cat_folder, str(due_date.year)]
+        return ["DoveLoAIMesso", cat_folder]
 
     if clean_type in ("canzone", "testo_personale", "musica", "poesia"):
         category = "Note & Testi Personali"
@@ -34,6 +52,9 @@ def resolve_drive_folder_path(doc_type: str, due_date: Optional[date] = None) ->
         category = "Contratti & Polizze"
     else:
         category = "Documenti & Foto"
+
+    if subfolder and subfolder.strip():
+        return ["DoveLoAIMesso", category, subfolder.strip()]
 
     if due_date is not None:
         return ["DoveLoAIMesso", str(due_date.year), category]

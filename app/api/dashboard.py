@@ -231,6 +231,7 @@ def get_dashboard(
                     category=doc_cat,
                     category_label=doc_cat_label,
                     category_icon=doc_cat_icon,
+                    subfolder=doc.subfolder,
                     room=None,
                     detailed_location=None,
                     document_id=doc.id,

@@ -1376,6 +1376,17 @@ def fast_extract_document_metadata(file_bytes: bytes, filename: str, mime_type: 
         category_label = "Altri Documenti"
         category_icon = "fa-folder-closed"
 
+    from app.services.category_service import resolve_or_create_category_and_subfolder
+    slug, label, icon, subfolder = resolve_or_create_category_and_subfolder(
+        proposed_label=category_label,
+        document_text=summary,
+        doc_type=doc_type,
+        due_date=due_date,
+        proposed_slug=category,
+        proposed_icon=category_icon,
+        filename=filename
+    )
+
     return ExtractedDocument(
         title=title or clean_stem.capitalize() or filename,
         doc_type=doc_type,
@@ -1385,9 +1396,10 @@ def fast_extract_document_metadata(file_bytes: bytes, filename: str, mime_type: 
         summary=summary,
         tags=tags or ["archivio", "documento"],
         suggest_rename=False,
-        category=category,
-        category_label=category_label,
-        category_icon=category_icon
+        category=slug,
+        category_label=label,
+        category_icon=icon,
+        subfolder=subfolder
     )
 
 
@@ -1499,7 +1511,12 @@ def unzip_document_to_vault(
                     try:
                         from app.services.drive_service import get_drive_service, resolve_drive_folder_path
                         drive_service = get_drive_service()
-                        folder_path = resolve_drive_folder_path(extracted.doc_type, due_date_obj)
+                        folder_path = resolve_drive_folder_path(
+                            extracted.doc_type,
+                            due_date_obj,
+                            category_label=extracted.category_label,
+                            subfolder=extracted.subfolder
+                        )
                         drive_res = drive_service.upload_file(
                             file_bytes=raw_inner_bytes,
                             filename=inner_filename,
@@ -1526,6 +1543,7 @@ def unzip_document_to_vault(
                     category=extracted.category,
                     category_label=extracted.category_label,
                     category_icon=extracted.category_icon,
+                    subfolder=extracted.subfolder,
                     drive_file_id=drive_file_id,
                     drive_web_url=drive_web_url,
                     created_at=datetime.now(timezone.utc)

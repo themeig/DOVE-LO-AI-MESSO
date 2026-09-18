@@ -7,6 +7,14 @@ from app.services.drive_service import (
     resolve_drive_folder_path,
 )
 
+from app.services.category_service import (
+    DEFAULT_GENERAL_CATEGORIES,
+    resolve_or_create_category_and_subfolder,
+    extract_subfolder,
+    get_active_vault_categories,
+    consolidate_vault_categories,
+)
+
 __all__ = [
     "AIServiceInterface",
     "MockAIService",
@@ -16,4 +24,9 @@ __all__ = [
     "RealGoogleDriveService",
     "get_drive_service",
     "resolve_drive_folder_path",
+    "DEFAULT_GENERAL_CATEGORIES",
+    "resolve_or_create_category_and_subfolder",
+    "extract_subfolder",
+    "get_active_vault_categories",
+    "consolidate_vault_categories",
 ]

@@ -5683,7 +5683,9 @@
           }
 
           let cardsHtml = '';
+          const subfoldersSet = new Set();
           catDocs.forEach(rec => {
+            if (rec.subfolder) subfoldersSet.add(rec.subfolder);
             const escapedTitle = escapeHtml(rec.title).replace(/'/g, "\\'");
             const threadName = escapeHtml(rec.thread_name || 'Principale');
             const isGroup = (rec.thread_id || '').includes('famiglia') || (rec.thread_id || '').includes('gruppo');
@@ -5756,7 +5758,15 @@
                       </div>
                       <div class="min-w-0">
                         <h4 class="font-bold text-slate-900 text-xs truncate" title="${escapeHtml(rec.title)}">${escapeHtml(rec.title)}</h4>
-                        <p class="text-[11px] text-slate-400 truncate">${escapeHtml(rec.source || '')}</p>
+                        <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
+                          <p class="text-[11px] text-slate-400 truncate">${escapeHtml(rec.source || '')}</p>
+                          ${rec.subfolder ? `
+                            <span class="inline-flex items-center gap-1 text-[10px] font-semibold bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded border border-amber-200/80 shrink-0" title="Sottocartella: ${escapeHtml(rec.subfolder)}">
+                              <i class="fa-solid fa-folder text-[8px] text-amber-600"></i>
+                              <span>${escapeHtml(rec.subfolder)}</span>
+                            </span>
+                          ` : ''}
+                        </div>
                       </div>
                     </div>
                     <span class="inline-flex items-center gap-1 text-[10px] font-medium bg-white text-slate-600 px-2 py-0.5 rounded-full border border-slate-200/80 shrink-0">
@@ -5793,6 +5803,22 @@
             `;
           });
 
+          let subfoldersBar = '';
+          if (subfoldersSet.size > 0) {
+            const sortedSubs = Array.from(subfoldersSet).sort();
+            subfoldersBar = `
+              <div class="flex items-center gap-1.5 flex-wrap mt-2.5 pt-2 border-t border-slate-100 text-[11px]">
+                <span class="font-bold text-slate-400 text-[10px] uppercase tracking-wider">Sottocartelle:</span>
+                ${sortedSubs.map(s => `
+                  <span class="inline-flex items-center gap-1 bg-amber-50/80 text-amber-900 px-2 py-0.5 rounded-md border border-amber-200/80 font-bold text-[10px]">
+                    <i class="fa-solid fa-folder text-amber-600 text-[9px]"></i>
+                    <span>${escapeHtml(s)}</span>
+                  </span>
+                `).join('')}
+              </div>
+            `;
+          }
+
           detailsEl.innerHTML = `
             <summary class="list-none flex items-center justify-between p-4 cursor-pointer select-none hover:bg-slate-50/60 transition">
               <div class="flex items-center gap-3">
@@ -5811,6 +5837,7 @@
               </div>
             </summary>
             <div class="p-4 pt-0 border-t border-slate-100">
+              ${subfoldersBar}
               <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 mt-3">
                 ${cardsHtml}
               </div>

@@ -63,7 +63,12 @@ def _process_and_save_single_doc(
     if active_cred:
         try:
             drive_service = get_drive_service()
-            folder_path = resolve_drive_folder_path(extracted.doc_type, due_date_obj)
+            folder_path = resolve_drive_folder_path(
+                extracted.doc_type,
+                due_date_obj,
+                category_label=extracted.category_label,
+                subfolder=extracted.subfolder
+            )
             clean_filename = Path(filename).name
             drive_res = drive_service.upload_file(
                 file_bytes=contents,
@@ -92,7 +97,8 @@ def _process_and_save_single_doc(
         drive_web_url=drive_web_url,
         category=extracted.category,
         category_label=extracted.category_label,
-        category_icon=extracted.category_icon
+        category_icon=extracted.category_icon,
+        subfolder=extracted.subfolder
     )
     db.add(doc)
     db.flush()
@@ -368,7 +374,10 @@ def _handle_unzip_vault_document(
     for idx, d in enumerate(extracted_docs, 1):
         details = []
         if d.category_label:
-            details.append(f"📁 *{d.category_label}*")
+            folder_info = f"📁 *{d.category_label}*"
+            if d.subfolder:
+                folder_info += f" / 📂 *{d.subfolder}*"
+            details.append(folder_info)
         elif d.doc_type:
             details.append(f"*{d.doc_type.capitalize()}*")
         if d.amount is not None:
@@ -414,6 +423,7 @@ def _handle_unzip_vault_document(
                 "category": d.category,
                 "category_label": d.category_label,
                 "category_icon": d.category_icon,
+                "subfolder": d.subfolder,
                 "issuer": d.issuer,
                 "amount": d.amount,
                 "due_date": d.due_date.isoformat() if d.due_date else None,

@@ -105,6 +105,7 @@ class Document(Base):
     category = Column(String(100), nullable=True, index=True)
     category_label = Column(EncryptedString(255), nullable=True)
     category_icon = Column(String(50), nullable=True)
+    subfolder = Column(EncryptedString(255), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
@@ -281,6 +282,9 @@ def init_db(engine=None):
                 conn.commit()
             if "category_icon" not in cols:
                 conn.execute(text("ALTER TABLE documents ADD COLUMN category_icon VARCHAR(50)"))
+                conn.commit()
+            if "subfolder" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN subfolder VARCHAR(255)"))
                 conn.commit()
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_documents_category ON documents(category)"))
             conn.commit()
