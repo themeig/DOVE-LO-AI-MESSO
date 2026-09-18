@@ -57,6 +57,8 @@ class ChatResponse(BaseModel):
     data: Optional[dict] = None
     documents: Optional[List[dict]] = None
     confirmation: Optional[dict] = None
+    routed_model: Optional[str] = None
+
 
 class DocumentStatusUpdate(BaseModel):
     status: Literal["da_pagare", "quietanzato", "archiviato"]

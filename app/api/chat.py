@@ -79,6 +79,9 @@ def handle_chat_message(
         meta_dict["documents"] = chat_response.documents
     if chat_response.confirmation:
         meta_dict["confirmation"] = chat_response.confirmation
+    if chat_response.routed_model:
+        meta_dict["routed_model"] = chat_response.routed_model
+
 
     asst_msg = ChatMessage(
         thread_id=thread_id,

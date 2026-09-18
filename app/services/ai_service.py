@@ -197,8 +197,10 @@ class MockAIService:
 class OpenRouterAIService:
     """Motore AI multimodale tramite OpenRouter API (modello: google/gemini-2.5-flash-lite con fallback a free)."""
     def __init__(self, api_key: str, model: str = "google/gemini-2.5-flash-lite"):
-        self.api_key = api_key.strip()
-        self.primary_model = model.strip() or "google/gemini-2.5-flash-lite"
+        chosen_model = (model or "").strip()
+        if not chosen_model or chosen_model == "auto":
+            chosen_model = "google/gemini-2.5-flash-lite"
+        self.primary_model = chosen_model
         self.fallback_models = ["nex-agi/nex-n2.5-pro:free", "inclusionai/ling-3.0-flash-vl:free"]
         self.vision_model = self.primary_model
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"

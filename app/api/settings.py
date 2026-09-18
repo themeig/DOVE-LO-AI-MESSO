@@ -13,9 +13,19 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 AVAILABLE_MODELS = [
     {
+        "id": "auto",
+        "name": "Router Intelligente Dinamico",
+        "tag": "🎯 Consigliato",
+        "tier": "auto",
+        "is_free": False,
+        "is_thinking": True,
+        "cost_info": "Ottimizzato (Lite per salvare, Pro Thinking per cercare)",
+        "features": "Seleziona dinamicamente il modello migliore: usa Gemini 2.5 Flash Lite per salvare file, foto e posizioni in pochi ms, e attiva Gemini 2.5 Pro (Thinking) per ricerche, scadenze, calcoli e spiegazioni complesse."
+    },
+    {
         "id": "google/gemini-2.5-flash-lite",
         "name": "Google Gemini 2.5 Flash Lite",
-        "tag": "⚡ Consigliato",
+        "tag": "⚡ Veloce & Leggero",
         "tier": "paid",
         "is_free": False,
         "is_thinking": False,

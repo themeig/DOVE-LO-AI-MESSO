@@ -746,6 +746,28 @@
 
       <!-- Scelte Modello Card -->
       <div class="space-y-2.5" id="aiModelsList">
+        <!-- Opzione 0: Router Intelligente Dinamico (Consigliato) -->
+        <div 
+          id="modelCard_auto"
+          onclick="selectAiModel('auto')" 
+          class="p-3.5 rounded-xl border-2 border-slate-200 cursor-pointer transition relative hover:border-[#128C7E] flex flex-col gap-1.5 bg-white"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-wand-magic-sparkles text-cyan-600 text-sm"></i>
+              <span class="font-bold text-xs text-slate-800">Router Intelligente Dinamico</span>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800">🎯 Consigliato</span>
+          </div>
+          <p class="text-[11px] text-slate-500 leading-snug">
+            Instradamento ottimale: usa <strong>Gemini 2.5 Flash Lite</strong> per salvare file, foto e posizioni in pochi ms a costo minimo, e attiva <strong>Gemini 2.5 Pro (Thinking)</strong> per ricerche, scadenze, calcoli e spiegazioni.
+          </p>
+          <div class="flex items-center justify-between pt-1.5 text-[10px] text-slate-400 border-t border-slate-100">
+            <span>Ottimizzazione: <strong>Massima velocità & Risparmio token</strong></span>
+            <span id="check_auto" class="text-emerald-600 font-bold hidden"><i class="fa-solid fa-circle-check"></i> Attivo</span>
+          </div>
+        </div>
+
         <!-- Opzione 1: Google Gemini 2.5 Flash Lite -->
         <div 
           id="modelCard_gemini"
@@ -757,7 +779,7 @@
               <i class="fa-solid fa-bolt text-amber-500 text-sm"></i>
               <span class="font-bold text-xs text-slate-800">Google Gemini 2.5 Flash Lite</span>
             </div>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">⚡ Consigliato</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">⚡ Veloce & Leggero</span>
           </div>
           <p class="text-[11px] text-slate-500 leading-snug">
             Visione multimodale ad altissima precisione (tabelle, scontrini, F24) e Tool Calling nativo istantaneo.
@@ -2524,7 +2546,8 @@
             const itemPhoto = m.metadata && m.metadata.item_photo ? m.metadata.item_photo : null;
             const storeItem = m.metadata && m.metadata.store_item ? m.metadata.store_item : null;
             const proposal = (m.metadata && m.metadata.proposal) || (m.metadata && m.metadata.action === 'SENSITIVE_FILE_PROPOSAL' ? m.metadata.proposal : null);
-            appendAssistantBubble(m.content, docs, conf, itemPhoto, storeItem, proposal);
+            const routedModel = (m.metadata && m.metadata.routed_model) || null;
+            appendAssistantBubble(m.content, docs, conf, itemPhoto, storeItem, proposal, routedModel);
           }
         }
         scrollBottom();
@@ -2840,6 +2863,7 @@
     }
 
     function updateAiModelUI(data) {
+      const isAuto = currentAiModel === 'auto';
       const isThinking = (currentAiModel || '').includes('gemini-2.5-pro');
       const isFree = data.is_free || (currentAiModel.includes(':free'));
       const headerLabel = document.getElementById('aiModelHeaderLabel');
@@ -2852,7 +2876,9 @@
       }
 
       if (headerLabel) {
-        if (isThinking) {
+        if (isAuto) {
+          headerLabel.textContent = 'Router Intelligente (Auto)';
+        } else if (isThinking) {
           headerLabel.textContent = 'Gemini 2.5 Pro (Thinking)';
         } else if (isFree) {
           headerLabel.textContent = 'Nex-AGI (Free)';
@@ -2861,7 +2887,9 @@
         }
       }
       if (headerIcon) {
-        if (isThinking) {
+        if (isAuto) {
+          headerIcon.className = 'fa-solid fa-wand-magic-sparkles text-cyan-300 text-[11px]';
+        } else if (isThinking) {
           headerIcon.className = 'fa-solid fa-brain text-purple-300 text-[11px]';
         } else if (isFree) {
           headerIcon.className = 'fa-solid fa-gift text-emerald-300 text-[11px]';
@@ -2870,27 +2898,32 @@
         }
       }
       if (statusDot) {
-        if (isThinking) {
+        if (isAuto) {
+          statusDot.className = 'w-2 h-2 rounded-full bg-cyan-400 animate-pulse';
+        } else if (isThinking) {
           statusDot.className = 'w-2 h-2 rounded-full bg-purple-400 animate-pulse';
         } else if (isFree) {
           statusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
         } else {
-          statusDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+          statusDot.className = 'w-2 h-2 rounded-full bg-amber-400';
         }
       }
 
       // Aggiorna le card nel modale
+      const cardAuto = document.getElementById('modelCard_auto');
       const cardGemini = document.getElementById('modelCard_gemini');
       const cardThinking = document.getElementById('modelCard_thinking');
       const cardNex = document.getElementById('modelCard_nex');
+      const checkAuto = document.getElementById('check_auto');
       const checkGemini = document.getElementById('check_gemini');
       const checkThinking = document.getElementById('check_thinking');
       const checkNex = document.getElementById('check_nex');
 
       [
-        { card: cardGemini, check: checkGemini, active: !isThinking && !isFree },
-        { card: cardThinking, check: checkThinking, active: isThinking },
-        { card: cardNex, check: checkNex, active: isFree }
+        { card: cardAuto, check: checkAuto, active: isAuto },
+        { card: cardGemini, check: checkGemini, active: !isAuto && !isThinking && !isFree },
+        { card: cardThinking, check: checkThinking, active: !isAuto && isThinking },
+        { card: cardNex, check: checkNex, active: !isAuto && isFree }
       ].forEach(item => {
         if (!item.card) return;
         if (item.active) {
@@ -3973,7 +4006,7 @@
       }
     }
 
-    function appendAssistantBubble(text, documents = null, confirmation = null, itemPhoto = null, storeItem = null, proposal = null) {
+    function appendAssistantBubble(text, documents = null, confirmation = null, itemPhoto = null, storeItem = null, proposal = null, routedModel = null) {
       const aiBubble = document.createElement('div');
       aiBubble.className = 'flex items-start max-w-[85%]';
       const formattedHtml = formatMessageText(text || '');
@@ -4264,6 +4297,17 @@
           ${storeItemHtml}
           ${proposalHtml}
           <div class="flex items-center justify-end gap-1.5 mt-1 select-none">
+            ${(() => {
+              if (!routedModel) return '';
+              if (routedModel.includes('gemini-2.5-pro')) {
+                return '<span class="inline-flex items-center gap-1 text-[9px] font-medium text-purple-700 bg-purple-50 border border-purple-200/70 px-1.5 py-0.5 rounded-full" title="Risposta elaborata con Gemini 2.5 Pro (Thinking Process)"><i class="fa-solid fa-brain text-[8px] text-purple-600"></i> Pro Thinking</span>';
+              } else if (routedModel.includes('flash-lite')) {
+                return '<span class="inline-flex items-center gap-1 text-[9px] font-medium text-amber-700 bg-amber-50 border border-amber-200/70 px-1.5 py-0.5 rounded-full" title="Risposta rapida elaborata con Gemini 2.5 Flash Lite"><i class="fa-solid fa-bolt text-[8px] text-amber-500"></i> Flash Lite</span>';
+              } else if (routedModel.includes(':free')) {
+                return '<span class="inline-flex items-center gap-1 text-[9px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-1.5 py-0.5 rounded-full" title="Modello 100% Gratuito"><i class="fa-solid fa-gift text-[8px] text-emerald-600"></i> Free</span>';
+              }
+              return '';
+            })()}
             <span class="text-[10px] text-gray-400">${getTime()}</span>
           </div>
         </div>
@@ -4429,7 +4473,8 @@
 
         // Se l'utente è ancora su questa chat, inietta subito la bolla di risposta
         if (currentThreadId === targetThreadId) {
-          appendAssistantBubble(data.reply, data.documents, data.confirmation, itemPhoto, storeItem, proposal);
+          const routedModel = data.routed_model || (data.data && data.data.routed_model) || null;
+          appendAssistantBubble(data.reply, data.documents, data.confirmation, itemPhoto, storeItem, proposal, routedModel);
           scrollBottom();
         } else {
           // L'utente si trova in un'altra chat: mostra toast non invasivo
@@ -4588,7 +4633,7 @@
           }
 
           if (currentThreadId === targetThreadId) {
-            appendAssistantBubble(data.chat_reply || "📄 Documento salvato e catalogato!", [docItem]);
+            appendAssistantBubble(data.chat_reply || "📄 Documento salvato e catalogato!", [docItem], null, null, null, null, data.routed_model || 'google/gemini-2.5-flash-lite');
             scrollBottom();
           } else {
             const targetName = th ? th.name : 'altra chat';
@@ -4713,7 +4758,7 @@
 
           if (currentThreadId === targetThreadId) {
             if (uploadedDocs.length > 0) {
-              appendAssistantBubble(replyText, uploadedDocs);
+              appendAssistantBubble(replyText, uploadedDocs, null, null, null, null, 'google/gemini-2.5-flash-lite');
             } else {
               appendAssistantBubble("⚠️ Nessun file è stato elaborato con successo. Verifica i formati o la connessione.");
             }
@@ -5162,7 +5207,8 @@
         }
 
         if (currentThreadId === targetThreadId) {
-          appendAssistantBubble(data.reply, data.documents, data.confirmation, itemPhoto, storeItem);
+          const routedModel = data.routed_model || (data.data && data.data.routed_model) || null;
+          appendAssistantBubble(data.reply, data.documents, data.confirmation, itemPhoto, storeItem, null, routedModel);
           scrollBottom();
         } else {
           const th = threadsCache.find(t => t.id === targetThreadId);

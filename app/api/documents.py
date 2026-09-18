@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 import unicodedata
@@ -7,7 +8,8 @@ from typing import List
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.models.database import get_db, Document, ChatMessage, GoogleDriveCredential
+from app.config import get_settings
+from app.models.database import get_db, Document, ChatMessage, GoogleDriveCredential, get_app_setting
 from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDeleteResponse
 from app.services.ai_service import get_ai_service
 from app.services.document_service import save_uploaded_file
@@ -124,6 +126,9 @@ async def upload_document(
         else:
             chat_reply = f"📸 Ho analizzato e archiviato il file: {doc.title}.\n💡 {doc.summary}"
 
+    active_model = get_app_setting(db, "ai_model", default=get_settings().OPENROUTER_MODEL) or "auto"
+    routed_model = "google/gemini-2.5-flash-lite" if active_model == "auto" else active_model
+
     user_msg = ChatMessage(
         thread_id=thread_id,
         sender="user",
@@ -136,7 +141,7 @@ async def upload_document(
         sender="assistant",
         message_type="document",
         content=chat_reply,
-        metadata_json=f'{{"document_id": {doc.id}}}'
+        metadata_json=json.dumps({"document_id": doc.id, "routed_model": routed_model})
     )
     db.add(user_msg)
     db.add(asst_msg)
@@ -156,7 +161,8 @@ async def upload_document(
         "file_type": doc.file_type,
         "summary": doc.summary,
         "drive_file_id": doc.drive_file_id,
-        "drive_web_url": doc.drive_web_url
+        "drive_web_url": doc.drive_web_url,
+        "routed_model": routed_model
     }
 
 
@@ -218,6 +224,9 @@ async def upload_documents_batch(
         summary_parts.append("\nPuoi visualizzarli o scaricarli singolarmente dalle schede qui sotto! ⬇️")
         chat_reply = "\n\n".join(summary_parts)
 
+    active_model = get_app_setting(db, "ai_model", default=get_settings().OPENROUTER_MODEL) or "auto"
+    routed_model = "google/gemini-2.5-flash-lite" if active_model == "auto" else active_model
+
     user_names_str = ", ".join(file_names[:4]) + (f" e altri {total_count - 4} file" if total_count > 4 else "")
     doc_ids = [d.id for d in saved_docs]
 
@@ -233,7 +242,7 @@ async def upload_documents_batch(
         sender="assistant",
         message_type="document",
         content=chat_reply,
-        metadata_json=f'{{"document_ids": {doc_ids}}}'
+        metadata_json=json.dumps({"document_ids": doc_ids, "routed_model": routed_model})
     )
     db.add(user_msg)
     db.add(asst_msg)
@@ -262,7 +271,8 @@ async def upload_documents_batch(
         "success": True,
         "count": total_count,
         "documents": docs_output,
-        "chat_reply": chat_reply
+        "chat_reply": chat_reply,
+        "routed_model": routed_model
     }
 
 @router.get("/{document_id}/file")

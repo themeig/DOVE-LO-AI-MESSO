@@ -31,3 +31,11 @@ def test_get_and_update_ai_model_setting():
     assert pro_res.status_code == 200
     assert pro_res.json()['current_model'] == 'google/gemini-2.5-pro'
     assert pro_res.json()['current_info']['is_thinking'] is True
+
+    # 5. Switch to auto smart router model
+    auto_res = client.post('/api/settings/ai-model', json={'model_id': 'auto'})
+    assert auto_res.status_code == 200
+    assert auto_res.json()['current_model'] == 'auto'
+    assert auto_res.json()['current_info']['name'] == 'Router Intelligente Dinamico'
+    assert auto_res.json()['current_info']['tag'] == '🎯 Consigliato'
+

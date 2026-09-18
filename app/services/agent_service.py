@@ -2307,6 +2307,57 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             documents=matching_files[:5]
         )
 
+    def resolve_agent_model(self, user_text: str, lower_t: str, configured_model: str) -> str:
+        """
+        Risolve dinamicamente il modello da utilizzare:
+        - Se configured_model != 'auto', rispetta la scelta manuale dell'utente.
+        - Se configured_model == 'auto':
+            - Se l'intento è di immagazzinamento/salvataggio/caricamento rapido:
+                -> 'google/gemini-2.5-flash-lite'
+            - Se l'intento è di ricerca, calcolo, scadenze, domande complesse o spiegazioni:
+                -> 'google/gemini-2.5-pro'
+            - Default per richieste generiche: 'google/gemini-2.5-pro' (massima intelligenza)
+        """
+        cfg = (configured_model or "").strip()
+        if not cfg:
+            cfg = "auto"
+
+        if cfg != "auto":
+            return cfg
+
+        # 1. Ricerche, calcoli, scadenze, domande e spiegazioni -> PRO (Thinking Process)
+        search_calc_patterns = [
+            "dov'è", "dov'e", "dove è", "dove sono", "dove si trova", "dove ho messo", "dove sta", "dove ",
+            "cerca", "trova", "trovami", "mostrami", "fammi vedere",
+            "scadenz", "bollett", "fattur", "polizz", "mutuo", "assicuraz",
+            "quanto", "quant'è", "quant'e", "somma", "totale", "calcola", "spesa", "spese",
+            "spiega", "spiegami", "chiarisci", "cosa copre", "cosa c'è", "cosa ce", "cosa contiene",
+            "come funziona", "dimmi", "elenca", "quali", "?"
+        ]
+        is_search_or_reasoning = any(p in lower_t for p in search_calc_patterns)
+
+        # 2. Immagazzinamento rapido / posizioni / allegati foto -> FLASH LITE
+        storage_patterns = [
+            "ho messo", "ho riposto", "ho posato", "ho infilato", "ho lasciato", "ho salvato",
+            "salva", "salvami", "memorizza", "memorizzami", "registra",
+            "riponi", "posiziona", "sposta", "spostato", "aggiorna la posizione",
+            "ti allego", "allego foto", "ecco la foto", "foto per", "foto della",
+            "messo nel", "messa nel", "messo in", "messa in", "messo sulla", "messo sullo"
+        ]
+        is_storage = any(p in lower_t for p in storage_patterns)
+
+        if is_storage and not is_search_or_reasoning:
+            return "google/gemini-2.5-flash-lite"
+
+        if is_search_or_reasoning:
+            return "google/gemini-2.5-pro"
+
+        pos_preps = [" nel ", " nello ", " nella ", " nei ", " negli ", " nelle ", " sul ", " sullo ", " sulla ", " in "]
+        if any(prep in lower_t for prep in pos_preps) and not is_search_or_reasoning:
+            return "google/gemini-2.5-flash-lite"
+
+        return "google/gemini-2.5-pro"
+
     def run_turn(
         self,
         user_text: str,
@@ -2316,7 +2367,41 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         audio_base64: Optional[str] = None,
         audio_format: Optional[str] = "wav"
     ) -> ChatResponse:
-        """Esegue un turno conversazionale con tool-calling dell'agente."""
+        """Esegue un turno conversazionale applicando la risoluzione del modello tramite Router Intelligente."""
+        lower_t = user_text.lower()
+        configured_model = get_app_setting(db, "ai_model", default=self.settings.OPENROUTER_MODEL) or "auto"
+        effective_model = self.resolve_agent_model(user_text, lower_t, configured_model)
+
+        resp = self._run_turn_impl(
+            user_text=user_text,
+            db=db,
+            thread_id=thread_id,
+            quoted_message=quoted_message,
+            audio_base64=audio_base64,
+            audio_format=audio_format,
+            effective_model=effective_model
+        )
+
+        if resp:
+            resp.routed_model = effective_model
+            if resp.data is None:
+                resp.data = {"routed_model": effective_model}
+            elif isinstance(resp.data, dict) and "routed_model" not in resp.data:
+                resp.data["routed_model"] = effective_model
+
+        return resp
+
+    def _run_turn_impl(
+        self,
+        user_text: str,
+        db: Session,
+        thread_id: str = "general",
+        quoted_message: Optional[dict] = None,
+        audio_base64: Optional[str] = None,
+        audio_format: Optional[str] = "wav",
+        effective_model: Optional[str] = None
+    ) -> ChatResponse:
+        """Esegue l'elaborazione interna di un turno conversazionale con tool-calling dell'agente."""
         lower_t = user_text.lower()
 
         # Intercetta immediatamente domande sulla data/ora odierna, ieri o domani con calcolo istantaneo esatto
@@ -2888,7 +2973,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         tool_action = "REPLY"
         tool_data = None
 
-        agent_model = get_app_setting(db, "ai_model", default=self.settings.OPENROUTER_MODEL) or "google/gemini-2.5-flash-lite"
+        agent_model = effective_model or get_app_setting(db, "ai_model", default=self.settings.OPENROUTER_MODEL) or "google/gemini-2.5-flash-lite"
 
 
         is_drive_status_request = (
