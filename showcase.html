@@ -72,7 +72,8 @@
         <div>
           <span class="font-display font-bold text-lg tracking-tight text-white flex items-center gap-2">
             Dove lo AI messo
-            <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono font-medium">v1.0 AI Vault</span>
+            <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono font-medium app-version-badge">v1.1.0 AI Vault</span>
+
           </span>
         </div>
       </div>
@@ -1207,7 +1208,15 @@
     // Init on load
     document.addEventListener('DOMContentLoaded', () => {
       setDemoStep(1);
+      fetch('/api/version').then(r => r.json()).then(d => {
+        if (d && d.version) {
+          document.querySelectorAll('.app-version-badge').forEach(el => {
+            el.textContent = 'v' + d.version + ' AI Vault';
+          });
+        }
+      }).catch(() => {});
     });
+
   </script>
 </body>
 </html>

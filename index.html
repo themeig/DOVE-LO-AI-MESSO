@@ -162,9 +162,13 @@
             <i class="fa-solid fa-vault"></i>
           </div>
           <div>
-            <h2 class="font-semibold text-sm leading-tight">I tuoi Spazi & Chat</h2>
+            <div class="flex items-center gap-1.5">
+              <h2 class="font-semibold text-sm leading-tight">I tuoi Spazi & Chat</h2>
+              <span class="bg-white/20 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded app-version-badge">v1.1.0</span>
+            </div>
             <p class="text-[10px] text-green-200">Dove lo AI messo</p>
           </div>
+
         </div>
 
         <div class="flex items-center space-x-1.5">
@@ -259,11 +263,15 @@
 
           <!-- Titolo Chat & Info Membri / Area -->
           <div class="min-w-0">
-            <h1 id="activeThreadTitle" class="font-semibold text-sm leading-tight truncate">Dove lo AI messo</h1>
+            <div class="flex items-center gap-1.5">
+              <h1 id="activeThreadTitle" class="font-semibold text-sm leading-tight truncate">Dove lo AI messo</h1>
+              <span class="bg-white/20 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 app-version-badge">v1.1.0</span>
+            </div>
             <p id="activeThreadSubtitle" class="text-[11px] text-green-100 truncate">
               Assistente Personale & Caveau • online
             </p>
           </div>
+
         </div>
 
         <!-- Azioni Header Destra -->
@@ -1599,10 +1607,15 @@
         <div>
           <div class="flex items-center gap-2">
             <h2 class="font-bold text-sm text-slate-900 tracking-tight">Executive Vault & Scadenzario</h2>
+            <span class="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+              <i class="fa-solid fa-code-branch text-[9px] text-slate-500"></i>
+              <span class="app-version-badge">v1.1.0</span>
+            </span>
             <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Sincronizzato
             </span>
           </div>
+
           <p class="text-[11px] text-slate-500">I dati inseriti via WhatsApp si aggiornano in tempo reale</p>
         </div>
       </div>
@@ -1751,8 +1764,15 @@
                 <div class="text-[10px] text-red-400">Resetta caveau, file e opzionale Drive</div>
               </div>
             </button>
+
+            <!-- Versione App -->
+            <div class="border-t border-slate-100 px-3.5 py-2 mt-1 flex items-center justify-between text-[11px] text-slate-400 select-none">
+              <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-[10px]"></i> Versione App</span>
+              <span class="font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded text-[10px] app-version-badge">v1.1.0</span>
+            </div>
           </div>
         </div>
+
 
         <!-- Pulsante Rapido Blocca -->
         <button 
@@ -1996,6 +2016,24 @@
     }
     const getAuthHeaders = authHeaders;
     window.getAuthHeaders = authHeaders;
+
+    // --- Sincronizzazione Versione App Dinamica ---
+    async function fetchAppVersion() {
+      try {
+        const res = await fetch('/api/version');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.version) {
+            document.querySelectorAll('.app-version-badge').forEach(el => {
+              el.textContent = 'v' + data.version;
+            });
+          }
+        }
+      } catch (err) {
+        // Mantieni fallback statico
+      }
+    }
+    fetchAppVersion();
 
     // --- Gestione Sicurezza Caveau & Lock Screen ---
     function togglePasswordVisibility() {
@@ -7762,10 +7800,11 @@
 
       <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
         <span>Password predefinita: <code class="font-mono font-bold text-slate-600 bg-slate-100 px-1 py-0.5 rounded">1234</code></span>
-        <i class="fa-solid fa-circle-info" title="Modificabile dopo l'accesso"></i>
+        <span class="font-mono text-[10px] text-slate-400 app-version-badge">v1.1.0</span>
       </div>
     </div>
   </div>
+
 
   <!-- ================================================================= -->
   <!-- 6. MODALE: GESTIONE CARTELLE PC MONITORATE & INDICIZZAZIONE       -->

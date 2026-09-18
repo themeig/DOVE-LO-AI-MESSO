@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.database import get_db, Document, PhysicalItem, ChatThread
 from app.models.schemas import DashboardResponse, DashboardKPI, RecordItem
 from app.services.agent_service import categorize_deadline
+from app.version import APP_VERSION
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -214,4 +215,4 @@ def get_dashboard(
                 )
             )
 
-    return DashboardResponse(kpi=kpi, records=records)
+    return DashboardResponse(kpi=kpi, records=records, app_version=APP_VERSION)

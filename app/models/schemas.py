@@ -102,6 +102,7 @@ class DashboardKPI(BaseModel):
 class DashboardResponse(BaseModel):
     kpi: DashboardKPI
     records: List[RecordItem]
+    app_version: Optional[str] = None
 
 class DeadlineAlertItem(BaseModel):
     id: int

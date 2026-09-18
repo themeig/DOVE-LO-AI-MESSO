@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from app.version import APP_VERSION
+
 class Settings(BaseModel):
     BASE_DIR: Path = Path(__file__).resolve().parent.parent
     STORAGE_DIR: Path = BASE_DIR / "storage" / "uploads"
@@ -14,6 +16,7 @@ class Settings(BaseModel):
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "google/gemini-2.5-flash-lite")
     DEBUG: bool = True
+    APP_VERSION: str = APP_VERSION
 
 _settings = None
 
@@ -23,3 +26,4 @@ def get_settings() -> Settings:
         _settings = Settings()
         _settings.STORAGE_DIR.mkdir(parents=True, exist_ok=True)
     return _settings
+

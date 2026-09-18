@@ -1,0 +1,14 @@
+"""
+Modulo di definizione centralizzata della versione dell'applicazione 'Dove lo AI messo'.
+
+REGOLA DI SVILUPPO OBBLIGATORIA (AGENTS.md):
+Ogni volta che viene implementata una modifica al codice, una correzione di bug
+o una nuova funzionalità, il numero di versione DEVE essere incrementato.
+Convenzione SemVer (MAJOR.MINOR.PATCH):
+- PATCH: piccoli fix, miglioramenti grafici, correzioni testuali.
+- MINOR: nuove funzionalità, nuovi endpoint, integrazioni.
+- MAJOR: refactoring architetturali o modifiche strutturali/breaking.
+"""
+
+__version__ = "1.1.0"
+APP_VERSION = __version__

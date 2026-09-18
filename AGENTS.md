@@ -37,3 +37,16 @@ Questo documento definisce l'architettura, le convenzioni di design e i vincoli 
   * `/transcribe` (Whisper)
   * `/dashboard-data` (feed unico per lo scadenzario e l'archivio)
 * **Database**: SQLite locale + ricerca vettoriale.
+
+---
+
+## 4. Regola Assoluta di Versionamento (Version Increment)
+* **Single Source of Truth**: Il file [`app/version.py`](app/version.py) definisce `APP_VERSION = "X.Y.Z"`.
+* **Incremento Obbligatorio ad Ogni Modifica**:
+  * Ad OGNI modifica apportata al codice, correzione di bug o aggiunta di funzionalità su richiesta dell'utente, l'assistente DEVE tassativamente **incrementare il numero di versione** in `app/version.py` (convenzione SemVer: PATCH per correzioni/tweaks, MINOR per nuove funzionalità/endpoint, MAJOR per refactoring strutturali).
+  * La versione è esposta e propagata via:
+    1. Endpoint REST `GET /api/version` e campo `app_version` in `GET /api/dashboard`.
+    2. Header di FastAPI (`app.version`).
+    3. UI Frontend: badge visibili nella Chat WhatsApp (sidebar e header conversazione), nella Dashboard (top bar e menu Strumenti), e nella lock screen.
+  * L'assistente DEVE sempre indicare chiaramente all'utente il nuovo numero di versione attivo nel messaggio di risposta per garantire il perfetto allineamento e coordinamento tra assistenti e sviluppatori.
+

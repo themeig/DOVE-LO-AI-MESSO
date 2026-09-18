@@ -70,12 +70,15 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
 
+from app.version import APP_VERSION
+
 app = FastAPI(
     title="Dove lo AI messo",
     description="Backend API for Dove lo AI messo",
-    version="1.0.0",
+    version=APP_VERSION,
     lifespan=lifespan
 )
+
 
 # ==============================================================================
 # SICUREZZA / TODO HARDENING CORS:
@@ -145,6 +148,15 @@ def get_uploaded_file(filename: str):
 @app.get("/api/files/{filename}")
 def get_api_file(filename: str):
     return _serve_decrypted_file(filename)
+
+# Endpoint Versione App
+@app.get("/api/version")
+def get_app_version():
+    return {
+        "version": APP_VERSION,
+        "app_name": "Dove lo AI messo",
+        "description": "Executive AI Vault & Organizzatore Intelligente"
+    }
 
 # Endpoint White Paper
 @app.get("/api/whitepaper")
