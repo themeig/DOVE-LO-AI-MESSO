@@ -973,6 +973,49 @@ def test_llm_guardrail_replaces_hesitation_with_multi_cards():
             assert res.action == "show_document_card"
 
 
+def test_widget_rules_meta_and_physical_items_no_widgets():
+    """Verifica che:
+    1. Richieste meta/info sulle capacità ('cosa puoi fare?') NON alleghino mai widget o schede.
+    2. Richieste su oggetti fisici privi di foto ('dov'è il cacciavite?') restituiscano la posizione testuale senza schede documento.
+    """
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        # Documento nel caveau
+        doc = Document(
+            title="Bolletta Enel Energia",
+            file_path="uploads/enel.pdf",
+            file_type="pdf",
+            doc_type="bolletta",
+            amount=64.20,
+            summary="Bolletta Enel luce."
+        )
+        # Oggetto fisico nel caveau senza foto
+        item = PhysicalItem(
+            item_name="Cacciavite a stella",
+            primary_location="Garage",
+            detailed_location="Cassetta degli attrezzi blu",
+            category="attrezzi"
+        )
+        session.add_all([doc, item])
+        session.commit()
+
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = ""
+
+        # 1. Meta query "cosa puoi fare?" -> zero document widgets
+        res_meta = agent.run_turn("cosa puoi fare?", session, thread_id="general")
+        assert res_meta.documents is None or len(res_meta.documents) == 0
+        assert "caveau" in res_meta.reply.lower() or "oggetti" in res_meta.reply.lower()
+
+        # 2. Physical item location query -> returns location in text, no document widgets
+        res_item = agent.run_turn("dov'è il cacciavite a stella?", session, thread_id="general")
+        assert "garage" in res_item.reply.lower()
+        assert "cassetta" in res_item.reply.lower()
+        assert res_item.documents is None or len(res_item.documents) == 0
+
+
+
 
 
 

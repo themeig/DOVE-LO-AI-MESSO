@@ -877,18 +877,25 @@ def unzip_document_to_vault(
     doc = None
     if document_id:
         doc = db.query(Document).filter(Document.id == document_id).first()
+        if not doc:
+            logger.warning(f"Nessun documento ZIP trovato con ID {document_id}")
+            return []
     elif document_title:
         term = document_title.strip().lower()
         all_zips = db.query(Document).filter(
             or_(Document.file_type == "zip", Document.doc_type == "archivio_zip")
         ).all()
         doc = next((d for d in all_zips if term in (d.title or "").lower() or term in (d.summary or "").lower()), None)
+        if not doc:
+            logger.warning(f"Nessun documento ZIP trovato con titolo '{document_title}'")
+            return []
 
     if not doc:
-        # Cerca l'ultimo zip caricato
+        # Cerca l'ultimo zip caricato solo se nessun parametro specifico è stato fornito
         doc = db.query(Document).filter(
             or_(Document.file_type == "zip", Document.doc_type == "archivio_zip")
         ).order_by(Document.created_at.desc()).first()
+
 
     if not doc or not doc.file_path:
         logger.warning(f"Nessun documento ZIP trovato con ID {document_id}")

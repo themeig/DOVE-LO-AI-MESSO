@@ -50,3 +50,47 @@ Questo documento definisce l'architettura, le convenzioni di design e i vincoli 
     3. UI Frontend: badge visibili nella Chat WhatsApp (sidebar e header conversazione), nella Dashboard (top bar e menu Strumenti), e nella lock screen.
   * L'assistente DEVE sempre indicare chiaramente all'utente il nuovo numero di versione attivo nel messaggio di risposta per garantire il perfetto allineamento e coordinamento tra assistenti e sviluppatori.
 
+---
+
+## 5. Server MCP Completo (Model Context Protocol)
+Il server MCP (`app/mcp_server.py`) espone **tutti i 17 tool del caveau** per consentire a client ed agenti esterni (es. Claude Desktop, cursor, AGY, script) di operare al 100% sul sistema:
+1. `get_current_date`: data, ora, giorno della settimana e formato italiano per calcolo scadenze.
+2. `get_app_version`: restituisce la versione dell'applicazione (`APP_VERSION`).
+3. `get_vault_stats`: statistiche generali, conteggi KPI, totale insoluti in euro e stato cloud.
+4. `get_vault_context`: contesto aggiornato in tempo reale (ultimi documenti, oggetti, scadenze).
+5. `search_vault`: ricerca universale con tolleranza ai refusi, sinonimi e singolari/plurali.
+6. `list_vault_contents`: elenco completo documenti o oggetti fisici.
+7. `get_recent_vault_documents`: ultimi documenti acquisiti nel caveau.
+8. `store_physical_item`: memorizzazione, aggiornamento o spostamento oggetti fisici e stanze.
+9. `link_document_to_item`: collegamento foto/documento/scontrino a oggetto fisico.
+10. `get_upcoming_deadlines`: scadenzario tributi e utenze con categorizzazione urgenza.
+11. `rename_vault_document`: rinomina personalizzata dei titoli documento.
+12. `delete_vault_record`: eliminazione sicura singola o cumulativa (confermabile).
+13. `create_zip_archive`: creazione e download archivio compresso ZIP di file selezionati.
+14. `unzip_vault_archive`: decompressione e catalogazione automatica AI dei file dello ZIP.
+15. `get_google_drive_status`: stato connessione Drive, modalità ('dual'/'cloud_only') e struttura cartelle.
+16. `scan_local_folder`: scansione e indicizzazione cartelle del computer (es. Download).
+17. `list_watched_folders`: elenco cartelle locali monitorate.
+18. `open_local_file_in_explorer`: apertura nativa in Esplora File di Windows (`explorer.exe`).
+
+Prompt MCP inclusi: `vault_assistant_instructions`, `assistant_behavior_and_widget_rules`, `google_drive_sync_guidelines`.
+
+---
+
+## 6. Comportamento Professionale dell'Assistente & Matrice Decisionale dei Widget
+* **Tono Concierge Esecutivo**: Lingua italiana naturale, educata, rassicurante e impeccabile. Nessun gergo tecnico di database verso l'utente.
+* **Autonomia Decisionale sui Widget (Niente Automatismi)**:
+  * L'assistente decide in totale autonomia se il contesto richiede di mostrare widget interattivi (`show_document_card` o conferme) oppure solo testo.
+  * **QUANDO HA SENSO (Chiamare Widget)**:
+    - Richiesta esplicita di consultazione, apertura, visualizzazione o download di documenti ("dammi", "mostrami", "apri", "scarica", "vedi", "cerca").
+    - Richieste cumulative ("scaricali entrambi", "mostrali tutti e due"): emette subito le schede per ciascun file.
+    - Dopo decompressione di un file ZIP: mostra le schede interattive di tutti i documenti estratti.
+    - Azioni di eliminazione: mostra la card interattiva di conferma per consentire l'azione sicura.
+  * **QUANDO NON HA SENSO (Vietato Chiamare Widget)**:
+    - Domande meta, informative o di presentazione ("cosa puoi fare?", "chi sei?", "come funzioni?", "aiuto", saluti).
+    - Esempi illustrativi nel testo (citare un documento a puro titolo di esempio).
+    - Ricerca di posizioni fisiche prive di foto (rispondere con testo preciso).
+    - Calcoli o totali di spesa numerici (rispondere con testo e calcoli).
+    - Domande esplicative su Google Drive, cartelle PC o crittografia.
+
+

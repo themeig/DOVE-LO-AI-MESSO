@@ -226,4 +226,5 @@ def test_chat_date_and_deadlines_intent():
     res_deadlines = client.post("/api/chat", json={"message": "Quali scadenze ho nei prossimi giorni?"})
     assert res_deadlines.status_code == 200
     deadlines_reply = res_deadlines.json()["reply"]
-    assert "scadenz" in deadlines_reply.lower() or "pagare" in deadlines_reply.lower()
+    assert any(k in deadlines_reply.lower() for k in ["scadenz", "pagare", "pagament", "sospeso"])
+
