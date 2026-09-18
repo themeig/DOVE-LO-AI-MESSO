@@ -55,6 +55,9 @@ class GoogleDriveServiceInterface(Protocol):
     ) -> dict:
         ...
 
+    def delete_vault_root_folder(self, access_token: str) -> bool:
+        ...
+
 
 class MockGoogleDriveService:
     """Implementazione mock offline di GoogleDriveService per test e sviluppo locale."""
@@ -86,6 +89,9 @@ class MockGoogleDriveService:
             "file_id": mock_id,
             "web_view_link": f"https://drive.google.com/file/d/{mock_id}/view",
         }
+
+    def delete_vault_root_folder(self, access_token: str) -> bool:
+        return True
 
 
 class RealGoogleDriveService:
@@ -264,6 +270,31 @@ class RealGoogleDriveService:
                 "file_id": file_id,
                 "web_view_link": web_view_link,
             }
+
+    def delete_vault_root_folder(self, access_token: str) -> bool:
+        """Elimina la cartella radice DoveLoAIMesso e tutti i relativi file su Google Drive."""
+        with self._client_ctx() as client:
+            headers = {"Authorization": f"Bearer {access_token}"}
+            q = "mimeType = 'application/vnd.google-apps.folder' and name = 'DoveLoAIMesso' and trashed = false and 'root' in parents"
+            try:
+                res = client.get(
+                    "https://www.googleapis.com/drive/v3/files",
+                    headers=headers,
+                    params={"q": q, "fields": "files(id, name)"}
+                )
+                if res.status_code == 200:
+                    files = res.json().get("files", [])
+                    for f in files:
+                        fid = f.get("id")
+                        if fid:
+                            client.delete(f"https://www.googleapis.com/drive/v3/files/{fid}", headers=headers)
+                    return True
+                else:
+                    logger.warning(f"Google Drive search folder failed ({res.status_code}): {res.text}")
+                    return False
+            except Exception as e:
+                logger.error(f"Errore durante eliminazione cartella radice DoveLoAIMesso da Drive: {e}")
+                return False
 
 
 def get_drive_service() -> GoogleDriveServiceInterface:

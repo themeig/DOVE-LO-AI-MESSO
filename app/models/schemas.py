@@ -259,4 +259,19 @@ class DismissProposalResponse(BaseModel):
     proposal_id: int
 
 
+class WipeDatabaseRequest(BaseModel):
+    password: str
+    delete_drive: bool = False
+
+
+class WipeDatabaseResponse(BaseModel):
+    success: bool
+    message: str
+    deleted_documents: int = 0
+    deleted_items: int = 0
+    deleted_messages: int = 0
+    deleted_folders: int = 0
+    drive_deleted: bool = False
+
+
 

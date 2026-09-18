@@ -1,11 +1,21 @@
 import logging
+import math
+from pathlib import Path
 from typing import Dict, Any, List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models.database import get_db, get_app_setting, set_app_setting
+from app.models.database import (
+    get_db, get_app_setting, set_app_setting,
+    Document, PhysicalItem, ChatMessage, ChatThread,
+    WatchedFolder, PendingFileProposal, UIEvent, GoogleDriveCredential
+)
+from app.models.schemas import WipeDatabaseRequest, WipeDatabaseResponse
+from app.services.crypto_service import get_vault_manager
+from app.services.drive_service import get_drive_service
+from app.api.auth import get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -91,3 +101,122 @@ def update_ai_model_setting(payload: ModelUpdateRequest, db: Session = Depends(g
     logger.info(f"Modello AI aggiornato a: {payload.model_id}")
     
     return get_ai_model_setting(db)
+
+
+@router.post("/wipe-database", response_model=WipeDatabaseResponse)
+def wipe_database(
+    payload: WipeDatabaseRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db)
+):
+    """
+    Elimina in modo irreversibile tutti i dati del database SQLite (documenti, scadenze,
+    oggetti, foto, chat e cartelle monitorate), rimuove i file locali cifrati e,
+    se richiesto dall'utente, cancella i file remoti e la cartella radice da Google Drive.
+    Richiede la password master del Caveau con protezione rate limiting anti-bruteforce.
+    """
+    mgr = get_vault_manager()
+    client_ip = get_client_ip(request)
+
+    # 1. Verifica protezione anti-bruteforce
+    is_limited, remaining_wait = mgr.rate_limiter.is_rate_limited(client_ip)
+    if is_limited:
+        wait_seconds = max(1, int(math.ceil(remaining_wait)))
+        response.headers["Retry-After"] = str(wait_seconds)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Troppi tentativi errati. Riprova tra {wait_seconds} secondi.",
+            headers={"Retry-After": str(wait_seconds)}
+        )
+
+    # 2. Verifica password del Caveau
+    if not mgr.unlock(payload.password):
+        delay = mgr.rate_limiter.record_failure(client_ip)
+        if delay > 0:
+            wait_seconds = max(1, int(math.ceil(delay)))
+            response.headers["Retry-After"] = str(wait_seconds)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Password non corretta. 3 tentativi esauriti. Riprova tra {wait_seconds} secondi.",
+                headers={"Retry-After": str(wait_seconds)}
+            )
+        else:
+            attempts_left = mgr.rate_limiter.get_remaining_attempts_in_block(client_ip)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Password non corretta. Hai ancora {attempts_left} tentativ{'o' if attempts_left == 1 else 'i'} prima del blocco temporaneo."
+            )
+
+    mgr.rate_limiter.record_success(client_ip)
+
+    # 3. Gestione opzionale Google Drive
+    drive_deleted = False
+    if payload.delete_drive:
+        try:
+            active_cred = db.query(GoogleDriveCredential).first()
+            if active_cred and active_cred.access_token:
+                drive_service = get_drive_service()
+                drive_service.delete_vault_root_folder(active_cred.access_token)
+                drive_deleted = True
+            db.query(GoogleDriveCredential).delete()
+        except Exception as e:
+            logger.warning(f"Errore durante l'eliminazione da Google Drive: {e}")
+
+    # 4. Eliminazione file fisici crittografati in uploads e item_photos
+    settings = get_settings()
+    uploads_dir = settings.STORAGE_DIR
+    if uploads_dir.exists():
+        for p in uploads_dir.iterdir():
+            if p.is_file():
+                try:
+                    p.unlink(missing_ok=True)
+                except Exception as e:
+                    logger.warning(f"Impossibile eliminare {p}: {e}")
+
+    item_photos_dir = settings.BASE_DIR / "storage" / "item_photos"
+    if item_photos_dir.exists():
+        for p in item_photos_dir.iterdir():
+            if p.is_file():
+                try:
+                    p.unlink(missing_ok=True)
+                except Exception as e:
+                    logger.warning(f"Impossibile eliminare {p}: {e}")
+
+    # 5. Pulizia tabelle SQLite
+    doc_count = db.query(Document).count()
+    item_count = db.query(PhysicalItem).count()
+    msg_count = db.query(ChatMessage).count()
+    folder_count = db.query(WatchedFolder).count()
+
+    db.query(Document).delete()
+    db.query(PhysicalItem).delete()
+    db.query(ChatMessage).delete()
+    db.query(WatchedFolder).delete()
+    db.query(PendingFileProposal).delete()
+    db.query(UIEvent).delete()
+
+    # Rimuovi eventuali thread personalizzati mantenendo i default
+    db.query(ChatThread).filter(~ChatThread.id.in_(["general", "famiglia", "lavoro", "casa"])).delete(synchronize_session=False)
+
+    # 6. Ricrea messaggio iniziale nel thread generale
+    welcome_msg = ChatMessage(
+        thread_id="general",
+        sender="assistant",
+        message_type="text",
+        content="👋 Ciao! Il database è stato completamente azzerato e il tuo caveau è pronto per essere utilizzato."
+    )
+    db.add(welcome_msg)
+    db.commit()
+
+    logger.info(f"Database azzerato con successo: {doc_count} doc, {item_count} oggetti, {msg_count} msg, drive_deleted={drive_deleted}")
+
+    return WipeDatabaseResponse(
+        success=True,
+        message="Database e file del Caveau eliminati con successo.",
+        deleted_documents=doc_count,
+        deleted_items=item_count,
+        deleted_messages=msg_count,
+        deleted_folders=folder_count,
+        drive_deleted=drive_deleted
+    )

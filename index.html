@@ -1737,6 +1737,20 @@
                 <div class="text-[10px] text-rose-400">Scarica chiavi di cifratura dalla RAM</div>
               </div>
             </button>
+
+            <button 
+              type="button" 
+              onclick="closeDashboardToolsMenu(); openWipeDatabaseModal();" 
+              class="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-red-50 text-red-700 text-xs font-medium transition cursor-pointer"
+            >
+              <div class="w-7 h-7 rounded-lg bg-red-100 text-red-700 flex items-center justify-center text-xs shrink-0">
+                <i class="fa-solid fa-trash-can"></i>
+              </div>
+              <div class="text-left">
+                <div class="text-red-700 font-semibold text-xs">Elimina Tutto il Database</div>
+                <div class="text-[10px] text-red-400">Resetta caveau, file e opzionale Drive</div>
+              </div>
+            </button>
           </div>
         </div>
 
@@ -6780,6 +6794,128 @@
       }
     }
 
+    // --- Eliminazione Totale Database (Reset Caveau) ---
+    function openWipeDatabaseModal() {
+      const modal = document.getElementById('wipeDatabaseModal');
+      const pwdInput = document.getElementById('wipePasswordInput');
+      const errBox = document.getElementById('wipeDatabaseError');
+      const driveCheck = document.getElementById('wipeDeleteDriveCheckbox');
+      if (pwdInput) pwdInput.value = '';
+      if (errBox) errBox.classList.add('hidden');
+      if (driveCheck) driveCheck.checked = false;
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => { if (pwdInput) pwdInput.focus(); }, 100);
+      }
+    }
+
+    function closeWipeDatabaseModal() {
+      const modal = document.getElementById('wipeDatabaseModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function toggleWipePasswordVisibility() {
+      const input = document.getElementById('wipePasswordInput');
+      const icon = document.getElementById('wipeEyeIcon');
+      if (input && icon) {
+        if (input.type === 'password') {
+          input.type = 'text';
+          icon.classList.remove('fa-eye');
+          icon.classList.add('fa-eye-slash');
+        } else {
+          input.type = 'password';
+          icon.classList.remove('fa-eye-slash');
+          icon.classList.add('fa-eye');
+        }
+      }
+    }
+
+    async function confirmWipeDatabase() {
+      const pwdInput = document.getElementById('wipePasswordInput');
+      const driveCheck = document.getElementById('wipeDeleteDriveCheckbox');
+      const errBox = document.getElementById('wipeDatabaseError');
+      const errText = document.getElementById('wipeDatabaseErrorText');
+      const btn = document.getElementById('confirmWipeBtn');
+
+      const password = pwdInput ? pwdInput.value : '';
+      const deleteDrive = driveCheck ? driveCheck.checked : false;
+
+      if (!password) {
+        if (errBox && errText) {
+          errText.textContent = "Inserisci la password master del caveau.";
+          errBox.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-xs"></i> Eliminazione in corso...`;
+      }
+
+      try {
+        const res = await fetch('/api/settings/wipe-database', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(typeof authHeaders === 'function' ? authHeaders() : {})
+          },
+          body: JSON.stringify({
+            password: password,
+            delete_drive: deleteDrive
+          })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Impossibile eliminare il database. Password non corretta.");
+        }
+
+        const data = await res.json();
+        closeWipeDatabaseModal();
+
+        if (typeof showToast === 'function') {
+          showToast("🗑️ Database azzerato con successo!", "success", 5000);
+        }
+
+        // Ricarica Dashboard e canali
+        if (typeof loadDashboard === 'function') {
+          await loadDashboard(typeof currentFilter !== 'undefined' ? currentFilter : 'all');
+        }
+        if (typeof checkDeadlineAlerts === 'function') {
+          await checkDeadlineAlerts(null);
+        }
+        if (typeof loadThreads === 'function') {
+          await loadThreads();
+        }
+        if (typeof switchThread === 'function') {
+          switchThread('general');
+        } else if (typeof loadMessages === 'function') {
+          await loadMessages('general');
+        }
+      } catch (err) {
+        console.error("Errore wipe database:", err);
+        if (errBox && errText) {
+          errText.textContent = err.message || "Password errata.";
+          errBox.classList.remove('hidden');
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-trash-can text-xs"></i> Elimina Tutto Definitivamente`;
+        }
+      }
+    }
+
+    window.openWipeDatabaseModal = openWipeDatabaseModal;
+    window.closeWipeDatabaseModal = closeWipeDatabaseModal;
+    window.toggleWipePasswordVisibility = toggleWipePasswordVisibility;
+    window.confirmWipeDatabase = confirmWipeDatabase;
+
     // --- Gestione Cartelle PC Monitorate & Explorer ---
     let watchedFoldersCache = [];
 
@@ -7716,6 +7852,112 @@
           Chiudi
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- 7. MODALE: ELIMINAZIONE TOTALE DATABASE (RESET CAVEAU)            -->
+  <!-- ================================================================= -->
+  <div id="wipeDatabaseModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 border border-red-100 text-left">
+      
+      <!-- Intestazione Pericolo -->
+      <div class="flex items-center justify-between border-b border-red-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-base shrink-0">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm text-slate-900">Elimina Tutto il Database</h3>
+            <p class="text-[11px] text-red-500 font-medium">Azione distruttiva ed irreversibile</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeWipeDatabaseModal()" class="w-7 h-7 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Descrizione / Avviso -->
+      <div class="bg-red-50/80 border border-red-200/80 rounded-2xl p-3.5 space-y-2 text-xs text-red-800">
+        <div class="flex items-start gap-2">
+          <i class="fa-solid fa-circle-exclamation text-red-600 text-sm shrink-0 mt-0.5"></i>
+          <div>
+            <p class="font-bold text-red-900 mb-1">Cosa verrà eliminato:</p>
+            <ul class="list-disc list-inside space-y-0.5 text-[11px] text-red-800/90">
+              <li>Tutti i documenti, bollette e scadenze memorizzati</li>
+              <li>Tutti gli oggetti fisici e relative foto della posizione</li>
+              <li>Tutta la cronologia dei messaggi e chat</li>
+              <li>Tutti i file crittografati salvati nel caveau locale</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Opzione Google Drive -->
+      <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5">
+        <label class="flex items-start gap-3 cursor-pointer select-none">
+          <input type="checkbox" id="wipeDeleteDriveCheckbox" class="mt-0.5 w-4 h-4 rounded text-red-600 border-slate-300 focus:ring-red-500 cursor-pointer">
+          <div class="text-xs">
+            <span class="font-bold text-slate-800 flex items-center gap-1.5">
+              <i class="fa-brands fa-google-drive text-emerald-600"></i> Elimina anche da Google Drive
+            </span>
+            <p class="text-[11px] text-slate-500 mt-0.5">
+              Rimuove in modo permanente la cartella <code>DoveLoAIMesso</code> e tutti i file salvati su Google Drive. Se non spuntato, i file remoti rimarranno intatti.
+            </p>
+          </div>
+        </label>
+      </div>
+
+      <!-- Errore Password / Rate Limit -->
+      <div id="wipeDatabaseError" class="hidden text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-3 flex items-center gap-2">
+        <i class="fa-solid fa-circle-exclamation shrink-0 text-sm text-rose-600"></i>
+        <span id="wipeDatabaseErrorText">Password non corretta.</span>
+      </div>
+
+      <!-- Input Password Master -->
+      <form id="wipeDatabaseForm" onsubmit="event.preventDefault(); confirmWipeDatabase();" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">
+            Conferma con Password Master del Caveau *
+          </label>
+          <div class="relative">
+            <input 
+              type="password" 
+              id="wipePasswordInput" 
+              required 
+              placeholder="Inserisci password del caveau..." 
+              autocomplete="current-password"
+              class="w-full text-xs px-3.5 py-2.5 pr-10 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-red-500 bg-white"
+            >
+            <button 
+              type="button" 
+              onclick="toggleWipePasswordVisibility()" 
+              class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+              title="Mostra/Nascondi password"
+            >
+              <i id="wipeEyeIcon" class="fa-regular fa-eye text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button 
+            type="button" 
+            onclick="closeWipeDatabaseModal()" 
+            class="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+          >
+            Annulla
+          </button>
+          <button 
+            type="submit" 
+            id="confirmWipeBtn"
+            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-xs font-bold rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
+          >
+            <i class="fa-solid fa-trash-can text-xs"></i>
+            <span>Elimina Tutto Definitivamente</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
