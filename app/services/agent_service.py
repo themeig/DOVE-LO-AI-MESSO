@@ -485,6 +485,45 @@ TOOLS_DEFINITION = [
                 }
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_vault_document_content",
+            "description": (
+                "Legge, ispeziona ed estrae il contenuto tabellare e testuale reale e puntuale di un file salvato nel caveau "
+                "(es. fogli di calcolo Excel .xlsx/.xls, file CSV, documenti Word .docx, PDF o file di testo). "
+                "DEVI USARLO OBBLIGATORIAMENTE quando l'utente fa domande specifiche sui dati interni di un file "
+                "(es. 'cosa c'è nella riga 4?', 'qual è l'importo nel foglio?', 'leggimi la colonna B', 'chi ha fatturato di più nel file Excel?', "
+                "'quante righe ci sono?', 'cerca il valore Y nella tabella'). "
+                "DIVIETO ASSOLUTO DI INVENTARE DATI O NUMERI: usa sempre questo strumento per consultare i dati effettivi."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "document_id": {
+                        "type": "integer",
+                        "description": "ID numerico opzionale del documento da ispezionare nel caveau."
+                    },
+                    "document_title": {
+                        "type": "string",
+                        "description": "Titolo o nome del file da leggere (es. 'Bilancio 2026', 'Fatturato.xlsx', 'Spese Casa')."
+                    },
+                    "sheet_name": {
+                        "type": "string",
+                        "description": "Nome del foglio di calcolo Excel da leggere (se omesso o vuoto, legge il primo foglio)."
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": "Parola chiave o valore per filtrare e trovare righe specifiche all'interno della tabella o del documento."
+                    },
+                    "max_rows": {
+                        "type": "integer",
+                        "description": "Numero massimo di righe da estrarre (default 50)."
+                    }
+                }
+            }
+        }
     }
 ]
 
@@ -609,6 +648,13 @@ REGOLE OPERATIVE:
 18. AZZERAMENTO / WIPE SICURO DEL DATABASE CON PASSWORD MASTER:
     - Se l'utente chiede come azzerare o eliminare tutto il database, spiegagli che per la sua sicurezza l'operazione è accessibile dal menu "Strumenti -> 🗑️ Elimina Tutto il Database".
     - Richiede obbligatoriamente l'inserimento della Password Master del Caveau, offre la scelta di eliminare o meno la cartella 'DoveLoAIMesso' su Google Drive, ed è protetta da blocco anti-bruteforce.
+
+19. LETTURA PUNTUALE CONTENUTO FILE, FOGLI EXCEL, TABELLE E DIVIETO ASSOLUTO DI ALLUCINAZIONE:
+    - DIVIETO ASSOLUTO DI INVENTARE DATI O NUMERI CONTENUTI IN FILE EXCEL, CSV, TABELLE O DOCUMENTI!
+    - Se l'utente ti pone domande specifiche sul contenuto di un file (es. 'cosa c'è nella riga 5?', 'quanto ha fatturato a marzo?', 'qual è il valore della cella C2?', 'quali sono i totali nella tabella?', 'leggi la colonna importo', 'chi ha l'importo più alto?'):
+      DEVI SEMPRE E OBBLIGATORIAMENTE USARE IL TOOL `read_vault_document_content(document_title=..., query=..., sheet_name=...)` prima di rispondere!
+    - Questo strumento decifra il file in RAM ed estrae i dati reali (comprese formule calcolate, fogli di lavoro multipli, coordinate A/B/C e numeri di riga esatti).
+    - Rispondi citando con precisione le righe, le celle o le colonne reali estratte dallo strumento, senza mai tirare a indovinare!
 """
 
 
@@ -2070,6 +2116,84 @@ class AgenticChatService:
                 "documents": files_list
             }
 
+        elif name == "read_vault_document_content":
+            from app.services.archive_service import inspect_document_content
+            from app.services.document_service import read_decrypted_file
+
+            doc_id = args.get("document_id")
+            doc_title = (args.get("document_title") or "").strip()
+            sheet_name = args.get("sheet_name")
+            query = args.get("query")
+            max_rows = args.get("max_rows", 50)
+
+            doc = None
+            if doc_id:
+                doc = db.query(Document).filter(Document.id == doc_id).first()
+            if not doc and doc_title:
+                s_docs = search_vault_documents(db, doc_title, thread_id=thread_id)
+                if s_docs:
+                    doc = db.query(Document).filter(Document.id == s_docs[0]["id"]).first()
+            if not doc and query:
+                s_docs = search_vault_documents(db, query, thread_id=thread_id)
+                if s_docs:
+                    doc = db.query(Document).filter(Document.id == s_docs[0]["id"]).first()
+            if not doc:
+                # Cerca prioritariamente file Excel o tabelle nel caveau
+                q_excel = db.query(Document).filter(
+                    or_(
+                        Document.file_type.in_(["xlsx", "xls", "csv"]),
+                        Document.file_path.ilike("%.xlsx"),
+                        Document.file_path.ilike("%.xls"),
+                        Document.file_path.ilike("%.csv")
+                    )
+                )
+                if thread_id and thread_id not in ["general", "all"]:
+                    q_excel = q_excel.filter(Document.thread_id == thread_id)
+                doc = q_excel.order_by(Document.id.desc()).first()
+
+            if not doc:
+                q_any = db.query(Document)
+                if thread_id and thread_id not in ["general", "all"]:
+                    q_any = q_any.filter(Document.thread_id == thread_id)
+                doc = q_any.order_by(Document.id.desc()).first()
+
+            if not doc:
+                return {
+                    "success": False,
+                    "error": "Nessun documento trovato nel caveau da leggere.",
+                    "message": "Nessun documento trovato nel caveau corrispondente ai criteri specificati."
+                }
+
+            if not doc.file_path or not Path(doc.file_path).exists():
+                return {
+                    "success": False,
+                    "error": f"Il file fisico del documento '{doc.title}' non è presente su disco.",
+                    "document_id": doc.id,
+                    "document_title": doc.title
+                }
+
+            try:
+                file_bytes = read_decrypted_file(doc.file_path)
+                result = inspect_document_content(
+                    file_bytes=file_bytes,
+                    file_type=doc.file_type or "",
+                    filename=Path(doc.file_path).name or doc.title or "file",
+                    sheet_name=sheet_name,
+                    query=query,
+                    max_rows=max_rows
+                )
+                result["document_id"] = doc.id
+                result["document_title"] = doc.title
+                return result
+            except Exception as e:
+                logger.error(f"Errore lettura contenuto documento {doc.id}: {e}", exc_info=True)
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "document_id": doc.id,
+                    "document_title": doc.title
+                }
+
         return {"error": f"Strumento non riconosciuto: {name}"}
 
     def build_system_prompt(self, db: Session, thread_id: str = "general") -> str:
@@ -3000,6 +3124,16 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             ]
         )
 
+        is_content_inspect_request = (
+            any(k in lower_t for k in [
+                "foglio excel", "file excel", "foglio di calcolo", "riga ", "righe", "colonna ", "colonne",
+                "cella ", "celle", "tabella", "leggi il file", "leggi il foglio", "leggimi il file",
+                "cosa c'è nel file", "cosa ce nel file", "cosa c'è nel foglio", "cosa ce nel foglio",
+                "cosa contiene il file", "cosa contiene il foglio", "dati del foglio", "dati di excel",
+                ".xlsx", ".xls", ".csv"
+            ]) or (any(k in lower_t for k in ["riga", "colonna", "cella", "importo", "fatturato", "valore"]) and any(k in lower_t for k in ["excel", "xlsx", "xls", "tabella", "foglio"]))
+        ) and not is_delete_request and not is_rename_request
+
         stored_item_result = None
         if is_store_or_update:
             item_n, loc_n = self._extract_item_and_location(user_text, last_item_in_context=last_item_name)
@@ -3019,6 +3153,19 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             drive_resp = self._handle_drive_intent(user_text, lower_t, db, thread_id=thread_id)
             if drive_resp:
                 return drive_resp
+
+            # Fallback deterministico per ispezione tabelle/Excel nei test offline
+            if is_content_inspect_request:
+                c_out = self.execute_tool("read_vault_document_content", {"query": user_text}, db=db, thread_id=thread_id)
+                if c_out.get("success"):
+                    tbl = c_out.get("markdown_table") or c_out.get("content_text") or ""
+                    doc_title = c_out.get("document_title") or "Documento"
+                    sheet_info = f" (Foglio: **{c_out.get('active_sheet')}**)" if c_out.get("active_sheet") else ""
+                    return ChatResponse(
+                        reply=f"📊 **Dati estratti dal file '{doc_title}'**{sheet_info}:\n\n{tbl}\n\n💡 *{c_out.get('summary', '')}*",
+                        action="read_vault_document_content",
+                        data=c_out
+                    )
 
             clean_test = lower_t.replace("?", "").strip()
 
@@ -3309,7 +3456,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             and not is_listing_request
         )
 
-        if is_delete_request:
+        if is_content_inspect_request:
+            tool_choice_cfg = {"type": "function", "function": {"name": "read_vault_document_content"}}
+        elif is_delete_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "delete_vault_record"}}
         elif is_link_photo_intent:
             tool_choice_cfg = {"type": "function", "function": {"name": "link_document_to_item"}}
@@ -3479,6 +3628,11 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             elif tool_action == "delete_vault_record":
                                 t_tit = (tool_data or {}).get("title") or "elemento"
                                 final_text = f"⚠️ Ho preparato la richiesta per eliminare **{t_tit}** dal caveau. Clicca sul pulsante qui sotto per confermare o annullare l'operazione."
+                            elif tool_action == "read_vault_document_content":
+                                doc_title = (tool_data or {}).get("document_title") or "documento"
+                                tbl = (tool_data or {}).get("markdown_table") or (tool_data or {}).get("content_text") or ""
+                                sheet_info = f" (Foglio: **{(tool_data or {}).get('active_sheet')}**)" if (tool_data or {}).get('active_sheet') else ""
+                                final_text = f"📊 **Dati estratti dal file '{doc_title}'**{sheet_info}:\n\n{tbl}\n\n💡 *{(tool_data or {}).get('summary', '')}*"
                             else:
                                 final_text = "Operazione completata con successo nel caveau."
                         else:
@@ -3631,6 +3785,16 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                 urg = f" - ⚠️ {d['urgency_label']}" if d.get('urgency_label') else ""
                                 lines.append(f"- 📄 **{d['title']}** — {d.get('amount','?')} € scad. {d.get('due_date','?')}{urg}")
                             return ChatResponse(reply="📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines), action="get_upcoming_deadlines", data=t_out, documents=docs)
+
+                    if "read_vault_document_content" in raw_tc:
+                        c_out = self.execute_tool("read_vault_document_content", {"query": extracted_query or user_text}, db=db, thread_id=thread_id)
+                        if c_out.get("success"):
+                            tbl = c_out.get("markdown_table") or c_out.get("content_text") or ""
+                            return ChatResponse(
+                                reply=f"📊 **Dati estratti dal file '{c_out.get('document_title', 'Documento')}'**:\n\n{tbl}\n\n💡 *{c_out.get('summary', '')}*",
+                                action="read_vault_document_content",
+                                data=c_out
+                            )
 
                     # search_vault o qualsiasi altro caso: cerca col termine estratto o con il testo utente
                     search_q = extracted_query or re.sub(r"^(?:cerca|trovami|trova|dov'è|dov'e|dove|quant'è|quanto)\s*", "", lower_t).strip(" ?.")
@@ -3963,6 +4127,31 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                     lines.append(f"- 📄 **{d['title']}** — {d.get('amount','?')} € scad. {d.get('due_date','?')}{urg}")
                 return ChatResponse(reply="📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines), action="get_upcoming_deadlines", data=t_out, documents=docs)
             return ChatResponse(reply="✅ Non ci sono scadenze o pagamenti in sospeso al momento.", action="get_upcoming_deadlines", data=t_out)
+
+        # 3b. Ispezione dati tabelle e fogli Excel / CSV / Word
+        is_content_query = any(k in lower_t for k in [
+            "foglio excel", "file excel", "foglio di calcolo", "riga ", "righe", "colonna ", "colonne",
+            "cella ", "celle", "tabella", "leggi il file", "leggi il foglio", "leggimi il file",
+            "cosa c'è nel file", "cosa ce nel file", "cosa c'è nel foglio", "cosa ce nel foglio",
+            "cosa contiene il file", "cosa contiene il foglio", "dati del foglio", "dati di excel"
+        ]) or (any(k in lower_t for k in ["riga", "colonna", "cella", "importo", "fatturato", "valore"]) and any(k in lower_t for k in ["excel", "xlsx", "xls", "tabella", "foglio"]))
+
+        if is_content_query:
+            c_res = self.execute_tool("read_vault_document_content", {"query": user_text}, db=db, thread_id=thread_id)
+            if c_res.get("success"):
+                tbl = c_res.get("markdown_table") or c_res.get("content_text") or ""
+                doc_title = c_res.get("document_title") or "Documento"
+                sheet_info = f" (Foglio: **{c_res.get('active_sheet')}**)" if c_res.get("active_sheet") else ""
+                reply_text = (
+                    f"📊 **Dati estratti dal file '{doc_title}'**{sheet_info}:\n\n"
+                    f"{tbl}\n\n"
+                    f"💡 *{c_res.get('summary', '')}*"
+                )
+                return ChatResponse(
+                    reply=reply_text,
+                    action="read_vault_document_content",
+                    data=c_res
+                )
 
         # 4. Liste o elenchi del caveau
         is_list = (

@@ -53,7 +53,7 @@ Questo documento definisce l'architettura, le convenzioni di design e i vincoli 
 ---
 
 ## 5. Server MCP Completo (Model Context Protocol)
-Il server MCP (`app/mcp_server.py`) espone **tutti i 19 tool del caveau** per consentire a client ed agenti esterni (es. Claude Desktop, cursor, AGY, script) di operare al 100% sul sistema:
+Il server MCP (`app/mcp_server.py`) espone **tutti i 20 tool del caveau** per consentire a client ed agenti esterni (es. Claude Desktop, cursor, AGY, script) di operare al 100% sul sistema:
 1. `get_current_date`: data, ora, giorno della settimana e formato italiano per calcolo scadenze.
 2. `get_app_version`: restituisce la versione dell'applicazione (`APP_VERSION`).
 3. `get_vault_stats`: statistiche generali, conteggi KPI, totale insoluti in euro e stato cloud.
@@ -73,6 +73,7 @@ Il server MCP (`app/mcp_server.py`) espone **tutti i 19 tool del caveau** per co
 17. `scan_local_folder`: scansione e indicizzazione cartelle del computer (es. Download).
 18. `list_watched_folders`: elenco cartelle locali monitorate.
 19. `open_local_file_in_explorer`: apertura nativa in Esplora File di Windows (`explorer.exe`).
+20. `read_vault_document_content`: ispezione, lettura puntuale e anti-allucinazione di dati tabellari e testuali reali di file Excel (.xlsx/.xls con formule calcolate), CSV, Word (.docx) e PDF.
 
 Prompt MCP inclusi: `vault_assistant_instructions`, `assistant_behavior_and_widget_rules`, `google_drive_sync_guidelines`.
 
@@ -102,6 +103,14 @@ Prompt MCP inclusi: `vault_assistant_instructions`, `assistant_behavior_and_widg
   * Se il file rientra naturalmente nelle sezioni standard, viene catalogato lì.
   * Se il file ha un'altra natura (es. testo di una canzone o brano musicale), l'AI crea liberamente ed elegantemente la nuova sezione tematica (es. *"Canzoni & Testi Musicali"*) con icona FontAwesome dedicata (`fa-music`), senza mai forzarlo in categorie inappropriate come utenze o bollette.
   * L'utente e l'AI possono in qualsiasi momento riorganizzare o creare nuove sezioni tramite il tool `recategorize_vault_document`.
+
+---
+
+## 8. Ispezione Dati Puntuali, Tabelle Excel e Divieto Assoluto di Allucinazioni
+* **Zero Allucinazioni sui Dati**: Quando l'utente chiede dettagli su righe, colonne, valori, importi o celle di un foglio di calcolo (es. 'cosa c'è nella riga 5?', 'quanto ha fatturato a marzo?', 'qual è l'importo nella colonna B?'), l'AI è tassativamente vincolata all'uso di `read_vault_document_content`.
+* **Decifratura e Valutazione Formule**: Il sistema decifra il file in memoria RAM ed estrae i dati reali (con formule calcolate tramite openpyxl `data_only=True`, coordinate colonne A/B/C e numeri di riga 1-indexed reali di Excel).
+* **Risposta Puntuale ed Esatta**: L'assistente risponde citando la riga, la cella o la tabella reale senza mai tirare a indovinare o inventare dati non presenti nel file.
+
 
 
 

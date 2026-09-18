@@ -68,6 +68,7 @@ GUIDA PER SITUAZIONI SPECIFICHE:
 7. Google Drive: usa `get_google_drive_status`. Conosci le modalità 'dual' e 'cloud_only', l'alberatura `DoveLoAIMesso / <Anno> / <Categoria> / ...` e il pulsante [Drive ↗]. Non dire mai di non avere accesso a Drive!
 8. Cartelle PC: usa `scan_local_folder`, `list_watched_folders` e `open_local_file_in_explorer` per aprire i file nativamente in Windows Explorer.
 9. Sicurezza: il caveau usa crittografia a riposo AES-128 / Fernet, blocco con scarico chiavi dalla RAM e wipe database protetto da password.
+10. Lettura Dati Puntuali e Tabelle (Zero Allucinazioni): quando l'utente o il client richiede dettagli precisi su righe, colonne, valori, importi o celle di un foglio Excel, CSV, Word o documento (es. 'cosa c'è nella riga 5?', 'chi ha l'importo più alto?'), USA SEMPRE `read_vault_document_content` per leggere i dati reali e calcolati dal file in memoria prima di rispondere.
 """
 
 mcp = MCPServer(
@@ -740,6 +741,83 @@ def open_local_file_in_explorer(document_title: str = "", document_id: Optional[
         if opened:
             return f"Aperto con successo '{Path(target_path).name}' in Esplora Risorse di Windows."
         return f"Impossibile aprire Esplora Risorse per il percorso: {target_path}."
+
+
+@mcp.tool()
+def read_vault_document_content(
+    document_title: str = "",
+    document_id: Optional[int] = None,
+    sheet_name: str = "",
+    query: str = "",
+    max_rows: int = 50
+) -> str:
+    """Legge, ispeziona ed estrae il contenuto tabellare e testuale reale e puntuale di un file salvato nel caveau (Excel .xlsx/.xls, CSV, Word .docx, PDF, TXT). Fornisce tabelle Markdown con formule calcolate, coordinate colonne e righe."""
+    with _get_db_session() as db:
+        from app.services.archive_service import inspect_document_content
+        from app.services.document_service import read_decrypted_file
+
+        doc = None
+        if document_id:
+            doc = db.query(Document).filter(Document.id == document_id).first()
+        if not doc and document_title:
+            matches = search_vault_documents(db, document_title)
+            if matches:
+                doc = db.query(Document).filter(Document.id == matches[0]["id"]).first()
+        if not doc and query:
+            matches = search_vault_documents(db, query)
+            if matches:
+                doc = db.query(Document).filter(Document.id == matches[0]["id"]).first()
+        if not doc:
+            # Cerca prioritariamente file Excel o tabelle nel caveau
+            doc = db.query(Document).filter(
+                or_(
+                    Document.file_type.in_(["xlsx", "xls", "csv"]),
+                    Document.file_path.ilike("%.xlsx"),
+                    Document.file_path.ilike("%.xls"),
+                    Document.file_path.ilike("%.csv")
+                )
+            ).order_by(Document.id.desc()).first()
+
+        if not doc:
+            doc = db.query(Document).order_by(Document.id.desc()).first()
+
+        if not doc:
+            return "Nessun documento trovato nel caveau da consultare."
+
+        if not doc.file_path or not Path(doc.file_path).exists():
+            return f"Il file fisico per '{doc.title}' (ID {doc.id}) non è presente su disco."
+
+        try:
+            file_bytes = read_decrypted_file(doc.file_path)
+            res = inspect_document_content(
+                file_bytes=file_bytes,
+                file_type=doc.file_type or "",
+                filename=Path(doc.file_path).name or doc.title or "file",
+                sheet_name=sheet_name if sheet_name else None,
+                query=query if query else None,
+                max_rows=max_rows
+            )
+            if not res.get("success"):
+                return f"Errore durante la lettura di '{doc.title}': {res.get('error', 'Errore sconosciuto')}"
+
+            lines = [
+                f"=== CONTENUTO DOCUMENTO: '{doc.title}' ===",
+                f"- Tipo: {res.get('file_type', doc.file_type)} | File: {res.get('filename', '')}",
+            ]
+            if res.get("sheets"):
+                lines.append(f"- Fogli disponibili: {', '.join(res['sheets'])}")
+                lines.append(f"- Foglio attivo visualizzato: '{res.get('active_sheet')}'")
+            if res.get("total_rows") is not None:
+                lines.append(f"- Righe totali: {res.get('total_rows')}, Colonne: {res.get('total_cols', 'N/D')}")
+            if query:
+                lines.append(f"- Filtro applicato: '{query}'")
+
+            lines.append("\n" + (res.get("markdown_table") or res.get("content_text") or "_Nessun dato estratto._"))
+            if res.get("summary"):
+                lines.append(f"\nSintesi: {res['summary']}")
+            return "\n".join(lines)
+        except Exception as e:
+            return f"Eccezione durante la lettura di '{doc.title}': {e}"
 
 
 if __name__ == "__main__":

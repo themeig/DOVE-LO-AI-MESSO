@@ -13,6 +13,7 @@ from sqlalchemy import or_
 
 import docx
 import openpyxl
+from openpyxl.utils import get_column_letter
 import pypdf
 import xlrd
 
@@ -165,6 +166,468 @@ def extract_text_from_office_file(file_bytes: bytes, filename: str) -> str:
                 continue
 
     return extracted_text.strip()
+
+
+def _filter_rows_by_query(all_rows: List[Any], query: Optional[str], max_rows: int = 100) -> List[Any]:
+    """Filtra le righe di un foglio/tabella per query o parole chiave significative, preservando la tabella se non ci sono filtri."""
+    if not query or not query.strip():
+        return all_rows[:max_rows]
+    q_clean = query.strip().lower()
+    from app.services.search_service import ITALIAN_STOPWORDS
+    extra_stop = {"foglio", "excel", "file", "tabella", "riga", "righe", "colonna", "colonne", "cella", "celle", "cliente", "cosa", "trova", "cerca", "mostra", "qual", "quale"}
+    tokens = [w for w in re.split(r"[^\w]+", q_clean) if len(w) > 1 and w not in ITALIAN_STOPWORDS and w not in extra_stop]
+
+    matching_rows = []
+    for r_num, r_cells in all_rows:
+        row_text = " ".join(r_cells).lower()
+        if q_clean in row_text:
+            matching_rows.append((r_num, r_cells))
+        elif tokens and all(t in row_text for t in tokens):
+            matching_rows.append((r_num, r_cells))
+
+    # Se 'all tokens' non ha trovato nulla, prova con almeno un token significativo
+    if not matching_rows and tokens:
+        for r_num, r_cells in all_rows:
+            row_text = " ".join(r_cells).lower()
+            if any(t in row_text for t in tokens):
+                matching_rows.append((r_num, r_cells))
+
+    # Se ancora vuoto (es. domanda generica senza parole presenti nelle celle), ritorna le prime righe del foglio
+    if not matching_rows:
+        return all_rows[:max_rows]
+    return matching_rows[:max_rows]
+
+
+def inspect_document_content(
+    file_bytes: bytes,
+    file_type: str = "",
+    filename: str = "",
+    sheet_name: Optional[str] = None,
+    query: Optional[str] = None,
+    max_rows: int = 100
+) -> Dict[str, Any]:
+    """
+    Ispeziona ed estrae il contenuto tabellare e testuale reale e puntuale di un file memorizzato nel caveau.
+    Supporta Excel (.xlsx, .xlsm, .xls), CSV, TSV, Word (.docx, .doc), PDF (.pdf) e file di testo (.txt, .json, .md).
+    Fornisce tabelle Markdown con coordinate, numeri di riga e lettere colonna (es. A, B, C) e valori calcolati delle formule.
+    """
+    fn = (filename or "").lower()
+    ft = (file_type or "").lower()
+
+    is_docx = fn.endswith((".docx", ".doc")) or ft in ["docx", "doc", "word"]
+    is_xlsx = fn.endswith((".xlsx", ".xlsm", ".xltx")) or ft in ["xlsx", "xlsm", "excel", "spreadsheet"]
+    is_xls = fn.endswith(".xls") or ft == "xls"
+    is_csv = fn.endswith((".csv", ".tsv")) or ft in ["csv", "tsv"]
+    is_pdf = fn.endswith(".pdf") or ft in ["pdf", "application/pdf"]
+    is_txt = fn.endswith((".txt", ".md", ".json", ".xml", ".log", ".yaml", ".yml", ".py", ".sql")) or ft in ["txt", "text"]
+
+    # Se archivio zip non marcato, controlla se ha cartella xl/ o word/
+    if not (is_docx or is_xlsx or is_xls or is_csv or is_pdf or is_txt) and file_bytes.startswith(b"PK\x03\x04"):
+        try:
+            with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as zf:
+                names = zf.namelist()
+                if any(n.startswith("xl/") for n in names):
+                    is_xlsx = True
+                elif any(n.startswith("word/") for n in names):
+                    is_docx = True
+        except Exception:
+            pass
+
+    # 1. FOGLI DI CALCOLO EXCEL MODERNI (.xlsx, .xlsm)
+    if is_xlsx:
+        try:
+            wb_data = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
+            # Carica anche versione formule se disponibile per arricchire celle calcolate
+            try:
+                wb_formula = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=False)
+            except Exception:
+                wb_formula = None
+
+            available_sheets = list(wb_data.sheetnames)
+            if not available_sheets:
+                return {
+                    "success": False,
+                    "error": "Nessun foglio di lavoro trovato nella cartella Excel.",
+                    "filename": filename
+                }
+
+            target_sheet = available_sheets[0]
+            if sheet_name:
+                s_clean = sheet_name.strip().lower()
+                for sn in available_sheets:
+                    if sn.lower() == s_clean or s_clean in sn.lower():
+                        target_sheet = sn
+                        break
+
+            ws_d = wb_data[target_sheet]
+            ws_f = wb_formula[target_sheet] if (wb_formula and target_sheet in wb_formula.sheetnames) else None
+
+            all_rows = []
+            max_cols = 0
+
+            # Estrai righe mantenendo l'indice 1-based originale di Excel
+            rows_data = list(ws_d.iter_rows(values_only=True))
+            rows_form = list(ws_f.iter_rows(values_only=True)) if ws_f else [None] * len(rows_data)
+
+            for r_idx, (r_d, r_f) in enumerate(zip(rows_data, rows_form), start=1):
+                row_cells = []
+                r_f_cells = r_f if r_f else [None] * (len(r_d) if r_d else 0)
+
+                for cd, cf in zip(r_d or [], r_f_cells or []):
+                    c_formatted = _format_cell_value(cd)
+                    c_formula = str(cf).strip() if (cf is not None and str(cf).startswith("=")) else ""
+
+                    if c_formatted and c_formula and c_formula != c_formatted:
+                        row_cells.append(f"{c_formatted} (formula: {c_formula})")
+                    elif c_formatted:
+                        row_cells.append(c_formatted)
+                    elif c_formula:
+                        row_cells.append(c_formula)
+                    else:
+                        row_cells.append("")
+
+                while row_cells and not row_cells[-1]:
+                    row_cells.pop()
+
+                if any(c for c in row_cells):
+                    all_rows.append((r_idx, row_cells))
+                    if len(row_cells) > max_cols:
+                        max_cols = len(row_cells)
+
+            if not all_rows:
+                return {
+                    "success": True,
+                    "filename": filename,
+                    "file_type": "xlsx",
+                    "sheets": available_sheets,
+                    "active_sheet": target_sheet,
+                    "total_rows": 0,
+                    "total_cols": 0,
+                    "markdown_table": "_Il foglio di lavoro selezionato è vuoto._",
+                    "summary": f"Foglio '{target_sheet}' vuoto. Fogli disponibili: {', '.join(available_sheets)}."
+                }
+
+            # Intestazioni con lettere di colonna (A, B, C...)
+            first_row_num, first_row_cells = all_rows[0]
+            headers = []
+            for c_i in range(max_cols):
+                col_letter = get_column_letter(c_i + 1)
+                h_name = first_row_cells[c_i] if c_i < len(first_row_cells) and first_row_cells[c_i] else f"Colonna_{col_letter}"
+                headers.append(f"{col_letter} ({h_name})")
+
+            # Filtra per query
+            matching_rows = _filter_rows_by_query(all_rows, query, max_rows)
+
+            header_line = "| Riga | " + " | ".join(headers) + " |"
+            sep_line = "| :--- | " + " | ".join([":---"] * max_cols) + " |"
+            data_lines = []
+            for r_num, r_cells in matching_rows[:max_rows]:
+                padded = r_cells + [""] * (max_cols - len(r_cells))
+                escaped = [c.replace("|", "\\|").replace("\n", " ") for c in padded]
+                data_lines.append(f"| {r_num} | " + " | ".join(escaped) + " |")
+
+            table_md = "\n".join([header_line, sep_line] + data_lines)
+            msg = (
+                f"File Excel '{filename}' - Foglio '{target_sheet}' (Fogli presenti: {', '.join(available_sheets)}). "
+                f"Trovate {len(matching_rows)} righe (su {len(all_rows)} totali nel foglio)."
+            )
+
+            return {
+                "success": True,
+                "filename": filename,
+                "file_type": "xlsx",
+                "sheets": available_sheets,
+                "active_sheet": target_sheet,
+                "total_rows": len(all_rows),
+                "total_cols": max_cols,
+                "displayed_rows_count": len(matching_rows[:max_rows]),
+                "query": query,
+                "markdown_table": table_md,
+                "summary": msg
+            }
+        except Exception as e:
+            logger.error(f"Errore ispezione excel {filename}: {e}", exc_info=True)
+            return {"success": False, "error": str(e), "filename": filename}
+
+    # 2. FOGLI DI CALCOLO EXCEL LEGACY (.xls)
+    if is_xls:
+        try:
+            wb = xlrd.open_workbook(file_contents=file_bytes)
+            available_sheets = wb.sheet_names()
+            if not available_sheets:
+                return {"success": False, "error": "Nessun foglio trovato nel file XLS.", "filename": filename}
+
+            target_sheet = available_sheets[0]
+            if sheet_name:
+                s_clean = sheet_name.strip().lower()
+                for sn in available_sheets:
+                    if sn.lower() == s_clean or s_clean in sn.lower():
+                        target_sheet = sn
+                        break
+
+            ws = wb.sheet_by_name(target_sheet)
+            all_rows = []
+            max_cols = ws.ncols
+
+            for r_idx in range(ws.nrows):
+                row_cells = [_format_cell_value(ws.cell_value(r_idx, c)) for c in range(ws.ncols)]
+                while row_cells and not row_cells[-1]:
+                    row_cells.pop()
+                if any(row_cells):
+                    all_rows.append((r_idx + 1, row_cells))
+
+            if not all_rows:
+                return {
+                    "success": True,
+                    "filename": filename,
+                    "file_type": "xls",
+                    "sheets": available_sheets,
+                    "active_sheet": target_sheet,
+                    "total_rows": 0,
+                    "total_cols": 0,
+                    "markdown_table": "_Foglio vuoto._",
+                    "summary": f"Foglio '{target_sheet}' vuoto."
+                }
+
+            first_row_num, first_row_cells = all_rows[0]
+            headers = []
+            for c_i in range(max_cols):
+                col_letter = get_column_letter(c_i + 1)
+                h_name = first_row_cells[c_i] if c_i < len(first_row_cells) and first_row_cells[c_i] else f"Colonna_{col_letter}"
+                headers.append(f"{col_letter} ({h_name})")
+
+            matching_rows = _filter_rows_by_query(all_rows, query, max_rows)
+
+            header_line = "| Riga | " + " | ".join(headers) + " |"
+            sep_line = "| :--- | " + " | ".join([":---"] * max_cols) + " |"
+            data_lines = []
+            for r_num, r_cells in matching_rows[:max_rows]:
+                padded = r_cells + [""] * (max_cols - len(r_cells))
+                escaped = [c.replace("|", "\\|").replace("\n", " ") for c in padded]
+                data_lines.append(f"| {r_num} | " + " | ".join(escaped) + " |")
+
+            table_md = "\n".join([header_line, sep_line] + data_lines)
+            return {
+                "success": True,
+                "filename": filename,
+                "file_type": "xls",
+                "sheets": available_sheets,
+                "active_sheet": target_sheet,
+                "total_rows": len(all_rows),
+                "total_cols": max_cols,
+                "displayed_rows_count": len(matching_rows[:max_rows]),
+                "query": query,
+                "markdown_table": table_md,
+                "summary": f"File Excel XLS '{filename}' - Foglio '{target_sheet}'. Trovate {len(matching_rows)} righe."
+            }
+        except Exception as e:
+            logger.error(f"Errore ispezione xls {filename}: {e}")
+            return {"success": False, "error": str(e), "filename": filename}
+
+    # 3. FILE CSV O TSV
+    if is_csv:
+        try:
+            text_content = ""
+            for enc in ["utf-8-sig", "utf-8", "latin-1", "cp1252"]:
+                try:
+                    text_content = file_bytes.decode(enc)
+                    break
+                except UnicodeDecodeError:
+                    continue
+
+            if not text_content.strip():
+                return {"success": False, "error": "File CSV vuoto o non decodificabile.", "filename": filename}
+
+            delimiter = ","
+            sample = text_content[:2048]
+            if sample.count(";") > sample.count(","):
+                delimiter = ";"
+            elif sample.count("\t") > sample.count(","):
+                delimiter = "\t"
+
+            reader = csv.reader(io.StringIO(text_content), delimiter=delimiter)
+            all_rows = []
+            max_cols = 0
+            for r_idx, row in enumerate(reader, start=1):
+                clean_row = [c.strip() for c in row]
+                while clean_row and not clean_row[-1]:
+                    clean_row.pop()
+                if any(clean_row):
+                    all_rows.append((r_idx, clean_row))
+                    if len(clean_row) > max_cols:
+                        max_cols = len(clean_row)
+
+            if not all_rows:
+                return {"success": True, "filename": filename, "file_type": "csv", "markdown_table": "_File CSV vuoto._", "total_rows": 0, "total_cols": 0}
+
+            first_row_num, first_row_cells = all_rows[0]
+            headers = []
+            for c_i in range(max_cols):
+                col_letter = get_column_letter(c_i + 1)
+                h_name = first_row_cells[c_i] if c_i < len(first_row_cells) and first_row_cells[c_i] else f"Colonna_{col_letter}"
+                headers.append(f"{col_letter} ({h_name})")
+
+            matching_rows = _filter_rows_by_query(all_rows, query, max_rows)
+
+            header_line = "| Riga | " + " | ".join(headers) + " |"
+            sep_line = "| :--- | " + " | ".join([":---"] * max_cols) + " |"
+            data_lines = []
+            for r_num, r_cells in matching_rows[:max_rows]:
+                padded = r_cells + [""] * (max_cols - len(r_cells))
+                escaped = [c.replace("|", "\\|").replace("\n", " ") for c in padded]
+                data_lines.append(f"| {r_num} | " + " | ".join(escaped) + " |")
+
+            table_md = "\n".join([header_line, sep_line] + data_lines)
+            return {
+                "success": True,
+                "filename": filename,
+                "file_type": "csv",
+                "total_rows": len(all_rows),
+                "total_cols": max_cols,
+                "displayed_rows_count": len(matching_rows[:max_rows]),
+                "query": query,
+                "markdown_table": table_md,
+                "summary": f"File CSV '{filename}' ({len(all_rows)} righe, {max_cols} colonne). Delimitatore: '{delimiter}'."
+            }
+        except Exception as e:
+            logger.error(f"Errore ispezione csv {filename}: {e}")
+            return {"success": False, "error": str(e), "filename": filename}
+
+    # 4. DOCUMENTI WORD (.docx, .doc)
+    if is_docx:
+        try:
+            doc = docx.Document(io.BytesIO(file_bytes))
+            blocks = []
+            for t_idx, table in enumerate(doc.tables, start=1):
+                t_rows = []
+                t_max_cols = 0
+                for r_idx, row in enumerate(table.rows, start=1):
+                    row_cells = [c.text.strip().replace("\n", " ") for c in row.cells]
+                    if any(row_cells):
+                        t_rows.append((r_idx, row_cells))
+                        if len(row_cells) > t_max_cols:
+                            t_max_cols = len(row_cells)
+                if t_rows:
+                    t_hdr = "| Riga | " + " | ".join([f"Colonna {i+1}" for i in range(t_max_cols)]) + " |"
+                    t_sep = "| :--- | " + " | ".join([":---"] * t_max_cols) + " |"
+                    t_lines = []
+                    for r_num, r_c in t_rows[:max_rows]:
+                        padded = r_c + [""] * (t_max_cols - len(r_c))
+                        escaped = [c.replace("|", "\\|") for c in padded]
+                        t_lines.append(f"| {r_num} | " + " | ".join(escaped) + " |")
+                    blocks.append(f"### Tabella {t_idx} nel documento Word:\n" + "\n".join([t_hdr, t_sep] + t_lines))
+
+            paras = []
+            for p_idx, p in enumerate(doc.paragraphs, start=1):
+                txt = p.text.strip()
+                if txt:
+                    paras.append((p_idx, txt))
+
+            matching_paras = []
+            if query and query.strip():
+                q_clean = query.strip().lower()
+                for p_num, p_txt in paras:
+                    if q_clean in p_txt.lower():
+                        matching_paras.append((p_num, p_txt))
+            else:
+                matching_paras = paras[:max_rows]
+
+            if matching_paras:
+                p_text = "\n\n".join([f"**[Paragrafo {p_num}]**: {p_txt}" for p_num, p_txt in matching_paras[:max_rows]])
+                blocks.append("### Testo Documento:\n" + p_text)
+
+            content_text = "\n\n".join(blocks) if blocks else "_Nessun testo o tabella rilevata nel documento Word._"
+            return {
+                "success": True,
+                "filename": filename,
+                "file_type": "docx",
+                "total_paragraphs": len(paras),
+                "total_tables": len(doc.tables),
+                "displayed_paragraphs_count": len(matching_paras),
+                "query": query,
+                "content_text": content_text,
+                "markdown_table": blocks[0] if (blocks and blocks[0].startswith("### Tabella")) else "",
+                "summary": f"Documento Word '{filename}': {len(paras)} paragrafi, {len(doc.tables)} tabelle."
+            }
+        except Exception as e:
+            logger.error(f"Errore ispezione docx {filename}: {e}")
+            return {"success": False, "error": str(e), "filename": filename}
+
+    # 5. DOCUMENTI PDF (.pdf)
+    if is_pdf:
+        try:
+            reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+            total_pages = len(reader.pages)
+            page_blocks = []
+            q_clean = query.strip().lower() if (query and query.strip()) else None
+
+            for p_num, page in enumerate(reader.pages, start=1):
+                raw_t = page.extract_text() or ""
+                lines = [line.strip() for line in raw_t.splitlines() if line.strip()]
+                if not lines:
+                    continue
+
+                if q_clean:
+                    matching_lines = [l for l in lines if q_clean in l.lower()]
+                    if matching_lines:
+                        page_blocks.append(
+                            f"### Pagina {p_num} di {total_pages} (trovate {len(matching_lines)} righe pertinenti):\n"
+                            + "\n".join(f"- {l}" for l in matching_lines[:40])
+                        )
+                else:
+                    if p_num <= 5:
+                        page_blocks.append(f"### Pagina {p_num} di {total_pages}:\n" + "\n".join(lines[:60]))
+
+            content_text = "\n\n".join(page_blocks) if page_blocks else (
+                f"_Nessuna riga corrispondente a '{query}' trovata nel PDF._" if q_clean else "_Nessun testo estratto dal PDF._"
+            )
+            return {
+                "success": True,
+                "filename": filename,
+                "file_type": "pdf",
+                "total_pages": total_pages,
+                "query": query,
+                "content_text": content_text,
+                "summary": f"Documento PDF '{filename}': {total_pages} pagine analizzate."
+            }
+        except Exception as e:
+            logger.error(f"Errore ispezione pdf {filename}: {e}")
+            return {"success": False, "error": str(e), "filename": filename}
+
+    # 6. FILE TESTO GENERICO (.txt, .json, .md, .xml, .log)
+    try:
+        text_content = ""
+        for enc in ["utf-8-sig", "utf-8", "latin-1", "cp1252"]:
+            try:
+                text_content = file_bytes.decode(enc)
+                break
+            except Exception:
+                continue
+
+        lines = text_content.splitlines()
+        q_clean = query.strip().lower() if (query and query.strip()) else None
+
+        if q_clean:
+            matching_lines = [(i + 1, l) for i, l in enumerate(lines) if q_clean in l.lower()]
+            out_lines = "\n".join(f"L{i}: {l}" for i, l in matching_lines[:max_rows])
+            total_matched = len(matching_lines)
+        else:
+            out_lines = "\n".join(f"L{i+1}: {l}" for i, l in enumerate(lines[:max_rows]))
+            total_matched = min(len(lines), max_rows)
+
+        return {
+            "success": True,
+            "filename": filename,
+            "file_type": "txt",
+            "total_lines": len(lines),
+            "displayed_lines_count": total_matched,
+            "query": query,
+            "content_text": out_lines,
+            "summary": f"File di testo '{filename}': {len(lines)} righe totali."
+        }
+    except Exception as e:
+        logger.error(f"Errore ispezione testo {filename}: {e}")
+        return {"success": False, "error": str(e), "filename": filename}
 
 
 def render_office_file_to_html(file_bytes: bytes, filename: str) -> dict:
