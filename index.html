@@ -6225,7 +6225,26 @@
       document.body.removeChild(link);
     }
 
-    // --- Modale Viewer Documenti & Immagini ---
+    // --- Modale Viewer Documenti & Immagini (PDF, Immagini, Excel, Word, CSV) ---
+    function switchOfficeSheet(targetIdx) {
+      const panels = document.querySelectorAll('.office-sheet-panel');
+      const tabs = document.querySelectorAll('.office-sheet-tab');
+      panels.forEach((p, idx) => {
+        if (idx === targetIdx) {
+          p.classList.remove('hidden');
+        } else {
+          p.classList.add('hidden');
+        }
+      });
+      tabs.forEach((t, idx) => {
+        if (idx === targetIdx) {
+          t.className = 'office-sheet-tab px-3 py-1 text-xs rounded-md border transition flex items-center gap-1.5 shrink-0 bg-white text-emerald-800 font-bold shadow-2xs border-emerald-300';
+        } else {
+          t.className = 'office-sheet-tab px-3 py-1 text-xs rounded-md border transition flex items-center gap-1.5 shrink-0 text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-transparent';
+        }
+      });
+    }
+
     function openMediaModal(url, title, fileType = '', downloadUrl = '') {
       const modal = document.getElementById('mediaModal');
       const titleEl = document.getElementById('modalTitle');
@@ -6233,6 +6252,8 @@
       const downloadBtn = document.getElementById('modalDownloadBtn');
       const pdfFrame = document.getElementById('modalPdfFrame');
       const imgPreview = document.getElementById('modalImagePreview');
+      const officePreview = document.getElementById('modalOfficePreview');
+      const officeContent = document.getElementById('modalOfficeContent');
       const fallback = document.getElementById('modalFallback');
 
       if (!modal) return;
@@ -6250,12 +6271,24 @@
       pdfFrame.src = '';
       imgPreview.classList.add('hidden');
       imgPreview.src = '';
+      if (officePreview) officePreview.classList.add('hidden');
+      if (officeContent) officeContent.innerHTML = '';
       fallback.classList.add('hidden');
 
       const lowerType = (fileType || '').toLowerCase();
       const lowerUrl = (url || '').toLowerCase();
+      const lowerTitle = (safeTitle || '').toLowerCase();
+
       const isPdf = lowerType.includes('pdf') || lowerUrl.endsWith('.pdf');
       const isImg = lowerType.includes('image') || lowerType.includes('png') || lowerType.includes('jpg') || lowerType.includes('jpeg') || lowerType.includes('webp') || /\.(png|jpe?g|webp|gif)$/i.test(lowerUrl);
+      const isOffice = lowerType.includes('officedocument') ||
+                       lowerType.includes('excel') ||
+                       lowerType.includes('word') ||
+                       lowerType.includes('sheet') ||
+                       lowerType.includes('spreadsheet') ||
+                       lowerType.includes('csv') ||
+                       /\.(xlsx?|xlsm|docx?|csv|tsv|txt|json|md)$/i.test(lowerUrl) ||
+                       /\.(xlsx?|xlsm|docx?|csv|tsv)$/i.test(lowerTitle);
 
       imgPreview.onerror = function() {
         sendUITelemetry('MEDIA_PREVIEW_ERROR', {
@@ -6275,6 +6308,48 @@
         subtitleEl.textContent = "Immagine / Scansione";
         imgPreview.src = url;
         imgPreview.classList.remove('hidden');
+      } else if (isOffice) {
+        const isExcel = /\.(xlsx?|xlsm|csv|tsv)$/i.test(lowerUrl) || /\.(xlsx?|xlsm|csv|tsv)$/i.test(lowerTitle) || lowerType.includes('excel') || lowerType.includes('sheet') || lowerType.includes('spreadsheet');
+        subtitleEl.textContent = isExcel ? "Foglio di calcolo Excel interattivo" : "Documento di testo Word formattato";
+        if (officePreview && officeContent) {
+          officePreview.classList.remove('hidden');
+          officeContent.innerHTML = `
+            <div class="flex flex-col items-center justify-center p-12 text-slate-500 gap-3">
+              <i class="fa-solid fa-circle-notch fa-spin text-2xl text-[#128C7E]"></i>
+              <span class="text-xs font-semibold text-slate-700">Caricamento e decifratura anteprima in corso...</span>
+            </div>
+          `;
+          fetch(`/api/documents/preview-content?file_url=${encodeURIComponent(url)}`)
+            .then(res => {
+              if (!res.ok) throw new Error("Errore risposta server (" + res.status + ")");
+              return res.json();
+            })
+            .then(data => {
+              if (data.html_content) {
+                officeContent.innerHTML = data.html_content;
+              } else {
+                officeContent.innerHTML = `
+                  <div class="p-8 text-center text-slate-500">
+                    <p class="font-semibold text-slate-700 text-sm mb-2">Nessun contenuto visualizzabile direttamente</p>
+                    <p class="text-xs text-slate-400">Puoi scaricare il file originale usando il pulsante Scarica in alto.</p>
+                  </div>
+                `;
+              }
+            })
+            .catch(err => {
+              console.warn("Errore caricamento anteprima office:", err);
+              officeContent.innerHTML = `
+                <div class="p-8 text-center text-slate-500">
+                  <i class="fa-solid fa-triangle-exclamation text-amber-500 text-2xl mb-2"></i>
+                  <p class="font-semibold text-slate-700 text-sm">Impossibile generare l'anteprima del documento</p>
+                  <p class="text-xs text-slate-400 mt-1 mb-4">${escapeHtml(err.message || 'Errore lettura file')}</p>
+                  <a href="${targetDl}" download class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#075E54] text-white text-xs font-semibold rounded-lg shadow-2xs hover:bg-[#128C7E]">
+                    <i class="fa-solid fa-download"></i> Scarica file originale
+                  </a>
+                </div>
+              `;
+            });
+        }
       } else if (url) {
         subtitleEl.textContent = "Visualizzazione file";
         pdfFrame.src = url;
@@ -6291,12 +6366,16 @@
       const modal = document.getElementById('mediaModal');
       const pdfFrame = document.getElementById('modalPdfFrame');
       const imgPreview = document.getElementById('modalImagePreview');
+      const officePreview = document.getElementById('modalOfficePreview');
+      const officeContent = document.getElementById('modalOfficeContent');
       if (modal) {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
       }
       if (pdfFrame) pdfFrame.src = '';
       if (imgPreview) imgPreview.src = '';
+      if (officePreview) officePreview.classList.add('hidden');
+      if (officeContent) officeContent.innerHTML = '';
     }
 
     function handleModalBackdropClick(e) {
@@ -7291,6 +7370,10 @@
         <iframe id="modalPdfFrame" class="w-full h-full border-0 rounded-xl bg-white shadow-xs hidden"></iframe>
         <!-- Immagine per foto / scansioni -->
         <img id="modalImagePreview" class="max-w-full max-h-full object-contain mx-auto my-auto rounded-xl shadow-md hidden" alt="Anteprima">
+        <!-- Anteprima Interattiva per Documenti Word / Excel / CSV / Testo -->
+        <div id="modalOfficePreview" class="w-full h-full bg-white rounded-xl shadow-xs overflow-hidden flex flex-col p-3 sm:p-5 hidden">
+          <div id="modalOfficeContent" class="flex-1 overflow-hidden flex flex-col min-h-0"></div>
+        </div>
         <!-- Fallback -->
         <div id="modalFallback" class="hidden flex flex-col items-center justify-center text-slate-500 text-center p-6">
           <i class="fa-solid fa-circle-exclamation text-3xl text-amber-500 mb-2"></i>

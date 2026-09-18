@@ -6,13 +6,15 @@ import zipfile
 import logging
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timezone
+import html
+from datetime import datetime, date, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 import docx
 import openpyxl
 import pypdf
+import xlrd
 
 from app.models.database import Document
 from app.models.schemas import ExtractedDocument
@@ -22,28 +24,57 @@ from app.services.ai_service import get_ai_service
 logger = logging.getLogger(__name__)
 
 
+def _format_cell_value(val: Any) -> str:
+    """Formatta i valori delle celle di un foglio di calcolo."""
+    if val is None:
+        return ""
+    if isinstance(val, (datetime, )):
+        return val.strftime("%d/%m/%Y %H:%M")
+    if isinstance(val, date):
+        return val.strftime("%d/%m/%Y")
+    if isinstance(val, float):
+        if val.is_integer():
+            return str(int(val))
+        return f"{val:.2f}"
+    return str(val).strip()
+
+
 def extract_text_from_office_file(file_bytes: bytes, filename: str) -> str:
     """
     Estrae il testo e i dati tabellari da file Word (.docx, .doc),
-    fogli di calcolo Excel (.xlsx, .xls) o file di testo (.csv, .txt, .json, .md).
+    fogli di calcolo Excel (.xlsx, .xls, .xlsm) o file di testo (.csv, .tsv, .txt, .json, .md).
     """
     fn = (filename or "").lower()
     extracted_text = ""
 
-    # 1. Documenti Word (.docx)
-    if fn.endswith(".docx") or file_bytes.startswith(b"PK\x03\x04"):
+    is_word = fn.endswith((".docx", ".doc"))
+    is_excel_ooxml = fn.endswith((".xlsx", ".xlsm"))
+    is_excel_xls = fn.endswith(".xls")
+    is_csv = fn.endswith((".csv", ".tsv"))
+
+    # Se l'estensione è ambigua ma presenta il magic-byte ZIP PK\x03\x04, ispeziona l'archivio
+    if not (is_word or is_excel_ooxml or is_excel_xls or is_csv) and file_bytes.startswith(b"PK\x03\x04"):
+        try:
+            with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as zf:
+                names = zf.namelist()
+                if any(n.startswith("xl/") for n in names):
+                    is_excel_ooxml = True
+                elif any(n.startswith("word/") for n in names):
+                    is_word = True
+        except Exception:
+            pass
+
+    # 1. Documenti Word (.docx, .doc)
+    if is_word and not is_excel_ooxml:
         try:
             doc = docx.Document(io.BytesIO(file_bytes))
             paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-            
-            # Estrai anche testo dalle tabelle
             table_lines = []
             for table in doc.tables:
                 for row in table.rows:
                     row_cells = [c.text.strip() for c in row.cells if c.text.strip()]
                     if row_cells:
                         table_lines.append(" | ".join(row_cells))
-            
             full_parts = []
             if paragraphs:
                 full_parts.append("\n".join(paragraphs))
@@ -52,20 +83,28 @@ def extract_text_from_office_file(file_bytes: bytes, filename: str) -> str:
             extracted_text = "\n\n".join(full_parts)
         except Exception as e:
             logger.warning(f"Errore lettura docx {filename}: {e}")
+            # Fallback estrazione stringhe binarie per vecchi file Word 97-2003 (.doc)
+            try:
+                ascii_matches = re.findall(rb"[\x20-\x7E\r\n\t]{4,}", file_bytes)
+                extracted_lines = [m.decode("latin-1").strip() for m in ascii_matches if len(m.strip()) > 3]
+                if extracted_lines:
+                    extracted_text = "\n".join(extracted_lines[:150])
+            except Exception:
+                pass
 
-    # 2. Fogli di calcolo Excel (.xlsx)
-    if not extracted_text and (fn.endswith(".xlsx") or fn.endswith(".xlsm")):
+    # 2. Fogli di calcolo Excel (.xlsx, .xlsm)
+    if not extracted_text and is_excel_ooxml:
         try:
             wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
             sheet_parts = []
-            for sheet_name in wb.sheetnames[:5]:  # fino a 5 fogli
+            for sheet_name in wb.sheetnames[:10]:
                 ws = wb[sheet_name]
                 rows_text = []
                 for row_idx, row in enumerate(ws.iter_rows(values_only=True)):
-                    if row_idx > 60:  # prime 60 righe
+                    if row_idx > 80:
                         rows_text.append("... [ulteriori righe omesse]")
                         break
-                    non_empty_cells = [str(c).strip() for c in row if c is not None and str(c).strip()]
+                    non_empty_cells = [_format_cell_value(c) for c in row if c is not None and str(c).strip()]
                     if non_empty_cells:
                         rows_text.append(" | ".join(non_empty_cells))
                 if rows_text:
@@ -74,23 +113,40 @@ def extract_text_from_office_file(file_bytes: bytes, filename: str) -> str:
         except Exception as e:
             logger.warning(f"Errore lettura xlsx {filename}: {e}")
 
-    # 3. File CSV
-    if not extracted_text and (fn.endswith(".csv") or fn.endswith(".tsv")):
+    # 3. Fogli di calcolo Excel legacy (.xls)
+    if not extracted_text and is_excel_xls:
         try:
-            # Prova decodifiche utf-8 e latin-1
+            wb = xlrd.open_workbook(file_contents=file_bytes)
+            sheet_parts = []
+            for sheet_idx in range(min(len(wb.sheets()), 10)):
+                ws = wb.sheet_by_index(sheet_idx)
+                rows_text = []
+                for row_idx in range(min(ws.nrows, 80)):
+                    row_vals = [_format_cell_value(ws.cell_value(row_idx, col_idx)) for col_idx in range(ws.ncols)]
+                    non_empty_cells = [c for c in row_vals if c]
+                    if non_empty_cells:
+                        rows_text.append(" | ".join(non_empty_cells))
+                if rows_text:
+                    sheet_parts.append(f"=== Foglio: {ws.name} ===\n" + "\n".join(rows_text))
+            extracted_text = "\n\n".join(sheet_parts)
+        except Exception as e:
+            logger.warning(f"Errore lettura xls {filename}: {e}")
+
+    # 4. File CSV e TSV
+    if not extracted_text and is_csv:
+        try:
             text_content = ""
-            for enc in ["utf-8", "latin-1", "cp1252"]:
+            for enc in ["utf-8-sig", "utf-8", "latin-1", "cp1252"]:
                 try:
                     text_content = file_bytes.decode(enc)
                     break
                 except UnicodeDecodeError:
                     continue
-
             if text_content:
                 lines = []
                 reader = csv.reader(io.StringIO(text_content))
                 for idx, row in enumerate(reader):
-                    if idx > 80:
+                    if idx > 100:
                         lines.append("... [ulteriori righe CSV omesse]")
                         break
                     if any(row):
@@ -99,9 +155,9 @@ def extract_text_from_office_file(file_bytes: bytes, filename: str) -> str:
         except Exception as e:
             logger.warning(f"Errore lettura csv {filename}: {e}")
 
-    # 4. File di testo generico (.txt, .md, .json, .xml)
-    if not extracted_text and (fn.endswith(".txt") or fn.endswith(".md") or fn.endswith(".json") or fn.endswith(".xml") or fn.endswith(".log") or fn.endswith(".doc")):
-        for enc in ["utf-8", "latin-1", "cp1252"]:
+    # 5. File di testo generico (.txt, .md, .json, .xml)
+    if not extracted_text and (fn.endswith((".txt", ".md", ".json", ".xml", ".log", ".yaml", ".yml"))):
+        for enc in ["utf-8-sig", "utf-8", "latin-1", "cp1252"]:
             try:
                 extracted_text = file_bytes.decode(enc)
                 break
@@ -109,6 +165,291 @@ def extract_text_from_office_file(file_bytes: bytes, filename: str) -> str:
                 continue
 
     return extracted_text.strip()
+
+
+def render_office_file_to_html(file_bytes: bytes, filename: str) -> dict:
+    """
+    Converte un documento Word (.docx, .doc), un foglio Excel (.xlsx, .xls),
+    un CSV o un file di testo in una struttura dati con HTML pronto per il rendering
+    nel modale anteprima del caveau.
+    """
+    fn = (filename or "").lower()
+    clean_title = Path(filename).stem.replace("_", " ").replace("-", " ").strip().title()
+
+    is_docx = fn.endswith((".docx", ".doc"))
+    is_xlsx = fn.endswith((".xlsx", ".xlsm"))
+    is_xls = fn.endswith(".xls")
+    is_csv = fn.endswith((".csv", ".tsv"))
+    is_txt = fn.endswith((".txt", ".md", ".json", ".xml", ".log", ".yaml", ".yml"))
+
+    # Se archivio zip non marcato, controlla se ha cartella xl/ o word/
+    if not (is_docx or is_xlsx or is_xls or is_csv or is_txt) and file_bytes.startswith(b"PK\x03\x04"):
+        try:
+            with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as zf:
+                names = zf.namelist()
+                if any(n.startswith("xl/") for n in names):
+                    is_xlsx = True
+                elif any(n.startswith("word/") for n in names):
+                    is_docx = True
+        except Exception:
+            pass
+
+    # A. FOGLI DI CALCOLO EXCEL / CSV
+    if is_xlsx or is_xls or is_csv:
+        sheets_data = []
+
+        if is_xlsx:
+            try:
+                wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
+                for s_name in wb.sheetnames[:10]:
+                    ws = wb[s_name]
+                    sheet_rows = []
+                    for row_idx, row in enumerate(ws.iter_rows(values_only=True)):
+                        if row_idx > 250:
+                            break
+                        row_vals = [_format_cell_value(c) for c in row]
+                        while row_vals and row_vals[-1] == "":
+                            row_vals.pop()
+                        sheet_rows.append(row_vals)
+                    while sheet_rows and not any(sheet_rows[-1]):
+                        sheet_rows.pop()
+                    if sheet_rows:
+                        max_cols = max(len(r) for r in sheet_rows) if sheet_rows else 0
+                        padded_rows = [r + [""] * (max_cols - len(r)) for r in sheet_rows]
+                        sheets_data.append({
+                            "name": s_name,
+                            "row_count": len(padded_rows),
+                            "col_count": max_cols,
+                            "rows": padded_rows
+                        })
+            except Exception as e:
+                logger.error(f"Errore rendering xlsx {filename}: {e}")
+
+        elif is_xls:
+            try:
+                wb = xlrd.open_workbook(file_contents=file_bytes)
+                for s_idx in range(min(len(wb.sheets()), 10)):
+                    ws = wb.sheet_by_index(s_idx)
+                    sheet_rows = []
+                    for r_idx in range(min(ws.nrows, 250)):
+                        row_vals = [_format_cell_value(ws.cell_value(r_idx, c_idx)) for c_idx in range(ws.ncols)]
+                        while row_vals and row_vals[-1] == "":
+                            row_vals.pop()
+                        sheet_rows.append(row_vals)
+                    while sheet_rows and not any(sheet_rows[-1]):
+                        sheet_rows.pop()
+                    if sheet_rows:
+                        max_cols = max(len(r) for r in sheet_rows) if sheet_rows else 0
+                        padded_rows = [r + [""] * (max_cols - len(r)) for r in sheet_rows]
+                        sheets_data.append({
+                            "name": ws.name,
+                            "row_count": len(padded_rows),
+                            "col_count": max_cols,
+                            "rows": padded_rows
+                        })
+            except Exception as e:
+                logger.error(f"Errore rendering xls {filename}: {e}")
+
+        elif is_csv:
+            try:
+                text_content = ""
+                for enc in ["utf-8-sig", "utf-8", "latin-1", "cp1252"]:
+                    try:
+                        text_content = file_bytes.decode(enc)
+                        break
+                    except Exception:
+                        continue
+                if text_content:
+                    reader = csv.reader(io.StringIO(text_content))
+                    sheet_rows = []
+                    for r_idx, row in enumerate(reader):
+                        if r_idx > 250:
+                            break
+                        row_vals = [c.strip() for c in row]
+                        sheet_rows.append(row_vals)
+                    while sheet_rows and not any(sheet_rows[-1]):
+                        sheet_rows.pop()
+                    if sheet_rows:
+                        max_cols = max(len(r) for r in sheet_rows) if sheet_rows else 0
+                        padded_rows = [r + [""] * (max_cols - len(r)) for r in sheet_rows]
+                        sheets_data.append({
+                            "name": "Foglio Dati",
+                            "row_count": len(padded_rows),
+                            "col_count": max_cols,
+                            "rows": padded_rows
+                        })
+            except Exception as e:
+                logger.error(f"Errore rendering csv {filename}: {e}")
+
+        html_parts = []
+        html_parts.append(f"""
+        <div class="flex items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-200 shrink-0">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
+                    <i class="fa-solid fa-file-excel"></i>
+                </div>
+                <div>
+                    <h3 class="text-xs font-bold text-slate-900">{html.escape(filename)}</h3>
+                    <p class="text-[11px] text-slate-500">{len(sheets_data)} fogli{'o' if len(sheets_data) == 1 else 'i'} di calcolo rilevat{'o' if len(sheets_data) == 1 else 'i'}</p>
+                </div>
+            </div>
+            <div class="text-[11px] text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">
+                <span>Foglio di calcolo interattivo</span>
+            </div>
+        </div>
+        """)
+
+        if len(sheets_data) > 1:
+            html_parts.append('<div class="flex items-center gap-1.5 border-b border-slate-200 bg-slate-50 p-1.5 rounded-t-lg overflow-x-auto mb-2 shrink-0" id="officeSheetTabBar">')
+            for idx, s in enumerate(sheets_data):
+                active_cls = "bg-white text-emerald-800 font-bold shadow-2xs border-emerald-300" if idx == 0 else "text-slate-600 hover:text-slate-900 hover:bg-slate-100 border-transparent"
+                html_parts.append(f"""
+                    <button type="button" onclick="switchOfficeSheet({idx})" id="officeSheetTab_{idx}" class="office-sheet-tab px-3 py-1 text-xs rounded-md border transition flex items-center gap-1.5 shrink-0 {active_cls}">
+                        <i class="fa-regular fa-file-lines text-[11px]"></i>
+                        <span>{html.escape(s['name'])}</span>
+                        <span class="text-[10px] text-slate-400">({s['row_count']} r.)</span>
+                    </button>
+                """)
+            html_parts.append('</div>')
+
+        for idx, s in enumerate(sheets_data):
+            hidden_cls = "" if idx == 0 else "hidden"
+            html_parts.append(f'<div id="officeSheetPanel_{idx}" class="office-sheet-panel flex flex-col h-full overflow-hidden {hidden_cls}">')
+            html_parts.append(f'<div class="flex items-center justify-between text-[11px] text-slate-500 mb-1.5 px-1 shrink-0"><span>Foglio: <strong class="text-slate-700">{html.escape(s["name"])}</strong> ({s["row_count"]} righe, {s["col_count"]} colonne)</span></div>')
+            html_parts.append('<div class="overflow-auto border border-slate-200 rounded-lg shadow-2xs flex-1 max-h-[64vh] bg-white">')
+            html_parts.append('<table class="w-full text-xs text-left border-collapse font-sans min-w-full">')
+
+            if s["rows"]:
+                first_row = s["rows"][0]
+                html_parts.append('<thead class="sticky top-0 bg-slate-100 z-10 border-b border-slate-200 shadow-2xs"><tr>')
+                html_parts.append('<th class="py-2 px-2.5 bg-slate-200 text-slate-500 font-mono text-[10px] w-10 text-center border-r border-slate-300 select-none">#</th>')
+                for c_idx, cell in enumerate(first_row):
+                    col_header = html.escape(str(cell)) if cell else f"Col {chr(65 + c_idx) if c_idx < 26 else c_idx+1}"
+                    html_parts.append(f'<th class="py-2 px-3 text-slate-700 font-bold text-[11px] whitespace-nowrap border-r border-slate-200">{col_header}</th>')
+                html_parts.append('</tr></thead>')
+
+                html_parts.append('<tbody class="divide-y divide-slate-100">')
+                for r_idx, row in enumerate(s["rows"][1:], start=2):
+                    html_parts.append('<tr class="hover:bg-emerald-50/40 transition-colors odd:bg-white even:bg-slate-50/50">')
+                    html_parts.append(f'<td class="py-1.5 px-2 bg-slate-100 text-slate-400 font-mono text-[10px] text-center border-r border-slate-200 select-none">{r_idx}</td>')
+                    for cell in row:
+                        val_str = html.escape(str(cell))
+                        is_num = bool(re.match(r"^-?\d+(?:[.,]\d+)?\s*€?$", val_str.strip()))
+                        align_cls = "text-right font-mono" if is_num else "text-left"
+                        html_parts.append(f'<td class="py-1.5 px-3 text-slate-700 whitespace-nowrap border-r border-slate-100 {align_cls}">{val_str}</td>')
+                    html_parts.append('</tr>')
+                html_parts.append('</tbody>')
+            else:
+                html_parts.append('<tbody><tr><td class="p-8 text-center text-slate-400 italic">Il foglio di calcolo è vuoto.</td></tr></tbody>')
+
+            html_parts.append('</table></div></div>')
+
+        if not sheets_data:
+            html_parts.append('<div class="p-8 text-center text-slate-400 italic">Nessun dato o foglio trovato nel file.</div>')
+
+        return {
+            "success": True,
+            "format": "excel",
+            "filename": filename,
+            "title": clean_title,
+            "sheets": sheets_data,
+            "html_content": "\n".join(html_parts),
+            "error": None
+        }
+
+    # B. DOCUMENTI WORD (.docx, .doc)
+    elif is_docx:
+        paragraphs_html = []
+        try:
+            doc = docx.Document(io.BytesIO(file_bytes))
+            for p in doc.paragraphs:
+                p_text = p.text.strip()
+                if not p_text:
+                    continue
+                style_name = (p.style.name if p.style else "").lower()
+                safe_t = html.escape(p_text)
+                if "heading 1" in style_name or "title" in style_name:
+                    paragraphs_html.append(f'<h1 class="text-xl font-bold text-slate-900 mt-5 mb-2 pb-1 border-b border-slate-200">{safe_t}</h1>')
+                elif "heading 2" in style_name:
+                    paragraphs_html.append(f'<h2 class="text-lg font-bold text-slate-800 mt-4 mb-2">{safe_t}</h2>')
+                elif "heading 3" in style_name:
+                    paragraphs_html.append(f'<h3 class="text-sm font-bold text-slate-800 mt-3 mb-1">{safe_t}</h3>')
+                else:
+                    paragraphs_html.append(f'<p class="text-slate-700 text-sm leading-relaxed mb-2.5">{safe_t}</p>')
+
+            for table in doc.tables:
+                table_html = ['<div class="overflow-auto my-4 rounded-xl border border-slate-200 shadow-2xs bg-white"><table class="w-full text-xs text-left border-collapse min-w-full">']
+                for r_idx, row in enumerate(table.rows):
+                    row_cells = [html.escape(c.text.strip()) for c in row.cells]
+                    if r_idx == 0:
+                        table_html.append('<thead class="bg-slate-100 border-b border-slate-200"><tr>')
+                        for c in row_cells:
+                            table_html.append(f'<th class="py-2 px-3 font-bold text-slate-800 border-r border-slate-200">{c}</th>')
+                        table_html.append('</tr></thead><tbody class="divide-y divide-slate-100">')
+                    else:
+                        table_html.append('<tr class="odd:bg-white even:bg-slate-50/50 hover:bg-blue-50/30">')
+                        for c in row_cells:
+                            table_html.append(f'<td class="py-1.5 px-3 text-slate-700 border-r border-slate-100">{c}</td>')
+                        table_html.append('</tr>')
+                if len(table.rows) > 0:
+                    table_html.append('</tbody>')
+                table_html.append('</table></div>')
+                paragraphs_html.append("\n".join(table_html))
+
+        except Exception as e:
+            logger.warning(f"Errore rendering docx {filename}: {e}")
+            raw_text = extract_text_from_office_file(file_bytes, filename)
+            if raw_text:
+                for line in raw_text.splitlines():
+                    l_str = line.strip()
+                    if l_str:
+                        paragraphs_html.append(f'<p class="text-slate-700 text-sm leading-relaxed mb-2">{html.escape(l_str)}</p>')
+
+        word_html = f"""
+        <div class="max-w-3xl mx-auto bg-white p-6 sm:p-8 rounded-xl border border-slate-200 shadow-2xs space-y-2 font-sans overflow-auto max-h-[68vh]">
+            <div class="flex items-center gap-3 border-b border-slate-200 pb-3 mb-4">
+                <div class="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-base">
+                    <i class="fa-solid fa-file-word"></i>
+                </div>
+                <div>
+                    <h2 class="text-sm font-bold text-slate-900">{html.escape(filename)}</h2>
+                    <p class="text-[11px] text-slate-500">Documento di testo Word</p>
+                </div>
+            </div>
+            {"".join(paragraphs_html) if paragraphs_html else '<p class="text-slate-400 italic text-sm">Nessun testo estraibile trovato nel documento.</p>'}
+        </div>
+        """
+        return {
+            "success": True,
+            "format": "word",
+            "filename": filename,
+            "title": clean_title,
+            "sheets": [],
+            "html_content": word_html,
+            "error": None
+        }
+
+    # C. FILE DI TESTO GENERICO (.txt, .md, .json, .xml)
+    else:
+        raw_text = extract_text_from_office_file(file_bytes, filename)
+        safe_text = html.escape(raw_text) if raw_text else "File vuoto o formato non testuale."
+        text_html = f"""
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs overflow-auto max-h-[68vh]">
+            <div class="flex items-center gap-2 pb-2 mb-2 border-b border-slate-100 text-slate-600 text-xs font-semibold">
+                <i class="fa-regular fa-file-code"></i> <span>{html.escape(filename)}</span>
+            </div>
+            <pre class="font-mono text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">{safe_text}</pre>
+        </div>
+        """
+        return {
+            "success": True,
+            "format": "text",
+            "filename": filename,
+            "title": clean_title,
+            "sheets": [],
+            "html_content": text_html,
+            "error": None
+        }
 
 
 def create_zip_from_documents(

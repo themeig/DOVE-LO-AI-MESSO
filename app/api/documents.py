@@ -4,7 +4,7 @@ import re
 import unicodedata
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -12,7 +12,7 @@ from app.config import get_settings
 from app.models.database import get_db, Document, ChatMessage, GoogleDriveCredential, get_app_setting
 from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDeleteResponse
 from app.services.ai_service import get_ai_service
-from app.services.document_service import save_uploaded_file
+from app.services.document_service import save_uploaded_file, read_decrypted_file
 from app.services.drive_service import get_drive_service, resolve_drive_folder_path
 
 logger = logging.getLogger(__name__)
@@ -274,6 +274,49 @@ async def upload_documents_batch(
         "chat_reply": chat_reply,
         "routed_model": routed_model
     }
+
+@router.get("/preview-content")
+def get_document_preview_content(
+    document_id: Optional[int] = None,
+    file_url: Optional[str] = None,
+    filename: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Ritorna la preview strutturata e l'HTML formattato per file Word (.docx, .doc),
+    Excel (.xlsx, .xls) o CSV, decifrati al volo dal caveau.
+    """
+    file_bytes = None
+    target_filename = ""
+
+    if document_id:
+        doc = db.query(Document).filter(Document.id == document_id).first()
+        if doc and Path(doc.file_path).exists():
+            file_bytes = read_decrypted_file(doc.file_path)
+            target_filename = Path(doc.file_path).name
+
+    if file_bytes is None and (file_url or filename):
+        raw_name = filename or ""
+        if not raw_name and file_url:
+            raw_name = file_url.split("?")[0].split("/")[-1]
+
+        target_filename = raw_name
+        settings = get_settings()
+        file_path = settings.STORAGE_DIR / raw_name
+        if file_path.exists():
+            file_bytes = read_decrypted_file(file_path)
+        else:
+            doc = db.query(Document).filter(Document.file_path.like(f"%{raw_name}%")).first()
+            if doc and Path(doc.file_path).exists():
+                file_bytes = read_decrypted_file(doc.file_path)
+                target_filename = Path(doc.file_path).name
+
+    if file_bytes is None:
+        raise HTTPException(status_code=404, detail="File non trovato o non accessibile per l'anteprima")
+
+    from app.services.archive_service import render_office_file_to_html
+    preview_data = render_office_file_to_html(file_bytes, target_filename)
+    return preview_data
 
 @router.get("/{document_id}/file")
 def get_document_file(document_id: int, db: Session = Depends(get_db)):

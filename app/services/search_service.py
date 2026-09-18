@@ -120,7 +120,14 @@ CONCEPT_SYNONYMS: Dict[str, List[str]] = {
     "assicurazione": ["assicurazioni", "polizza", "polizze", "contratto", "auto", "casa"],
     "assicurazioni": ["assicurazione", "polizza", "polizze", "contratto", "auto", "casa"],
     "certificato": ["certificati", "attestato", "laurea", "residenza", "stato"],
-    "certificati": ["certificato", "attestato", "laurea", "residenza", "stato"]
+    "certificati": ["certificato", "attestato", "laurea", "residenza", "stato"],
+    "excel": ["foglio", "fogli", "xlsx", "xls", "calcolo", "tabella", "tabelle", "spese", "dati"],
+    "foglio": ["fogli", "excel", "xlsx", "xls", "calcolo", "tabella", "tabelle", "spese"],
+    "fogli": ["foglio", "excel", "xlsx", "xls", "calcolo", "tabella", "tabelle", "spese"],
+    "tabella": ["tabelle", "excel", "foglio", "fogli", "csv", "xlsx", "dati"],
+    "tabelle": ["tabella", "excel", "foglio", "fogli", "csv", "xlsx", "dati"],
+    "word": ["docx", "doc", "documento", "testo", "contratto", "relazione"],
+    "docx": ["word", "doc", "documento", "testo"]
 }
 
 

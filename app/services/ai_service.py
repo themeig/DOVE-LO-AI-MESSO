@@ -108,25 +108,55 @@ class MockAIService:
             )
         # Supporto Word (.docx, .doc)
         if any(fn.endswith(ext) for ext in [".docx", ".doc"]):
+            from app.services.archive_service import extract_text_from_office_file
+            docx_text = extract_text_from_office_file(file_bytes, filename)
+            detected_amount = None
+            detected_date = None
+            if docx_text:
+                amt_m = re.findall(r"(?:€|eur|euro)?\s*(\d+[.,]\d{2})\b", docx_text, flags=re.IGNORECASE)
+                if amt_m:
+                    try:
+                        detected_amount = float(amt_m[0].replace(".", "").replace(",", "."))
+                    except Exception:
+                        pass
+                date_m = re.findall(r"\b(\d{4}-\d{2}-\d{2})\b", docx_text)
+                if date_m:
+                    detected_date = date_m[0]
+            clean_stem = Path(filename).stem.replace('_', ' ').capitalize()
             return ExtractedDocument(
-                title=f"Documento Word {Path(filename).stem.replace('_', ' ').capitalize()}",
+                title=f"Documento Word {clean_stem}",
                 doc_type="contratto" if "contratt" in fn else "documento_word",
                 issuer="Studio Legale / Società",
-                amount=3500.0 if "contratt" in fn else None,
-                due_date="2026-12-31" if "contratt" in fn else None,
-                summary=f"Documento di testo Word '{filename}' elaborato con successo.",
+                amount=detected_amount or (3500.0 if "contratt" in fn else None),
+                due_date=detected_date or ("2026-12-31" if "contratt" in fn else None),
+                summary=(f"Documento Word '{filename}' con testo estratto:\n{docx_text[:250]}" if docx_text else f"Documento di testo Word '{filename}' elaborato con successo."),
                 tags=["word", "documento", "docx"],
                 suggest_rename=False
             )
-        # Supporto Excel / CSV (.xlsx, .xls, .csv)
-        if any(fn.endswith(ext) for ext in [".xlsx", ".xls", ".csv"]):
+        # Supporto Excel / CSV (.xlsx, .xls, .xlsm, .csv, .tsv)
+        if any(fn.endswith(ext) for ext in [".xlsx", ".xls", ".xlsm", ".csv", ".tsv"]):
+            from app.services.archive_service import extract_text_from_office_file
+            xlsx_text = extract_text_from_office_file(file_bytes, filename)
+            detected_amount = None
+            detected_date = None
+            if xlsx_text:
+                amt_m = re.findall(r"(?:€|eur|euro)?\s*(\d+[.,]\d{2})\b", xlsx_text, flags=re.IGNORECASE)
+                if amt_m:
+                    try:
+                        detected_amount = float(amt_m[0].replace(".", "").replace(",", "."))
+                    except Exception:
+                        pass
+                date_m = re.findall(r"\b(\d{4}-\d{2}-\d{2})\b", xlsx_text)
+                if date_m:
+                    detected_date = date_m[0]
+            clean_stem = Path(filename).stem.replace('_', ' ').capitalize()
             return ExtractedDocument(
-                title=f"Foglio Calcolo {Path(filename).stem.replace('_', ' ').capitalize()}",
-                doc_type="foglio_calcolo",
+                title=f"Foglio Calcolo {clean_stem}",
+                doc_type="foglio_calcolo" if not detected_amount else "spese",
                 issuer="Contabilità / Amministrazione",
-                amount=570.50 if "spese" in fn else None,
-                due_date="2026-12-01" if "spese" in fn else None,
-                summary=f"Foglio di calcolo Excel/CSV '{filename}' con tabelle di dati e riepilogo spese.",
+                amount=detected_amount or (570.50 if "spese" in fn else None),
+                due_date=detected_date or ("2026-12-01" if "spese" in fn else None),
+                summary=(f"Foglio di calcolo Excel '{filename}' elaborato con successo. Dati e colonne estratti:\n{xlsx_text[:250]}" if xlsx_text else f"Foglio di calcolo Excel/CSV '{filename}' con tabelle di dati e riepilogo spese."),
                 tags=["excel", "tabelle", "dati", "spese"],
                 suggest_rename=False
             )
@@ -197,6 +227,7 @@ class MockAIService:
 class OpenRouterAIService:
     """Motore AI multimodale tramite OpenRouter API (modello: google/gemini-2.5-flash-lite con fallback a free)."""
     def __init__(self, api_key: str, model: str = "google/gemini-2.5-flash-lite"):
+        self.api_key = api_key
         chosen_model = (model or "").strip()
         if not chosen_model or chosen_model == "auto":
             chosen_model = "google/gemini-2.5-flash-lite"
@@ -297,13 +328,17 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                     # PDF senza layer di testo estratto (scansione grafica, libro o PDF protetto/test)
                     return MockAIService().extract_document(file_bytes, mime_type, filename)
 
-            # 2. GESTIONE DOCUMENTI OFFICE & FOGLI DI CALCOLO (.docx, .doc, .xlsx, .xls, .csv, .txt, .json)
-            is_office = any(fn.endswith(ext) for ext in [".docx", ".doc", ".xlsx", ".xls", ".csv", ".tsv", ".txt", ".json", ".md"])
+            # 2. GESTIONE DOCUMENTI OFFICE & FOGLI DI CALCOLO (.docx, .doc, .xlsx, .xls, .xlsm, .csv, .txt, .json)
+            is_office = (
+                any(fn.endswith(ext) for ext in [".docx", ".doc", ".xlsx", ".xls", ".xlsm", ".csv", ".tsv", ".txt", ".json", ".md"])
+                or any(k in mt for k in ["sheet", "excel", "word", "officedocument", "csv"])
+            )
             if is_office:
                 from app.services.archive_service import extract_text_from_office_file
                 office_text = extract_text_from_office_file(file_bytes, filename)
                 if office_text:
-                    office_prompt = f"""Sei l'assistente 'Dove lo AI messo'. Analizza questo testo e tabelle estratti dal file Word/Excel/CSV caricato ({filename}):
+                    try:
+                        office_prompt = f"""Sei l'assistente 'Dove lo AI messo'. Analizza questo testo e tabelle estratti dal file Word/Excel/CSV caricato ({filename}):
 ---
 {office_text[:3500]}
 ---
@@ -328,10 +363,13 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
   "suggest_rename": false
 }}
 """
-                    messages = [{"role": "user", "content": office_prompt}]
-                    resp_text = self._call_openrouter(messages, max_tokens=4096, model_override=self.primary_model, temperature=0.1)
-                    parsed = _extract_json_object(resp_text)
-                    return ExtractedDocument(**parsed)
+                        messages = [{"role": "user", "content": office_prompt}]
+                        resp_text = self._call_openrouter(messages, max_tokens=4096, model_override=self.primary_model, temperature=0.1)
+                        parsed = _extract_json_object(resp_text)
+                        return ExtractedDocument(**parsed)
+                    except Exception as off_err:
+                        logger.warning(f"OpenRouter errore estrazione office {filename}: {off_err}. Fallback a parser locale.")
+                return MockAIService().extract_document(file_bytes, mime_type, filename)
 
             # 3. GESTIONE ARCHIVI ZIP (.zip)
             if fn.endswith(".zip") or "archivio" in fn:
