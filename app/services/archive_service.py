@@ -1436,6 +1436,13 @@ def unzip_document_to_vault(
     zip_bytes = read_decrypted_file(fp)
     extracted_docs: List[Document] = []
 
+    active_cred = None
+    try:
+        from app.models.database import GoogleDriveCredential
+        active_cred = db.query(GoogleDriveCredential).first()
+    except Exception:
+        pass
+
     try:
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zf:
             for info in zf.infolist():
@@ -1458,8 +1465,17 @@ def unzip_document_to_vault(
                     f"image/{file_ext}" if file_ext in ["jpg", "jpeg", "png", "webp"] else "application/octet-stream"
                 )
 
-                # Estrazione immediata ad altissima velocità
-                extracted = fast_extract_document_metadata(raw_inner_bytes, inner_filename, mime)
+                # Analisi puntuale di ciascun file con motore multimodale AI
+                ai_service = get_ai_service(db)
+                try:
+                    extracted = ai_service.extract_document(
+                        file_bytes=raw_inner_bytes,
+                        mime_type=mime,
+                        filename=inner_filename
+                    )
+                except Exception as ai_err:
+                    logger.warning(f"Errore estrazione AI per '{inner_filename}': {ai_err}. Uso parser di fallback.")
+                    extracted = fast_extract_document_metadata(raw_inner_bytes, inner_filename, mime)
 
                 due_date_obj = None
                 if extracted.due_date:
@@ -1476,6 +1492,26 @@ def unzip_document_to_vault(
                 is_payable = (extracted.amount is not None) and (extracted.doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"])
                 doc_status = "da_pagare" if is_payable else "archiviato"
 
+                # Sincronizzazione automatica con Google Drive se attivo
+                drive_file_id = None
+                drive_web_url = None
+                if active_cred:
+                    try:
+                        from app.services.drive_service import get_drive_service, resolve_drive_folder_path
+                        drive_service = get_drive_service()
+                        folder_path = resolve_drive_folder_path(extracted.doc_type, due_date_obj)
+                        drive_res = drive_service.upload_file(
+                            file_bytes=raw_inner_bytes,
+                            filename=inner_filename,
+                            mime_type=mime,
+                            folder_path=folder_path,
+                            access_token=active_cred.access_token
+                        )
+                        drive_file_id = drive_res.get("file_id")
+                        drive_web_url = drive_res.get("web_view_link")
+                    except Exception as drive_err:
+                        logger.warning(f"Errore upload Drive per '{inner_filename}': {drive_err}")
+
                 new_doc = Document(
                     thread_id=thread_id,
                     title=title,
@@ -1490,6 +1526,8 @@ def unzip_document_to_vault(
                     category=extracted.category,
                     category_label=extracted.category_label,
                     category_icon=extracted.category_icon,
+                    drive_file_id=drive_file_id,
+                    drive_web_url=drive_web_url,
                     created_at=datetime.now(timezone.utc)
                 )
                 db.add(new_doc)

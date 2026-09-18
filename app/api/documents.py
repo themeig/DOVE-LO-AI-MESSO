@@ -364,13 +364,26 @@ def _handle_unzip_vault_document(
     if not extracted_docs:
         raise HTTPException(status_code=400, detail="Impossibile estrarre l'archivio ZIP o nessun file valido trovato all'interno.")
 
-    doc_lines = [f"- 📄 **{d.title}** ({d.doc_type})" for d in extracted_docs[:6]]
-    more_str = f"\n... ed altri {len(extracted_docs) - 6} documenti" if len(extracted_docs) > 6 else ""
+    doc_lines = []
+    for idx, d in enumerate(extracted_docs, 1):
+        details = []
+        if d.category_label:
+            details.append(f"📁 *{d.category_label}*")
+        elif d.doc_type:
+            details.append(f"*{d.doc_type.capitalize()}*")
+        if d.amount is not None:
+            details.append(f"💶 **€ {d.amount:.2f}**")
+        if d.due_date:
+            details.append(f"📅 Scadenza: **{d.due_date.strftime('%d/%m/%Y')}**")
+        detail_str = f" ({' • '.join(details)})" if details else ""
+        summary_line = f"\n   _{d.summary}_" if d.summary else ""
+        doc_lines.append(f"**{idx}.** 📄 **{d.title}**{detail_str}{summary_line}")
+
     chat_content = (
-        f"⚡ Ho scompattato con successo l'archivio **{target_doc.title}**!\n"
-        f"Sono stati catalogati ed estratti **{len(extracted_docs)} nuovi documenti** nel caveau:\n\n"
-        + "\n".join(doc_lines) + more_str +
-        "\n\nTutti i documenti sono ora visualizzabili e scaricabili singolarmente."
+        f"📦 Ho scompattato con successo l'archivio **{target_doc.title}** ed esaminato ciascun file singolarmente con l'AI!\n"
+        f"Sono stati catalogati ed estratti **{len(extracted_docs)} nuovi documenti** nel Caveau:\n\n"
+        + "\n\n".join(doc_lines) +
+        "\n\nTutti i documenti sono stati inseriti nelle rispettive sezioni e sono visualizzabili e scaricabili singolarmente."
     )
 
     extracted_ids = [d.id for d in extracted_docs]
@@ -398,6 +411,9 @@ def _handle_unzip_vault_document(
                 "document_id": d.id,
                 "title": d.title,
                 "doc_type": d.doc_type,
+                "category": d.category,
+                "category_label": d.category_label,
+                "category_icon": d.category_icon,
                 "issuer": d.issuer,
                 "amount": d.amount,
                 "due_date": d.due_date.isoformat() if d.due_date else None,

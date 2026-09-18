@@ -616,7 +616,9 @@ REGOLE OPERATIVE:
 
 15. ESTRAZIONE E DECOMPRESSIONE ARCHIVI (unzip_vault_archive):
     - Se l'utente chiede di estrarre, scompattare o fare l'unzip di un file .zip presente nel caveau (es. 'scompatta il file zip che ho caricato', 'estrai l'archivio fatture.zip', 'fai l'unzip dello zip', 'estrai tutti i file'): DEVI SEMPRE USARE LO STRUMENTO `unzip_vault_archive(document_title=..., document_id=...)`!
-    - Tutti i file estratti (PDF, immagini, documenti Word, fogli Excel) verranno analizzati con l'AI e catalogati automaticamente nel caveau.
+    - Tutti i file estratti (PDF, immagini, documenti Word, fogli Excel) vengono analizzati singolarmente uno per uno con l'AI e catalogati automaticamente nel caveau con sezioni dinamiche.
+    - Quando ricevi i documenti estratti dallo strumento, presentali con cura uno per uno nel tuo messaggio: indica per ciascuno il titolo, la categoria, l'eventuale importo e scadenza, e una sintesi del contenuto. Mostra sempre le schede interattive di tutti i documenti estratti!
+
 
 16. INTEGRAZIONE GOOGLE DRIVE CLOUD SYNC & ARCHIVIAZIONE CLOUD:
     - L'applicazione "Dove lo AI messo" include la sincronizzazione con Google Drive Cloud Sync (tramite API ufficiale Google con scope sicuro `drive.file`).
@@ -1993,6 +1995,9 @@ class AgenticChatService:
                         "title": d.title,
                         "issuer": d.issuer,
                         "doc_type": d.doc_type,
+                        "category": d.category,
+                        "category_label": d.category_label,
+                        "category_icon": d.category_icon,
                         "amount": d.amount,
                         "due_date": d.due_date.isoformat() if d.due_date else None,
                         "status": d.status,
@@ -2824,12 +2829,26 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 thread_id=thread_id
             )
             if extracted:
-                lines = [f"- 📄 **{d.title}** ({d.doc_type})" for d in extracted[:8]]
-                more_str = f"\n... ed altri {len(extracted) - 8} documenti" if len(extracted) > 8 else ""
+                doc_lines = []
+                for idx, d in enumerate(extracted, 1):
+                    details = []
+                    if d.category_label:
+                        details.append(f"📁 *{d.category_label}*")
+                    elif d.doc_type:
+                        details.append(f"*{d.doc_type.capitalize()}*")
+                    if d.amount is not None:
+                        details.append(f"💶 **€ {d.amount:.2f}**")
+                    if d.due_date:
+                        details.append(f"📅 Scadenza: **{d.due_date.strftime('%d/%m/%Y')}**")
+                    detail_str = f" ({' • '.join(details)})" if details else ""
+                    summary_line = f"\n   _{d.summary}_" if d.summary else ""
+                    doc_lines.append(f"**{idx}.** 📄 **{d.title}**{detail_str}{summary_line}")
+
                 reply = (
-                    f"⚡ Ho scompattato con successo l'archivio ed estratto **{len(extracted)} nuovi documenti** nel caveau:\n\n"
-                    + "\n".join(lines) + more_str +
-                    "\n\nPuoi visualizzarli con il pulsante 'Vedi' o scaricarli direttamente nelle schede sottostanti! ⬇️"
+                    f"📦 Ho scompattato con successo l'archivio ed esaminato ciascun file singolarmente con l'AI. "
+                    f"Ecco il dettaglio dei **{len(extracted)} documenti** estratti e catalogati nel Caveau:\n\n"
+                    + "\n\n".join(doc_lines) +
+                    "\n\nHo inserito ciascun documento nella sezione corrispondente e aggiornato lo scadenzario. Puoi aprirli, visualizzarli o scaricarli direttamente dalle schede qui sotto! ⬇️"
                 )
                 docs_info = [
                     {
@@ -2838,6 +2857,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                         "title": d.title,
                         "issuer": d.issuer,
                         "doc_type": d.doc_type,
+                        "category": d.category,
+                        "category_label": d.category_label,
+                        "category_icon": d.category_icon,
                         "amount": d.amount,
                         "due_date": d.due_date.isoformat() if d.due_date else None,
                         "status": d.status,

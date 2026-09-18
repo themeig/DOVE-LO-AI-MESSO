@@ -386,7 +386,60 @@ def test_chat_unzip_turn_interception():
         assert "scompattato" in turn_res.reply.lower() or "estratti" in turn_res.reply.lower()
         assert turn_res.documents is not None
         assert len(turn_res.documents) >= 2
+        # Verifica che i documenti siano presentati uno per uno con numerazione e dettagli
+        assert "1." in turn_res.reply
+        assert any(d.get("category_label") for d in turn_res.documents)
     finally:
         db.close()
+
+
+def test_unzip_calls_ai_service_for_each_file(monkeypatch):
+    """Verifica che la decompressione ZIP analizzi ciascun file estratto tramite il motore AI."""
+    from unittest.mock import MagicMock
+    from app.models.database import get_db
+    from app.models.schemas import ExtractedDocument
+
+    mock_ai = MagicMock()
+    mock_ai.extract_document.side_effect = lambda file_bytes, mime_type, filename: ExtractedDocument(
+        title=f"AI Title {filename}",
+        doc_type="bolletta" if "fattura" in filename else "contratto",
+        issuer="AI Test Issuer",
+        amount=99.90 if "fattura" in filename else None,
+        due_date="2026-11-20" if "fattura" in filename else None,
+        summary=f"Analisi AI dettagliata per {filename}",
+        category="utenze_bollette" if "fattura" in filename else "contratti_polizze",
+        category_label="Utenze & Bollette" if "fattura" in filename else "Contratti, Polizze & Assicurazioni",
+        category_icon="fa-bolt"
+    )
+
+    import app.services.archive_service
+    monkeypatch.setattr(app.services.archive_service, "get_ai_service", lambda db=None: mock_ai)
+
+    engine = get_engine()
+    SessionLocal = get_session_maker(engine)
+    with SessionLocal() as db:
+        zip_bytes = create_dummy_zip()
+        from app.services.document_service import save_uploaded_file
+        saved_zip_path = save_uploaded_file(zip_bytes, "test_mock_ai.zip")
+        zip_doc = Document(
+            title="Archivio Test Mock AI.zip",
+            file_path=saved_zip_path,
+            file_type="zip",
+            doc_type="archivio_zip",
+            summary="Test zip",
+            thread_id="test_ai_unzip"
+        )
+        db.add(zip_doc)
+        db.commit()
+        db.refresh(zip_doc)
+
+        extracted = unzip_document_to_vault(db=db, document_id=zip_doc.id, thread_id="test_ai_unzip")
+        assert len(extracted) == 2
+        # L'AI deve essere stata invocata per ciascun file
+        assert mock_ai.extract_document.call_count == 2
+        assert all("AI Title" in d.title for d in extracted)
+        assert any(d.amount == 99.90 for d in extracted)
+        assert any(d.category_label == "Utenze & Bollette" for d in extracted)
+
 
 
