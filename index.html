@@ -164,7 +164,7 @@
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-semibold text-sm leading-tight">I tuoi Spazi & Chat</h2>
-              <span class="bg-white/20 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded app-version-badge">v1.2.0</span>
+              <span class="bg-white/20 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded app-version-badge">v1.2.1</span>
 
             </div>
             <p class="text-[10px] text-green-200">Dove lo AI messo</p>
@@ -266,7 +266,7 @@
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-semibold text-sm leading-tight truncate">Dove lo AI messo</h1>
-              <span class="bg-white/20 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 app-version-badge">v1.2.0</span>
+              <span class="bg-white/20 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 app-version-badge">v1.2.1</span>
 
             </div>
             <p id="activeThreadSubtitle" class="text-[11px] text-green-100 truncate">
@@ -1611,7 +1611,7 @@
             <h2 class="font-bold text-sm text-slate-900 tracking-tight">Executive Vault & Scadenzario</h2>
             <span class="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
               <i class="fa-solid fa-code-branch text-[9px] text-slate-500"></i>
-              <span class="app-version-badge">v1.2.0</span>
+              <span class="app-version-badge">v1.2.1</span>
 
             </span>
             <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -1771,7 +1771,7 @@
             <!-- Versione App -->
             <div class="border-t border-slate-100 px-3.5 py-2 mt-1 flex items-center justify-between text-[11px] text-slate-400 select-none">
               <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-[10px]"></i> Versione App</span>
-              <span class="font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded text-[10px] app-version-badge">v1.2.0</span>
+              <span class="font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded text-[10px] app-version-badge">v1.2.1</span>
 
             </div>
           </div>
@@ -2390,9 +2390,24 @@
       }
     }
 
+    function sanitizeAssistantText(text) {
+      if (!text) return '';
+      let cleaned = String(text);
+      // Rimuovi tag residui XML di tool o thinking
+      cleaned = cleaned.replace(/<(?:thought|think|tool_call|tool_response|\w+_response)[^>]*>[\s\S]*?<\/(?:thought|think|tool_call|tool_response|\w+_response)>/gi, '');
+      cleaned = cleaned.replace(/<\/?(?:thought|think|tool_call|tool_response|function|parameter|arg_key|arg_value|\w+_response)[^>]*>/gi, '');
+      // Rimuovi blocchi JSON di tool in testa o residui di chiamate tool
+      cleaned = cleaned.replace(/^\s*\{"\w*response"\s*:\s*\{[\s\S]*?\}\s*\}\s*/i, '');
+      cleaned = cleaned.replace(/^\s*\{"(?:confirmation|target_type|targettype|target_id|targetid|deletevaultrecord|delete_vault_record)"\s*:[\s\S]*?\}\s*\}?\s*/i, '');
+      if (/^\s*\{[\s\S]*\}\s*$/.test(cleaned) && (cleaned.includes('response') || cleaned.includes('confirmation') || cleaned.includes('targetid'))) {
+        cleaned = '';
+      }
+      return cleaned.trim();
+    }
+
     function cleanSidebarPreview(text) {
       if (!text) return 'Nessun messaggio';
-      let clean = String(text)
+      let clean = sanitizeAssistantText(String(text))
         .replace(/<[^>]*>/g, '') // rimuovi tag html
         .replace(/[*_~`#>•-]/g, '') // rimuovi caratteri markdown
         .replace(/\r?\n|\r/g, ' ') // sostituisci a capo con spazio singolo
@@ -3287,7 +3302,9 @@
     // Formattazione markdown completa per la chat: gestisce titoli (###), divisori (---), elenchi puntati (*, -), numerati (1.), grassetto (** o *), corsivo (_) e blocchi codice
     function formatMessageText(text) {
       if (!text) return '';
-      let formatted = escapeHtml(text);
+      let cleanRaw = sanitizeAssistantText(text);
+      if (!cleanRaw) return '';
+      let formatted = escapeHtml(cleanRaw);
 
       // 1. Blocchi di codice (```code```)
       formatted = formatted.replace(/```(?:[a-zA-Z0-9_\-]+)?\n?([\s\S]*?)```/g, '<pre class="bg-slate-800 text-emerald-300 p-2.5 rounded-lg text-xs font-mono overflow-x-auto my-2 leading-relaxed">$1</pre>');
@@ -7804,7 +7821,7 @@
 
       <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
         <span>Password predefinita: <code class="font-mono font-bold text-slate-600 bg-slate-100 px-1 py-0.5 rounded">1234</code></span>
-        <span class="font-mono text-[10px] text-slate-400 app-version-badge">v1.2.0</span>
+        <span class="font-mono text-[10px] text-slate-400 app-version-badge">v1.2.1</span>
       </div>
 
     </div>

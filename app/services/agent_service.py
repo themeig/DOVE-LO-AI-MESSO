@@ -575,16 +575,102 @@ REGOLE OPERATIVE:
 """
 
 
+def is_tool_payload(obj: Any) -> bool:
+    """Verifica se un dizionario JSON rappresenta una risposta tecnica di un tool o un payload interno."""
+    if not isinstance(obj, dict):
+        return False
+    keys_lower = [str(k).lower() for k in obj.keys()]
+    if any(k.endswith("response") or k.endswith("_response") for k in keys_lower):
+        return True
+    tool_keywords = {
+        "confirmation", "target_type", "targettype", "target_id", "targetid",
+        "target_ids", "targetids", "delete_vault_record", "deletevaultrecord",
+        "found_documents", "founddocuments", "found_physical_items", "foundphysicalitems",
+        "physical_items", "physicalitems", "upcoming_documents", "deadlines",
+        "search_vault", "searchvault", "list_vault_contents", "listvaultcontents",
+        "pending_confirmation", "pendingconfirmation", "tool_call_id", "tool_name",
+        "function_call", "functioncall", "card_document", "show_document_card"
+    }
+    if any(k in tool_keywords for k in keys_lower):
+        return True
+    if obj.get("status") in ["pending_confirmation", "pendingconfirmation", "not_found", "success"]:
+        return True
+    obj_str = str(obj).lower()
+    if any(k in obj_str for k in ["delete_confirmation", "deleteconfirmation", "show_document_card", "delete_vault_record"]):
+        return True
+    return False
+
+
 def strip_tool_tags(text: str) -> str:
-    """Rimuove qualsiasi tag <tool_call>...</tool_call>, blocchi di thinking <thought>...</thought> o residui XML di chiamata tool."""
+    """Rimuove qualsiasi tag <tool_call>...</tool_call>, blocchi di thinking <thought>...</thought>,
+    residui XML di chiamata tool e oggetti JSON di risposta tool (es. {"deletevaultrecordresponse": ...})."""
     if not text:
         return ""
-    cleaned = re.sub(r"<thought>.*?</thought>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    cleaned = text
+
+    # 1. Rimuovi tag XML standard e blocchi di pensiero
+    cleaned = re.sub(r"<thought>.*?</thought>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
     cleaned = re.sub(r"<think>.*?</think>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
     cleaned = re.sub(r"<tool_call>.*?</tool_call>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+    cleaned = re.sub(r"<tool_response>.*?</tool_response>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+    cleaned = re.sub(r"<\w+_response>.*?</\w+_response>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
     cleaned = re.sub(r"<function=.*?</function>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
     cleaned = re.sub(r"<parameter=.*?</parameter>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
-    cleaned = re.sub(r"</?(?:thought|think|tool_call|function|parameter|arg_key|arg_value)[^>]*>", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"</?(?:thought|think|tool_call|tool_response|function|parameter|arg_key|arg_value|\w+_response)[^>]*>", "", cleaned, flags=re.IGNORECASE)
+
+    # 2. Rimuovi blocchi di codice markdown che racchiudono JSON di tool
+    def _clean_code_blocks(match):
+        code_body = match.group(1).strip()
+        if code_body.startswith("{") and code_body.endswith("}"):
+            try:
+                parsed = json.loads(code_body)
+                if is_tool_payload(parsed):
+                    return ""
+            except Exception:
+                pass
+        return match.group(0)
+
+    cleaned = re.sub(r"```(?:json)?\s*(\{.*?\})\s*```", _clean_code_blocks, cleaned, flags=re.DOTALL | re.IGNORECASE)
+
+    # 3. Rimuovi oggetti JSON in testa (leading JSON objects, ciclicamente finché presenti)
+    decoder = json.JSONDecoder()
+    while True:
+        s = cleaned.lstrip()
+        if not s.startswith("{"):
+            break
+        try:
+            parsed, end_idx = decoder.raw_decode(s)
+            rem = s[end_idx:].strip()
+            if is_tool_payload(parsed) or not rem:
+                cleaned = rem
+                continue
+            else:
+                break
+        except Exception:
+            break
+
+    # 4. Rimuovi oggetti JSON in coda (trailing JSON objects)
+    s = cleaned.rstrip()
+    if s.endswith("}"):
+        pos = 0
+        while True:
+            idx = s.find("{", pos)
+            if idx == -1:
+                break
+            candidate = s[idx:]
+            try:
+                parsed = json.loads(candidate)
+                if is_tool_payload(parsed):
+                    cleaned = s[:idx].rstrip()
+                    break
+            except Exception:
+                pass
+            pos = idx + 1
+
+    # 5. Pulizia regex di sicurezza per pattern noti anche se malformati o parziali
+    cleaned = re.sub(r'\{"\w*response"\s*:\s*\{.*?\}\s*\}', "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+    cleaned = re.sub(r'\{"(?:confirmation|target_type|targettype|target_id|targetid|deletevaultrecord|delete_vault_record)"\s*:.*?\}\s*\}?', "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+
     return cleaned.strip()
 
 
@@ -3378,7 +3464,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             conf_box = tool_data["confirmation"]
                             tool_action = "REQUEST_DELETE"
 
-                        return ChatResponse(reply=final_text, action=tool_action, data=tool_data, documents=filtered_docs, confirmation=conf_box)
+                        return ChatResponse(reply=strip_tool_tags(final_text), action=tool_action, data=tool_data, documents=filtered_docs, confirmation=conf_box)
                 
                 direct_reply = (msg1.get("content") or "").strip()
                 lower_t = user_text.lower()

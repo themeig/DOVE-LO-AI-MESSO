@@ -1015,6 +1015,59 @@ def test_widget_rules_meta_and_physical_items_no_widgets():
         assert res_item.documents is None or len(res_item.documents) == 0
 
 
+def test_strip_tool_tags_cleans_echoed_tool_json_and_payloads():
+    """Verifica che strip_tool_tags ripulisca qualsiasi residuo di risposta JSON o XML dei tool."""
+    from app.services.agent_service import strip_tool_tags
+
+    # 1. Caso screenshot utente: JSON di deletevaultrecordresponse in testa seguito dal testo conversazionale
+    leaked_input = (
+        '{"deletevaultrecordresponse": {"confirmation": {"details": "Verrà eliminato definitivamente 1 oggetto fisico dal caveau.", '
+        '"targetid": 1, "targetids": [1], "targettype": "physicalitem", "title": "Testo di una canzone", "type": "deleteconfirmation"}, '
+        '"status": "pendingconfirmation", "targetid": 1, "targetids": [1], "targettype": "physicalitem", "title": "Testo di una canzone"}}\n\n'
+        'Ho bisogno di una tua conferma per procedere con l\'eliminazione di:\n• **Testo di una canzone** (oggetto fisico)'
+    )
+    cleaned = strip_tool_tags(leaked_input)
+    assert "deletevaultrecordresponse" not in cleaned
+    assert '{"confirmation"' not in cleaned
+    assert "Ho bisogno di una tua conferma" in cleaned
+    assert "Testo di una canzone" in cleaned
+
+    # 2. JSON dentro un blocco di codice markdown ```json ... ```
+    md_input = (
+        '```json\n{"deletevaultrecordresponse": {"confirmation": {"targetid": 1}}}\n```\n'
+        'Ho preparato la richiesta di cancellazione.'
+    )
+    cleaned_md = strip_tool_tags(md_input)
+    assert "deletevaultrecordresponse" not in cleaned_md
+    assert cleaned_md == 'Ho preparato la richiesta di cancellazione.'
+
+    # 3. JSON in coda
+    trailing_input = (
+        'Ecco il risultato della ricerca:\n'
+        '{"searchvaultresponse": {"found_documents": []}}'
+    )
+    cleaned_trailing = strip_tool_tags(trailing_input)
+    assert cleaned_trailing == 'Ecco il risultato della ricerca:'
+
+    # 4. Solo JSON (senza testo) -> deve restituire stringa vuota (innescando il fallback pulito)
+    only_json = '{"deletevaultrecordresponse": {"confirmation": {"targetid": 1}}}'
+    assert strip_tool_tags(only_json) == ''
+
+    # 5. Tag XML + JSON + testo
+    xml_and_json = (
+        '<thought>Thinking about deleting...</thought>'
+        '<tool_call>delete_vault_record()</tool_call>'
+        '{"deletevaultrecordresponse": {"status": "pendingconfirmation"}} '
+        'Confermi la cancellazione?'
+    )
+    assert strip_tool_tags(xml_and_json) == 'Confermi la cancellazione?'
+
+    # 6. Testo normale con parentesi graffe non relative a tool
+    normal_text = 'La formula matematica contiene {x, y} e non deve essere toccata.'
+    assert strip_tool_tags(normal_text) == normal_text
+
+
+
 
 
 
