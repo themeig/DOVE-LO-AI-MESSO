@@ -10,6 +10,9 @@ class ExtractedDocument(BaseModel):
     summary: str = Field(default="", description="Spiegazione semplice del documento")
     tags: List[str] = Field(default_factory=list)
     suggest_rename: bool = Field(default=False, description="True se è utile chiedere all'utente se vuole dare un nome personalizzato")
+    category: Optional[str] = Field(default=None, description="Slug della sezione/categoria scelto dall'AI (es. canzoni_testi, ricette, utenze)")
+    category_label: Optional[str] = Field(default=None, description="Titolo visibile della sezione creato o scelto dall'AI (es. Canzoni & Testi Musicali, Ricette & Cucina)")
+    category_icon: Optional[str] = Field(default=None, description="Icona FontAwesome adatta scelta dall'AI (es. fa-music, fa-utensils, fa-graduation-cap)")
 
 class MessageIntent(BaseModel):
     intent: Literal["STORE_LOCATION", "QUERY_LOCATION", "QUERY_DEADLINES", "GENERAL"]

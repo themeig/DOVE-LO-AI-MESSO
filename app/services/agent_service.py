@@ -277,6 +277,43 @@ TOOLS_DEFINITION = [
     {
         "type": "function",
         "function": {
+            "name": "recategorize_vault_document",
+            "description": (
+                "Modifica o assegna la sezione/categoria tematica di un documento nel caveau "
+                "(es. 'spostalo in Canzoni', 'crea la sezione Ricette e metti questo file', 'metti la ricevuta in Spese Auto', 'sposta in Utenze & Bollette'). "
+                "Puoi creare qualsiasi nuova sezione a tua discrezione o su richiesta dell'utente."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category_label": {
+                        "type": "string",
+                        "description": "Il titolo visibile ed elegante della sezione/categoria (es. 'Canzoni & Testi Musicali', 'Ricette & Cucina', 'Appunti Universitari', 'Automobili & Manutenzione')"
+                    },
+                    "document_id": {
+                        "type": "integer",
+                        "description": "ID numerico opzionale del documento da spostare o ricatalogare. Se non fornito, fa riferimento all'ultimo documento o a quello cercato per titolo."
+                    },
+                    "document_title": {
+                        "type": "string",
+                        "description": "Titolo o nome del documento da ricatalogare (es. 'Testo Canzone', 'Modello F24')"
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Slug normalizzato opzionale della categoria (es. 'canzoni_musica', 'ricette_cucina')"
+                    },
+                    "category_icon": {
+                        "type": "string",
+                        "description": "Icona FontAwesome 6 adatta (es. 'fa-music', 'fa-utensils', 'fa-graduation-cap', 'fa-car', 'fa-paw', 'fa-bolt', 'fa-landmark')"
+                    }
+                },
+                "required": ["category_label"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "show_document_card",
             "description": (
                 "Mostra all'utente una o più schede grafiche interattive (widget) di documenti o file con anteprima e pulsanti reali per visualizzarlo ('Vedi') e scaricarlo ('Scarica'). "
@@ -1569,6 +1606,93 @@ class AgenticChatService:
                 "document_id": doc.id,
                 "old_title": old_title,
                 "new_title": doc.title,
+                "document": doc_info,
+                "documents": [doc_info]
+            }
+        elif name == "recategorize_vault_document":
+            category_label = (args.get("category_label") or "").strip()
+            doc_id = args.get("document_id")
+            doc_title = (args.get("document_title") or "").strip()
+            category = (args.get("category") or "").strip()
+            category_icon = (args.get("category_icon") or "").strip()
+
+            if not category_label:
+                return {"error": "Specificare il nome della sezione o categoria (category_label).", "success": False}
+
+            doc = None
+            if doc_id:
+                doc = db.query(Document).filter(Document.id == doc_id).first()
+            if not doc and doc_title:
+                s_docs = search_vault_documents(db, doc_title, thread_id=thread_id)
+                if s_docs:
+                    doc = db.query(Document).filter(Document.id == s_docs[0]["id"]).first()
+            if not doc:
+                q = db.query(Document)
+                if thread_id and thread_id not in ["general", "all"]:
+                    q = q.filter(Document.thread_id == thread_id)
+                doc = q.order_by(Document.id.desc()).first()
+
+            if not doc:
+                return {"error": "Nessun documento trovato nel caveau da ricatalogare.", "success": False}
+
+            old_label = doc.category_label or "Non categorizzato"
+            doc.category_label = category_label
+            doc.category = category.lower() if category else re.sub(r"[^a-zA-Z0-9]+", "_", category_label.lower()).strip("_")
+            
+            if category_icon:
+                doc.category_icon = category_icon
+            elif not doc.category_icon or doc.category_icon == "fa-folder-closed":
+                cl_low = category_label.lower()
+                if any(k in cl_low for k in ["canzon", "music", "brano", "spartit"]):
+                    doc.category_icon = "fa-music"
+                elif any(k in cl_low for k in ["ricett", "cucin", "piatt"]):
+                    doc.category_icon = "fa-utensils"
+                elif any(k in cl_low for k in ["universit", "studio", "laurea", "appunt"]):
+                    doc.category_icon = "fa-graduation-cap"
+                elif any(k in cl_low for k in ["auto", "veicol", "motoc"]):
+                    doc.category_icon = "fa-car"
+                elif any(k in cl_low for k in ["animal", "veterinari", "cane", "gatto"]):
+                    doc.category_icon = "fa-paw"
+                elif any(k in cl_low for k in ["viagg", "vacanz", "volo"]):
+                    doc.category_icon = "fa-plane"
+                elif any(k in cl_low for k in ["bollett", "utenz", "luce", "gas"]):
+                    doc.category_icon = "fa-bolt"
+                elif any(k in cl_low for k in ["fisco", "tribut", "f24"]):
+                    doc.category_icon = "fa-landmark"
+                else:
+                    doc.category_icon = "fa-folder-open"
+
+            db.commit()
+            db.refresh(doc)
+
+            fn = Path(doc.file_path).name if doc.file_path else ""
+            doc_info = {
+                "id": doc.id,
+                "document_id": doc.id,
+                "title": doc.title,
+                "issuer": doc.issuer,
+                "amount": doc.amount,
+                "due_date": doc.due_date.isoformat() if doc.due_date else None,
+                "summary": doc.summary,
+                "doc_type": doc.doc_type,
+                "status": doc.status,
+                "category": doc.category,
+                "category_label": doc.category_label,
+                "category_icon": doc.category_icon,
+                "file_url": f"/uploads/{fn}" if fn else None,
+                "download_url": f"/api/documents/{doc.id}/download",
+                "file_type": doc.file_type
+            }
+
+            return {
+                "success": True,
+                "document_id": doc.id,
+                "title": doc.title,
+                "old_category_label": old_label,
+                "new_category_label": doc.category_label,
+                "category": doc.category,
+                "category_icon": doc.category_icon,
+                "message": f"Documento '{doc.title}' spostato con successo nella sezione '{doc.category_label}'.",
                 "document": doc_info,
                 "documents": [doc_info]
             }

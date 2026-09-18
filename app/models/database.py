@@ -102,6 +102,9 @@ class Document(Base):
     original_path = Column(String(500), nullable=True)
     drive_file_id = Column(String(255), nullable=True, index=True)
     drive_web_url = Column(String(500), nullable=True)
+    category = Column(String(100), nullable=True, index=True)
+    category_label = Column(EncryptedString(255), nullable=True)
+    category_icon = Column(String(50), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
@@ -270,6 +273,17 @@ def init_db(engine=None):
             if "drive_web_url" not in cols:
                 conn.execute(text("ALTER TABLE documents ADD COLUMN drive_web_url VARCHAR(500)"))
                 conn.commit()
+            if "category" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN category VARCHAR(100)"))
+                conn.commit()
+            if "category_label" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN category_label VARCHAR(255)"))
+                conn.commit()
+            if "category_icon" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN category_icon VARCHAR(50)"))
+                conn.commit()
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_documents_category ON documents(category)"))
+            conn.commit()
 
         if "watched_folders" in table_names:
             wf_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(watched_folders)")).fetchall()]

@@ -219,6 +219,9 @@ async def import_vault_zip(
                             summary=d.get("summary") or "",
                             is_local_file=bool(d.get("is_local_file", False)),
                             original_path=d.get("original_path"),
+                            category=d.get("category"),
+                            category_label=d.get("category_label"),
+                            category_icon=d.get("category_icon"),
                             created_at=created_at_obj
                         )
                         db.add(new_doc)
@@ -319,6 +322,9 @@ async def import_vault_zip(
                         due_date=due_date_obj,
                         status=doc_status,
                         summary=extracted.summary,
+                        category=extracted.category,
+                        category_label=extracted.category_label,
+                        category_icon=extracted.category_icon,
                         created_at=datetime.now(timezone.utc)
                     )
                     db.add(new_doc)

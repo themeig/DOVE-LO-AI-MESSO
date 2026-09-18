@@ -89,7 +89,10 @@ def _process_and_save_single_doc(
         status=doc_status,
         summary=extracted.summary,
         drive_file_id=drive_file_id,
-        drive_web_url=drive_web_url
+        drive_web_url=drive_web_url,
+        category=extracted.category,
+        category_label=extracted.category_label,
+        category_icon=extracted.category_icon
     )
     db.add(doc)
     db.flush()

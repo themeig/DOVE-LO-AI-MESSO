@@ -12,7 +12,16 @@ from app.version import APP_VERSION
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 def classify_document_category(doc: Document) -> tuple[str, str, str]:
-    """Restituisce (category_key, category_label, category_icon) per un documento."""
+    """
+    Restituisce (category_key, category_label, category_icon) per un documento.
+    Dà priorità assoluta alla scelta autonoma dell'AI salvata nel campo doc.category_label.
+    """
+    # 0. Primato assoluto della scelta autonoma dell'AI o dell'utente
+    if doc.category_label:
+        icon = doc.category_icon or "fa-folder-closed"
+        slug = doc.category or re.sub(r"[^a-zA-Z0-9]+", "_", doc.category_label.lower()).strip("_")
+        return slug, doc.category_label, icon
+
     t = f"{doc.title or ''} {doc.doc_type or ''} {doc.issuer or ''} {doc.summary or ''}".lower()
     clean_type = (doc.doc_type or "").strip().lower()
 
@@ -22,7 +31,7 @@ def classify_document_category(doc: Document) -> tuple[str, str, str]:
         or bool(re.search(r"\b(?:canzon[ei]|brano\s+musicale|testo\s+musicale|testo\s+di\s+un\s+brano|poesi[ae]|liric[ae]|strof[ae]|ritornell[oi]|cantautor[ei]|sfogo\s+emotivo|riflessioni\s+personali|pensieri\s+e\s+rimpianti|spartito|accordi|parole\s+della\s+canzone)\b", t))
     )
     if is_song_or_art:
-        return "note_testi", "Note, Canzoni & Testi Personali", "fa-music"
+        return "canzoni_musica", "Canzoni & Testi Musicali", "fa-music"
 
     # 2. Utenze & Bollette (Richiede contesto reale di utenza, fornitura o gestore con confine di parola)
     has_utility_provider = bool(re.search(
@@ -74,6 +83,10 @@ def classify_document_category(doc: Document) -> tuple[str, str, str]:
         t
     )):
         return "sanita", "Sanità & Spese Mediche", "fa-heart-pulse"
+
+    # 8. Archivi ZIP
+    if clean_type in ["archivio_zip", "zip"] or (doc.file_type or "").lower() == "zip":
+        return "archivi_zip", "Archivi Compressi & ZIP", "fa-file-zipper"
 
     return "altro", "Altri Documenti Archiviati", "fa-folder-closed"
 
@@ -178,6 +191,7 @@ def get_dashboard(
     # 3. Assemble records
     records = []
 
+    needs_commit = False
     # Map documents
     if norm_filter in ("all", "documents", "deadlines", "quietanzati"):
         for doc in all_docs:
@@ -190,6 +204,12 @@ def get_dashboard(
             fn = Path(doc.file_path).name
             cat = categorize_deadline(doc.due_date) if doc.status == "da_pagare" else None
             doc_cat, doc_cat_label, doc_cat_icon = classify_document_category(doc)
+            if not doc.category_label:
+                doc.category = doc_cat
+                doc.category_label = doc_cat_label
+                doc.category_icon = doc_cat_icon
+                needs_commit = True
+
             records.append(
                 RecordItem(
                     id=doc.id,
@@ -221,6 +241,12 @@ def get_dashboard(
                     original_path=doc.original_path or (doc.file_path if doc.is_local_file else None)
                 )
             )
+
+        if needs_commit:
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
 
     # Map physical items
     if norm_filter in ("all", "items"):

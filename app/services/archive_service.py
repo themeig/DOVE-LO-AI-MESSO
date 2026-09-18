@@ -668,6 +668,9 @@ def create_zip_from_documents(
         due_date=None,
         status="archiviato",
         summary=summary_desc,
+        category="archivi_zip",
+        category_label="Archivi Compressi & ZIP",
+        category_icon="fa-file-zipper",
         created_at=datetime.now(timezone.utc)
     )
     db.add(zip_doc)
@@ -864,6 +867,52 @@ def fast_extract_document_metadata(file_bytes: bytes, filename: str, mime_type: 
         sum_parts.append(f"Scadenza: {due_date}.")
     summary = " ".join(sum_parts)
 
+    # Determinazione categoria ed icona
+    if is_song_or_art:
+        category = "canzoni_musica"
+        category_label = "Canzoni & Testi Musicali"
+        category_icon = "fa-music"
+    elif doc_type == "bolletta":
+        category = "utenze_bollette"
+        category_label = "Utenze & Bollette"
+        category_icon = "fa-bolt"
+    elif doc_type in ["f24", "dichiarazione_redditi"]:
+        category = "fisco_tributi"
+        category_label = "Fisco, Tributi & F24"
+        category_icon = "fa-landmark"
+    elif doc_type == "biglietto":
+        category = "viaggi_trasporti"
+        category_label = "Viaggi & Biglietti"
+        category_icon = "fa-plane-departure"
+    elif doc_type == "certificato":
+        category = "formazione_studio"
+        category_label = "Formazione & Certificati"
+        category_icon = "fa-graduation-cap"
+    elif doc_type == "contratto":
+        category = "contratti_polizze"
+        category_label = "Contratti, Polizze & Assicurazioni"
+        category_icon = "fa-file-signature"
+    elif doc_type == "ricevuta":
+        category = "ricevute_spese"
+        category_label = "Fatture, Spese & Ricevute"
+        category_icon = "fa-receipt"
+    elif doc_type == "foglio_calcolo":
+        category = "fogli_calcolo"
+        category_label = "Fogli di Calcolo & Dati"
+        category_icon = "fa-table"
+    elif doc_type == "documento_word":
+        category = "documenti_testo"
+        category_label = "Documenti di Testo & Note"
+        category_icon = "fa-file-lines"
+    elif doc_type in ["foto", "screenshot"]:
+        category = "foto_immagini"
+        category_label = "Foto & Immagini"
+        category_icon = "fa-image"
+    else:
+        category = "altro"
+        category_label = "Altri Documenti"
+        category_icon = "fa-folder-closed"
+
     return ExtractedDocument(
         title=title or clean_stem.capitalize() or filename,
         doc_type=doc_type,
@@ -872,7 +921,10 @@ def fast_extract_document_metadata(file_bytes: bytes, filename: str, mime_type: 
         due_date=due_date,
         summary=summary,
         tags=tags or ["archivio", "documento"],
-        suggest_rename=False
+        suggest_rename=False,
+        category=category,
+        category_label=category_label,
+        category_icon=category_icon
     )
 
 
@@ -972,6 +1024,9 @@ def unzip_document_to_vault(
                     due_date=due_date_obj,
                     status=doc_status,
                     summary=extracted.summary,
+                    category=extracted.category,
+                    category_label=extracted.category_label,
+                    category_icon=extracted.category_icon,
                     created_at=datetime.now(timezone.utc)
                 )
                 db.add(new_doc)

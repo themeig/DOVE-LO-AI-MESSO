@@ -53,7 +53,7 @@ Questo documento definisce l'architettura, le convenzioni di design e i vincoli 
 ---
 
 ## 5. Server MCP Completo (Model Context Protocol)
-Il server MCP (`app/mcp_server.py`) espone **tutti i 17 tool del caveau** per consentire a client ed agenti esterni (es. Claude Desktop, cursor, AGY, script) di operare al 100% sul sistema:
+Il server MCP (`app/mcp_server.py`) espone **tutti i 19 tool del caveau** per consentire a client ed agenti esterni (es. Claude Desktop, cursor, AGY, script) di operare al 100% sul sistema:
 1. `get_current_date`: data, ora, giorno della settimana e formato italiano per calcolo scadenze.
 2. `get_app_version`: restituisce la versione dell'applicazione (`APP_VERSION`).
 3. `get_vault_stats`: statistiche generali, conteggi KPI, totale insoluti in euro e stato cloud.
@@ -65,13 +65,14 @@ Il server MCP (`app/mcp_server.py`) espone **tutti i 17 tool del caveau** per co
 9. `link_document_to_item`: collegamento foto/documento/scontrino a oggetto fisico.
 10. `get_upcoming_deadlines`: scadenzario tributi e utenze con categorizzazione urgenza.
 11. `rename_vault_document`: rinomina personalizzata dei titoli documento.
-12. `delete_vault_record`: eliminazione sicura singola o cumulativa (confermabile).
-13. `create_zip_archive`: creazione e download archivio compresso ZIP di file selezionati.
-14. `unzip_vault_archive`: decompressione e catalogazione automatica AI dei file dello ZIP.
-15. `get_google_drive_status`: stato connessione Drive, modalità ('dual'/'cloud_only') e struttura cartelle.
-16. `scan_local_folder`: scansione e indicizzazione cartelle del computer (es. Download).
-17. `list_watched_folders`: elenco cartelle locali monitorate.
-18. `open_local_file_in_explorer`: apertura nativa in Esplora File di Windows (`explorer.exe`).
+12. `recategorize_vault_document`: modifica, riorganizza o crea liberamente nuove sezioni/categorie tematiche per i documenti del caveau (es. 'Canzoni & Testi Musicali', 'Ricette & Cucina', 'Appunti Universitari', 'Automobili & Manutenzione', ecc.).
+13. `delete_vault_record`: eliminazione sicura singola o cumulativa (confermabile).
+14. `create_zip_archive`: creazione e download archivio compresso ZIP di file selezionati.
+15. `unzip_vault_archive`: decompressione e catalogazione automatica AI dei file dello ZIP.
+16. `get_google_drive_status`: stato connessione Drive, modalità ('dual'/'cloud_only') e struttura cartelle.
+17. `scan_local_folder`: scansione e indicizzazione cartelle del computer (es. Download).
+18. `list_watched_folders`: elenco cartelle locali monitorate.
+19. `open_local_file_in_explorer`: apertura nativa in Esplora File di Windows (`explorer.exe`).
 
 Prompt MCP inclusi: `vault_assistant_instructions`, `assistant_behavior_and_widget_rules`, `google_drive_sync_guidelines`.
 
@@ -92,5 +93,15 @@ Prompt MCP inclusi: `vault_assistant_instructions`, `assistant_behavior_and_widg
     - Ricerca di posizioni fisiche prive di foto (rispondere con testo preciso).
     - Calcoli o totali di spesa numerici (rispondere con testo e calcoli).
     - Domande esplicative su Google Drive, cartelle PC o crittografia.
+
+---
+
+## 7. Categorizzazione Semantica Autonoma & Creazione Dinamica Sezioni (No Codice Rigido)
+* **Nessun Elenco Chiuso né Vincoli Rigidi**: L'assistente AI comprende autonomamente il significato e lo scopo di qualsiasi file caricato (canzoni, poesie, ricette, dispense universitarie, manuali, scontrini, contratti, ecc.).
+* **Discrezione Totale sulla Creazione di Nuove Sezioni**:
+  * Se il file rientra naturalmente nelle sezioni standard, viene catalogato lì.
+  * Se il file ha un'altra natura (es. testo di una canzone o brano musicale), l'AI crea liberamente ed elegantemente la nuova sezione tematica (es. *"Canzoni & Testi Musicali"*) con icona FontAwesome dedicata (`fa-music`), senza mai forzarlo in categorie inappropriate come utenze o bollette.
+  * L'utente e l'AI possono in qualsiasi momento riorganizzare o creare nuove sezioni tramite il tool `recategorize_vault_document`.
+
 
 

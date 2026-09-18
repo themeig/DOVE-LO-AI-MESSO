@@ -164,7 +164,7 @@
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-semibold text-sm leading-tight">I tuoi Spazi & Chat</h2>
-              <span class="bg-white/20 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded app-version-badge">v1.2.3</span>
+              <span class="bg-white/20 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded app-version-badge">v1.3.0</span>
 
             </div>
             <p class="text-[10px] text-green-200">Dove lo AI messo</p>
@@ -266,7 +266,7 @@
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-semibold text-sm leading-tight truncate">Dove lo AI messo</h1>
-              <span class="bg-white/20 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 app-version-badge">v1.2.3</span>
+              <span class="bg-white/20 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 app-version-badge">v1.3.0</span>
 
             </div>
             <p id="activeThreadSubtitle" class="text-[11px] text-green-100 truncate">
@@ -1611,7 +1611,7 @@
             <h2 class="font-bold text-sm text-slate-900 tracking-tight">Executive Vault & Scadenzario</h2>
             <span class="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
               <i class="fa-solid fa-code-branch text-[9px] text-slate-500"></i>
-              <span class="app-version-badge">v1.2.3</span>
+              <span class="app-version-badge">v1.3.0</span>
 
             </span>
             <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -1771,7 +1771,7 @@
             <!-- Versione App -->
             <div class="border-t border-slate-100 px-3.5 py-2 mt-1 flex items-center justify-between text-[11px] text-slate-400 select-none">
               <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-[10px]"></i> Versione App</span>
-              <span class="font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded text-[10px] app-version-badge">v1.2.3</span>
+              <span class="font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded text-[10px] app-version-badge">v1.3.0</span>
 
             </div>
           </div>
@@ -5606,11 +5606,17 @@
           "Contratti, Polizze & Assicurazioni",
           "Fatture, Spese & Ricevute",
           "Sanità & Spese Mediche",
+          "Canzoni & Testi Musicali",
           "Note, Canzoni & Testi Personali",
+          "Altri Documenti Archiviati",
           "Altri Documenti"
         ];
 
         const sortedDocCatKeys = Object.keys(docGroups).sort((a, b) => {
+          const isOtherA = a.toLowerCase().includes("altri document");
+          const isOtherB = b.toLowerCase().includes("altri document");
+          if (isOtherA && !isOtherB) return 1;
+          if (!isOtherA && isOtherB) return -1;
           const idxA = categoryOrder.indexOf(a);
           const idxB = categoryOrder.indexOf(b);
           if (idxA !== -1 && idxB !== -1) return idxA - idxB;
@@ -5635,12 +5641,24 @@
           });
 
           let iconColor = 'bg-slate-100 text-slate-700';
-          if (group.categoryKey === 'utenze') iconColor = 'bg-amber-100 text-amber-700';
-          else if (group.categoryKey === 'fisco') iconColor = 'bg-blue-100 text-blue-700';
-          else if (group.categoryKey === 'identita') iconColor = 'bg-indigo-100 text-indigo-700';
-          else if (group.categoryKey === 'contratti') iconColor = 'bg-violet-100 text-violet-700';
-          else if (group.categoryKey === 'spese') iconColor = 'bg-emerald-100 text-emerald-700';
-          else if (group.categoryKey === 'sanita') iconColor = 'bg-rose-100 text-rose-700';
+          const ck = (group.categoryKey || '').toLowerCase();
+          const cl = catLabel.toLowerCase();
+          const ic = (group.icon || '').toLowerCase();
+
+          if (ck.includes('utenz') || cl.includes('bollett') || ic.includes('bolt')) iconColor = 'bg-amber-100 text-amber-700';
+          else if (ck.includes('fisco') || cl.includes('f24') || ic.includes('landmark')) iconColor = 'bg-blue-100 text-blue-700';
+          else if (ck.includes('identita') || cl.includes('personal') || ic.includes('id-card')) iconColor = 'bg-indigo-100 text-indigo-700';
+          else if (ck.includes('contratt') || ic.includes('signature') || ic.includes('contract')) iconColor = 'bg-violet-100 text-violet-700';
+          else if (ck.includes('spes') || ck.includes('ricevut') || ic.includes('receipt')) iconColor = 'bg-emerald-100 text-emerald-700';
+          else if (ck.includes('sanit') || ic.includes('pulse') || ic.includes('medical')) iconColor = 'bg-rose-100 text-rose-700';
+          else if (ck.includes('canzon') || ck.includes('music') || cl.includes('canzon') || ic.includes('music')) iconColor = 'bg-pink-100 text-pink-700';
+          else if (ck.includes('ricett') || cl.includes('cucin') || ic.includes('utensils')) iconColor = 'bg-orange-100 text-orange-700';
+          else if (ck.includes('studio') || ck.includes('universit') || ic.includes('graduation')) iconColor = 'bg-teal-100 text-teal-700';
+          else if (ck.includes('auto') || ic.includes('car')) iconColor = 'bg-sky-100 text-sky-700';
+          else if (ck.includes('animal') || ic.includes('paw')) iconColor = 'bg-amber-100 text-amber-800';
+          else if (ck.includes('viagg') || ic.includes('plane')) iconColor = 'bg-cyan-100 text-cyan-700';
+          else if (ck.includes('zip') || ic.includes('zipper')) iconColor = 'bg-yellow-100 text-yellow-800';
+          else iconColor = 'bg-purple-100 text-purple-700';
 
           const detailsEl = document.createElement('details');
           detailsEl.open = false;
@@ -7822,7 +7840,7 @@
 
       <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
         <span>Password predefinita: <code class="font-mono font-bold text-slate-600 bg-slate-100 px-1 py-0.5 rounded">1234</code></span>
-        <span class="font-mono text-[10px] text-slate-400 app-version-badge">v1.2.3</span>
+        <span class="font-mono text-[10px] text-slate-400 app-version-badge">v1.3.0</span>
       </div>
 
     </div>

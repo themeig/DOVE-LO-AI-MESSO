@@ -15,6 +15,7 @@ from app.mcp_server import (
     link_document_to_item,
     get_upcoming_deadlines,
     rename_vault_document,
+    recategorize_vault_document,
     delete_vault_record,
     create_zip_archive,
     unzip_vault_archive,
@@ -175,6 +176,15 @@ def test_mcp_deadlines_and_document_actions():
     rename_res = rename_vault_document("Nuovo Titolo Bolletta Gas", document_id=doc.id)
     assert "rinominato con successo" in rename_res
     assert "Nuovo Titolo Bolletta Gas" in rename_res
+
+    # Recategorize
+    recar_res = recategorize_vault_document(
+        category_label="Canzoni & Testi Musicali",
+        document_id=doc.id,
+        category_icon="fa-music"
+    )
+    assert "spostato con successo" in recar_res
+    assert "Canzoni & Testi Musicali" in recar_res
 
     # Delete
     del_res = delete_vault_record(target_type="document", title="", target_id=doc.id)

@@ -195,7 +195,10 @@ def scan_local_folder(
                 status=doc_status,
                 summary=extracted.summary or f"File indicizzato dalla cartella locale: {p.name}",
                 is_local_file=True,
-                original_path=norm_file_str
+                original_path=norm_file_str,
+                category=extracted.category,
+                category_label=extracted.category_label,
+                category_icon=extracted.category_icon
             )
             db.add(doc)
             new_count += 1

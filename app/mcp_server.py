@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 from pathlib import Path
 from contextlib import contextmanager
 
@@ -466,6 +467,64 @@ def rename_vault_document(new_title: str, document_id: Optional[int] = None) -> 
         doc.title = new_title.strip()
         db.commit()
         return f"Documento #{doc.id} rinominato con successo da '{old_title}' a '{doc.title}'."
+
+@mcp.tool()
+def recategorize_vault_document(
+    category_label: str,
+    document_id: Optional[int] = None,
+    document_title: str = "",
+    category: str = "",
+    category_icon: str = ""
+) -> str:
+    """Modifica o assegna la sezione/categoria tematica di un documento nel caveau (es. 'Canzoni & Testi Musicali', 'Ricette & Cucina', 'Appunti Universitari', 'Automobili & Manutenzione', 'Utenze & Bollette'). Può creare qualsiasi nuova sezione a tua discrezione."""
+    with _get_db_session() as db:
+        doc = None
+        if document_id:
+            doc = db.query(Document).filter(Document.id == document_id).first()
+        elif document_title:
+            matches = search_vault_documents(db, document_title)
+            if matches:
+                doc = db.query(Document).filter(Document.id == matches[0]["id"]).first()
+        if not doc:
+            doc = db.query(Document).order_by(Document.id.desc()).first()
+
+        if not doc:
+            return "Nessun documento trovato da ricatalogare nel caveau."
+
+        old_label = doc.category_label or "Non categorizzato"
+        clean_label = category_label.strip()
+        doc.category_label = clean_label
+
+        if category and category.strip():
+            doc.category = category.strip().lower()
+        else:
+            doc.category = re.sub(r"[^a-zA-Z0-9]+", "_", clean_label.lower()).strip("_")
+
+        if category_icon and category_icon.strip():
+            doc.category_icon = category_icon.strip()
+        elif not doc.category_icon or doc.category_icon == "fa-folder-closed":
+            cl_low = clean_label.lower()
+            if any(k in cl_low for k in ["canzon", "music", "brano", "spartit"]):
+                doc.category_icon = "fa-music"
+            elif any(k in cl_low for k in ["ricett", "cucin", "piatt"]):
+                doc.category_icon = "fa-utensils"
+            elif any(k in cl_low for k in ["universit", "studio", "laurea", "appunt"]):
+                doc.category_icon = "fa-graduation-cap"
+            elif any(k in cl_low for k in ["auto", "veicol", "motoc"]):
+                doc.category_icon = "fa-car"
+            elif any(k in cl_low for k in ["animal", "veterinari", "cane", "gatto"]):
+                doc.category_icon = "fa-paw"
+            elif any(k in cl_low for k in ["viagg", "vacanz", "volo"]):
+                doc.category_icon = "fa-plane"
+            elif any(k in cl_low for k in ["bollett", "utenz", "luce", "gas"]):
+                doc.category_icon = "fa-bolt"
+            elif any(k in cl_low for k in ["fisco", "tribut", "f24"]):
+                doc.category_icon = "fa-landmark"
+            else:
+                doc.category_icon = "fa-folder-open"
+
+        db.commit()
+        return f"Documento #{doc.id} '{doc.title}' spostato con successo da '{old_label}' alla sezione '{doc.category_label}' (icona: {doc.category_icon})."
 
 @mcp.tool()
 def delete_vault_record(

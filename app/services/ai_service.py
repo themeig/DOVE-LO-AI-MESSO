@@ -82,7 +82,10 @@ class MockAIService:
                 due_date=None,
                 summary="Certificato ufficiale esiti del test TOLC-E svolto da Riccardo Maggi. Punteggio totale: 22.5.",
                 tags=["tolc", "università", "esame", "cisia"],
-                suggest_rename=False
+                suggest_rename=False,
+                category="formazione_certificati",
+                category_label="Formazione & Certificati",
+                category_icon="fa-graduation-cap"
             )
         if "f24" in fn or "tribut" in fn:
             return ExtractedDocument(
@@ -93,7 +96,10 @@ class MockAIService:
                 due_date="2026-09-16",
                 summary="Modello F24 versamento IVA trimestrale.",
                 tags=["f24", "fisco", "iva"],
-                suggest_rename=False
+                suggest_rename=False,
+                category="fisco_tributi",
+                category_label="Fisco, Tributi & F24",
+                category_icon="fa-landmark"
             )
         clean_name = Path(filename).stem.replace("_", " ").replace("-", " ").strip().title()
         if any(k in fn for k in ["canzon", "music", "poesi", "brano", "strof", "liric"]):
@@ -105,7 +111,10 @@ class MockAIService:
                 due_date=None,
                 summary=f"Testo o brano musicale '{filename}' archiviato nel caveau.",
                 tags=["musica", "testo", "canzone", "personale"],
-                suggest_rename=False
+                suggest_rename=False,
+                category="canzoni_musica",
+                category_label="Canzoni & Testi Musicali",
+                category_icon="fa-music"
             )
         if any(k in fn for k in ["bollett", "enel", "utenza", "facture"]) or (("luce" in fn or "gas" in fn or "acqua" in fn) and any(w in fn for w in ["bollett", "fattur", "enel", "servizio", "utenz", "bimestre"])):
             return ExtractedDocument(
@@ -116,7 +125,10 @@ class MockAIService:
                 due_date="2026-10-28",
                 summary="Bolletta Enel Luce bimestre agosto-settembre.",
                 tags=["luce", "energia", "utenze"],
-                suggest_rename=False
+                suggest_rename=False,
+                category="utenze_bollette",
+                category_label="Utenze & Bollette",
+                category_icon="fa-bolt"
             )
         # Supporto Word (.docx, .doc)
         if any(fn.endswith(ext) for ext in [".docx", ".doc"]):
@@ -135,15 +147,19 @@ class MockAIService:
                 if date_m:
                     detected_date = date_m[0]
             clean_stem = Path(filename).stem.replace('_', ' ').capitalize()
+            is_ct = "contratt" in fn
             return ExtractedDocument(
                 title=f"Documento Word {clean_stem}",
-                doc_type="contratto" if "contratt" in fn else "documento_word",
+                doc_type="contratto" if is_ct else "documento_word",
                 issuer="Studio Legale / Società",
-                amount=detected_amount or (3500.0 if "contratt" in fn else None),
-                due_date=detected_date or ("2026-12-31" if "contratt" in fn else None),
+                amount=detected_amount or (3500.0 if is_ct else None),
+                due_date=detected_date or ("2026-12-31" if is_ct else None),
                 summary=(f"Documento Word '{filename}' con testo estratto:\n{docx_text[:250]}" if docx_text else f"Documento di testo Word '{filename}' elaborato con successo."),
                 tags=["word", "documento", "docx"],
-                suggest_rename=False
+                suggest_rename=False,
+                category="contratti_polizze" if is_ct else "documenti_testo",
+                category_label="Contratti, Polizze & Assicurazioni" if is_ct else "Documenti di Testo & Note",
+                category_icon="fa-file-signature" if is_ct else "fa-file-lines"
             )
         # Supporto Excel / CSV (.xlsx, .xls, .xlsm, .csv, .tsv)
         if any(fn.endswith(ext) for ext in [".xlsx", ".xls", ".xlsm", ".csv", ".tsv"]):
@@ -162,6 +178,7 @@ class MockAIService:
                 if date_m:
                     detected_date = date_m[0]
             clean_stem = Path(filename).stem.replace('_', ' ').capitalize()
+            is_spese = bool(detected_amount or "spese" in fn)
             return ExtractedDocument(
                 title=f"Foglio Calcolo {clean_stem}",
                 doc_type="foglio_calcolo" if not detected_amount else "spese",
@@ -170,7 +187,10 @@ class MockAIService:
                 due_date=detected_date or ("2026-12-01" if "spese" in fn else None),
                 summary=(f"Foglio di calcolo Excel '{filename}' elaborato con successo. Dati e colonne estratti:\n{xlsx_text[:250]}" if xlsx_text else f"Foglio di calcolo Excel/CSV '{filename}' con tabelle di dati e riepilogo spese."),
                 tags=["excel", "tabelle", "dati", "spese"],
-                suggest_rename=False
+                suggest_rename=False,
+                category="spese_contabilita" if is_spese else "fogli_calcolo",
+                category_label="Fatture, Spese & Ricevute" if is_spese else "Fogli di Calcolo & Dati",
+                category_icon="fa-receipt" if is_spese else "fa-table"
             )
         # Supporto Archivi ZIP (.zip)
         if fn.endswith(".zip") or "archivio" in fn:
@@ -182,7 +202,10 @@ class MockAIService:
                 due_date=None,
                 summary=f"Archivio ZIP compresso '{filename}' salvato nel caveau.",
                 tags=["zip", "archivio", "compresso"],
-                suggest_rename=False
+                suggest_rename=False,
+                category="archivi_zip",
+                category_label="Archivi Compressi & ZIP",
+                category_icon="fa-file-zipper"
             )
 
         # Per foto, screenshot o altri allegati non fiscali
@@ -197,7 +220,10 @@ class MockAIService:
             due_date=None,
             summary=f"Immagine/allegato '{filename}' salvato in archivio.",
             tags=["allegato", "screenshot" if is_screen else "foto"],
-            suggest_rename=True
+            suggest_rename=True,
+            category="screenshot_catture" if is_screen else "foto_immagini",
+            category_label="Screenshot & Catture" if is_screen else "Foto & Immagini",
+            category_icon="fa-camera-retro" if is_screen else "fa-image"
         )
 
     def classify_and_extract_intent(self, text: str) -> MessageIntent:
@@ -314,11 +340,14 @@ class OpenRouterAIService:
 
 Identifica con la massima precisione:
 1. 'title': un titolo chiaro, elegante e sintetico per il documento (es. 'Certificato TOLC-E CISIA', 'Bolletta Enel Energia Luce', 'Modello F24 IVA')
-2. 'doc_type': tipo documento (certificato, bolletta, f24, contratto, ricevuta, fattura, generico)
+2. 'doc_type': tipo documento (certificato, bolletta, f24, contratto, ricevuta, fattura, testo_personale, generico)
 3. 'issuer': nome ente, università, azienda o fornitore (oppure null)
 4. Se è una bolletta o tributo da pagare con scadenza, estrai 'amount' e 'due_date'. Se NON è una bolletta da pagare, imposta amount=null e due_date=null!
 5. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano che riassume tutti i dettagli (punteggi, codici, esiti, intestatario, date).
 6. 'suggest_rename': false (i documenti formali hanno già un titolo chiaro).
+7. 'category_label': determina a tua completa discrezione la sezione tematica in cui archiviare il file. Se rientra nelle macro-categorie standard (es. 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Documenti Personali & Identità', 'Contratti, Polizze & Assicurazioni', 'Fatture, Spese & Ricevute', 'Sanità & Spese Mediche') usa quella; ALTRIMENTI CREA LIBERAMENTE una nuova sezione tematica specifica ed elegante adatta al contenuto reale (es. 'Canzoni & Testi Musicali', 'Appunti Universitari', 'Ricette & Cucina', 'Automobili & Manutenzione', 'Animali & Veterinario', 'Viaggi & Prenotazioni', ecc.).
+8. 'category': slug normalizzato in minuscolo con underscore (es. 'canzoni_musica', 'utenze_bollette', 'fisco_tributi', 'ricette_cucina').
+9. 'category_icon': l'icona FontAwesome 6 più appropriata (es. 'fa-music', 'fa-bolt', 'fa-landmark', 'fa-id-card', 'fa-file-signature', 'fa-receipt', 'fa-heart-pulse', 'fa-graduation-cap', 'fa-utensils', 'fa-car', 'fa-paw', 'fa-plane', 'fa-folder-closed').
 
 Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
 {{
@@ -329,7 +358,10 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
   "due_date": null oppure "YYYY-MM-DD",
   "summary": "riassunto dettagliato in 2-3 frasi in italiano",
   "tags": ["tag1", "tag2", "tag3"],
-  "suggest_rename": false
+  "suggest_rename": false,
+  "category": "slug_sezione",
+  "category_label": "Titolo Sezione Scelto Dall'AI",
+  "category_icon": "fa-icon"
 }}
 """
                     messages = [{"role": "user", "content": pdf_prompt}]
@@ -356,23 +388,29 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
 ---
 
 Identifica con la massima precisione:
-1. 'title': un titolo chiaro, elegante e sintetico (es. 'Contratto di Consulenza Software', 'Foglio Spese e Scadenze Aziendali', 'Elenco Fornitori')
-2. 'doc_type': scegli tra 'contratto', 'foglio_calcolo', 'spese', 'fattura', 'ricevuta', 'documento_word', 'testo_personale', 'report', 'generico' (se il testo è una canzone, poesia, brano musicale o testo personale scegli 'testo_personale')
-3. 'issuer': nome ente, azienda, autore o controparte (oppure null)
+1. 'title': un titolo chiaro, elegante e sintetico (es. 'Contratto di Consulenza Software', 'Foglio Spese e Scadenze Aziendali', 'Elenco Fornitori', 'Testo Canzone ...')
+2. 'doc_type': scegli liberamente il tipo più adatto (es. 'canzone', 'poesia', 'testo_personale', 'ricetta', 'contratto', 'foglio_calcolo', 'spese', 'fattura', 'ricevuta', 'documento_word', 'report', 'generico'). Se il testo contiene strofe, canzoni, versi, rime o poesie, NON classificarlo MAI come bolletta o utenza!
+3. 'issuer': nome ente, azienda, autore, artista o controparte (oppure null)
 4. Se contiene importi da pagare o scadenze specifiche di pagamento, estrai 'amount' e 'due_date' (YYYY-MM-DD), altrimenti null.
-5. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano con i punti chiave, intestatari, colonne o dati più importanti.
+5. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano con i punti chiave, autore, argomenti, intestatari o dati più importanti.
 6. 'suggest_rename': false.
+7. 'category_label': determina a tua completa discrezione la sezione tematica in cui archiviare il file. Se rientra nelle macro-categorie standard (es. 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Documenti Personali & Identità', 'Contratti, Polizze & Assicurazioni', 'Fatture, Spese & Ricevute', 'Sanità & Spese Mediche') usa quella; ALTRIMENTI CREA LIBERAMENTE una nuova sezione tematica specifica ed elegante adatta al contenuto reale (es. 'Canzoni & Testi Musicali', 'Appunti Universitari', 'Ricette & Cucina', 'Automobili & Manutenzione', 'Animali & Veterinario', 'Viaggi & Prenotazioni', ecc.).
+8. 'category': slug normalizzato in minuscolo con underscore (es. 'canzoni_musica', 'ricette_cucina', 'fogli_calcolo', 'contratti_polizze').
+9. 'category_icon': l'icona FontAwesome 6 più appropriata (es. 'fa-music', 'fa-utensils', 'fa-graduation-cap', 'fa-car', 'fa-paw', 'fa-plane', 'fa-table', 'fa-file-lines', 'fa-bolt', 'fa-landmark', 'fa-receipt', 'fa-file-signature').
 
 Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
 {{
   "title": "titolo chiaro ed elegante",
-  "doc_type": "contratto" | "foglio_calcolo" | "spese" | "fattura" | "ricevuta" | "documento_word" | "testo_personale" | "report" | "generico",
+  "doc_type": "contratto" | "foglio_calcolo" | "spese" | "fattura" | "ricevuta" | "documento_word" | "testo_personale" | "canzone" | "report" | "generico",
   "issuer": "nome ente o fornitore" o null,
   "amount": null oppure numero decimale,
   "due_date": null oppure "YYYY-MM-DD",
   "summary": "riassunto dettagliato in 2-3 frasi in italiano",
   "tags": ["tag1", "tag2", "tag3"],
-  "suggest_rename": false
+  "suggest_rename": false,
+  "category": "slug_sezione",
+  "category_label": "Titolo Sezione Scelto Dall'AI",
+  "category_icon": "fa-icon"
 }}
 """
                         messages = [{"role": "user", "content": office_prompt}]
@@ -398,7 +436,10 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                             due_date=None,
                             summary=f"Archivio compresso contenente {len(names)} file: {', '.join(names[:5])}{'...' if len(names) > 5 else ''}.",
                             tags=["zip", "archivio", "compresso"],
-                            suggest_rename=False
+                            suggest_rename=False,
+                            category="archivi_zip",
+                            category_label="Archivi Compressi & ZIP",
+                            category_icon="fa-file-zipper"
                         )
                 except Exception:
                     pass
@@ -418,7 +459,10 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                 "3. 'issuer': se riconosci un ente, azienda o marchio visibile (es. 'Enel', 'Fanatec', 'Apple', 'Bosch', 'INPS'), indicalo; altrimenti imposta null.\n"
                 "4. Se è una bolletta, fattura o tributo con scadenza di pagamento reale, estrai 'amount' e 'due_date' (YYYY-MM-DD). Altrimenti imposta rigorosamente amount=null e due_date=null.\n"
                 "5. 'summary': descrizione ricca ed accurata in 1-2 frasi in italiano di ciò che si vede visivamente nell'immagine (colori, forme, dettagli, marchi o testi visibili).\n"
-                "6. 'suggest_rename': imposta true se si tratta della foto di un oggetto fisico, componente, dispositivo, screenshot o allegato non formale per cui è opportuno chiedere all'utente se desidera assegnargli un nome specifico o dove lo ripone. Imposta false per bollette ed F24 con mittente certo.\n\n"
+                "6. 'suggest_rename': imposta true se si tratta della foto di un oggetto fisico, componente, dispositivo, screenshot o allegato non formale per cui è opportuno chiedere all'utente se desidera assegnargli un nome specifico o dove lo ripone. Imposta false per bollette ed F24 con mittente certo.\n"
+                "7. 'category_label': determina a tua completa discrezione la sezione tematica in cui archiviare l'elemento (es. 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Documenti Personali & Identità', 'Fatture, Spese & Ricevute', oppure sezioni custom es. 'Oggetti Fisici & Dispositivi', 'Foto & Ricordi', 'Automobili & Manutenzione', ecc.).\n"
+                "8. 'category': slug minuscolo con underscore (es. 'utenze_bollette', 'oggetti_fisici', 'foto_ricordi').\n"
+                "9. 'category_icon': icona FontAwesome 6 adatta (es. 'fa-bolt', 'fa-landmark', 'fa-id-card', 'fa-receipt', 'fa-boxes-stacked', 'fa-camera', 'fa-image').\n\n"
                 "Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:\n"
                 "{\n"
                 '  "title": "Titolo descrittivo intelligente",\n'
@@ -428,7 +472,10 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                 '  "due_date": null oppure "YYYY-MM-DD",\n'
                 '  "summary": "descrizione accurata in italiano di cosa si vede",\n'
                 '  "tags": ["tag1", "tag2"],\n'
-                '  "suggest_rename": true\n'
+                '  "suggest_rename": true,\n'
+                '  "category": "slug_sezione",\n'
+                '  "category_label": "Titolo Sezione Scelto Dall\'AI",\n'
+                '  "category_icon": "fa-icon"\n'
                 "}"
             )
 
