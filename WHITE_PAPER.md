@@ -135,14 +135,21 @@ L'assistente opera mediante un ciclo di decisione agentico dotato dei seguenti s
 - **Calcolo Preciso**: Determinazione esatta dei giorni mancanti rispetto alla data odierna (`Oggi`, `Domani`, `Tra X giorni`, `Scaduto da Y giorni`).
 - **Urgenza Dinamica**: Badge cromatici (*Rosso* per $\le 3$ giorni o scaduti, *Ambra* per $\le 10$ giorni, *Verde* per oltre 10 giorni).
 
-### 5. Monitoraggio Cartelle PC & Integrazione Windows Explorer
-- Monitoraggio continuo di directory locali (es. `C:\Documenti\Fatture`).
-- Sincronizzazione incrementale automatica dei nuovi file.
-- Apertura istantanea della cartella fisica in Windows File Explorer via API locale.
+### 5. Cartelle Monitorate Locali (Folder Watcher) & Proposte Proattive
+- **Monitoraggio Continuo in Background**: Scansione non invasiva di directory sensibili del computer (es. `Download`, `Documenti`, `Desktop`).
+- **Rilevamento Intelligente File Sensibili**: L'agente analizza automaticamente i nuovi file scaricati dall'utente (buste paga, modelli 730, contratti, bollette, estratti conto bancari) escludendo i file preesistenti.
+- **Proposta Proattiva WhatsApp**: Quando viene intercettato un nuovo file sensibile, l'assistente invia un messaggio proattivo in chat proponendo di cifrarlo e archiviarlo nel caveau con un singolo click.
+- **Integrazione Windows File Explorer**: Possibilità di aprire istantaneamente la cartella fisica nel file manager nativo del sistema operativo via API locale.
 
-### 6. Catalogazione Oggetti Fisici & Foto Posizione
-- Memorizzazione dell'esatta posizione di oggetti personali (stanza, mobile, cassetto, ripiano).
-- Associazione di fotografie scattate o caricate, visualizzate come card fotografiche ad alta risoluzione.
+### 6. Integrazione Google Drive Completa & Sincronizzazione Cloud
+- **Connessione Sicura OAuth 2.0**: Autenticazione crittografata con standard Google Cloud Identity per il collegamento istantaneo dell'account Google Drive dell'utente.
+- **Tassonomia Automatica delle Cartelle**: Ogni file archiviato viene sincronizzato su Google Drive e organizzato in sottocartelle tematiche intelligenti per categoria e anno (`Bollette/2026/`, `Fisco/`, `Sanità/`, `Contratti/`).
+- **Pulsante di Accesso Rapido `[Drive ↗]`**: Sulle schede interattive dei documenti nella chat di WhatsApp è presente un tasto diretto per visualizzare o condividere il file sul cloud di Google in un istante.
+- **NLU Dinamica & Consapevolezza Totale**: L'assistente AI è reso pienamente consapevole della struttura e dei file salvati su Google Drive, permettendo all'utente di chiedere informazioni e cercare documenti senza risposte predefinite o statiche.
+
+### 7. Catalogazione Oggetti Fisici & Foto Posizione
+- **Mappatura Dettagliata**: Memorizzazione dell'esatta collocazione di oggetti personali (stanza, mobile, cassetto, ripiano).
+- **Associazione Fotografica Diretta**: Associazione di fotografie scattate o caricate, visualizzate come card fotografiche ad alta risoluzione.
 
 ---
 
@@ -204,7 +211,8 @@ Il progetto supporta due modalità di utilizzo chiaramente differenziate:
 | **Documenti** | **Compressione / Decompressione** | Tool agentici `create_zip_archive` e `unzip_vault_archive`. |
 | **Documenti** | **Upload Batch & Cartelle** | Caricamento simultaneo di file multipli o intere cartelle. |
 | **Oggetti** | **Localizzatore Oggetti** | Memorizzazione posizione dettagliata con supporto fotografico. |
-| **PC & OS** | **Cartelle Monitorate** | Auto-indexing da disco locale e apertura in Windows Explorer. |
+| **PC & OS** | **Cartelle Monitorate (Folder Watcher)** | Monitoraggio background (Download/Desktop), rilevamento file sensibili e proposta proattiva in chat WhatsApp. |
+| **Cloud & Sync** | **Google Drive Cloud Sync** | Sincronizzazione automatica OAuth 2.0 su tassonomia cartelle, link diretto `[Drive ↗]` e NLU dinamica. |
 | **Voce** | **Dettatura Vocale Reale** | Riconoscimento vocale `it-IT` istantaneo con Web Speech / Whisper. |
 | **Drag & Drop** | **Directory Traversal Ricorsivo** | Trascina intere cartelle: `webkitGetAsEntry` esplora sottocartelle multi-livello e avvia upload batch da chat e dashboard. |
 | **UX / Notifiche** | **Toast System In-App** | Toast floating (successo/errore/avviso) e modale di conferma async. Zero alert bloccanti del browser. |

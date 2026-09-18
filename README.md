@@ -9,8 +9,9 @@
 
 - 💬 **Chat WhatsApp al 100%**: Interfaccia fedele per azzerare la curva d'apprendimento (bolle, spunte, typing indicator animato, input rapido con fotocamera e allegati).
 - 📊 **Dashboard SaaS & Bento Grid**: Indicatori KPI, scadenzario fiscale con badge dinamici (*In Scadenza*, *Quietanzato*, *Archiviato*), visualizzazione per categorie e stanze.
+- ☁️ **Integrazione Google Drive Completa**: Sincronizzazione cloud automatica con autenticazione OAuth 2.0. Ogni file archiviato viene organizzato su Google Drive in sottocartelle per categoria e anno (`Bollette/2026/`, `Fisco/`), con link diretto `[Drive ↗]` in chat e ricerca agentica senza risposte predefinite.
+- 📂 **Cartelle PC Monitorate (Folder Watcher)**: Monitoraggio in background delle directory locali (Download, Documenti, Desktop). Rileva in automatico nuovi documenti sensibili (buste paga, 730, contratti, bollette) e invia una proposta proattiva in chat per cifrarli e archiviarli con un click.
 - 🖥️ **Desktop App Nativa**: Avvio come applicazione Windows nativa (WebView2 via `pywebview`) con accesso diretto alle cartelle del computer.
-- 📂 **Cartelle PC Monitorate**: Indicizzazione diretta di cartelle locali (es. `C:\Fatture`) tramite dialogo nativo di Windows ed apertura con un click in Esplora File (`explorer.exe`).
 - 🔐 **Caveau Crittografato**: Protezione e crittografia dei file a riposo tramite Fernet (chiave derivata da password master).
 - 📸 **Collegamento Foto a Oggetti Fisici**: Associa foto e allegati a posizioni reali (*"Dov'è il passaporto?"* $\to$ mostra posizione e foto del cassetto).
 - 📦 **Esportazione & Backup ZIP**: Download con un click dell'intero archivio decifrato con metadati in formato JSON/CSV.
