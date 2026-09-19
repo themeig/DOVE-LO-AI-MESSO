@@ -504,7 +504,7 @@
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220]">Dove lo AI messo</h2>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.0</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.1</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568]">REGISTRO CENTRALE & AREE</p>
           </div>
@@ -625,7 +625,7 @@
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-bold text-xs leading-tight truncate font-space text-[#222220]">Dove lo AI messo</h1>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.0</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.1</span>
             </div>
             <p id="activeThreadSubtitle" class="text-[9px] font-mono-code text-[#7A7568] truncate">
               Assistente Personale & Caveau • online
@@ -1994,7 +1994,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. CENTRALE</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v1.8.0</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v1.8.1</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PROTOCOLLO CRITTOGRAFATO AES-256-GCM • SINCRONIZZATO IN TEMPO REALE</p>
           </div>
@@ -2150,7 +2150,7 @@
             <!-- Versione App -->
             <div class="border-t border-[#E3DDD1] px-3.5 py-2 mt-1 flex items-center justify-between text-[11px] text-[#7A7568] select-none font-mono-code">
               <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-[10px]"></i> Versione App</span>
-              <span class="stamp-oli text-[9px] app-version-badge">v1.8.0</span>
+              <span class="stamp-oli text-[9px] app-version-badge">v1.8.1</span>
             </div>
           </div>
         </div>
@@ -2222,58 +2222,96 @@
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         
         <!-- Card 1: Scadenze & Pagamenti -->
-        <div class="bg-white border-2 border-[#3C5A48] p-3.5 rounded-xs shadow-xs flex flex-col justify-between">
-          <div class="flex items-center justify-between">
-            <span class="text-[9px] font-mono-code text-[#7A7568] uppercase">01 / SCADENZARIO</span>
-            <span id="kpiUpcomingBadge" class="stamp-oli stamp-terracotta text-[8px]">REGOLARE</span>
-          </div>
-          <div class="my-2">
-            <div id="kpiUpcomingAmount" class="text-2xl font-black tracking-tight text-[#222220] font-mono-code">€ 0,00</div>
-            <div class="text-[10px] text-[#C84B31] font-semibold font-mono-code">Adempimenti & Utenze</div>
+        <div class="bg-white border-2 border-[#3C5A48] p-4 rounded-xs shadow-xs flex flex-col justify-between transition hover:border-[#2F4738]">
+          <div>
+            <!-- Valore Principale in Evidenza & Più in Alto -->
+            <div class="flex items-start justify-between gap-2">
+              <div id="kpiUpcomingAmount" class="text-3xl lg:text-4xl font-black tracking-tight text-[#222220] font-mono-code leading-none">€ 0,00</div>
+              <span id="kpiUpcomingBadge" class="stamp-oli stamp-terracotta text-[8px] shrink-0">REGOLARE</span>
+            </div>
+            <!-- Etichetta / Classificazione Olivetti -->
+            <div class="mt-2.5 flex items-center gap-1.5">
+              <span class="text-[9px] font-mono-code text-[#7A7568] uppercase font-bold">01 /</span>
+              <span class="text-[11px] text-[#C84B31] font-bold font-mono-code">Scadenzario & Utenze</span>
+            </div>
           </div>
           <!-- Barra avanzamento Olivetti -->
-          <div class="w-full bg-[#E3DDD1] h-1.5 rounded-full overflow-hidden">
+          <div class="w-full bg-[#E3DDD1] h-1.5 rounded-full overflow-hidden mt-3">
             <div id="kpiProgressBar" class="bg-[#C84B31] h-full w-full transition-all duration-300" title="Stato pagamenti"></div>
           </div>
         </div>
 
         <!-- Card 2: Documenti nel Vault -->
-        <div class="bg-white border border-[#E3DDD1] p-3.5 rounded-xs shadow-xs flex flex-col justify-between">
-          <div class="flex items-center justify-between">
-            <span class="text-[9px] font-mono-code text-[#7A7568] uppercase">02 / DOCUMENTI</span>
-            <i class="fa-solid fa-file-invoice text-xs text-[#3C5A48]"></i>
+        <div class="bg-white border border-[#E3DDD1] p-4 rounded-xs shadow-xs flex flex-col justify-between transition hover:border-[#3C5A48]">
+          <div>
+            <!-- Valore Principale in Evidenza & Più in Alto -->
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-baseline gap-1.5">
+                <span id="kpiDocsCount" class="text-3xl lg:text-4xl font-black tracking-tight text-[#222220] font-mono-code leading-none">0</span>
+                <span class="text-xs font-mono-code font-bold text-[#7A7568] uppercase">Atti</span>
+              </div>
+              <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-xs text-[#3C5A48] shrink-0">
+                <i class="fa-solid fa-file-invoice"></i>
+              </div>
+            </div>
+            <!-- Etichetta / Classificazione Olivetti -->
+            <div class="mt-2.5 flex items-center gap-1.5">
+              <span class="text-[9px] font-mono-code text-[#7A7568] uppercase font-bold">02 /</span>
+              <span class="text-[11px] text-[#3C5A48] font-bold font-mono-code">Documenti Cifrati</span>
+            </div>
           </div>
-          <div class="my-2">
-            <div id="kpiDocsCount" class="text-2xl font-black tracking-tight text-[#222220] font-mono-code">0 Documenti</div>
-            <div class="text-[10px] text-[#3C5A48] font-semibold">100% catalogati & cifrati</div>
+          <div class="text-[9px] font-mono-code text-[#7A7568] mt-3 flex items-center justify-between border-t border-[#E3DDD1] pt-1.5">
+            <span class="text-[#3C5A48] font-bold">100% AES-256</span>
+            <span>Nessun dato esposto</span>
           </div>
-          <div class="text-[9px] font-mono-code text-[#3C5A48] font-bold">Nessun dato esposto</div>
         </div>
 
         <!-- Card 3: Posizioni Oggetti Fisici -->
-        <div class="bg-white border border-[#E3DDD1] p-3.5 rounded-xs shadow-xs flex flex-col justify-between">
-          <div class="flex items-center justify-between">
-            <span class="text-[9px] font-mono-code text-[#7A7568] uppercase">03 / INVENTARIO</span>
-            <i class="fa-solid fa-compass-drafting text-xs text-[#7A7568]"></i>
+        <div class="bg-white border border-[#E3DDD1] p-4 rounded-xs shadow-xs flex flex-col justify-between transition hover:border-[#3C5A48]">
+          <div>
+            <!-- Valore Principale in Evidenza & Più in Alto -->
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-baseline gap-1.5">
+                <span id="kpiItemsCount" class="text-3xl lg:text-4xl font-black tracking-tight text-[#222220] font-mono-code leading-none">0</span>
+                <span class="text-xs font-mono-code font-bold text-[#7A7568] uppercase">Oggetti</span>
+              </div>
+              <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-xs text-[#7A7568] shrink-0">
+                <i class="fa-solid fa-compass-drafting"></i>
+              </div>
+            </div>
+            <!-- Etichetta / Classificazione Olivetti -->
+            <div class="mt-2.5 flex items-center gap-1.5">
+              <span class="text-[9px] font-mono-code text-[#7A7568] uppercase font-bold">03 /</span>
+              <span class="text-[11px] text-[#222220] font-bold font-mono-code">Inventario Cespiti</span>
+            </div>
           </div>
-          <div class="my-2">
-            <div id="kpiItemsCount" class="text-2xl font-black tracking-tight text-[#222220] font-mono-code">0 Cespiti</div>
-            <div class="text-[10px] text-[#7A7568] font-medium">Oggetti & Cespiti censiti</div>
+          <div class="text-[9px] font-mono-code text-[#7A7568] mt-3 flex items-center justify-between border-t border-[#E3DDD1] pt-1.5">
+            <span class="font-bold text-[#3C5A48]">Foto & Stanze</span>
+            <span>Ricerca semantica</span>
           </div>
-          <div class="text-[9px] font-mono-code text-[#7A7568]">Ricerca semantica attiva</div>
         </div>
 
         <!-- Card 4: Google Drive Sync -->
-        <div class="bg-white border border-[#E3DDD1] p-3.5 rounded-xs shadow-xs flex flex-col justify-between">
-          <div class="flex items-center justify-between">
-            <span class="text-[9px] font-mono-code text-[#7A7568] uppercase">04 / DRIVE SYNC</span>
-            <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+        <div class="bg-white border border-[#E3DDD1] p-4 rounded-xs shadow-xs flex flex-col justify-between transition hover:border-[#3C5A48]">
+          <div>
+            <!-- Valore Principale in Evidenza & Più in Alto -->
+            <div class="flex items-start justify-between gap-2">
+              <div id="kpiDriveState" class="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#3C5A48] font-mono-code leading-none">DUAL</div>
+              <div class="flex items-center gap-1.5 shrink-0 mt-0.5">
+                <span id="kpiDriveDot" class="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                <span class="stamp-oli stamp-sage text-[7px]">CLOUD</span>
+              </div>
+            </div>
+            <!-- Etichetta / Classificazione Olivetti -->
+            <div class="mt-2.5 flex items-center gap-1.5">
+              <span class="text-[9px] font-mono-code text-[#7A7568] uppercase font-bold">04 /</span>
+              <span class="text-[11px] text-[#3C5A48] font-bold font-mono-code">Google Drive Sync</span>
+            </div>
           </div>
-          <div class="my-2">
-            <div id="kpiDriveState" class="text-lg font-bold tracking-tight text-[#222220] font-mono-code">DUAL</div>
-            <div class="text-[10px] text-[#3C5A48] font-semibold">Sincronizzazione attiva</div>
+          <div class="text-[9px] font-mono-code text-[#7A7568] mt-3 flex items-center justify-between border-t border-[#E3DDD1] pt-1.5">
+            <span class="font-bold text-[#3C5A48]">Mirroring attivo</span>
+            <span>Tempo reale</span>
           </div>
-          <div class="text-[9px] font-mono-code text-[#7A7568]">Check: tempo reale</div>
         </div>
 
       </div>
@@ -3525,11 +3563,31 @@
           if (toolsBadge) {
             toolsBadge.classList.remove('hidden');
           }
+
+          const kpiDriveEl = document.getElementById('kpiDriveState');
+          if (kpiDriveEl) {
+            kpiDriveEl.textContent = targetMode.toUpperCase();
+            kpiDriveEl.className = "text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#3C5A48] font-mono-code leading-none";
+          }
+          const kpiDriveDot = document.getElementById('kpiDriveDot');
+          if (kpiDriveDot) {
+            kpiDriveDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse";
+          }
         } else {
           if (connectedEl) connectedEl.classList.add('hidden');
           if (disconnectedEl) disconnectedEl.classList.remove('hidden');
           if (toolsBadge) {
             toolsBadge.classList.add('hidden');
+          }
+
+          const kpiDriveEl = document.getElementById('kpiDriveState');
+          if (kpiDriveEl) {
+            kpiDriveEl.textContent = "LOCALE";
+            kpiDriveEl.className = "text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#7A7568] font-mono-code leading-none";
+          }
+          const kpiDriveDot = document.getElementById('kpiDriveDot');
+          if (kpiDriveDot) {
+            kpiDriveDot.className = "w-2.5 h-2.5 rounded-full bg-slate-400";
           }
         }
       } catch (err) {
@@ -8381,7 +8439,7 @@
 
       <div class="pt-2 border-t border-[#E3DDD1] flex items-center justify-between text-[10px] text-[#7A7568] font-mono-code">
         <span>Password predefinita: <code class="font-mono font-bold text-[#222220] bg-[#FAF8F2] border border-[#E3DDD1] px-1 py-0.5 rounded-xs">1234</code></span>
-        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.8.0</span>
+        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.8.1</span>
       </div>
 
     </div>
