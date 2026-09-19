@@ -504,7 +504,7 @@
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220]">Dove lo AI messo</h2>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.2</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.3</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568]">REGISTRO CENTRALE & AREE</p>
           </div>
@@ -629,7 +629,7 @@
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-bold text-xs leading-tight truncate font-space text-[#222220]">Dove lo AI messo</h1>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.2</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.3</span>
             </div>
             <p id="activeThreadSubtitle" class="text-[9px] font-mono-code text-[#7A7568] truncate">
               Assistente Personale & Caveau • online
@@ -2011,7 +2011,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. CENTRALE</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v1.8.2</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v1.8.3</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PROTOCOLLO CRITTOGRAFATO AES-256-GCM • SINCRONIZZATO IN TEMPO REALE</p>
           </div>
@@ -2178,7 +2178,7 @@
             <!-- Versione App -->
             <div class="border-t border-[#E3DDD1] px-3.5 py-2 mt-1 flex items-center justify-between text-[11px] text-[#7A7568] select-none font-mono-code">
               <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-[10px]"></i> Versione App</span>
-              <span class="stamp-oli text-[9px] app-version-badge">v1.8.2</span>
+              <span class="stamp-oli text-[9px] app-version-badge">v1.8.3</span>
             </div>
           </div>
         </div>
@@ -2252,15 +2252,23 @@
         <!-- Card 1: Scadenze & Pagamenti -->
         <div class="bg-white border-2 border-[#3C5A48] p-4 rounded-xs shadow-xs flex flex-col justify-between transition hover:border-[#2F4738]">
           <div>
-            <!-- Valore Principale in Evidenza & Più in Alto -->
+            <!-- Valore Principale in Evidenza & Più in Alto (Simbolo Euro formattato e non a capo) -->
             <div class="flex items-start justify-between gap-2">
-              <div id="kpiUpcomingAmount" class="text-3xl lg:text-4xl font-black tracking-tight text-[#222220] font-mono-code leading-none">€ 0,00</div>
-              <span id="kpiUpcomingBadge" class="stamp-oli stamp-terracotta text-[8px] shrink-0">REGOLARE</span>
+              <div id="kpiUpcomingAmount" class="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#222220] font-mono-code leading-none whitespace-nowrap flex items-baseline gap-1.5">
+                <span class="text-lg lg:text-xl font-bold text-[#7A7568] select-none">€</span>
+                <span>0,00</span>
+              </div>
+              <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-xs text-[#C84B31] shrink-0">
+                <i class="fa-solid fa-clock"></i>
+              </div>
             </div>
-            <!-- Etichetta / Classificazione Olivetti -->
-            <div class="mt-2.5 flex items-center gap-1.5">
-              <span class="text-[9px] font-mono-code text-[#7A7568] uppercase font-bold">01 /</span>
-              <span class="text-[11px] text-[#C84B31] font-bold font-mono-code">Scadenzario & Utenze</span>
+            <!-- Etichetta / Classificazione Olivetti & Badge In Scadenza -->
+            <div class="mt-2.5 flex items-center justify-between gap-1.5">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[9px] font-mono-code text-[#7A7568] uppercase font-bold">01 /</span>
+                <span class="text-[11px] text-[#C84B31] font-bold font-mono-code">Scadenzario & Utenze</span>
+              </div>
+              <span id="kpiUpcomingBadge" class="stamp-oli stamp-terracotta text-[8px] shrink-0">REGOLARE</span>
             </div>
           </div>
           <!-- Barra avanzamento Olivetti -->
@@ -5998,7 +6006,9 @@
         const formattedAmount = upcomingAmt.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         
         const kpiAmtEl = document.getElementById('kpiUpcomingAmount');
-        if (kpiAmtEl) kpiAmtEl.textContent = `€ ${formattedAmount}`;
+        if (kpiAmtEl) {
+          kpiAmtEl.innerHTML = `<span class="text-lg lg:text-xl font-bold text-[#7A7568] select-none">€</span><span>${formattedAmount}</span>`;
+        }
 
         const kpiBadgeEl = document.getElementById('kpiUpcomingBadge');
         if (kpiBadgeEl) {
@@ -8471,7 +8481,7 @@
 
       <div class="pt-2 border-t border-[#E3DDD1] flex items-center justify-between text-[10px] text-[#7A7568] font-mono-code">
         <span>Password predefinita: <code class="font-mono font-bold text-[#222220] bg-[#FAF8F2] border border-[#E3DDD1] px-1 py-0.5 rounded-xs">1234</code></span>
-        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.8.2</span>
+        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.8.3</span>
       </div>
 
     </div>
