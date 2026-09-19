@@ -524,7 +524,7 @@
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220]">Dove lo AI messo</h2>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.6</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.8</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568]">REGISTRO CENTRALE & AREE</p>
           </div>
@@ -607,10 +607,6 @@
           <i class="fa-solid fa-message text-base mb-0.5"></i>
           <span>CONVERSA</span>
         </button>
-        <button onclick="switchScreen('archive')" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
-          <i class="fa-solid fa-folder text-base mb-0.5"></i>
-          <span>FALDONI</span>
-        </button>
         <button onclick="switchScreen('settings')" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
           <i class="fa-solid fa-sliders text-base mb-0.5"></i>
           <span>SISTEMA</span>
@@ -645,7 +641,7 @@
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-bold text-xs leading-tight truncate font-space text-[#222220]">Dove lo AI messo</h1>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.6</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.8</span>
             </div>
             <p id="activeThreadSubtitle" class="text-[9px] font-mono-code text-[#7A7568] truncate">
               Assistente Personale & Caveau • online
@@ -656,18 +652,6 @@
 
         <!-- Azioni Header Destra -->
         <div class="flex items-center space-x-2 shrink-0">
-          <!-- Pill Switch Modello AI Attivo -->
-          <button 
-            id="aiModelHeaderBtn"
-            onclick="openAiSettingsModal()" 
-            class="stamp-oli hover:bg-[#3C5A48] hover:text-white transition cursor-pointer text-[9px]"
-            title="Clicca per cambiare motore AI (Gemini 2.5 Flash Lite o Gratuito)"
-          >
-            <span id="aiModelStatusDot" class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-            <i id="aiModelHeaderIcon" class="fa-solid fa-bolt text-[#C84B31] text-[9px]"></i>
-            <span id="aiModelHeaderLabel" class="font-mono-code font-bold">Gemini 2.5 Lite</span>
-          </button>
-
           <!-- Campanella Notifiche Scadenze con Badge Dinamico -->
           <button 
             id="deadlinesBellBtn" 
@@ -683,7 +667,6 @@
             >0</span>
           </button>
  
-
           <!-- Pulsante Blocca Caveau (Sicurezza) -->
           <button 
             id="lockVaultHeaderBtn" 
@@ -695,30 +678,8 @@
             <i class="fa-solid fa-lock text-xs"></i>
           </button>
 
-          <!-- Pulsante Apri Showcase & Pitch Deck -->
-          <a 
-            href="/showcase" 
-            target="_blank"
-            class="stamp-oli hover:bg-[#3C5A48] hover:text-white transition cursor-pointer text-[10px] flex items-center gap-1.5"
-            title="Apri Showcase & Pitch Deck del Prodotto"
-            aria-label="Apri Showcase"
-          >
-            <i class="fa-solid fa-sparkles text-[10px] text-[#C84B31]"></i>
-            <span class="hidden sm:inline font-space font-bold">SHOWCASE</span>
-            <i class="fa-solid fa-arrow-up-right-from-square text-[8px] text-[#7A7568]"></i>
-          </a>
-
-          <!-- Pulsante Apri Dashboard Stile Olivetti -->
-          <button 
-            onclick="openDashboard()" 
-            class="stamp-oli hover:bg-[#3C5A48] hover:text-white transition cursor-pointer text-[10px]"
-            aria-label="Apri Dashboard"
-          >
-            <i class="fa-solid fa-chart-pie text-[10px] text-[#3C5A48]"></i>
-            <span class="hidden sm:inline font-space font-bold">DASHBOARD</span>
-            <i class="fa-solid fa-arrow-right ml-0.5 text-[#C84B31]"></i>
-            <span id="chatDashboardBadge" class="hidden bg-[#C84B31] text-white text-[9px] font-bold px-1 rounded-full animate-pulse ml-0.5">0</span>
-          </button>
+          <!-- Versione App Olivetti Badge -->
+          <span class="stamp-oli text-[9px] font-mono-code font-bold app-version-badge select-none" title="Versione App Caveau">v1.8.8</span>
 
           <!-- Elimina Gruppo/Area Personalizzata -->
           <button 
@@ -2027,7 +1988,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. CENTRALE</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v1.8.6</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v1.8.8</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PROTOCOLLO CRITTOGRAFATO AES-256-GCM • SINCRONIZZATO IN TEMPO REALE</p>
           </div>
@@ -2037,17 +1998,7 @@
       <!-- Azioni Rapide & Strumenti Olivetti -->
       <div class="flex items-center space-x-2">
         
-        <!-- Pulsante Showcase & Pitch Deck Diretto -->
-        <a 
-          href="/showcase" 
-          target="_blank" 
-          class="border border-[#E3DDD1] bg-white hover:bg-[#FAF8F2] text-[#222220] text-xs font-bold font-space px-2.5 py-1.5 rounded-xs shadow-2xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
-          title="Apri Showcase & Pitch Deck del Prodotto"
-        >
-          <i class="fa-solid fa-sparkles text-[#C84B31] text-xs"></i>
-          <span class="hidden sm:inline">SHOWCASE</span>
-          <i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-[#7A7568]"></i>
-        </a>
+
 
         <!-- Menu a comparsa Strumenti & Altro -->
         <div class="relative">
@@ -2194,7 +2145,7 @@
             <!-- Versione App -->
             <div class="border-t border-[#E3DDD1] px-3.5 py-2 mt-1 flex items-center justify-between text-[11px] text-[#7A7568] select-none font-mono-code">
               <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-[10px]"></i> Versione App</span>
-              <span class="stamp-oli text-[9px] app-version-badge">v1.8.6</span>
+              <span class="stamp-oli text-[9px] app-version-badge">v1.8.8</span>
             </div>
           </div>
         </div>
@@ -2456,10 +2407,6 @@
       <button onclick="switchScreen('chat')" id="navBtnChat" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
         <i class="fa-solid fa-message text-base mb-0.5"></i>
         <span>CONVERSA</span>
-      </button>
-      <button onclick="switchScreen('archive')" id="navBtnArchive" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
-        <i class="fa-solid fa-folder text-base mb-0.5"></i>
-        <span>FALDONI</span>
       </button>
       <button onclick="switchScreen('settings')" id="navBtnSettings" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
         <i class="fa-solid fa-sliders text-base mb-0.5"></i>
@@ -8645,7 +8592,7 @@
 
       <div class="pt-2 border-t border-[#E3DDD1] flex items-center justify-between text-[10px] text-[#7A7568] font-mono-code">
         <span>Password predefinita: <code class="font-mono font-bold text-[#222220] bg-[#FAF8F2] border border-[#E3DDD1] px-1 py-0.5 rounded-xs">1234</code></span>
-        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.8.6</span>
+        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.8.8</span>
       </div>
 
     </div>

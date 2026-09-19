@@ -190,5 +190,12 @@ def serve_index():
 def serve_showcase():
     showcase_file = settings.BASE_DIR / "showcase.html"
     if showcase_file.exists():
-        return FileResponse(showcase_file)
+        return FileResponse(
+            showcase_file,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
     return HTMLResponse("<h1>Dove lo AI messo — Showcase</h1>")
