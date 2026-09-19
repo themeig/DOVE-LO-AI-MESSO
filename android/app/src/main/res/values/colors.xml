@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#075E54</color>
-    <color name="primary_dark">#054C44</color>
-    <color name="accent">#25D366</color>
-    <color name="background">#EFEAE2</color>
+    <!-- Vecchio Logo Launcher Ufficiale (Mantenuto intatto) -->
+    <color name="ic_launcher_bg">#075E54</color>
+    <!-- Tema Android Olivetti Industrial -->
+    <color name="primary">#3C5A48</color>
+    <color name="primary_dark">#2F4738</color>
+    <color name="accent">#C84B31</color>
+    <color name="background">#F8F5EE</color>
     <color name="white">#FFFFFF</color>
-    <color name="black">#000000</color>
+    <color name="black">#222220</color>
 </resources>
