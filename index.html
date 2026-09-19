@@ -667,7 +667,7 @@
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220]">Dove lo AI messo</h2>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.7.6</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.7.7</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568]">REGISTRO CENTRALE & AREE</p>
           </div>
@@ -788,7 +788,7 @@
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-bold text-xs leading-tight truncate font-space text-[#222220]">Dove lo AI messo</h1>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.7.6</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.7.7</span>
             </div>
             <p id="activeThreadSubtitle" class="text-[9px] font-mono-code text-[#7A7568] truncate">
               Assistente Personale & Caveau • online
@@ -1254,15 +1254,15 @@
 
   <!-- Modal Impostazioni Modello AI (Olivetti Industrial) -->
   <div id="aiSettingsModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 backdrop-blur-xs">
-    <div class="modal-card bg-white rounded-xs max-w-md w-full p-5 shadow-2xl space-y-4 animate-fade-in border-2 border-[#3C5A48]">
+    <div class="modal-card bg-white rounded-xs max-w-lg w-full p-5 shadow-2xl space-y-3.5 animate-fade-in border-2 border-[#3C5A48] select-none">
       <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
         <div class="flex items-center gap-2.5">
           <div class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-sm shadow-xs">
             <i class="fa-solid fa-sliders"></i>
           </div>
           <div>
-            <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Motore Intelligenza Artificiale</h3>
-            <p class="text-[10px] text-[#7A7568] font-mono-code">Seleziona il modello per chat, visione e documenti</p>
+            <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Configurazione Motore AI</h3>
+            <p class="text-[10px] text-[#7A7568] font-mono-code">REGISTRO MODELLI • CHAT, VISIONE & DEDUZIONE</p>
           </div>
         </div>
         <button onclick="closeAiSettingsModal()" class="text-[#7A7568] hover:text-[#222220] p-1.5 rounded-xs hover:bg-[#FAF8F2] transition cursor-pointer">
@@ -1270,45 +1270,47 @@
         </button>
       </div>
 
-      <!-- Quick Switch Pill / Toggle Modalità Gratuita -->
-      <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 flex items-center justify-between">
+      <!-- Quick Switch Pill / Toggle Modalità Gratuita Olivetti -->
+      <div class="bg-[#FAF8F2] p-3 rounded-xs border border-[#E3DDD1] flex items-center justify-between shadow-2xs">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm">
+          <div class="w-8 h-8 rounded-xs bg-white text-[#3C5A48] border border-[#E3DDD1] flex items-center justify-center text-xs shadow-2xs">
             <i class="fa-solid fa-gift"></i>
           </div>
           <div>
-            <span class="text-xs font-bold text-slate-800 block">Passa a Modello 100% Gratuito</span>
-            <span class="text-[10px] text-slate-500">Zero costi di API, nessun addebito OpenRouter</span>
+            <span class="text-xs font-bold text-[#222220] font-space uppercase block">Modalità 100% Gratuita</span>
+            <span class="text-[10px] text-[#7A7568] font-mono-code">Zero costi API, nessun addebito OpenRouter</span>
           </div>
         </div>
-        <!-- Toggle Switch HTML -->
+        <!-- Toggle Switch Olivetti Industrial (squadrato con bordo) -->
         <label class="relative inline-flex items-center cursor-pointer">
           <input type="checkbox" id="freeModelToggle" onchange="handleFreeToggle(this.checked)" class="sr-only peer">
-          <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#128C7E]"></div>
+          <div class="w-10 h-5 bg-[#E3DDD1] rounded-xs border border-[#D5CEBF] peer-focus:outline-none peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#D5CEBF] after:border after:rounded-xs after:h-4 after:w-4 after:transition-all peer-checked:bg-[#3C5A48] peer-checked:border-[#3C5A48]"></div>
         </label>
       </div>
 
-      <!-- Scelte Modello Card -->
+      <!-- Scelte Modello Card Olivetti -->
       <div class="space-y-2.5" id="aiModelsList">
         <!-- Opzione 0: Router Intelligente Dinamico (Consigliato) -->
         <div 
           id="modelCard_auto"
           onclick="selectAiModel('auto')" 
-          class="p-3.5 rounded-xl border-2 border-slate-200 cursor-pointer transition relative hover:border-[#128C7E] flex flex-col gap-1.5 bg-white"
+          class="model-option-card p-3 rounded-xs border border-[#E3DDD1] cursor-pointer transition relative bg-white hover:border-[#3C5A48] flex flex-col gap-1.5"
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <i class="fa-solid fa-wand-magic-sparkles text-cyan-600 text-sm"></i>
-              <span class="font-bold text-xs text-slate-800">Router Intelligente Dinamico</span>
+              <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-xs shrink-0">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+              </div>
+              <span class="font-bold text-xs text-[#222220] font-space uppercase">Router Intelligente Dinamico</span>
             </div>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800">🎯 Consigliato</span>
+            <span class="stamp-oli stamp-solid-sage text-[8px] shrink-0">CONSIGLIATO</span>
           </div>
-          <p class="text-[11px] text-slate-500 leading-snug">
-            Instradamento ottimale: usa <strong>Gemini 2.5 Flash Lite</strong> per salvare file, foto e posizioni in pochi ms a costo minimo, e attiva <strong>Gemini 2.5 Pro (Thinking)</strong> per ricerche, scadenze, calcoli e spiegazioni.
+          <p class="text-[11px] text-[#7A7568] font-mono-code leading-snug">
+            Instradamento ottimale: usa <strong>Flash Lite</strong> per salvare file, foto e posizioni in pochi ms a costo minimo, e attiva <strong>Pro (Thinking)</strong> per ricerche, scadenze, calcoli e deduzioni.
           </p>
-          <div class="flex items-center justify-between pt-1.5 text-[10px] text-slate-400 border-t border-slate-100">
-            <span>Ottimizzazione: <strong>Massima velocità & Risparmio token</strong></span>
-            <span id="check_auto" class="text-emerald-600 font-bold hidden"><i class="fa-solid fa-circle-check"></i> Attivo</span>
+          <div class="flex items-center justify-between pt-1.5 text-[10px] text-[#7A7568] font-mono-code border-t border-[#E3DDD1]">
+            <span>Ottimizzazione: <strong>Massima velocità & Risparmio</strong></span>
+            <span id="check_auto" class="stamp-oli text-[8px] hidden"><i class="fa-solid fa-check text-[8px]"></i> IN USO</span>
           </div>
         </div>
 
@@ -1316,21 +1318,23 @@
         <div 
           id="modelCard_gemini"
           onclick="selectAiModel('google/gemini-2.5-flash-lite')" 
-          class="p-3.5 rounded-xl border-2 border-slate-200 cursor-pointer transition relative hover:border-[#128C7E] flex flex-col gap-1.5 bg-white"
+          class="model-option-card p-3 rounded-xs border border-[#E3DDD1] cursor-pointer transition relative bg-white hover:border-[#3C5A48] flex flex-col gap-1.5"
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <i class="fa-solid fa-bolt text-amber-500 text-sm"></i>
-              <span class="font-bold text-xs text-slate-800">Google Gemini 2.5 Flash Lite</span>
+              <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#C84B31] flex items-center justify-center text-xs shrink-0">
+                <i class="fa-solid fa-bolt"></i>
+              </div>
+              <span class="font-bold text-xs text-[#222220] font-space uppercase">Google Gemini 2.5 Flash Lite</span>
             </div>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">⚡ Veloce & Leggero</span>
+            <span class="stamp-oli stamp-terracotta text-[8px] shrink-0">VELOCE & LEGGERO</span>
           </div>
-          <p class="text-[11px] text-slate-500 leading-snug">
+          <p class="text-[11px] text-[#7A7568] font-mono-code leading-snug">
             Visione multimodale ad altissima precisione (tabelle, scontrini, F24) e Tool Calling nativo istantaneo.
           </p>
-          <div class="flex items-center justify-between pt-1.5 text-[10px] text-slate-400 border-t border-slate-100">
-            <span>Costo: <strong>~$0.10 / 1M token</strong> (~0,0001 € / msg)</span>
-            <span id="check_gemini" class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check"></i> Attivo</span>
+          <div class="flex items-center justify-between pt-1.5 text-[10px] text-[#7A7568] font-mono-code border-t border-[#E3DDD1]">
+            <span>Costo: <strong>~$0.10 / 1M token</strong></span>
+            <span id="check_gemini" class="stamp-oli text-[8px]"><i class="fa-solid fa-check text-[8px]"></i> IN USO</span>
           </div>
         </div>
 
@@ -1338,21 +1342,23 @@
         <div 
           id="modelCard_thinking"
           onclick="selectAiModel('google/gemini-2.5-pro')" 
-          class="p-3.5 rounded-xl border-2 border-slate-200 cursor-pointer transition relative hover:border-[#128C7E] flex flex-col gap-1.5 bg-white"
+          class="model-option-card p-3 rounded-xs border border-[#E3DDD1] cursor-pointer transition relative bg-white hover:border-[#3C5A48] flex flex-col gap-1.5"
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <i class="fa-solid fa-brain text-purple-600 text-sm"></i>
-              <span class="font-bold text-xs text-slate-800">Google Gemini 2.5 Pro (Thinking)</span>
+              <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#222220] flex items-center justify-center text-xs shrink-0">
+                <i class="fa-solid fa-brain"></i>
+              </div>
+              <span class="font-bold text-xs text-[#222220] font-space uppercase">Google Gemini 2.5 Pro (Thinking)</span>
             </div>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">🧠 Modello che Pensa</span>
+            <span class="stamp-oli text-[8px] shrink-0">RAGIONAMENTO</span>
           </div>
-          <p class="text-[11px] text-slate-500 leading-snug">
-            Processo di pensiero attivo (*Thinking Process*): ragiona e riflette prima di formulare risposte, ideale per deduzioni logiche e documenti complessi.
+          <p class="text-[11px] text-[#7A7568] font-mono-code leading-snug">
+            Processo di pensiero attivo (Thinking Process): ragiona e riflette prima di formulare risposte, ideale per deduzioni logiche e documenti complessi.
           </p>
-          <div class="flex items-center justify-between pt-1.5 text-[10px] text-slate-400 border-t border-slate-100">
+          <div class="flex items-center justify-between pt-1.5 text-[10px] text-[#7A7568] font-mono-code border-t border-[#E3DDD1]">
             <span>Costo: <strong>Pay-as-you-go</strong> (Ragionamento profondo)</span>
-            <span id="check_thinking" class="text-emerald-600 font-bold hidden"><i class="fa-solid fa-circle-check"></i> Attivo</span>
+            <span id="check_thinking" class="stamp-oli text-[8px] hidden"><i class="fa-solid fa-check text-[8px]"></i> IN USO</span>
           </div>
         </div>
 
@@ -1360,28 +1366,30 @@
         <div 
           id="modelCard_nex"
           onclick="selectAiModel('nex-agi/nex-n2.5-pro:free')" 
-          class="p-3.5 rounded-xl border-2 border-slate-200 cursor-pointer transition relative hover:border-[#128C7E] flex flex-col gap-1.5 bg-white"
+          class="model-option-card p-3 rounded-xs border border-[#E3DDD1] cursor-pointer transition relative bg-white hover:border-[#3C5A48] flex flex-col gap-1.5"
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <i class="fa-solid fa-cube text-emerald-500 text-sm"></i>
-              <span class="font-bold text-xs text-slate-800">Nex-AGI Nex-N2.5-Pro (Free)</span>
+              <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-xs shrink-0">
+                <i class="fa-solid fa-cube"></i>
+              </div>
+              <span class="font-bold text-xs text-[#222220] font-space uppercase">Nex-AGI Nex-N2.5-Pro (Free)</span>
             </div>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">🆓 100% Gratuito</span>
+            <span class="stamp-oli text-[8px] shrink-0">100% GRATUITO</span>
           </div>
-          <p class="text-[11px] text-slate-500 leading-snug">
+          <p class="text-[11px] text-[#7A7568] font-mono-code leading-snug">
             Modello open gratuito. Supporta visione di foto/PDF e function calling sul caveau a costo zero.
           </p>
-          <div class="flex items-center justify-between pt-1.5 text-[10px] text-slate-400 border-t border-slate-100">
+          <div class="flex items-center justify-between pt-1.5 text-[10px] text-[#7A7568] font-mono-code border-t border-[#E3DDD1]">
             <span>Costo: <strong>0,00 € per sempre</strong></span>
-            <span id="check_nex" class="text-emerald-600 font-bold hidden"><i class="fa-solid fa-circle-check"></i> Attivo</span>
+            <span id="check_nex" class="stamp-oli text-[8px] hidden"><i class="fa-solid fa-check text-[8px]"></i> IN USO</span>
           </div>
         </div>
       </div>
 
       <div class="flex items-center justify-between pt-2 border-t border-[#E3DDD1]">
         <span id="aiModelSavingNotice" class="text-[10px] text-[#7A7568] font-mono-code">Salvataggio automatico istantaneo</span>
-        <button type="button" onclick="closeAiSettingsModal()" class="px-4 py-2 bg-[#3C5A48] hover:bg-[#2F4738] text-white rounded-xs font-bold font-space text-xs transition cursor-pointer">
+        <button type="button" onclick="closeAiSettingsModal()" class="px-4 py-2 bg-[#3C5A48] hover:bg-[#2F4738] text-white rounded-xs font-bold font-space uppercase text-xs shadow-xs transition active:scale-95 cursor-pointer">
           Chiudi
         </button>
       </div>
@@ -2149,7 +2157,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. CENTRALE</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v1.7.6</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v1.7.7</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PROTOCOLLO CRITTOGRAFATO AES-256-GCM • SINCRONIZZATO IN TEMPO REALE</p>
           </div>
@@ -2325,7 +2333,7 @@
             <!-- Versione App -->
             <div class="border-t border-[#E3DDD1] px-3.5 py-2 mt-1 flex items-center justify-between text-[11px] text-[#7A7568] select-none font-mono-code">
               <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-[10px]"></i> Versione App</span>
-              <span class="stamp-oli text-[9px] app-version-badge">v1.7.6</span>
+              <span class="stamp-oli text-[9px] app-version-badge">v1.7.7</span>
             </div>
           </div>
         </div>
@@ -3594,9 +3602,9 @@
 
       if (headerLabel) {
         if (isAuto) {
-          headerLabel.textContent = 'Router Intelligente (Auto)';
+          headerLabel.textContent = 'Router Intelligente';
         } else if (isThinking) {
-          headerLabel.textContent = 'Gemini 2.5 Pro (Thinking)';
+          headerLabel.textContent = 'Gemini 2.5 Pro';
         } else if (isFree) {
           headerLabel.textContent = 'Nex-AGI (Free)';
         } else {
@@ -3605,24 +3613,24 @@
       }
       if (headerIcon) {
         if (isAuto) {
-          headerIcon.className = 'fa-solid fa-wand-magic-sparkles text-cyan-300 text-[11px]';
+          headerIcon.className = 'fa-solid fa-wand-magic-sparkles text-[#3C5A48] text-[9px]';
         } else if (isThinking) {
-          headerIcon.className = 'fa-solid fa-brain text-purple-300 text-[11px]';
+          headerIcon.className = 'fa-solid fa-brain text-[#222220] text-[9px]';
         } else if (isFree) {
-          headerIcon.className = 'fa-solid fa-gift text-emerald-300 text-[11px]';
+          headerIcon.className = 'fa-solid fa-cube text-[#3C5A48] text-[9px]';
         } else {
-          headerIcon.className = 'fa-solid fa-bolt text-amber-300 text-[11px]';
+          headerIcon.className = 'fa-solid fa-bolt text-[#C84B31] text-[9px]';
         }
       }
       if (statusDot) {
         if (isAuto) {
-          statusDot.className = 'w-2 h-2 rounded-full bg-cyan-400 animate-pulse';
+          statusDot.className = 'w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse';
         } else if (isThinking) {
-          statusDot.className = 'w-2 h-2 rounded-full bg-purple-400 animate-pulse';
+          statusDot.className = 'w-1.5 h-1.5 rounded-full bg-[#222220] animate-pulse';
         } else if (isFree) {
-          statusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+          statusDot.className = 'w-1.5 h-1.5 rounded-full bg-[#3C5A48]';
         } else {
-          statusDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+          statusDot.className = 'w-1.5 h-1.5 rounded-full bg-[#C84B31] animate-pulse';
         }
       }
 
@@ -3644,13 +3652,19 @@
       ].forEach(item => {
         if (!item.card) return;
         if (item.active) {
-          item.card.classList.add('border-[#128C7E]', 'bg-emerald-50/20');
-          item.card.classList.remove('border-slate-200');
-          if (item.check) item.check.classList.remove('hidden');
+          item.card.classList.add('border-[#3C5A48]', 'border-2', 'bg-[#FAF8F2]', 'shadow-xs');
+          item.card.classList.remove('border-[#E3DDD1]', 'bg-white');
+          if (item.check) {
+            item.check.classList.remove('hidden');
+            item.check.classList.add('stamp-solid-sage');
+          }
         } else {
-          item.card.classList.remove('border-[#128C7E]', 'bg-emerald-50/20');
-          item.card.classList.add('border-slate-200');
-          if (item.check) item.check.classList.add('hidden');
+          item.card.classList.remove('border-[#3C5A48]', 'border-2', 'bg-[#FAF8F2]', 'shadow-xs');
+          item.card.classList.add('border-[#E3DDD1]', 'bg-white');
+          if (item.check) {
+            item.check.classList.add('hidden');
+            item.check.classList.remove('stamp-solid-sage');
+          }
         }
       });
     }
@@ -3877,13 +3891,13 @@
         const data = await res.json();
         currentAiModel = data.current_model;
         updateAiModelUI(data);
-        if (notice) notice.innerHTML = '<span class="text-emerald-600 font-semibold"><i class="fa-solid fa-check mr-1"></i> Modello attivato!</span>';
+        if (notice) notice.innerHTML = '<span class="text-[#3C5A48] font-bold font-mono-code"><i class="fa-solid fa-check mr-1"></i> Modello configurato e attivo</span>';
         setTimeout(() => {
           if (notice) notice.textContent = 'Salvataggio automatico istantaneo';
         }, 2000);
       } catch (err) {
         console.error("Errore selectAiModel:", err);
-        if (notice) notice.innerHTML = '<span class="text-red-500">Errore nel salvataggio</span>';
+        if (notice) notice.innerHTML = '<span class="text-[#C84B31] font-bold font-mono-code"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Errore salvataggio</span>';
       }
     }
 
@@ -8582,7 +8596,7 @@
 
       <div class="pt-2 border-t border-[#E3DDD1] flex items-center justify-between text-[10px] text-[#7A7568] font-mono-code">
         <span>Password predefinita: <code class="font-mono font-bold text-[#222220] bg-[#FAF8F2] border border-[#E3DDD1] px-1 py-0.5 rounded-xs">1234</code></span>
-        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.7.6</span>
+        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.7.7</span>
       </div>
 
     </div>
