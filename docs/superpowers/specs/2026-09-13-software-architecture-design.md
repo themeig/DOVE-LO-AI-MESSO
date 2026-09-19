@@ -12,8 +12,8 @@
 
 ### Obiettivi Chiave:
 * **Esperienza Dual-View Coerente**:
-  * *Schermata Chat*: 100% look & feel WhatsApp per azzerare la curva di apprendimento.
-  * *Schermata Dashboard*: cruscotto ultra-moderno (stile SaaS/Fintech) con visualizzazione a schede Bento e tabella adempimenti.
+  * *Schermata Chat*: look & feel Olivetti Industrial per la massima chiarezza e fruibilità immediata.
+  * *Schermata Dashboard*: cruscotto ultra-moderno (stile Registro Industriale) con visualizzazione a schede Bento e tabella adempimenti.
 * **Architettura Modulare a Livelli**:
   * Separazione netta tra API REST (FastAPI), logica di estrazione AI, indicizzazione semantica vettoriale e persistenza relazionale.
 * **Zero Costi Infrastrutturali Iniziali**:
@@ -28,7 +28,7 @@
 ```
 ┌────────────────────────────────────────────────────────┐
 │             FRONTEND: Single Page Application          │
-│  • Chat Screen (WhatsApp UI: Foto, Vocali, Testo)      │
+│  • Chat Screen (Terminale Olivetti: Foto, Vocali, Testo)│
 │  • Dashboard Screen (SaaS UI: Bento KPI, Tabella)      │
 └───────────────────────────▲────────────────────────────┘
                             │ HTTP / JSON
@@ -180,7 +180,7 @@ Tutti gli endpoint rispondono con codice HTTP standard e payload JSON.
         "id": 1,
         "type": "document",
         "title": "Bolletta Enel Luce (Ottobre)",
-        "source": "WhatsApp Foto",
+        "source": "Fotocamera / Upload",
         "amount": 64.20,
         "due_date": "2026-10-28",
         "status": "da_pagare",

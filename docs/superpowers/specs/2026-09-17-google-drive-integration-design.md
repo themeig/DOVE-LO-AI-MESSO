@@ -149,7 +149,7 @@ All'interno di `_process_and_save_single_doc()` o subito dopo l'analisi AI:
 
 ---
 
-## 7. Interfaccia Utente (WhatsApp Chat & Dashboard)
+## 7. Interfaccia Utente (Chat & Dashboard)
 
 1. **Card del Documento in Chat**:
    - Accanto al link di anteprima e download, compare il pulsante:

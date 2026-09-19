@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Allow users to connect Google Drive (via OAuth 2.0 with `drive.file` scope) to automatically upload, organize, and link documents sent in the WhatsApp chat into an intelligent folder hierarchy (`DoveLoAIMesso / <Year> / <Category> / <File>`).
+**Goal:** Allow users to connect Google Drive (via OAuth 2.0 with `drive.file` scope) to automatically upload, organize, and link documents sent in the chat into an intelligent folder hierarchy (`DoveLoAIMesso / <Year> / <Category> / <File>`).
 
 **Architecture:** A new `GoogleDriveCredential` model stores encrypted OAuth tokens with AES-GCM. A pluggable `GoogleDriveService` (with `MockGoogleDriveService` for offline tests and `RealGoogleDriveService` for Google REST API v3) manages folder trees and file uploads. The document upload pipeline optionally mirrors or offloads documents to Drive while keeping the local SQLite search index instant.
 

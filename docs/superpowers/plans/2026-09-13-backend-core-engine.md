@@ -622,7 +622,7 @@ git commit -m "feat(api): implement REST endpoints for chat, upload, and dashboa
 
 ```bash
 git add index.html
-git commit -m "feat(frontend): connect WhatsApp chat and modern dashboard to real backend API"
+git commit -m "feat(frontend): connect chat and modern dashboard to real backend API"
 ```
 
 ---

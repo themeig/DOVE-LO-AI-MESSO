@@ -1,13 +1,13 @@
 # 🧭 Dove lo AI messo
 
 > **Il caveau intelligente per non perdere mai più un documento o un oggetto.**
-> Unisce un'interfaccia chat familiare al 100% in stile **WhatsApp Web** con una **Dashboard SaaS moderna** (stile Linear/Stripe/Apple) per il controllo di scadenze, tributi e faldoni fisici.
+> Unisce il rigore del **design sistemico Olivetti Industrial** (ispirato a Marcello Nizzoli ed Ettore Sottsass) con una **Dashboard di precisione** per il controllo di scadenze, tributi e faldoni fisici.
 
 ---
 
 ## 🌟 Caratteristiche Principali
 
-- 💬 **Chat WhatsApp al 100%**: Interfaccia fedele per azzerare la curva d'apprendimento (bolle, spunte, typing indicator animato, input rapido con fotocamera e allegati).
+- 💬 **Terminale Dattiloscritto Olivetti**: Interfaccia conversazionale con schede protocollo, timbri di stato, note vocali Whisper e input rapido per azzerare la curva d'apprendimento.
 - 📊 **Dashboard SaaS & Bento Grid**: Indicatori KPI, scadenzario fiscale con badge dinamici (*In Scadenza*, *Quietanzato*, *Archiviato*), visualizzazione per categorie e stanze.
 - ☁️ **Integrazione Google Drive Completa**: Sincronizzazione cloud automatica con autenticazione OAuth 2.0. Ogni file archiviato viene organizzato su Google Drive in sottocartelle per categoria e anno (`Bollette/2026/`, `Fisco/`), con link diretto `[Drive ↗]` in chat e ricerca agentica senza risposte predefinite.
 - 📂 **Cartelle PC Monitorate (Folder Watcher)**: Monitoraggio in background delle directory locali (Download, Documenti, Desktop). Rileva in automatico nuovi documenti sensibili (buste paga, 730, contratti, bollette) e invia una proposta proattiva in chat per cifrarli e archiviarli con un click.

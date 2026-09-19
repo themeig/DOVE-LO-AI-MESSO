@@ -103,58 +103,45 @@
       position: relative;
     }
 
-    /* Sfondo e pannelli Olivetti */
-    body.theme-olivetti,
-    body:not(.theme-whatsapp) {
+    /* Sfondo e pannelli Olivetti Industrial */
+    body {
       background-color: var(--oli-paper) !important;
       color: var(--oli-ink) !important;
     }
 
-    body.theme-olivetti #chatView,
-    body.theme-olivetti #conversationPanel,
-    body.theme-olivetti #sidebarPanel,
-    body.theme-olivetti #threadsContainer,
-    body:not(.theme-whatsapp) #chatView,
-    body:not(.theme-whatsapp) #conversationPanel,
-    body:not(.theme-whatsapp) #sidebarPanel,
-    body:not(.theme-whatsapp) #threadsContainer {
+    #chatView,
+    #conversationPanel,
+    #sidebarPanel,
+    #threadsContainer {
       background-color: var(--oli-paper) !important;
     }
 
-    body.theme-olivetti #sidebarPanel,
-    body:not(.theme-whatsapp) #sidebarPanel {
+    #sidebarPanel {
       border-right: 1px solid var(--oli-line) !important;
     }
 
-    body.theme-olivetti .wa-wallpaper,
-    body:not(.theme-whatsapp) .wa-wallpaper {
+    .wa-wallpaper {
       background-color: var(--oli-paper) !important;
       background-image: none !important;
     }
 
     /* Header e Barre Superiori in stile Carta Avorio & Verde Salvia Olivetti */
-    body.theme-olivetti #sidebarPanel > div:first-child,
-    body.theme-olivetti header,
-    body:not(.theme-whatsapp) #sidebarPanel > div:first-child,
-    body:not(.theme-whatsapp) header {
+    #sidebarPanel > div:first-child,
+    header {
       background-color: var(--oli-paper) !important;
       border-bottom: 1px solid var(--oli-line) !important;
       color: var(--oli-ink) !important;
     }
 
-    body.theme-olivetti header h1,
-    body.theme-olivetti header h2,
-    body.theme-olivetti #sidebarPanel h2,
-    body:not(.theme-whatsapp) header h1,
-    body:not(.theme-whatsapp) header h2,
-    body:not(.theme-whatsapp) #sidebarPanel h2 {
+    header h1,
+    header h2,
+    #sidebarPanel h2 {
       font-family: 'Space Grotesk', sans-serif !important;
       color: var(--oli-ink) !important;
     }
 
     /* Bolle Conversazione Olivetti (Schede Dattiloscritte con Bordi Salvia) */
-    body.theme-olivetti .wa-bubble-out,
-    body:not(.theme-whatsapp) .wa-bubble-out {
+    .wa-bubble-out {
       background-color: #FFFFFF !important;
       border: 1.5px solid var(--oli-sage) !important;
       border-radius: 3px !important;
@@ -162,8 +149,7 @@
       color: var(--oli-ink) !important;
     }
 
-    body.theme-olivetti .wa-bubble-in,
-    body:not(.theme-whatsapp) .wa-bubble-in {
+    .wa-bubble-in {
       background-color: #FFFFFF !important;
       border-left: 4px solid var(--oli-sage) !important;
       border-top: 1px solid var(--oli-line) !important;
@@ -175,20 +161,13 @@
     }
 
     /* Timbri Typewriter sopra le bolle */
-    body.theme-olivetti .user-bubble-stamp,
-    body.theme-olivetti .ai-bubble-stamp,
-    body:not(.theme-whatsapp) .user-bubble-stamp,
-    body:not(.theme-whatsapp) .ai-bubble-stamp {
+    .user-bubble-stamp,
+    .ai-bubble-stamp {
       display: inline-block !important;
-    }
-    body.theme-whatsapp .user-bubble-stamp,
-    body.theme-whatsapp .ai-bubble-stamp {
-      display: none !important;
     }
 
     /* Schede Documenti dentro la Chat */
-    body.theme-olivetti .chat-doc-card,
-    body:not(.theme-whatsapp) .chat-doc-card {
+    .chat-doc-card {
       background-color: #FAF8F2 !important;
       border: 1.5px solid var(--oli-sage) !important;
       border-radius: 3px !important;
@@ -196,18 +175,15 @@
     }
 
     /* Barra Preview Messaggio Quotato (Olivetti Industrial) */
-    body.theme-olivetti #quotePreviewBar,
-    body:not(.theme-whatsapp) #quotePreviewBar {
+    #quotePreviewBar {
       background-color: var(--oli-paper) !important;
       border-top: 1px solid var(--oli-line) !important;
       border-bottom: 1px solid var(--oli-line) !important;
       padding: 6px 12px 6px 12px !important;
     }
 
-    body.theme-olivetti #quotePreviewBar .quote-preview-card,
-    body.theme-olivetti #quotePreviewBar > div,
-    body:not(.theme-whatsapp) #quotePreviewBar .quote-preview-card,
-    body:not(.theme-whatsapp) #quotePreviewBar > div {
+    #quotePreviewBar .quote-preview-card,
+    #quotePreviewBar > div {
       background-color: #FFFFFF !important;
       border: 1px solid var(--oli-line) !important;
       border-left: 4px solid var(--oli-sage) !important;
@@ -216,8 +192,7 @@
       padding: 7px 10px !important;
     }
 
-    body.theme-olivetti #quotePreviewBar #quoteSenderName,
-    body:not(.theme-whatsapp) #quotePreviewBar #quoteSenderName {
+    #quotePreviewBar #quoteSenderName {
       color: var(--oli-sage) !important;
       font-family: 'Space Grotesk', sans-serif !important;
       font-weight: 700 !important;
@@ -226,26 +201,22 @@
       letter-spacing: 0.04em !important;
     }
 
-    body.theme-olivetti #quotePreviewBar .quote-reply-icon,
-    body:not(.theme-whatsapp) #quotePreviewBar .quote-reply-icon {
+    #quotePreviewBar .quote-reply-icon {
       color: var(--oli-sage) !important;
     }
 
-    body.theme-olivetti #quotePreviewBar .quote-type-stamp,
-    body:not(.theme-whatsapp) #quotePreviewBar .quote-type-stamp {
+    #quotePreviewBar .quote-type-stamp {
       display: inline-flex !important;
     }
 
-    body.theme-olivetti #quotePreviewBar #quotePreviewText,
-    body:not(.theme-whatsapp) #quotePreviewBar #quotePreviewText {
+    #quotePreviewBar #quotePreviewText {
       color: var(--oli-ink-muted) !important;
       font-family: 'JetBrains Mono', monospace !important;
       font-size: 11px !important;
       line-height: 1.35 !important;
     }
 
-    body.theme-olivetti #quotePreviewBar button,
-    body:not(.theme-whatsapp) #quotePreviewBar button {
+    #quotePreviewBar button {
       border-radius: 3px !important;
       border: 1px solid var(--oli-line) !important;
       background-color: #FAF8F2 !important;
@@ -255,16 +226,14 @@
       transition: all 0.15s ease !important;
     }
 
-    body.theme-olivetti #quotePreviewBar button:hover,
-    body:not(.theme-whatsapp) #quotePreviewBar button:hover {
+    #quotePreviewBar button:hover {
       background-color: var(--oli-terracotta-light) !important;
       color: var(--oli-terracotta) !important;
       border-color: var(--oli-terracotta) !important;
     }
 
     /* Citazioni Blockquote in Markdown (Olivetti Industrial) */
-    body.theme-olivetti blockquote,
-    body:not(.theme-whatsapp) blockquote {
+    blockquote {
       border-left: 3.5px solid var(--oli-sage) !important;
       background-color: #FAF8F2 !important;
       border-top: 1px solid var(--oli-line) !important;
@@ -280,8 +249,7 @@
     }
 
     /* Quote bubble in chat (Widget Messaggio Quotato nelle bolle) */
-    body.theme-olivetti .quoted-msg-widget,
-    body:not(.theme-whatsapp) .quoted-msg-widget {
+    .quoted-msg-widget {
       background-color: #FAF8F2 !important;
       border: 1px solid var(--oli-line) !important;
       border-left: 3.5px solid var(--oli-sage) !important;
@@ -291,8 +259,7 @@
       margin-bottom: 7px !important;
     }
 
-    body.theme-olivetti .quoted-msg-widget .quoted-sender,
-    body:not(.theme-whatsapp) .quoted-msg-widget .quoted-sender {
+    .quoted-msg-widget .quoted-sender {
       font-family: 'Space Grotesk', sans-serif !important;
       font-weight: 700 !important;
       text-transform: uppercase !important;
@@ -301,240 +268,121 @@
       letter-spacing: 0.03em !important;
     }
 
-    body.theme-olivetti .quoted-msg-widget .quoted-text,
-    body:not(.theme-whatsapp) .quoted-msg-widget .quoted-text {
+    .quoted-msg-widget .quoted-text {
       font-family: 'JetBrains Mono', monospace !important;
       color: var(--oli-ink) !important;
       font-size: 11px !important;
     }
 
-    body.theme-olivetti .copy-msg-btn:hover,
-    body:not(.theme-whatsapp) .copy-msg-btn:hover {
+    .copy-msg-btn:hover {
       color: var(--oli-sage) !important;
       background-color: var(--oli-sage-light) !important;
     }
 
     /* Input chat stile Tasti Lettera 22 */
-    body.theme-olivetti #chatInputContainer,
-    body.theme-olivetti footer,
-    body:not(.theme-whatsapp) #chatInputContainer,
-    body:not(.theme-whatsapp) footer {
+    #chatInputContainer,
+    footer {
       background-color: var(--oli-paper) !important;
       border-top: 1px solid var(--oli-line) !important;
     }
 
-    body.theme-olivetti #chatForm,
-    body:not(.theme-whatsapp) #chatForm {
+    #chatForm {
       background-color: #FFFFFF !important;
       border: 1.5px solid var(--oli-sage) !important;
       border-radius: 3px !important;
       box-shadow: none !important;
     }
 
-    body.theme-olivetti #messageInput,
-    body:not(.theme-whatsapp) #messageInput {
+    #messageInput {
       font-family: 'JetBrains Mono', monospace !important;
       font-size: 12px !important;
       color: var(--oli-ink) !important;
     }
 
-    body.theme-olivetti #sendBtn,
-    body:not(.theme-whatsapp) #sendBtn {
+    #sendBtn {
       background-color: var(--oli-terracotta) !important;
       color: #FFFFFF !important;
       border-radius: 3px !important;
       box-shadow: 0 1px 3px rgba(0,0,0,0.12) !important;
     }
-    body.theme-olivetti #sendBtn:hover,
-    body:not(.theme-whatsapp) #sendBtn:hover {
+    #sendBtn:hover {
       background-color: var(--oli-terracotta-hover) !important;
     }
 
-    body.theme-olivetti #micBtn,
-    body:not(.theme-whatsapp) #micBtn {
+    #micBtn {
       background-color: #FFFFFF !important;
       border: 1.5px solid var(--oli-sage) !important;
       color: var(--oli-sage) !important;
       border-radius: 3px !important;
     }
-    body.theme-olivetti #micBtn:hover,
-    body:not(.theme-whatsapp) #micBtn:hover {
+    #micBtn:hover {
       background-color: var(--oli-sage) !important;
       color: #FFFFFF !important;
     }
 
-    body.theme-olivetti #attachmentBtn,
-    body:not(.theme-whatsapp) #attachmentBtn {
+    #attachmentBtn {
       background-color: #FFFFFF !important;
       border: 1.5px solid var(--oli-sage) !important;
       color: var(--oli-sage) !important;
       border-radius: 3px !important;
     }
-    body.theme-olivetti #attachmentBtn:hover,
-    body:not(.theme-whatsapp) #attachmentBtn:hover {
+    #attachmentBtn:hover {
       background-color: var(--oli-sage) !important;
       color: #FFFFFF !important;
     }
 
-    body.theme-olivetti #stopBtn,
-    body:not(.theme-whatsapp) #stopBtn {
+    #stopBtn {
       background-color: var(--oli-terracotta) !important;
       color: #FFFFFF !important;
       border-radius: 3px !important;
     }
 
-    body.theme-olivetti .olivetti-input-subtext,
-    body:not(.theme-whatsapp) .olivetti-input-subtext {
+    .olivetti-input-subtext {
       display: flex !important;
-    }
-    body.theme-whatsapp .olivetti-input-subtext {
-      display: none !important;
     }
 
     /* Dashboard Olivetti */
-    body.theme-olivetti #dashboardView,
-    body:not(.theme-whatsapp) #dashboardView {
+    #dashboardView {
       background-color: var(--oli-paper) !important;
       color: var(--oli-ink) !important;
     }
 
-    body.theme-olivetti #dashboardView header,
-    body:not(.theme-whatsapp) #dashboardView header {
+    #dashboardView header {
       background-color: var(--oli-paper) !important;
       border-bottom: 1px solid var(--oli-line) !important;
     }
 
-    /* Nascondi spunte blu WhatsApp in tema Olivetti */
-    body.theme-olivetti .wa-ticks-icon,
-    body:not(.theme-whatsapp) .wa-ticks-icon {
-      display: none !important;
-    }
-    body.theme-whatsapp .wa-ticks-icon {
-      display: inline-block !important;
-    }
-
-    /* Barra di Navigazione Inferiore Olivetti */
-    body.theme-whatsapp .bottom-nav-bar {
+    .wa-ticks-icon {
       display: none !important;
     }
 
     /* Finestre Modali Stile Olivetti Industrial */
-    body.theme-olivetti .modal-card,
-    body:not(.theme-whatsapp) .modal-card {
+    .modal-card {
       background-color: #FFFFFF !important;
       border: 2px solid var(--oli-sage) !important;
       border-radius: 3px !important;
       box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3) !important;
       color: var(--oli-ink) !important;
     }
-    body.theme-olivetti .modal-header,
-    body:not(.theme-whatsapp) .modal-header {
+    .modal-header {
       background-color: var(--oli-paper) !important;
       border-bottom: 1px solid var(--oli-line) !important;
       color: var(--oli-ink) !important;
     }
-    body.theme-olivetti .modal-card input:not([type="checkbox"]):not([type="radio"]),
-    body.theme-olivetti .modal-card select,
-    body.theme-olivetti .modal-card textarea,
-    body:not(.theme-whatsapp) .modal-card input:not([type="checkbox"]):not([type="radio"]),
-    body:not(.theme-whatsapp) .modal-card select,
-    body:not(.theme-whatsapp) .modal-card textarea {
+    .modal-card input:not([type="checkbox"]):not([type="radio"]),
+    .modal-card select,
+    .modal-card textarea {
       font-family: 'JetBrains Mono', monospace !important;
       border: 1px solid var(--oli-sage) !important;
       border-radius: 3px !important;
       background-color: #FFFFFF !important;
       color: var(--oli-ink) !important;
     }
-    body.theme-olivetti .modal-card input:focus,
-    body.theme-olivetti .modal-card select:focus,
-    body.theme-olivetti .modal-card textarea:focus,
-    body:not(.theme-whatsapp) .modal-card input:focus,
-    body:not(.theme-whatsapp) .modal-card select:focus,
-    body:not(.theme-whatsapp) .modal-card textarea:focus {
+    .modal-card input:focus,
+    .modal-card select:focus,
+    .modal-card textarea:focus {
       border-color: var(--oli-terracotta) !important;
       outline: none !important;
-    }
-
-    /* ========================================================================= */
-    /* WHATSAPP CLASSIC THEME (ATTIVO QUANDO SI SCEGLIE IL TEMA WHATSAPP)       */
-    /* ========================================================================= */
-    body.theme-whatsapp {
-      background-color: #d1d7db !important;
-      color: #1e293b !important;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-    }
-
-    body.theme-whatsapp .typewriter-ribbon {
-      display: none !important;
-    }
-
-    body.theme-whatsapp #chatView,
-    body.theme-whatsapp #conversationPanel {
-      background-color: #EFEAE2 !important;
-    }
-
-    body.theme-whatsapp #sidebarPanel {
-      background-color: #FFFFFF !important;
-      border-right: 1px solid #e9edef !important;
-    }
-
-    body.theme-whatsapp #sidebarPanel > div:first-child,
-    body.theme-whatsapp header.bg-\[\#075E54\],
-    body.theme-whatsapp div.bg-\[\#075E54\] {
-      background-color: var(--wa-teal) !important;
-      color: #FFFFFF !important;
-    }
-
-    body.theme-whatsapp .wa-wallpaper {
-      background-color: var(--wa-bg) !important;
-      background-image: radial-gradient(#d6cec3 1.2px, transparent 1.2px) !important;
-      background-size: 19px 19px !important;
-    }
-
-    body.theme-whatsapp .wa-bubble-in {
-      background-color: var(--wa-bubble-ai) !important;
-      border-radius: 0 10px 10px 10px !important;
-      border: none !important;
-      box-shadow: 0 1px 0.5px rgba(11,20,26,.13) !important;
-    }
-
-    body.theme-whatsapp .wa-bubble-out {
-      background-color: var(--wa-bubble-user) !important;
-      border-radius: 10px 0 10px 10px !important;
-      border: none !important;
-      box-shadow: 0 1px 0.5px rgba(11,20,26,.13) !important;
-    }
-
-    body.theme-whatsapp #sendBtn {
-      background-color: var(--wa-green) !important;
-      border-radius: 9999px !important;
-    }
-
-    body.theme-whatsapp #micBtn {
-      background-color: var(--wa-teal-light) !important;
-      border-radius: 9999px !important;
-      border: none !important;
-      color: #FFFFFF !important;
-    }
-
-    body.theme-whatsapp #attachmentBtn {
-      border: none !important;
-      background: transparent !important;
-      color: #6b7280 !important;
-    }
-
-    body.theme-whatsapp #chatForm {
-      border-radius: 9999px !important;
-      border: 1px solid #e5e7eb !important;
-    }
-
-    body.theme-whatsapp #dashboardView {
-      background-color: #F8FAFC !important;
-    }
-
-    body.theme-whatsapp #dashboardView header {
-      background-color: #FFFFFF !important;
-      border-bottom: 1px solid #e2e8f0 !important;
     }
 
     /* Selezione testo abilitata per bolle di chat e contenuti */
@@ -589,7 +437,7 @@
       backface-visibility: hidden;
     }
 
-    /* Typing indicator Olivetti & WhatsApp */
+    /* Typing indicator Olivetti Industrial */
     .typing-indicator {
       display: inline-flex;
       flex-direction: column;
@@ -608,11 +456,6 @@
       box-shadow: 0 1px 2px rgba(0,0,0,.06);
       transition: all 0.2s ease-in-out;
     }
-    body.theme-whatsapp .typing-indicator {
-      border-radius: 18px 18px 18px 4px;
-      border: none;
-      box-shadow: 0 1px 2px rgba(11,20,26,.13);
-    }
     .typing-dots {
       display: inline-flex;
       align-items: center;
@@ -625,9 +468,6 @@
       background: var(--oli-sage);
       display: block;
       animation: typing-bounce 1.4s infinite ease-in-out;
-    }
-    body.theme-whatsapp .typing-dots span {
-      background: #90949c;
     }
     .typing-dots span:nth-child(1) { animation-delay: 0s; }
     .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
@@ -648,10 +488,7 @@
   <input type="file" id="itemPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleItemPhotoSelected(event)">
 
   <!-- ================================================================= -->
-  <!-- 1. VISTA CHAT (100% STILE WHATSAPP)                               -->
-  <!-- ================================================================= -->
-  <!-- ================================================================= -->
-  <!-- 1. VISTA CHAT (100% STILE WHATSAPP WEB & MOBILE MULTI-THREAD)     -->
+  <!-- 1. VISTA CHAT (REGISTRO DATTILOSCRITTO OLIVETTI)                  -->
   <!-- ================================================================= -->
   <div id="chatView" class="w-full h-full flex bg-white overflow-hidden" style="position:relative">
     
@@ -667,7 +504,7 @@
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220]">Dove lo AI messo</h2>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.7.8</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.0</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568]">REGISTRO CENTRALE & AREE</p>
           </div>
@@ -788,7 +625,7 @@
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-bold text-xs leading-tight truncate font-space text-[#222220]">Dove lo AI messo</h1>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.7.8</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.0</span>
             </div>
             <p id="activeThreadSubtitle" class="text-[9px] font-mono-code text-[#7A7568] truncate">
               Assistente Personale & Caveau • online
@@ -864,7 +701,7 @@
       </header>
       <div class="typewriter-ribbon"></div>
 
-      <!-- Banner Avviso Scadenze Automatico WhatsApp -->
+      <!-- Banner Avviso Scadenze Automatico -->
       <div 
         id="deadlinesBanner" 
         class="hidden bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-b border-amber-200 px-3.5 py-2 text-xs text-amber-950 flex items-center justify-between shadow-2xs z-10 select-none animate-fade-in"
@@ -957,21 +794,21 @@
         </div>
       </div>
 
-      <!-- Feed Messaggi WhatsApp con Overlay Drag & Drop -->
+      <!-- Feed Messaggi con Overlay Drag & Drop -->
       <div class="relative flex-1 flex flex-col min-h-0" id="chatDropZone">
         <section id="chatFeed" class="flex-1 wa-wallpaper p-3.5 overflow-y-auto space-y-3 custom-scroll">
           <!-- I messaggi vengono iniettati dinamicamente -->
         </section>
 
         <!-- Overlay Drag & Drop per file e cartelle -->
-        <div id="dragDropOverlay" class="hidden absolute inset-0 bg-[#075E54]/95 z-40 flex flex-col items-center justify-center text-white backdrop-blur-xs transition-all p-6 text-center pointer-events-auto select-none">
-          <div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-3xl mb-3 shadow-lg animate-bounce pointer-events-none">
+        <div id="dragDropOverlay" class="hidden absolute inset-0 bg-[#3C5A48]/95 z-40 flex flex-col items-center justify-center text-white backdrop-blur-xs transition-all p-6 text-center pointer-events-auto select-none">
+          <div class="w-16 h-16 rounded-xs bg-white/20 flex items-center justify-center text-3xl mb-3 shadow-lg animate-bounce pointer-events-none">
             <i class="fa-solid fa-cloud-arrow-up text-white pointer-events-none"></i>
           </div>
-          <h3 class="text-base font-bold pointer-events-none">Rilascia qui i tuoi file o cartelle</h3>
-          <p class="text-xs text-emerald-100 max-w-sm mt-1 pointer-events-none">Caricamento automatico di documenti multipli e cartelle nel caveau</p>
+          <h3 class="text-base font-bold pointer-events-none font-space uppercase">Rilascia qui i tuoi file o cartelle</h3>
+          <p class="text-xs text-[#FAF8F2] max-w-sm mt-1 pointer-events-none font-mono-code">Caricamento automatico di documenti multipli e cartelle nel caveau</p>
         </div>
-      <!-- Barra Preview Messaggio Quotato (Olivetti Industrial / WhatsApp Classic) -->
+      <!-- Barra Preview Messaggio Quotato (Olivetti Industrial) -->
       <div id="quotePreviewBar" class="hidden bg-[#F0F2F5] px-3 pt-2 pb-0.5 border-t border-slate-200/80 shrink-0 transition-all select-none">
         <div class="quote-preview-card bg-white/95 rounded-xl p-2.5 flex items-center justify-between gap-3 shadow-xs border-l-4 border-[#075E54]">
           <div class="min-w-0 flex-1">
@@ -1776,11 +1613,11 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
             <div class="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-1.5">
               <div class="font-bold text-emerald-900 flex items-center gap-2">
-                <i class="fa-brands fa-whatsapp text-emerald-600 text-base"></i>
-                <span>Chat Conversazionale WhatsApp (100%)</span>
+                <i class="fa-solid fa-feather-pointed text-emerald-700 text-base"></i>
+                <span>Terminale Dattiloscritto Olivetti</span>
               </div>
               <p class="text-xs text-emerald-800">
-                Look & feel identico all'applicazione WhatsApp originale per azzerare la curva d'apprendimento. Invia foto, PDF, documenti Word/Excel, messaggi vocali e chiedi all'assistente come faresti con un contatto reale.
+                Design sistemico ispirato alla Lettera 22 di Nizzoli e a Sottsass per azzerare la curva d'apprendimento. Invia foto, PDF, documenti Word/Excel, note vocali Whisper e chiedi all'archivio con immediata naturalezza.
               </p>
             </div>
             <div class="p-4 rounded-2xl bg-slate-100/90 border border-slate-200/80 space-y-1.5">
@@ -1808,7 +1645,7 @@
             <pre class="leading-relaxed">
 ┌────────────────────────────────────────────────────────────────────────┐
 │                  FRONTEND SPA (HTML5 / Tailwind CSS)                   │
-│   ├─ 💬 Chat WhatsApp (100% Authentic)                                │
+│   ├─ 💬 Terminale Dattiloscritto Olivetti                              │
 │   ├─ 📊 Executive Bento Dashboard (SaaS Modern)                        │
 │   └─ 📄 White Paper & Viewer Modals                                    │
 └───────────────────────────────────┬────────────────────────────────────┘
@@ -2033,7 +1870,7 @@
                 <span class="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">€0 Sempre</span>
               </div>
               <p class="text-xs text-slate-600 leading-relaxed">
-                Installazione autonoma su PC con storage 100% locale su SQLite e cartella <code class="bg-slate-100 px-1 py-0.5 rounded">storage/uploads/</code> protetta da crittografia AES-256 / PBKDF2. Include chat WhatsApp completa, dashboard fintech, ricerca fuzzy e scadenzario senza costi ricorrenti.
+                Installazione autonoma su PC con storage 100% locale su SQLite e cartella <code class="bg-slate-100 px-1 py-0.5 rounded">storage/uploads/</code> protetta da crittografia AES-256 / PBKDF2. Include terminale dattiloscritto completo, dashboard di precisione, ricerca fuzzy e scadenzario senza costi ricorrenti.
               </p>
             </div>
             <div class="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-300/80 space-y-2">
@@ -2042,7 +1879,7 @@
                 <span class="text-xs font-mono font-bold text-cyan-800 bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-200">€9,90 / mese</span>
               </div>
               <p class="text-xs text-emerald-900 leading-relaxed">
-                Progettato per famiglie, coinquilini, commercialisti e PMI. Consente la <strong>creazione di gruppi condivisi</strong> con permessi granulari, Cloud Storage cifrato zero-knowledge multi-dispositivo (smartphone/tablet/PC), perimetro <strong>Google Vertex AI Enterprise</strong> (zero data retention) e notifiche WhatsApp di gruppo.
+                Progettato per famiglie, coinquilini, commercialisti e PMI. Consente la <strong>creazione di gruppi condivisi</strong> con permessi granulari, Cloud Storage cifrato zero-knowledge multi-dispositivo (smartphone/tablet/PC), perimetro <strong>Google Vertex AI Enterprise</strong> (zero data retention) e notifiche di gruppo.
               </p>
             </div>
           </div>
@@ -2066,8 +1903,8 @@
               <tbody class="divide-y divide-slate-100">
                 <tr>
                   <td class="p-2 font-semibold text-slate-800">Interfaccia Duale</td>
-                  <td class="p-2">WhatsApp + Bento Dashboard</td>
-                  <td class="p-2 text-slate-600">Chat WhatsApp autentica al 100% e console KPI moderna.</td>
+                  <td class="p-2">Registro Dattiloscritto + Bento Dashboard</td>
+                  <td class="p-2 text-slate-600">Terminale dattiloscritto Olivetti e console KPI di precisione.</td>
                 </tr>
                 <tr>
                   <td class="p-2 font-semibold text-slate-800">Feedback Dinamico</td>
@@ -2157,7 +1994,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. CENTRALE</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v1.7.8</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v1.8.0</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PROTOCOLLO CRITTOGRAFATO AES-256-GCM • SINCRONIZZATO IN TEMPO REALE</p>
           </div>
@@ -2187,26 +2024,6 @@
             id="dashboardToolsMenu" 
             class="hidden absolute right-0 mt-1.5 w-64 bg-white rounded-xs shadow-xl border border-[#E3DDD1] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 select-none"
           >
-            <!-- Opzione Cambio Tema nel Menu Strumenti -->
-            <button 
-              type="button" 
-              onclick="closeDashboardToolsMenu(); toggleAppTheme();" 
-              class="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-[#FAF8F2] text-slate-700 text-xs font-medium transition cursor-pointer"
-            >
-              <div class="w-7 h-7 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#C84B31] flex items-center justify-center text-xs shrink-0">
-                <i class="fa-solid fa-feather-pointed"></i>
-              </div>
-              <div class="text-left flex-1 min-w-0">
-                <div class="flex items-center justify-between w-full gap-2">
-                  <span class="text-[#222220] font-bold text-xs truncate font-space">Stile Visivo</span>
-                  <span class="stamp-oli text-[8px] shrink-0 theme-toggle-label">Olivetti</span>
-                </div>
-                <div class="text-[10px] text-[#7A7568] font-mono-code">Alterna tra Olivetti e WhatsApp</div>
-              </div>
-            </button>
-
-            <div class="h-px bg-[#E3DDD1] my-1"></div>
-
             <button 
               type="button" 
               onclick="closeDashboardToolsMenu(); openGoogleDriveModal();" 
@@ -2333,7 +2150,7 @@
             <!-- Versione App -->
             <div class="border-t border-[#E3DDD1] px-3.5 py-2 mt-1 flex items-center justify-between text-[11px] text-[#7A7568] select-none font-mono-code">
               <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-[10px]"></i> Versione App</span>
-              <span class="stamp-oli text-[9px] app-version-badge">v1.7.8</span>
+              <span class="stamp-oli text-[9px] app-version-badge">v1.8.0</span>
             </div>
           </div>
         </div>
@@ -2628,50 +2445,19 @@
     }
     fetchAppVersion();
 
-    // --- Gestione Tema Visivo (Olivetti Industrial / WhatsApp Classic) ---
+    // --- Design Sistemico Olivetti Industrial ---
     function getActiveTheme() {
-      return localStorage.getItem('app_theme') || 'olivetti';
+      return 'olivetti';
     }
 
-    function setAppTheme(theme) {
+    function setAppTheme(theme = 'olivetti') {
       const body = document.body;
-      if (theme === 'whatsapp') {
-        body.classList.remove('theme-olivetti');
-        body.classList.add('theme-whatsapp');
-        localStorage.setItem('app_theme', 'whatsapp');
-        updateThemeToggleUI('whatsapp');
-      } else {
-        body.classList.remove('theme-whatsapp');
-        body.classList.add('theme-olivetti');
-        localStorage.setItem('app_theme', 'olivetti');
-        updateThemeToggleUI('olivetti');
-      }
+      body.classList.add('theme-olivetti');
+      localStorage.setItem('app_theme', 'olivetti');
     }
 
-    function toggleAppTheme() {
-      const current = getActiveTheme();
-      const nextTheme = current === 'olivetti' ? 'whatsapp' : 'olivetti';
-      setAppTheme(nextTheme);
-      if (typeof showActionToast === 'function') {
-        showActionToast(nextTheme === 'olivetti' ? 'Stile Attivo: Olivetti Industrial 🖋️' : 'Stile Attivo: WhatsApp Classic 💬');
-      }
-    }
-
-    function updateThemeToggleUI(theme) {
-      document.querySelectorAll('.theme-toggle-label').forEach(el => {
-        el.textContent = theme === 'olivetti' ? 'Olivetti' : 'WhatsApp';
-      });
-      document.querySelectorAll('.theme-toggle-icon').forEach(el => {
-        if (theme === 'olivetti') {
-          el.className = 'fa-solid fa-feather-pointed text-amber-300 text-[11px] theme-toggle-icon';
-        } else {
-          el.className = 'fa-brands fa-whatsapp text-emerald-300 text-[11px] theme-toggle-icon';
-        }
-      });
-    }
-
-    // Inizializza subito il tema salvato o predefinito (Olivetti Industrial)
-    setAppTheme(getActiveTheme());
+    // Inizializza subito il design sistemico Olivetti Industrial
+    setAppTheme();
 
     // --- Gestione Sicurezza Caveau & Lock Screen ---
     function togglePasswordVisibility() {
@@ -3298,7 +3084,7 @@
       }
     }
 
-    // --- Sistema Responsivo Mobile/Desktop (WhatsApp-style) ---
+    // --- Sistema Responsivo Mobile/Desktop ---
 
     const MOBILE_BREAKPOINT = 768;
     let isMobileView = window.innerWidth < MOBILE_BREAKPOINT;
@@ -3923,7 +3709,7 @@
       });
     }
 
-    // --- Toggle Tasto Invio / Microfono WhatsApp ---
+    // --- Toggle Tasto Invio / Microfono ---
     input.addEventListener('input', () => {
       if (isGenerationActive) return;
       if (input.value.trim().length > 0) {
@@ -3994,7 +3780,7 @@
       formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong class="font-bold text-slate-900 bg-amber-100/40 px-1 py-0.5 rounded-sm">$1</strong>');
       formatted = formatted.replace(/__(.+?)__/g, '<strong class="font-bold text-slate-900 bg-amber-100/40 px-1 py-0.5 rounded-sm">$1</strong>');
 
-      // 9. Singolo asterisco stile WhatsApp (*grassetto* o corsivo) e singolo underscore (_corsivo_)
+      // 9. Singolo asterisco (*grassetto*) e singolo underscore (_corsivo_)
       formatted = formatted.replace(/(^|[^\*])\*([^\*\n]+?)\*([^\*]|$)/g, '$1<strong class="font-bold text-slate-900">$2</strong>$3');
       formatted = formatted.replace(/(^|[^_])_([^_\n]+?)_([^_]|$)/g, '$1<em class="italic text-slate-700">$2</em>$3');
       formatted = formatted.replace(/(^|[^~])~([^~\n]+?)~([^~]|$)/g, '$1<del class="line-through text-slate-400">$2</del>$3');
@@ -4384,7 +4170,7 @@
       if (el) el.remove();
     }
 
-    // --- Gestione Citazioni / Rispondi a Messaggio (WhatsApp Quote) ---
+    // --- Gestione Citazioni / Rispondi a Messaggio ---
     let currentQuotedMessage = null;
 
     function replyToMessage(btnEl, senderType = 'assistant', explicitText = null) {
@@ -4402,8 +4188,7 @@
 
       if (!text) return;
 
-      const isOli = getActiveTheme() === 'olivetti';
-      const defaultAssistantName = isOli ? 'Concierge Olivetti' : 'Dove lo AI messo';
+      const defaultAssistantName = 'Concierge Olivetti';
       const senderName = senderType === 'user' ? 'Tu' : defaultAssistantName;
       currentQuotedMessage = {
         sender: senderType,
@@ -5671,7 +5456,7 @@
       e.preventDefault();
     });
 
-    // --- Drag & Drop su Chat WhatsApp ---
+    // --- Drag & Drop su Chat ---
     const chatDropZone = document.getElementById('chatDropZone');
     const dragDropOverlay = document.getElementById('dragDropOverlay');
 
@@ -5801,7 +5586,7 @@
       dashboardDragDropOverlay.addEventListener('drop', handleDashDrop);
     }
 
-    // --- Registratore Vocale WhatsApp Reale & Elaborazione Multimodale AI ---
+    // --- Registratore Vocale Reale & Elaborazione Multimodale AI ---
     let voiceMediaStream = null;
     let voiceMediaRecorder = null;
     let voiceAudioChunks = [];
@@ -5845,7 +5630,7 @@
       voiceMediaRecorder.start(250);
       voiceRecordStartTime = Date.now();
 
-      // UI: mostra la barra di registrazione WhatsApp
+      // UI: mostra la barra di registrazione
       const chatForm = document.getElementById('chatForm');
       const voiceBar = document.getElementById('voiceRecordingBar');
       const micBtn = document.getElementById('micBtn');
@@ -5965,7 +5750,7 @@
 
       const localAudioUrl = URL.createObjectURL(wavBlob);
 
-      // Mostra all'istante la bolla vocale WhatsApp con player nella chat
+      // Mostra all'istante la bolla vocale con player nella chat
       appendUserAudioBubble(localAudioUrl, durationSec, quotedToSend);
 
       // Feedback assistente
@@ -6805,7 +6590,7 @@
         if (rec.type === 'physical_item') {
           originBadge = `
             <span class="stamp-oli text-[8px]">
-              📱 WHATSAPP
+              📱 CHAT
             </span>
           `;
         } else {
@@ -7027,7 +6812,7 @@
         }
       }
 
-      // 2. Aggiorna Banner Notifica WhatsApp
+      // 2. Aggiorna Banner Notifica Scadenze
       if (banner && bannerText && bannerSubtext) {
         if (data.has_alerts && !deadlineBannerDismissed) {
           banner.classList.remove('hidden');
@@ -8230,7 +8015,7 @@
       }
     }
 
-    // Gestione Azioni Card WhatsApp Chat
+    // Gestione Azioni Card Chat
     async function approveProposal(proposalId, btnEl) {
       const card = btnEl ? btnEl.closest(`#proposal-bubble-${proposalId}`) : document.getElementById(`proposal-bubble-${proposalId}`);
       if (card) {
@@ -8596,7 +8381,7 @@
 
       <div class="pt-2 border-t border-[#E3DDD1] flex items-center justify-between text-[10px] text-[#7A7568] font-mono-code">
         <span>Password predefinita: <code class="font-mono font-bold text-[#222220] bg-[#FAF8F2] border border-[#E3DDD1] px-1 py-0.5 rounded-xs">1234</code></span>
-        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.7.8</span>
+        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.8.0</span>
       </div>
 
     </div>

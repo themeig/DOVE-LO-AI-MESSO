@@ -108,7 +108,7 @@ def test_conversational_photo_linking_and_where_query():
     assert chat_query.status_code == 200
     query_data = chat_query.json()
     assert "salotto" in query_data["reply"].lower()
-    # Verifica che la foto sia inclusa nei documenti allegati per il rendering WhatsApp
+    # Verifica che la foto sia inclusa nei documenti allegati per il rendering della scheda
     assert query_data.get("documents") is not None
     assert len(query_data["documents"]) >= 1
     assert query_data["documents"][0]["document_id"] == doc_id

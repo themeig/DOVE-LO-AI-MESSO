@@ -4,26 +4,27 @@ Questo documento definisce l'architettura, le convenzioni di design e i vincoli 
 
 ---
 
-## 1. Filosofia del Prodotto: Il Meglio dei Due Mondi
-* **Chat Screen = WhatsApp al 100%**:
-  * Autentico look & feel WhatsApp per azzerare la curva d'apprendimento.
-  * Header verde WhatsApp (`#075E54` / `#128C7E`), sfondo beige con texture a grana fine (`#EFEAE2`), bolle tipiche (bianco per l'assistente, verde menta `#E7FFDB` per l'utente con doppie spunte azzurre).
-  * Barra input fedele con graffetta, fotocamera, campo testo a pillola, microfono e pulsante d'invio circolare verde WhatsApp (`#25D366`).
-  * Tasto dedicato e visibile nell'header: **"Apri Dashboard"**.
+## 1. Filosofia del Prodotto: Design Sistemico Olivetti Industrial (Lettera 22 & Sottsass)
+* **Chat Screen = Dattiloscritto & Registro Meccanico Olivetti**:
+  * Autentico look & feel Olivetti Industrial ispirato ai capolavori di Marcello Nizzoli ed Ettore Sottsass (Lettera 22, Praxis 48, Valentine).
+  * Carta avorio naturale (`#F8F5EE` / `#EFECE3`), Verde Salvia d'archivio (`#3C5A48`), Rosso Terracotta vintage (`#C84B31`) e Inchiostro carbone (`#222220`).
+  * Nastro dattilografico bicolore, timbri ufficiali d'archivio (`stamp-oli`, `stamp-terracotta`, `stamp-solid-sage`), schede protocollo squadrate (`rounded-xs` a 2-3px) e font d'eccellenza: `Space Grotesk` per i titoli e `JetBrains Mono` per codici, date e dettagli contabili.
+  * Barra input con tasti a macchina per scrivere, pulsanti meccanici sagomati e didascalia nastro bicolore.
+  * Tasto dedicato e visibile nell'header: **"DASHBOARD"**.
 
-* **Dashboard = Ultra-Moderna & Sofisticata**:
-  * Stile SaaS/Fintech moderno (ispirato a Linear, Stripe e Apple).
-  * Sfondo neutro pulito (`#F8FAFC`), Bento-grid di indicatori KPI con bordi sottili e arrotondati (`rounded-2xl` / `rounded-3xl`).
-  * Selettori a schede segmentate, tabella scadenze elegante con badge di stato dinamici (In Scadenza, Quietanzato, Conservato), e azioni rapide con anteprima file.
-  * Tasto immediato: **"← Torna alla Chat"**.
+* **Dashboard = Registro Ledger Industriale & Bento-Grid Sofisticata**:
+  * Stile registro contabile meccanico unito all'ergonomia contemporanea (Dieter Rams & Sottsass).
+  * Sfondo carta avorio, Bento-grid di indicatori KPI con bordature sottili a filo macchina (`border-[#E3DDD1]`), barre di avanzamento grafite/salvia e timbri di stato dinamici (In Scadenza, Quietanzato, Conservato).
+  * Selettori a cartella d'archivio, tabella scadenze a schede dattiloscritte e azioni rapide con anteprima file.
+  * Tasto immediato: **"← Torna al Registro / Chat"**.
 
 ---
 
 ## 2. Modalità di Interazione
-1. **Chat Conversazionale (WhatsApp UI)**:
-   * Foto / PDF (📎): l'utente invia la foto $\to$ l'AI estrae fornitore, importo e scadenza e conferma nella bolla.
+1. **Chat & Protocollo Conversazionale (Olivetti Industrial UI)**:
+   * Foto / PDF (📎): l'utente invia la foto $\to$ l'AI estrae fornitore, importo e scadenza e archivia con scheda protocollo.
    * Vocale (🎤): trascrizione Whisper e memorizzazione posizione oggetti/documenti.
-   * Testo: domande libere in linguaggio naturale.
+   * Testo: domande libere in linguaggio naturale con risposte da concierge esecutivo.
 2. **Dashboard Operativa**:
    * Visualizzazione completa dello scadenzario fiscale, bollette e inventario faldoni/oggetti con filtri e caricamento diretto da PC.
 
@@ -47,7 +48,7 @@ Questo documento definisce l'architettura, le convenzioni di design e i vincoli 
   * La versione è esposta e propagata via:
     1. Endpoint REST `GET /api/version` e campo `app_version` in `GET /api/dashboard`.
     2. Header di FastAPI (`app.version`).
-    3. UI Frontend: badge visibili nella Chat WhatsApp (sidebar e header conversazione), nella Dashboard (top bar e menu Strumenti), e nella lock screen.
+    3. UI Frontend: badge visibili nella Chat (sidebar e header conversazione), nella Dashboard (top bar e menu Strumenti), e nella lock screen.
   * L'assistente DEVE sempre indicare chiaramente all'utente il nuovo numero di versione attivo nel messaggio di risposta per garantire il perfetto allineamento e coordinamento tra assistenti e sviluppatori.
 
 ---

@@ -61,7 +61,7 @@ def test_agent_telemetry_context_injection():
             target_type="document",
             target_id=doc.id,
             title=doc.title,
-            error_details="Script rendering failure in WhatsApp bubble",
+            error_details="Script rendering failure in chat card",
             created_at=datetime.now(timezone.utc)
         )
         db.add(ui_ev)
