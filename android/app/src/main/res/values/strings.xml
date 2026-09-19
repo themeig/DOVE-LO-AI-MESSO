@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Dove lo AI messo</string>
+    <string name="default_server_url">http://10.0.2.2:8000</string>
+    <string name="error_connection">Impossibile connettersi a Dove lo AI messo</string>
+    <string name="error_connection_desc">Verifica che il server Python sia avviato sul PC.</string>
+    <string name="btn_retry">Riprova</string>
+    <string name="btn_change_server">Modifica Indirizzo Server</string>
+</resources>
