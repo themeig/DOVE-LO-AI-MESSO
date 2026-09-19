@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logo & Icona Mobile — Dove lo AI messo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@600;700&display=swap');
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #0F1012;
+      color: #E2E2DC;
+    }
+
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .font-space {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* Maschera Squircle tipica di Android Pixel / Samsung */
+    .icon-squircle {
+      border-radius: 22%;
+      overflow: hidden;
+      box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .icon-squircle:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 20px 35px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.2);
+    }
+
+    .icon-circle {
+      border-radius: 50%;
+      overflow: hidden;
+      box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .icon-circle:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 20px 35px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.2);
+    }
+
+    /* Mockup Telefono Android */
+    .phone-screen {
+      width: 340px;
+      height: 640px;
+      border-radius: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 8px #222328;
+      overflow: hidden;
+      position: relative;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col p-4 md:p-8">
+
+  <!-- Header -->
+  <header class="max-w-5xl mx-auto w-full mb-8 text-center">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-3">
+      <i class="fa-solid fa-mobile-screen"></i>
+      Iconografia & Identità Visiva Android
+    </div>
+    <h1 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight font-space">
+      Logo dell'Applicazione Mobile
+    </h1>
+    <p class="text-neutral-400 text-sm max-w-xl mx-auto mt-2">
+      L'icona nativa dell'app (<code class="font-mono-code text-xs text-emerald-400">ic_launcher</code>) creata nel pacchetto Android Studio per la schermata home del telefono.
+    </p>
+  </header>
+
+  <!-- Griglia Contenuto Principale -->
+  <main class="max-w-5xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+    <!-- COLONNA SINISTRA: Icone ad Alta Risoluzione (7 colonne) -->
+    <div class="lg:col-span-7 space-y-6">
+
+      <!-- Card 1: Icona Attuale Android (Vault Folder) -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-xl">
+        <div class="flex items-center justify-between border-b border-neutral-800 pb-4 mb-6">
+          <div>
+            <span class="text-xs font-bold text-emerald-400 font-mono-code uppercase">Icona Ufficiale Android</span>
+            <h2 class="text-lg font-bold text-white font-space">Il Faldone Caveau (Vault Folder)</h2>
+            <p class="text-xs text-neutral-400 mt-0.5">Sintesi tra l'archivio documentale (cartella) e la cassaforte sicura</p>
+          </div>
+          <span class="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-xs font-mono-code font-bold">
+            108x108 dp
+          </span>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-around gap-6">
+          
+          <!-- Squircle 180px -->
+          <div class="flex flex-col items-center">
+            <div class="w-40 h-40 icon-squircle bg-[#075E54] flex items-center justify-center p-4">
+              <!-- SVG fedele a android/app/src/main/res/drawable/ic_launcher_foreground.xml -->
+              <svg viewBox="0 0 108 108" class="w-full h-full drop-shadow-md">
+                <!-- Faldone Cartaceo (Bianco) -->
+                <path fill="#FFFFFF" d="M34,36h16l4,4h20c2.2,0 4,1.8 4,4v28c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4V40c0,-2.2 1.8,-4 4,-4z"/>
+                <!-- Quadrante Caveau / Lente di Ricerca (Verde Smeraldo) -->
+                <path fill="#25D366" d="M54,48c-6.63,0 -12,5.37 -12,12s5.37,12 12,12 12,-5.37 12,-12 -5.37,-12 -12,-12zm0,18c-3.31,0 -6,-2.69 -6,-6s2.69,-6 6,-6 6,2.69 6,6 -2.69,6 -6,6z"/>
+                <!-- Maniglia / Serratura Cifrata (Verde Scuro) -->
+                <path fill="#075E54" d="M52,56h4v8h-4z"/>
+              </svg>
+            </div>
+            <span class="text-xs font-bold text-neutral-300 mt-3">Formato Squircle</span>
+            <span class="text-[10px] text-neutral-500 font-mono-code">Android 8.0+ / Pixel</span>
+          </div>
+
+          <!-- Cerchio 140px -->
+          <div class="flex flex-col items-center">
+            <div class="w-32 h-32 icon-circle bg-[#075E54] flex items-center justify-center p-3">
+              <svg viewBox="0 0 108 108" class="w-full h-full drop-shadow-md">
+                <path fill="#FFFFFF" d="M34,36h16l4,4h20c2.2,0 4,1.8 4,4v28c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4V40c0,-2.2 1.8,-4 4,-4z"/>
+                <path fill="#25D366" d="M54,48c-6.63,0 -12,5.37 -12,12s5.37,12 12,12 12,-5.37 12,-12 -5.37,-12 -12,-12zm0,18c-3.31,0 -6,-2.69 -6,-6s2.69,-6 6,-6 6,2.69 6,6 -2.69,6 -6,6z"/>
+                <path fill="#075E54" d="M52,56h4v8h-4z"/>
+              </svg>
+            </div>
+            <span class="text-xs font-bold text-neutral-300 mt-3">Formato Circolare</span>
+            <span class="text-[10px] text-neutral-500 font-mono-code">Google Launcher</span>
+          </div>
+
+          <!-- Dettagli Simbologia -->
+          <div class="text-xs space-y-2.5 max-w-[180px] font-mono-code text-neutral-400">
+            <div>
+              <span class="text-white font-bold block">1. IL FALDONE</span>
+              <span class="text-[11px]">Rappresenta l'archivio, le bollette e i documenti salvati.</span>
+            </div>
+            <div>
+              <span class="text-emerald-400 font-bold block">2. IL CAVEAU</span>
+              <span class="text-[11px]">La ghiera circolare richiama la cassaforte crittografata.</span>
+            </div>
+            <div>
+              <span class="text-[#25D366] font-bold block">3. L'ACCENTO</span>
+              <span class="text-[11px]">Riconoscibilità immediata sul display del telefono.</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Card 2: Declinazione Olivetti Industrial -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-xl">
+        <div class="flex items-center justify-between border-b border-neutral-800 pb-4 mb-6">
+          <div>
+            <span class="text-xs font-bold text-[#C84B31] font-mono-code uppercase">Nuova Declinazione</span>
+            <h2 class="text-lg font-bold text-white font-space">Icona Olivetti Industrial Edition</h2>
+            <p class="text-xs text-neutral-400 mt-0.5">Scocca verde salvia Lettera 22, carta avorio e accento terracotta</p>
+          </div>
+          <span class="px-2.5 py-1 bg-[#C84B31]/20 text-[#C84B31] border border-[#C84B31]/30 rounded-full text-xs font-mono-code font-bold">
+            v1.7.0 Style
+          </span>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-around gap-6">
+          
+          <!-- Squircle Olivetti 180px -->
+          <div class="flex flex-col items-center">
+            <div class="w-40 h-40 icon-squircle bg-[#3C5A48] flex items-center justify-center p-4 relative">
+              <!-- Nastro Dattilografico in filigrana -->
+              <div class="absolute top-2 left-0 right-0 h-1 bg-gradient-to-r from-[#C84B31] 50% to-[#3C5A48] 50% opacity-70"></div>
+              
+              <svg viewBox="0 0 108 108" class="w-full h-full drop-shadow-md">
+                <!-- Faldone Cartaceo in Avorio Caldo -->
+                <path fill="#F8F5EE" d="M34,36h16l4,4h20c2.2,0 4,1.8 4,4v28c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4V40c0,-2.2 1.8,-4 4,-4z"/>
+                <!-- Ghiera / Tasto Circolare Terracotta Lettera 22 -->
+                <path fill="#C84B31" d="M54,48c-6.63,0 -12,5.37 -12,12s5.37,12 12,12 12,-5.37 12,-12 -5.37,-12 -12,-12zm0,18c-3.31,0 -6,-2.69 -6,-6s2.69,-6 6,-6 6,2.69 6,6 -2.69,6 -6,6z"/>
+                <!-- Centro Tasto Scuro -->
+                <path fill="#222220" d="M52,56h4v8h-4z"/>
+              </svg>
+            </div>
+            <span class="text-xs font-bold text-white mt-3">Icona Olivetti Salvia</span>
+            <span class="text-[10px] text-neutral-500 font-mono-code">#3C5A48 • #C84B31 • #F8F5EE</span>
+          </div>
+
+          <!-- Cerchio Olivetti 140px -->
+          <div class="flex flex-col items-center">
+            <div class="w-32 h-32 icon-circle bg-[#3C5A48] flex items-center justify-center p-3">
+              <svg viewBox="0 0 108 108" class="w-full h-full drop-shadow-md">
+                <path fill="#F8F5EE" d="M34,36h16l4,4h20c2.2,0 4,1.8 4,4v28c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4V40c0,-2.2 1.8,-4 4,-4z"/>
+                <path fill="#C84B31" d="M54,48c-6.63,0 -12,5.37 -12,12s5.37,12 12,12 12,-5.37 12,-12 -5.37,-12 -12,-12zm0,18c-3.31,0 -6,-2.69 -6,-6s2.69,-6 6,-6 6,2.69 6,6 -2.69,6 -6,6z"/>
+                <path fill="#222220" d="M52,56h4v8h-4z"/>
+              </svg>
+            </div>
+            <span class="text-xs font-bold text-white mt-3">Cerchio Olivetti</span>
+            <span class="text-[10px] text-neutral-500 font-mono-code">Adattivo Launcher</span>
+          </div>
+
+          <div class="text-xs space-y-2.5 max-w-[180px] font-mono-code text-neutral-400">
+            <div>
+              <span class="text-[#F8F5EE] font-bold block">1. CARTA AVORIO</span>
+              <span class="text-[11px]">Sfumatura organica dei registri d'archivio storici.</span>
+            </div>
+            <div>
+              <span class="text-[#3C5A48] font-bold block">2. VERDE SALVIA</span>
+              <span class="text-[11px]">La celebre scocca in alluminio pressofuso Lettera 22.</span>
+            </div>
+            <div>
+              <span class="text-[#C84B31] font-bold block">3. TERRACOTTA</span>
+              <span class="text-[11px]">Il tasto d'azione e il nastro bicolore dattilografico.</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- COLONNA DESTRA: Mockup Smartphone Home Screen (5 colonne) -->
+    <div class="lg:col-span-5 flex flex-col items-center">
+      <div class="mb-3 text-center">
+        <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest font-mono-code">Anteprima Reale</span>
+        <h3 class="text-base font-bold text-white font-space mt-0.5">Come appare sul telefono</h3>
+        <p class="text-xs text-neutral-400">Sulla schermata home Android insieme alle altre app</p>
+      </div>
+
+      <!-- Phone Frame Home Screen -->
+      <div class="phone-screen">
+        
+        <!-- Status bar Android -->
+        <div class="flex items-center justify-between text-white text-[11px] font-semibold px-2 pt-1 font-mono-code">
+          <span>17:49</span>
+          <div class="flex items-center gap-1.5 text-xs">
+            <i class="fa-solid fa-wifi"></i>
+            <i class="fa-solid fa-signal"></i>
+            <i class="fa-solid fa-battery-full"></i>
+          </div>
+        </div>
+
+        <!-- Widget Orologio e Data -->
+        <div class="text-center my-4">
+          <div class="text-5xl font-light text-white font-space tracking-tight">17:49</div>
+          <div class="text-xs text-slate-300 font-medium mt-1">Sabato, 19 Settembre</div>
+        </div>
+
+        <!-- Griglia App Home Screen -->
+        <div class="grid grid-cols-4 gap-4 px-2 my-auto">
+          
+          <!-- App 1: Fotocamera -->
+          <div class="flex flex-col items-center">
+            <div class="w-13 h-13 rounded-2xl bg-gradient-to-tr from-slate-700 to-slate-500 flex items-center justify-center text-white text-xl shadow-md">
+              <i class="fa-solid fa-camera"></i>
+            </div>
+            <span class="text-[10px] text-white mt-1.5 font-medium truncate">Fotocamera</span>
+          </div>
+
+          <!-- App 2: Foto -->
+          <div class="flex flex-col items-center">
+            <div class="w-13 h-13 rounded-2xl bg-gradient-to-tr from-amber-400 via-rose-500 to-indigo-600 flex items-center justify-center text-white text-xl shadow-md">
+              <i class="fa-solid fa-images"></i>
+            </div>
+            <span class="text-[10px] text-white mt-1.5 font-medium truncate">Foto</span>
+          </div>
+
+          <!-- App 3: Impostazioni -->
+          <div class="flex flex-col items-center">
+            <div class="w-13 h-13 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-white text-xl shadow-md">
+              <i class="fa-solid fa-gear"></i>
+            </div>
+            <span class="text-[10px] text-white mt-1.5 font-medium truncate">Impostazioni</span>
+          </div>
+
+          <!-- APP 4: DOVE LO AI MESSO (IN EVIDENZA) -->
+          <div class="flex flex-col items-center relative">
+            <!-- Cerchio pulse di evidenziazione -->
+            <div class="absolute -inset-1 rounded-2xl bg-emerald-400/30 animate-pulse"></div>
+            
+            <div class="w-13 h-13 rounded-2xl bg-[#075E54] flex items-center justify-center p-1.5 shadow-lg relative z-10 border border-white/20">
+              <svg viewBox="0 0 108 108" class="w-full h-full drop-shadow-xs">
+                <path fill="#FFFFFF" d="M34,36h16l4,4h20c2.2,0 4,1.8 4,4v28c0,2.2 -1.8,4 -4,4H34c-2.2,0 -4,-1.8 -4,-4V40c0,-2.2 1.8,-4 4,-4z"/>
+                <path fill="#25D366" d="M54,48c-6.63,0 -12,5.37 -12,12s5.37,12 12,12 12,-5.37 12,-12 -5.37,-12 -12,-12zm0,18c-3.31,0 -6,-2.69 -6,-6s2.69,-6 6,-6 6,2.69 6,6 -2.69,6 -6,6z"/>
+                <path fill="#075E54" d="M52,56h4v8h-4z"/>
+              </svg>
+            </div>
+            <span class="text-[10px] text-emerald-300 font-bold mt-1.5 truncate relative z-10">Dove lo AI...</span>
+          </div>
+
+        </div>
+
+        <!-- Barra di Ricerca Google / Dock -->
+        <div class="space-y-3 pb-2">
+          <!-- Barra ricerca pillola -->
+          <div class="bg-white/15 backdrop-blur-md rounded-full px-3.5 py-2 flex items-center justify-between text-xs text-white/80 border border-white/10">
+            <div class="flex items-center gap-2">
+              <i class="fa-brands fa-google text-sm"></i>
+              <span class="text-[11px]">Cerca o digita...</span>
+            </div>
+            <i class="fa-solid fa-microphone text-xs"></i>
+          </div>
+
+          <!-- Barra Dock Inferiore -->
+          <div class="bg-white/10 backdrop-blur-md rounded-3xl p-2 flex items-center justify-around border border-white/10">
+            <div class="w-11 h-11 rounded-2xl bg-emerald-600 flex items-center justify-center text-white text-lg shadow-sm">
+              <i class="fa-solid fa-phone"></i>
+            </div>
+            <div class="w-11 h-11 rounded-2xl bg-blue-500 flex items-center justify-center text-white text-lg shadow-sm">
+              <i class="fa-solid fa-message"></i>
+            </div>
+            <div class="w-11 h-11 rounded-2xl bg-red-500 flex items-center justify-center text-white text-lg shadow-sm">
+              <i class="fa-brands fa-chrome"></i>
+            </div>
+            <div class="w-11 h-11 rounded-2xl bg-amber-500 flex items-center justify-center text-white text-lg shadow-sm">
+              <i class="fa-solid fa-play"></i>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer con percorsi file -->
+  <footer class="max-w-5xl mx-auto w-full mt-8 pt-4 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between text-xs text-neutral-500 font-mono-code gap-2">
+    <div>Sorgente Vettoriale: <code class="text-neutral-300">android/app/src/main/res/drawable/ic_launcher_foreground.xml</code></div>
+    <div>Configurazione Adattiva: <code class="text-neutral-300">android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml</code></div>
+  </footer>
+
+</body>
+</html>
