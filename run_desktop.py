@@ -8,4 +8,4 @@ from app.desktop import start_desktop_app
 
 if __name__ == "__main__":
     debug = "--debug" in sys.argv
-    start_desktop_app(host="127.0.0.1", port=8000, debug=debug)
+    start_desktop_app(host="0.0.0.0", port=8000, debug=debug)

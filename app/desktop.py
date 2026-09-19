@@ -38,7 +38,7 @@ def wait_for_server(url: str, timeout: float = 10.0) -> bool:
     return False
 
 
-def start_desktop_app(host: str = "127.0.0.1", port: int = 8000, debug: bool = False):
+def start_desktop_app(host: str = "0.0.0.0", port: int = 8000, debug: bool = False):
     """
     Avvia l'applicazione nativa Desktop Windows ("Dove lo AI messo")
     incorporando FastAPI e WebView2 in una finestra standalone.
@@ -53,7 +53,8 @@ def start_desktop_app(host: str = "127.0.0.1", port: int = 8000, debug: bool = F
     server_thread = ServerThread(host=host, port=port)
     server_thread.start()
 
-    url = f"http://{host}:{port}"
+    webview_host = "127.0.0.1" if host == "0.0.0.0" else host
+    url = f"http://{webview_host}:{port}"
     ready = wait_for_server(url, timeout=12.0)
     if not ready:
         print("[AVVISO] Il server sta impiegando più tempo del previsto per avviarsi...")
