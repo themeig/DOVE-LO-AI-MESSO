@@ -195,6 +195,125 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
     }
 
+    /* Barra Preview Messaggio Quotato (Olivetti Industrial) */
+    body.theme-olivetti #quotePreviewBar,
+    body:not(.theme-whatsapp) #quotePreviewBar {
+      background-color: var(--oli-paper) !important;
+      border-top: 1px solid var(--oli-line) !important;
+      border-bottom: 1px solid var(--oli-line) !important;
+      padding: 6px 12px 6px 12px !important;
+    }
+
+    body.theme-olivetti #quotePreviewBar .quote-preview-card,
+    body.theme-olivetti #quotePreviewBar > div,
+    body:not(.theme-whatsapp) #quotePreviewBar .quote-preview-card,
+    body:not(.theme-whatsapp) #quotePreviewBar > div {
+      background-color: #FFFFFF !important;
+      border: 1px solid var(--oli-line) !important;
+      border-left: 4px solid var(--oli-sage) !important;
+      border-radius: 3px !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+      padding: 7px 10px !important;
+    }
+
+    body.theme-olivetti #quotePreviewBar #quoteSenderName,
+    body:not(.theme-whatsapp) #quotePreviewBar #quoteSenderName {
+      color: var(--oli-sage) !important;
+      font-family: 'Space Grotesk', sans-serif !important;
+      font-weight: 700 !important;
+      text-transform: uppercase !important;
+      font-size: 11px !important;
+      letter-spacing: 0.04em !important;
+    }
+
+    body.theme-olivetti #quotePreviewBar .quote-reply-icon,
+    body:not(.theme-whatsapp) #quotePreviewBar .quote-reply-icon {
+      color: var(--oli-sage) !important;
+    }
+
+    body.theme-olivetti #quotePreviewBar .quote-type-stamp,
+    body:not(.theme-whatsapp) #quotePreviewBar .quote-type-stamp {
+      display: inline-flex !important;
+    }
+
+    body.theme-olivetti #quotePreviewBar #quotePreviewText,
+    body:not(.theme-whatsapp) #quotePreviewBar #quotePreviewText {
+      color: var(--oli-ink-muted) !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 11px !important;
+      line-height: 1.35 !important;
+    }
+
+    body.theme-olivetti #quotePreviewBar button,
+    body:not(.theme-whatsapp) #quotePreviewBar button {
+      border-radius: 3px !important;
+      border: 1px solid var(--oli-line) !important;
+      background-color: #FAF8F2 !important;
+      color: var(--oli-ink-muted) !important;
+      width: 26px !important;
+      height: 26px !important;
+      transition: all 0.15s ease !important;
+    }
+
+    body.theme-olivetti #quotePreviewBar button:hover,
+    body:not(.theme-whatsapp) #quotePreviewBar button:hover {
+      background-color: var(--oli-terracotta-light) !important;
+      color: var(--oli-terracotta) !important;
+      border-color: var(--oli-terracotta) !important;
+    }
+
+    /* Citazioni Blockquote in Markdown (Olivetti Industrial) */
+    body.theme-olivetti blockquote,
+    body:not(.theme-whatsapp) blockquote {
+      border-left: 3.5px solid var(--oli-sage) !important;
+      background-color: #FAF8F2 !important;
+      border-top: 1px solid var(--oli-line) !important;
+      border-bottom: 1px solid var(--oli-line) !important;
+      border-right: 1px solid var(--oli-line) !important;
+      border-radius: 3px !important;
+      color: var(--oli-ink) !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-style: normal !important;
+      padding: 6px 10px !important;
+      margin: 6px 0 !important;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+    }
+
+    /* Quote bubble in chat (Widget Messaggio Quotato nelle bolle) */
+    body.theme-olivetti .quoted-msg-widget,
+    body:not(.theme-whatsapp) .quoted-msg-widget {
+      background-color: #FAF8F2 !important;
+      border: 1px solid var(--oli-line) !important;
+      border-left: 3.5px solid var(--oli-sage) !important;
+      border-radius: 3px !important;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+      padding: 6px 9px !important;
+      margin-bottom: 7px !important;
+    }
+
+    body.theme-olivetti .quoted-msg-widget .quoted-sender,
+    body:not(.theme-whatsapp) .quoted-msg-widget .quoted-sender {
+      font-family: 'Space Grotesk', sans-serif !important;
+      font-weight: 700 !important;
+      text-transform: uppercase !important;
+      font-size: 10.5px !important;
+      color: var(--oli-sage) !important;
+      letter-spacing: 0.03em !important;
+    }
+
+    body.theme-olivetti .quoted-msg-widget .quoted-text,
+    body:not(.theme-whatsapp) .quoted-msg-widget .quoted-text {
+      font-family: 'JetBrains Mono', monospace !important;
+      color: var(--oli-ink) !important;
+      font-size: 11px !important;
+    }
+
+    body.theme-olivetti .copy-msg-btn:hover,
+    body:not(.theme-whatsapp) .copy-msg-btn:hover {
+      color: var(--oli-sage) !important;
+      background-color: var(--oli-sage-light) !important;
+    }
+
     /* Input chat stile Tasti Lettera 22 */
     body.theme-olivetti #chatInputContainer,
     body.theme-olivetti footer,
@@ -548,7 +667,7 @@
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220]">Dove lo AI messo</h2>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.7.5</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.7.6</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568]">REGISTRO CENTRALE & AREE</p>
           </div>
@@ -669,7 +788,7 @@
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-bold text-xs leading-tight truncate font-space text-[#222220]">Dove lo AI messo</h1>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.7.5</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.7.6</span>
             </div>
             <p id="activeThreadSubtitle" class="text-[9px] font-mono-code text-[#7A7568] truncate">
               Assistente Personale & Caveau • online
@@ -852,17 +971,18 @@
           <h3 class="text-base font-bold pointer-events-none">Rilascia qui i tuoi file o cartelle</h3>
           <p class="text-xs text-emerald-100 max-w-sm mt-1 pointer-events-none">Caricamento automatico di documenti multipli e cartelle nel caveau</p>
         </div>
-      <!-- Barra Preview Messaggio Quotato Stile WhatsApp -->
+      <!-- Barra Preview Messaggio Quotato (Olivetti Industrial / WhatsApp Classic) -->
       <div id="quotePreviewBar" class="hidden bg-[#F0F2F5] px-3 pt-2 pb-0.5 border-t border-slate-200/80 shrink-0 transition-all select-none">
-        <div class="bg-white/95 rounded-xl p-2.5 flex items-center justify-between gap-3 shadow-xs border-l-4 border-[#075E54]">
+        <div class="quote-preview-card bg-white/95 rounded-xl p-2.5 flex items-center justify-between gap-3 shadow-xs border-l-4 border-[#075E54]">
           <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-1.5 text-xs font-bold text-[#075E54] mb-0.5">
-              <i class="fa-solid fa-reply text-[10px]"></i>
+            <div class="flex items-center gap-1.5 text-xs font-bold text-[#075E54] mb-0.5 quote-sender-header">
+              <i class="fa-solid fa-reply text-[10px] quote-reply-icon"></i>
               <span id="quoteSenderName">Tu</span>
+              <span class="stamp-oli text-[7px] py-0 px-1 quote-type-stamp hidden">CITAZIONE</span>
             </div>
-            <p id="quotePreviewText" class="text-xs text-slate-600 truncate font-normal leading-tight">Messaggio quotato...</p>
+            <p id="quotePreviewText" class="text-xs text-slate-600 truncate font-normal leading-tight font-mono-code">Messaggio quotato...</p>
           </div>
-          <button type="button" onclick="cancelQuoteReply()" class="w-7 h-7 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer shrink-0" title="Annulla quota">
+          <button type="button" onclick="cancelQuoteReply()" class="w-7 h-7 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer shrink-0 quote-cancel-btn" title="Annulla quota">
             <i class="fa-solid fa-xmark text-sm"></i>
           </button>
         </div>
@@ -2029,7 +2149,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. CENTRALE</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v1.7.5</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v1.7.6</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PROTOCOLLO CRITTOGRAFATO AES-256-GCM • SINCRONIZZATO IN TEMPO REALE</p>
           </div>
@@ -2205,7 +2325,7 @@
             <!-- Versione App -->
             <div class="border-t border-[#E3DDD1] px-3.5 py-2 mt-1 flex items-center justify-between text-[11px] text-[#7A7568] select-none font-mono-code">
               <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-[10px]"></i> Versione App</span>
-              <span class="stamp-oli text-[9px] app-version-badge">v1.7.5</span>
+              <span class="stamp-oli text-[9px] app-version-badge">v1.7.6</span>
             </div>
           </div>
         </div>
@@ -4268,7 +4388,9 @@
 
       if (!text) return;
 
-      const senderName = senderType === 'user' ? 'Tu' : 'Dove lo AI messo';
+      const isOli = getActiveTheme() === 'olivetti';
+      const defaultAssistantName = isOli ? 'Concierge Olivetti' : 'Dove lo AI messo';
+      const senderName = senderType === 'user' ? 'Tu' : defaultAssistantName;
       currentQuotedMessage = {
         sender: senderType,
         senderName: senderName,
@@ -4305,12 +4427,13 @@
         const safeQuote = escapeHtml(cleanSidebarPreview(quoted.text));
         if (isOli) {
           quoteHtml = `
-            <div class="bg-[#FAF8F2] border-l-3 border-[#3C5A48] border border-[#E3DDD1] rounded-xs p-2 mb-1.5 text-xs select-none">
-              <div class="font-bold text-[#3C5A48] text-[11px] mb-0.5 flex items-center gap-1 font-space">
+            <div class="quoted-msg-widget bg-[#FAF8F2] border-l-4 border-[#3C5A48] border border-[#E3DDD1] rounded-xs p-2.5 mb-2 text-xs select-none shadow-2xs">
+              <div class="quoted-sender font-bold text-[#3C5A48] text-[11px] mb-1 flex items-center gap-1.5 font-space uppercase">
                 <i class="fa-solid fa-reply text-[9px]"></i>
                 <span>${safeSender}</span>
+                <span class="stamp-oli text-[7px] py-0 px-1">CITAZIONE</span>
               </div>
-              <p class="text-[#7A7568] truncate font-normal leading-tight font-mono-code">${safeQuote}</p>
+              <p class="quoted-text text-[#222220] truncate font-normal leading-tight font-mono-code text-[11px]">${safeQuote}</p>
             </div>
           `;
         } else {
@@ -4444,12 +4567,13 @@
         const safeQuote = escapeHtml(cleanSidebarPreview(quoted.text));
         if (isOli) {
           quoteHtml = `
-            <div class="bg-[#FAF8F2] border-l-3 border-[#3C5A48] border border-[#E3DDD1] rounded-xs p-2 mb-1.5 text-xs select-none">
-              <div class="font-bold text-[#3C5A48] text-[11px] mb-0.5 flex items-center gap-1 font-space">
+            <div class="quoted-msg-widget bg-[#FAF8F2] border-l-4 border-[#3C5A48] border border-[#E3DDD1] rounded-xs p-2.5 mb-2 text-xs select-none shadow-2xs">
+              <div class="quoted-sender font-bold text-[#3C5A48] text-[11px] mb-1 flex items-center gap-1.5 font-space uppercase">
                 <i class="fa-solid fa-reply text-[9px]"></i>
                 <span>${safeSender}</span>
+                <span class="stamp-oli text-[7px] py-0 px-1">CITAZIONE</span>
               </div>
-              <p class="text-[#7A7568] truncate font-normal leading-tight font-mono-code">${safeQuote}</p>
+              <p class="quoted-text text-[#222220] truncate font-normal leading-tight font-mono-code text-[11px]">${safeQuote}</p>
             </div>
           `;
         } else {
@@ -8458,7 +8582,7 @@
 
       <div class="pt-2 border-t border-[#E3DDD1] flex items-center justify-between text-[10px] text-[#7A7568] font-mono-code">
         <span>Password predefinita: <code class="font-mono font-bold text-[#222220] bg-[#FAF8F2] border border-[#E3DDD1] px-1 py-0.5 rounded-xs">1234</code></span>
-        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.7.2</span>
+        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.7.6</span>
       </div>
 
     </div>
