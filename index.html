@@ -476,9 +476,27 @@
       0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
       30% { transform: translateY(-5px); opacity: 1; }
     }
+
+    /* Transizione a Sipario Meccanico (Olivetti Layer Reveal) */
+    #chatView {
+      position: absolute !important;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      z-index: 20;
+    }
+    #dashboardView {
+      position: absolute !important;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      z-index: 10;
+    }
   </style>
 </head>
-<body class="h-screen flex flex-col bg-[#F8F5EE] text-[#222220] theme-olivetti">
+<body class="h-screen flex flex-col bg-[#F8F5EE] text-[#222220] theme-olivetti relative overflow-hidden">
 
   <!-- Invisible file input for real uploads (multi-file & office & archive support) -->
   <input type="file" id="realFileInput" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.tsv,.txt,.json,.zip,.rar,.7z" multiple style="display:none">
@@ -504,7 +522,7 @@
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220]">Dove lo AI messo</h2>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.3</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.4</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568]">REGISTRO CENTRALE & AREE</p>
           </div>
@@ -629,7 +647,7 @@
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-bold text-xs leading-tight truncate font-space text-[#222220]">Dove lo AI messo</h1>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.3</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.4</span>
             </div>
             <p id="activeThreadSubtitle" class="text-[9px] font-mono-code text-[#7A7568] truncate">
               Assistente Personale & Caveau • online
@@ -2011,7 +2029,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. CENTRALE</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v1.8.3</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v1.8.4</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PROTOCOLLO CRITTOGRAFATO AES-256-GCM • SINCRONIZZATO IN TEMPO REALE</p>
           </div>
@@ -2178,7 +2196,7 @@
             <!-- Versione App -->
             <div class="border-t border-[#E3DDD1] px-3.5 py-2 mt-1 flex items-center justify-between text-[11px] text-[#7A7568] select-none font-mono-code">
               <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-[10px]"></i> Versione App</span>
-              <span class="stamp-oli text-[9px] app-version-badge">v1.8.3</span>
+              <span class="stamp-oli text-[9px] app-version-badge">v1.8.4</span>
             </div>
           </div>
         </div>
@@ -2850,22 +2868,121 @@
       }
     }
 
-    // --- Apertura e Chiusura Dashboard ---
+    // --- Apertura e Chiusura Dashboard con Effetto Sipario Meccanico (Olivetti Layer Reveal) ---
+    let isTransitioningScreens = false;
+
     function openDashboard(filter = null) {
-      chatView.classList.add('hidden');
+      if (isTransitioningScreens) return;
+      isTransitioningScreens = true;
+
+      // 1. Prepara e mostra subito la Dashboard sul livello inferiore (z-10)
       dashboardView.classList.remove('hidden');
       dashboardView.classList.add('flex');
+      dashboardView.style.zIndex = '10';
+      dashboardView.style.transform = 'scale(0.985)';
+      dashboardView.style.opacity = '0.9';
+      dashboardView.style.transition = 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease';
+
+      // Assicura che la Chat sia visibile sopra (z-20) e blocca click temporanei
+      chatView.classList.remove('hidden');
+      chatView.style.display = 'flex';
+      chatView.style.zIndex = '20';
+      chatView.style.pointerEvents = 'none';
+
       if (filter) {
         filterTable(filter);
       } else {
         loadDashboard(currentFilter);
       }
+
+      // 2. Anima l'apertura a sipario: sidebar a sinistra, conversazione a destra
+      requestAnimationFrame(() => {
+        const curtainEase = 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease';
+        sidebarPanel.style.transition = curtainEase;
+        conversationPanel.style.transition = curtainEase;
+        sidebarPanel.style.willChange = 'transform, opacity';
+        conversationPanel.style.willChange = 'transform, opacity';
+
+        sidebarPanel.style.transform = 'translate3d(-100%, 0, 0)';
+        sidebarPanel.style.opacity = '0';
+        conversationPanel.style.transform = 'translate3d(100%, 0, 0)';
+        conversationPanel.style.opacity = '0';
+
+        // La dashboard sottostante sale in superficie
+        dashboardView.style.transform = 'scale(1)';
+        dashboardView.style.opacity = '1';
+
+        setTimeout(() => {
+          chatView.classList.add('hidden');
+          chatView.style.display = 'none';
+          chatView.style.pointerEvents = 'auto';
+          sidebarPanel.style.willChange = 'auto';
+          conversationPanel.style.willChange = 'auto';
+          isTransitioningScreens = false;
+        }, 430);
+      });
     }
 
     function closeDashboard() {
-      dashboardView.classList.add('hidden');
-      dashboardView.classList.remove('flex');
+      if (isTransitioningScreens) return;
+      isTransitioningScreens = true;
+
+      // 1. Rendi visibile la chat sopra la dashboard con le ante già spalancate
       chatView.classList.remove('hidden');
+      chatView.style.display = 'flex';
+      chatView.style.zIndex = '20';
+      dashboardView.style.zIndex = '10';
+      chatView.style.pointerEvents = 'none';
+
+      sidebarPanel.style.transition = 'none';
+      conversationPanel.style.transition = 'none';
+      sidebarPanel.style.transform = 'translate3d(-100%, 0, 0)';
+      sidebarPanel.style.opacity = '0';
+      conversationPanel.style.transform = 'translate3d(100%, 0, 0)';
+      conversationPanel.style.opacity = '0';
+
+      dashboardView.style.transition = 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease';
+
+      // 2. Anima la richiusura a sipario verso il centro
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const curtainEase = 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease';
+          sidebarPanel.style.transition = curtainEase;
+          conversationPanel.style.transition = curtainEase;
+          sidebarPanel.style.willChange = 'transform, opacity';
+          conversationPanel.style.willChange = 'transform, opacity';
+
+          sidebarPanel.style.transform = 'translate3d(0, 0, 0)';
+          sidebarPanel.style.opacity = '1';
+          conversationPanel.style.transform = 'translate3d(0, 0, 0)';
+          conversationPanel.style.opacity = '1';
+
+          dashboardView.style.transform = 'scale(0.985)';
+          dashboardView.style.opacity = '0.9';
+
+          setTimeout(() => {
+            dashboardView.classList.add('hidden');
+            dashboardView.classList.remove('flex');
+            dashboardView.style.transform = 'none';
+            dashboardView.style.opacity = '1';
+            chatView.style.pointerEvents = 'auto';
+            sidebarPanel.style.willChange = 'auto';
+            conversationPanel.style.willChange = 'auto';
+            
+            // Ripristina stili puliti
+            if (isMobileView) {
+              if (conversationPanel.classList.contains('mobile-active')) {
+                _mobileShowConversation(false);
+              } else {
+                _mobileShowSidebar(false);
+              }
+            } else {
+              applyLayout();
+            }
+            isTransitioningScreens = false;
+          }, 430);
+        });
+      });
     }
 
     // --- Navigazione Rapida Schermate (Olivetti Industrial) ---
@@ -8481,7 +8598,7 @@
 
       <div class="pt-2 border-t border-[#E3DDD1] flex items-center justify-between text-[10px] text-[#7A7568] font-mono-code">
         <span>Password predefinita: <code class="font-mono font-bold text-[#222220] bg-[#FAF8F2] border border-[#E3DDD1] px-1 py-0.5 rounded-xs">1234</code></span>
-        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.8.3</span>
+        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.8.4</span>
       </div>
 
     </div>
