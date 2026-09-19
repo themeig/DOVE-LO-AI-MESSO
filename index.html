@@ -522,7 +522,7 @@
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220]">Dove lo AI messo</h2>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.4</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.5</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568]">REGISTRO CENTRALE & AREE</p>
           </div>
@@ -609,10 +609,6 @@
           <i class="fa-solid fa-folder text-base mb-0.5"></i>
           <span>FALDONI</span>
         </button>
-        <a href="/showcase" target="_blank" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer" title="Apri Showcase & Pitch Deck">
-          <i class="fa-solid fa-sparkles text-base mb-0.5 text-[#C84B31]"></i>
-          <span>SHOWCASE</span>
-        </a>
         <button onclick="switchScreen('settings')" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
           <i class="fa-solid fa-sliders text-base mb-0.5"></i>
           <span>SISTEMA</span>
@@ -647,7 +643,7 @@
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-bold text-xs leading-tight truncate font-space text-[#222220]">Dove lo AI messo</h1>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.4</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.5</span>
             </div>
             <p id="activeThreadSubtitle" class="text-[9px] font-mono-code text-[#7A7568] truncate">
               Assistente Personale & Caveau • online
@@ -2029,7 +2025,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. CENTRALE</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v1.8.4</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v1.8.5</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PROTOCOLLO CRITTOGRAFATO AES-256-GCM • SINCRONIZZATO IN TEMPO REALE</p>
           </div>
@@ -2196,7 +2192,7 @@
             <!-- Versione App -->
             <div class="border-t border-[#E3DDD1] px-3.5 py-2 mt-1 flex items-center justify-between text-[11px] text-[#7A7568] select-none font-mono-code">
               <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-[10px]"></i> Versione App</span>
-              <span class="stamp-oli text-[9px] app-version-badge">v1.8.4</span>
+              <span class="stamp-oli text-[9px] app-version-badge">v1.8.5</span>
             </div>
           </div>
         </div>
@@ -2463,10 +2459,6 @@
         <i class="fa-solid fa-folder text-base mb-0.5"></i>
         <span>FALDONI</span>
       </button>
-      <a href="/showcase" target="_blank" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer" title="Apri Showcase & Pitch Deck">
-        <i class="fa-solid fa-sparkles text-base mb-0.5 text-[#C84B31]"></i>
-        <span>SHOWCASE</span>
-      </a>
       <button onclick="switchScreen('settings')" id="navBtnSettings" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
         <i class="fa-solid fa-sliders text-base mb-0.5"></i>
         <span>SISTEMA</span>
@@ -2496,6 +2488,7 @@
 
     let currentFilter = 'all';
     let currentRecords = [];
+    let allDashboardRecordsCache = [];
 
     // Allinea dinamicamente i badge di versione all'avvio
     (function syncAppVersion() {
@@ -2879,9 +2872,9 @@
       dashboardView.classList.remove('hidden');
       dashboardView.classList.add('flex');
       dashboardView.style.zIndex = '10';
-      dashboardView.style.transform = 'scale(0.985)';
-      dashboardView.style.opacity = '0.9';
-      dashboardView.style.transition = 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease';
+      dashboardView.style.transform = 'none';
+      dashboardView.style.opacity = '1';
+      dashboardView.style.transition = 'none';
 
       // Assicura che la Chat sia visibile sopra (z-20) e blocca click temporanei
       chatView.classList.remove('hidden');
@@ -2892,6 +2885,7 @@
       if (filter) {
         filterTable(filter);
       } else {
+        renderDashboardView();
         loadDashboard(currentFilter);
       }
 
@@ -2907,10 +2901,6 @@
         sidebarPanel.style.opacity = '0';
         conversationPanel.style.transform = 'translate3d(100%, 0, 0)';
         conversationPanel.style.opacity = '0';
-
-        // La dashboard sottostante sale in superficie
-        dashboardView.style.transform = 'scale(1)';
-        dashboardView.style.opacity = '1';
 
         setTimeout(() => {
           chatView.classList.add('hidden');
@@ -2941,7 +2931,7 @@
       conversationPanel.style.transform = 'translate3d(100%, 0, 0)';
       conversationPanel.style.opacity = '0';
 
-      dashboardView.style.transition = 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease';
+      dashboardView.style.transition = 'none';
 
       // 2. Anima la richiusura a sipario verso il centro
       requestAnimationFrame(() => {
@@ -2956,9 +2946,6 @@
           sidebarPanel.style.opacity = '1';
           conversationPanel.style.transform = 'translate3d(0, 0, 0)';
           conversationPanel.style.opacity = '1';
-
-          dashboardView.style.transform = 'scale(0.985)';
-          dashboardView.style.opacity = '0.9';
 
           setTimeout(() => {
             dashboardView.classList.add('hidden');
@@ -6116,6 +6103,11 @@
         const data = await res.json();
 
         currentRecords = data.records || [];
+        if (currentFilter === 'all' && (!threadId || threadId === 'all')) {
+          allDashboardRecordsCache = [...currentRecords];
+        } else if (!allDashboardRecordsCache || allDashboardRecordsCache.length === 0) {
+          allDashboardRecordsCache = [...currentRecords];
+        }
 
         // 1. Aggiorna Card KPI
         const kpi = data.kpi || {};
@@ -6957,14 +6949,40 @@
       const btnD = document.getElementById('fDeadlines');
       const btnQ = document.getElementById('fQuietanzati');
       const btnI = document.getElementById('fItems');
+      
+      const baseBtnClass = 'px-2.5 py-1 rounded-xs font-space font-bold transition cursor-pointer text-[10px]';
+      const inactiveClass = `${baseBtnClass} text-[#7A7568] hover:text-[#222220]`;
+      const activeClass = `${baseBtnClass} bg-[#3C5A48] text-white`;
+
       [btnA, btnD, btnQ, btnI].forEach(b => {
-        if (b) b.className = 'px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-900 transition cursor-pointer flex items-center gap-1';
+        if (b) {
+          b.className = inactiveClass;
+          if (b === btnD || b === btnQ) b.classList.add('flex', 'items-center', 'gap-1');
+        }
       });
 
-      if (filter === 'all' && btnA) btnA.className = 'px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold transition cursor-pointer';
-      if ((filter === 'deadlines' || filter === 'da_pagare') && btnD) btnD.className = 'px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold transition cursor-pointer flex items-center gap-1';
-      if ((filter === 'quietanzati' || filter === 'quietanzato') && btnQ) btnQ.className = 'px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold transition cursor-pointer flex items-center gap-1';
-      if ((filter === 'items' || filter === 'oggetti') && btnI) btnI.className = 'px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-2xs font-semibold transition cursor-pointer';
+      if (filter === 'all' && btnA) btnA.className = activeClass;
+      if ((filter === 'deadlines' || filter === 'da_pagare') && btnD) {
+        btnD.className = `${activeClass} flex items-center gap-1`;
+      }
+      if ((filter === 'quietanzati' || filter === 'quietanzato') && btnQ) {
+        btnQ.className = `${activeClass} flex items-center gap-1`;
+      }
+      if ((filter === 'items' || filter === 'oggetti') && btnI) btnI.className = activeClass;
+
+      // Filtro immediato sincrono in memoria dalla cache: elimina ogni ritardo o schermata bianca
+      if (allDashboardRecordsCache && allDashboardRecordsCache.length > 0) {
+        if (filter === 'all') {
+          currentRecords = [...allDashboardRecordsCache];
+        } else if (filter === 'items' || filter === 'oggetti') {
+          currentRecords = allDashboardRecordsCache.filter(r => r.type === 'physical_item');
+        } else if (filter === 'deadlines' || filter === 'da_pagare') {
+          currentRecords = allDashboardRecordsCache.filter(r => r.type === 'document' && r.status === 'da_pagare');
+        } else if (filter === 'quietanzati' || filter === 'quietanzato') {
+          currentRecords = allDashboardRecordsCache.filter(r => r.status === 'quietanzato');
+        }
+        renderDashboardView();
+      }
 
       loadDashboard(filter);
     }
@@ -8598,7 +8616,7 @@
 
       <div class="pt-2 border-t border-[#E3DDD1] flex items-center justify-between text-[10px] text-[#7A7568] font-mono-code">
         <span>Password predefinita: <code class="font-mono font-bold text-[#222220] bg-[#FAF8F2] border border-[#E3DDD1] px-1 py-0.5 rounded-xs">1234</code></span>
-        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.8.4</span>
+        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.8.5</span>
       </div>
 
     </div>
