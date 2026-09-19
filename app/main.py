@@ -174,7 +174,14 @@ def get_whitepaper():
 def serve_index():
     index_file = settings.BASE_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(index_file)
+        return FileResponse(
+            index_file,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
     return HTMLResponse("<h1>Dove lo AI messo</h1>")
 
 # Showcase & Interactive Pitch Deck endpoints

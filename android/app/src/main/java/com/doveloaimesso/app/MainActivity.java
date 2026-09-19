@@ -104,6 +104,7 @@ public class MainActivity extends AppCompatActivity {
         swipeRefresh.setColorSchemeResources(R.color.primary, R.color.accent);
         swipeRefresh.setOnRefreshListener(() -> {
             if (webView != null) {
+                webView.clearCache(true);
                 webView.reload();
             } else {
                 swipeRefresh.setRefreshing(false);
@@ -152,10 +153,11 @@ public class MainActivity extends AppCompatActivity {
         settings.setUseWideViewPort(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
 
         // User Agent mobile moderno
         String defaultUA = settings.getUserAgentString();
-        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/1.7.3");
+        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/1.7.4");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
