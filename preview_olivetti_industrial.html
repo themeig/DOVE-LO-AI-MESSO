@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dove lo AI messo — Collezione Completa: Olivetti Industrial</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Space+Grotesk:wght@500;600;700;800&display=swap');
+
+    :root {
+      --oli-paper: #F8F5EE;
+      --oli-paper-dark: #EFECE3;
+      --oli-card: #FFFFFF;
+      --oli-ink: #222220;
+      --oli-ink-muted: #7A7568;
+      --oli-line: #E3DDD1;
+      --oli-sage: #3C5A48;
+      --oli-sage-hover: #2F4738;
+      --oli-sage-light: #EBF1ED;
+      --oli-terracotta: #C84B31;
+      --oli-terracotta-hover: #B23E26;
+      --oli-terracotta-light: #FAECE8;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #161719;
+      color: #E2E2DC;
+    }
+
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .font-space {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .font-editorial {
+      font-family: 'Newsreader', Georgia, serif;
+    }
+
+    /* Cornice Smartphone */
+    .phone-mockup {
+      width: 375px;
+      height: 740px;
+      border-radius: 44px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 10px #24262B, 0 0 0 12px #3A3D45;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background-color: var(--oli-paper);
+      color: var(--oli-ink);
+      transition: all 0.3s ease;
+    }
+
+    .phone-notch {
+      width: 120px;
+      height: 24px;
+      background: #24262B;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      border-bottom-left-radius: 14px;
+      border-bottom-right-radius: 14px;
+      z-index: 60;
+    }
+
+    /* Cornice Desktop / Tablet */
+    .desktop-mockup {
+      width: 100%;
+      max-width: 1060px;
+      height: 740px;
+      border-radius: 20px;
+      box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255,255,255,0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--oli-paper);
+      color: var(--oli-ink);
+      transition: all 0.3s ease;
+    }
+
+    /* Timbri e Badge Olivetti */
+    .stamp-oli {
+      border: 1.5px solid var(--oli-sage);
+      color: var(--oli-sage);
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-radius: 3px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stamp-terracotta {
+      border-color: var(--oli-terracotta);
+      color: var(--oli-terracotta);
+    }
+
+    .stamp-solid-sage {
+      background-color: var(--oli-sage);
+      color: #FFFFFF;
+      border-color: var(--oli-sage);
+    }
+
+    .stamp-solid-terracotta {
+      background-color: var(--oli-terracotta);
+      color: #FFFFFF;
+      border-color: var(--oli-terracotta);
+    }
+
+    /* Nastro dattilografico bicolore */
+    .typewriter-ribbon {
+      height: 3px;
+      background: linear-gradient(to right, var(--oli-terracotta) 50%, var(--oli-sage) 50%);
+    }
+
+    /* Custom Scrollbar */
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #D8D2C4;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col p-3 md:p-6 selection:bg-[#3C5A48] selection:text-white">
+
+  <!-- ======================================================================= -->
+  <!-- BARRA DI CONTROLLO SUPERIORE                                           -->
+  <!-- ======================================================================= -->
+  <header class="max-w-6xl mx-auto w-full mb-6">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 border-b border-neutral-800">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-[#3C5A48] text-white flex items-center justify-center font-black text-lg shadow-md">
+          <i class="fa-solid fa-feather-pointed"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl md:text-2xl font-black tracking-tight text-white uppercase font-space">
+              Olivetti Industrial
+            </h1>
+            <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#3C5A48]/20 text-[#8BB69A] border border-[#3C5A48]/40 font-mono-code">
+              LETTERA 22 • NIZZOLI & SOTTSASS
+            </span>
+          </div>
+          <p class="text-xs text-neutral-400">
+            Tutte le schermate del Caveau con carta avorio calda, verde salvia manifatturiero e accenti terracotta.
+          </p>
+        </div>
+      </div>
+
+      <!-- Selettore Modalità Device -->
+      <div class="flex items-center gap-1 bg-neutral-900 p-1 rounded-xl border border-neutral-800 text-xs">
+        <button onclick="setDeviceMode('mobile')" id="devBtn-mobile" class="px-3 py-1.5 rounded-lg font-semibold transition bg-[#3C5A48] text-white cursor-pointer">
+          <i class="fa-solid fa-mobile-screen mr-1.5"></i> Smartphone
+        </button>
+        <button onclick="setDeviceMode('desktop')" id="devBtn-desktop" class="px-3 py-1.5 rounded-lg font-semibold transition text-neutral-400 hover:text-white cursor-pointer">
+          <i class="fa-solid fa-desktop mr-1.5"></i> Desktop Widescreen
+        </button>
+        <button onclick="setDeviceMode('all-mobile')" id="devBtn-all" class="px-3 py-1.5 rounded-lg font-semibold transition text-neutral-400 hover:text-white cursor-pointer">
+          <i class="fa-solid fa-grip mr-1.5"></i> Tutte le Schermate
+        </button>
+      </div>
+    </div>
+
+    <!-- Selettore Schermata -->
+    <div id="screenTabsBar" class="flex flex-wrap items-center justify-center gap-1.5 mt-4 p-1.5 bg-neutral-900/90 rounded-xl border border-neutral-800 max-w-4xl mx-auto text-xs font-semibold">
+      <button onclick="switchScreen('dashboard')" id="tab-dashboard" class="px-3 py-1.5 rounded-lg transition bg-white text-black font-bold shadow cursor-pointer">
+        <i class="fa-solid fa-chart-pie mr-1 text-[#3C5A48]"></i> 1. Dashboard Operativa
+      </button>
+      <button onclick="switchScreen('chat')" id="tab-chat" class="px-3 py-1.5 rounded-lg transition text-neutral-300 hover:text-white cursor-pointer">
+        <i class="fa-solid fa-comments mr-1 text-[#3C5A48]"></i> 2. Chat Conversazionale
+      </button>
+      <button onclick="switchScreen('archive')" id="tab-archive" class="px-3 py-1.5 rounded-lg transition text-neutral-300 hover:text-white cursor-pointer">
+        <i class="fa-solid fa-boxes-stacked mr-1 text-[#3C5A48]"></i> 3. Archivio Oggetti & Faldoni
+      </button>
+      <button onclick="switchScreen('detail')" id="tab-detail" class="px-3 py-1.5 rounded-lg transition text-neutral-300 hover:text-white cursor-pointer">
+        <i class="fa-solid fa-file-lines mr-1 text-[#3C5A48]"></i> 4. Scheda Dettaglio Documento
+      </button>
+      <button onclick="switchScreen('settings')" id="tab-settings" class="px-3 py-1.5 rounded-lg transition text-neutral-300 hover:text-white cursor-pointer">
+        <i class="fa-solid fa-sliders mr-1 text-[#3C5A48]"></i> 5. Impostazioni & Caveau
+      </button>
+    </div>
+  </header>
+
+
+  <!-- ======================================================================= -->
+  <!-- CONTENUTO PRINCIPALE                                                   -->
+  <!-- ======================================================================= -->
+  <main class="max-w-7xl mx-auto w-full flex-1 flex items-center justify-center py-2">
+
+    <!-- CONTENITORE VISTA SINGOLA -->
+    <div id="singleViewContainer" class="flex justify-center items-center w-full">
+
+      <!-- ================================================================= -->
+      <!-- 1. SCHERMATA: DASHBOARD OPERATIVA OLIVETTI                        -->
+      <!-- ================================================================= -->
+      <div id="view-dashboard" class="screen-view w-full flex justify-center">
+        <div class="frame-target phone-mockup">
+          <div class="phone-notch"></div>
+
+          <!-- Top Bar con Nastro Dattilografico -->
+          <div class="pt-8 px-4 pb-2.5 bg-[#F8F5EE] border-b border-[#E3DDD1] flex items-center justify-between z-40">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-sm bg-[#3C5A48] text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                <i class="fa-solid fa-vault"></i>
+              </div>
+              <div>
+                <span class="font-space text-xs font-black tracking-wide text-[#222220] block">DOVE LO AI MESSO</span>
+                <span class="text-[9px] font-mono-code text-[#7A7568] block leading-none">REG. CENTRALE • VER. 1.6.0</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="switchScreen('chat')" class="stamp-oli hover:bg-[#3C5A48] hover:text-white transition cursor-pointer text-[9px]">
+                <i class="fa-solid fa-arrow-left text-[#C84B31]"></i> CHAT
+              </button>
+              <div class="w-2.5 h-2.5 rounded-full bg-[#3C5A48] animate-pulse" title="Caveau attivo"></div>
+            </div>
+          </div>
+          <div class="typewriter-ribbon"></div>
+
+          <!-- Contenuto Dashboard -->
+          <div class="flex-1 overflow-y-auto custom-scroll p-4 space-y-4">
+            
+            <!-- Barra di Stato e Data -->
+            <div class="flex items-center justify-between text-xs border-b border-[#E3DDD1] pb-2 font-mono-code text-[#7A7568]">
+              <span>SABATO 19 SETTEMBRE 2026</span>
+              <span class="text-[#3C5A48] font-bold">● PROTOCOLLO CRITTOGRAFATO</span>
+            </div>
+
+            <!-- Bento-Grid Olivetti (Verde Salvia, Terracotta & Avorio) -->
+            <div class="grid grid-cols-2 gap-2.5">
+              <!-- KPI 1: Scadenze -->
+              <div class="bg-white border-2 border-[#3C5A48] p-3 rounded-xs shadow-xs flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                  <span class="text-[9px] font-mono-code text-[#7A7568] uppercase">01 / SCADENZARIO</span>
+                  <span class="stamp-oli stamp-terracotta text-[8px]">URGENTE</span>
+                </div>
+                <div class="my-2">
+                  <div class="text-2xl font-black tracking-tight text-[#222220] font-mono-code">€ 68,40</div>
+                  <div class="text-[10px] text-[#C84B31] font-semibold font-mono-code">1 utenza entro fine mese</div>
+                </div>
+                <div class="w-full bg-[#E3DDD1] h-1 rounded-full overflow-hidden">
+                  <div class="bg-[#C84B31] h-1 w-3/4"></div>
+                </div>
+              </div>
+
+              <!-- KPI 2: Documenti -->
+              <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-xs flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                  <span class="text-[9px] font-mono-code text-[#7A7568] uppercase">02 / DOCUMENTI</span>
+                  <i class="fa-solid fa-file-invoice text-xs text-[#3C5A48]"></i>
+                </div>
+                <div class="my-2">
+                  <div class="text-2xl font-black tracking-tight text-[#222220] font-mono-code">24</div>
+                  <div class="text-[10px] text-[#3C5A48] font-semibold">100% catalogati & cifrati</div>
+                </div>
+                <div class="text-[9px] font-mono-code text-[#3C5A48] font-bold">+3 questa settimana</div>
+              </div>
+
+              <!-- KPI 3: Oggetti Fisici -->
+              <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-xs flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                  <span class="text-[9px] font-mono-code text-[#7A7568] uppercase">03 / INVENTARIO</span>
+                  <i class="fa-solid fa-compass-drafting text-xs text-[#7A7568]"></i>
+                </div>
+                <div class="my-2">
+                  <div class="text-2xl font-black tracking-tight text-[#222220] font-mono-code">12</div>
+                  <div class="text-[10px] text-[#7A7568] font-medium">Oggetti memorizzati</div>
+                </div>
+                <div class="text-[9px] font-mono-code text-[#7A7568]">4 stanze censite</div>
+              </div>
+
+              <!-- KPI 4: Google Drive -->
+              <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-xs flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                  <span class="text-[9px] font-mono-code text-[#7A7568] uppercase">04 / DRIVE SYNC</span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                </div>
+                <div class="my-2">
+                  <div class="text-lg font-bold tracking-tight text-[#222220] font-mono-code">DUAL</div>
+                  <div class="text-[10px] text-[#3C5A48] font-semibold">Sincronizzazione attiva</div>
+                </div>
+                <div class="text-[9px] font-mono-code text-[#7A7568]">Check: 4 min fa</div>
+              </div>
+            </div>
+
+            <!-- Registro Scadenze a Foglio Contabile Dattiloscritto -->
+            <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-xs">
+              <div class="flex items-center justify-between pb-2 border-b border-[#E3DDD1] mb-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="font-space text-xs font-bold text-[#222220]">SCADENZARIO FISCALE & TRIBUTI</span>
+                </div>
+                <span class="font-mono-code text-[9px] text-[#7A7568]">FALDONE U-01</span>
+              </div>
+
+              <div class="space-y-2">
+                <!-- Record 1: Enel Energia -->
+                <div class="p-2.5 bg-[#FAF8F2] border-l-3 border-[#C84B31] flex items-center justify-between">
+                  <div>
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-bold text-xs text-[#222220]">Enel Energia S.p.A.</span>
+                      <span class="stamp-oli stamp-terracotta text-[8px]">IN SCADENZA</span>
+                    </div>
+                    <div class="text-[10px] text-[#7A7568] font-mono-code mt-0.5">Scadenza: 31 OTT 2026 • Luce Casa</div>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-xs font-black font-mono-code text-[#222220]">€ 68,40</span>
+                    <button onclick="switchScreen('detail')" class="block text-[9px] text-[#C84B31] font-bold hover:underline mt-0.5 cursor-pointer">SCHEDA →</button>
+                  </div>
+                </div>
+
+                <!-- Record 2: TARI Milano -->
+                <div class="p-2.5 bg-white border-l-3 border-[#3C5A48] flex items-center justify-between">
+                  <div>
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-bold text-xs text-[#222220]">Comune di Milano (TARI)</span>
+                      <span class="stamp-oli text-[8px]">PROGRAMMATO</span>
+                    </div>
+                    <div class="text-[10px] text-[#7A7568] font-mono-code mt-0.5">Scadenza: 30 NOV 2026 • Rata 2</div>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-xs font-black font-mono-code text-[#222220]">€ 145,00</span>
+                    <span class="block text-[9px] text-[#7A7568] font-mono-code">Faldone F2</span>
+                  </div>
+                </div>
+
+                <!-- Record 3: Decathlon (Quietanzato) -->
+                <div class="p-2.5 bg-white border border-[#E3DDD1] flex items-center justify-between opacity-80">
+                  <div>
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-bold text-xs text-[#222220]">Decathlon Italia</span>
+                      <span class="stamp-oli text-emerald-800 border-emerald-700 text-[8px]">QUIETANZATO</span>
+                    </div>
+                    <div class="text-[10px] text-[#7A7568] font-mono-code mt-0.5">Pagato: 18 SET 2026 • Scarpe Trekking</div>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-xs font-black font-mono-code text-[#222220]">€ 89,90</span>
+                    <span class="block text-[9px] text-emerald-700 font-bold">SALDATO</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pulsantiera Azioni Rapide Stile Lettera 22 -->
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button class="bg-[#3C5A48] text-white p-2.5 font-space text-xs font-bold rounded-xs flex items-center justify-center gap-2 hover:bg-[#2F4738] transition cursor-pointer shadow-xs">
+                <i class="fa-solid fa-plus"></i> ACQUISISCI ATTO
+              </button>
+              <button onclick="switchScreen('archive')" class="border-2 border-[#3C5A48] bg-white text-[#3C5A48] p-2.5 font-space text-xs font-bold rounded-xs flex items-center justify-center gap-2 hover:bg-[#3C5A48] hover:text-white transition cursor-pointer">
+                <i class="fa-solid fa-box-archive"></i> SFOGLIA ARCHIVIO
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Bottom Navigation Bar Olivetti -->
+          <div class="bg-[#F8F5EE] border-t border-[#E3DDD1] p-2 flex items-center justify-around text-[10px] font-space text-[#7A7568]">
+            <button onclick="switchScreen('dashboard')" class="flex flex-col items-center text-[#3C5A48] font-bold cursor-pointer">
+              <i class="fa-solid fa-table-cells-large text-base mb-0.5"></i>
+              <span>DASHBOARD</span>
+            </button>
+            <button onclick="switchScreen('chat')" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
+              <i class="fa-solid fa-message text-base mb-0.5"></i>
+              <span>CONVERSA</span>
+            </button>
+            <button onclick="switchScreen('archive')" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
+              <i class="fa-solid fa-folder text-base mb-0.5"></i>
+              <span>FALDONI</span>
+            </button>
+            <button onclick="switchScreen('settings')" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
+              <i class="fa-solid fa-sliders text-base mb-0.5"></i>
+              <span>SISTEMA</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- 2. SCHERMATA: CHAT CONVERSAZIONALE OLIVETTI                       -->
+      <!-- ================================================================= -->
+      <div id="view-chat" class="screen-view w-full justify-center hidden">
+        <div class="frame-target phone-mockup">
+          <div class="phone-notch"></div>
+
+          <!-- Header Chat Olivetti -->
+          <div class="pt-8 px-4 pb-2.5 bg-[#F8F5EE] border-b border-[#E3DDD1] flex items-center justify-between z-40">
+            <div class="flex items-center gap-2.5">
+              <div class="w-7 h-7 bg-[#3C5A48] text-white flex items-center justify-center font-black text-xs rounded-sm shadow-xs">
+                OL
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <h3 class="text-xs font-bold text-[#222220] font-space">CONCIERGE CAVEAU</h3>
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48]"></span>
+                </div>
+                <p class="text-[9px] font-mono-code text-[#7A7568]">Whisper & Assistente RAG Attivo</p>
+              </div>
+            </div>
+            <button onclick="switchScreen('dashboard')" class="stamp-oli hover:bg-[#3C5A48] hover:text-white transition text-[9px] cursor-pointer">
+              DASHBOARD <i class="fa-solid fa-arrow-right ml-1 text-[#C84B31]"></i>
+            </button>
+          </div>
+          <div class="typewriter-ribbon"></div>
+
+          <!-- Area Messaggi Chat -->
+          <div class="flex-1 overflow-y-auto custom-scroll p-3.5 space-y-3.5">
+            
+            <div class="text-center my-1">
+              <span class="stamp-oli text-[8px] text-[#7A7568] border-[#D8D2C4]">REGISTRO SESSIONE • 19 SETTEMBRE 2026</span>
+            </div>
+
+            <!-- Bolla Utente 1 -->
+            <div class="flex flex-col items-end">
+              <span class="text-[9px] font-mono-code text-[#7A7568] mb-1">UTENTE • 14:15</span>
+              <div class="max-w-[85%] bg-white border border-[#3C5A48] p-3 shadow-xs rounded-xs text-xs text-[#222220]">
+                Ho comprato le scarpe da trekking da Decathlon, costo 89.90€. Le ho messe nell'armadio in corridoio, ripiano B.
+              </div>
+            </div>
+
+            <!-- Bolla AI 1 con Scheda Tecnica Oggetto -->
+            <div class="flex flex-col items-start">
+              <span class="text-[9px] font-mono-code text-[#3C5A48] font-bold mb-1">CONCIERGE OLIVETTI • 14:15</span>
+              <div class="max-w-[90%] bg-white border-l-4 border-[#3C5A48] border-t border-r border-b border-[#E3DDD1] p-3 rounded-xs text-xs text-[#222220] space-y-2">
+                <p>Perfetto! Ho archiviato la spesa e registrato la collocazione fisica nel tuo inventario:</p>
+
+                <!-- Scheda Oggetto Dattiloscritta -->
+                <div class="bg-[#FAF8F2] border border-[#E3DDD1] p-2 text-[11px] font-mono-code space-y-1">
+                  <div class="flex justify-between border-b border-[#E3DDD1] pb-1">
+                    <span class="text-[#7A7568]">OGGETTO:</span>
+                    <span class="font-bold text-[#222220]">Scarpe da Trekking</span>
+                  </div>
+                  <div class="flex justify-between border-b border-[#E3DDD1] pb-1">
+                    <span class="text-[#7A7568]">SPESA:</span>
+                    <span class="font-bold text-[#C84B31]">€ 89,90 (Decathlon)</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-[#7A7568]">UBICAZIONE:</span>
+                    <span class="font-bold text-[#3C5A48]">Corridoio > Armadio > Ripiano B</span>
+                  </div>
+                </div>
+
+                <div class="flex gap-1.5 pt-1">
+                  <span class="stamp-oli text-[8px]">#ABBIGLIAMENTO</span>
+                  <span class="stamp-oli text-[8px]">#SPORT</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bolla Utente 2 -->
+            <div class="flex flex-col items-end">
+              <span class="text-[9px] font-mono-code text-[#7A7568] mb-1">UTENTE • 14:20</span>
+              <div class="max-w-[85%] bg-white border border-[#3C5A48] p-3 shadow-xs rounded-xs text-xs text-[#222220]">
+                Cosa devo pagare entro fine mese?
+              </div>
+            </div>
+
+            <!-- Bolla AI 2 con Scheda Scadenza -->
+            <div class="flex flex-col items-start">
+              <span class="text-[9px] font-mono-code text-[#3C5A48] font-bold mb-1">CONCIERGE OLIVETTI • 14:20</span>
+              <div class="max-w-[90%] bg-white border-l-4 border-[#C84B31] border-t border-r border-b border-[#E3DDD1] p-3 rounded-xs text-xs text-[#222220] space-y-2">
+                <p>Hai <strong>1 scadenza</strong> imminente rilevata nel tuo faldone fiscale entro fine ottobre:</p>
+
+                <!-- Card Bolletta Olivetti -->
+                <div class="bg-[#FAF8F2] border-2 border-[#3C5A48] p-2.5 rounded-xs">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <span class="stamp-oli stamp-terracotta text-[8px]">SCADENZA 31 OTT</span>
+                      <h4 class="font-bold text-xs mt-1 text-[#222220]">Bolletta Enel Energia</h4>
+                      <p class="text-[10px] text-[#7A7568] font-mono-code">Luce Abitazione • Fattura #8942</p>
+                    </div>
+                    <span class="text-sm font-black font-mono-code text-[#222220]">€ 68,40</span>
+                  </div>
+                  <div class="mt-2 pt-2 border-t border-[#E3DDD1] flex justify-between items-center text-[10px]">
+                    <span class="font-mono-code text-[#7A7568]">Stato: Da Pagare</span>
+                    <button onclick="switchScreen('detail')" class="bg-[#3C5A48] text-white px-2 py-0.5 font-space text-[9px] font-bold rounded-xs hover:bg-[#2F4738] transition cursor-pointer">
+                      SCHEDA →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Input Bar Stile Tasti Lettera 22 -->
+          <div class="p-3 bg-[#F8F5EE] border-t border-[#E3DDD1]">
+            <div class="flex items-center gap-2">
+              <button class="w-9 h-9 border border-[#3C5A48] bg-white text-[#3C5A48] rounded-xs flex items-center justify-center hover:bg-[#3C5A48] hover:text-white transition cursor-pointer">
+                <i class="fa-solid fa-paperclip text-xs"></i>
+              </button>
+              <input type="text" placeholder="Registra spesa o chiedi all'archivio..." class="flex-1 bg-white border border-[#3C5A48] px-3 py-2 text-xs text-[#222220] font-mono-code placeholder-[#9E9A8E] focus:outline-hidden focus:border-[#C84B31] rounded-xs">
+              <button class="w-9 h-9 bg-[#C84B31] text-white rounded-xs flex items-center justify-center hover:bg-[#B23E26] transition shadow-xs cursor-pointer">
+                <i class="fa-solid fa-arrow-up text-xs"></i>
+              </button>
+            </div>
+            <div class="flex items-center justify-between mt-2 text-[9px] font-mono-code text-[#7A7568]">
+              <span>[🎤 TRASCRIZIONE WHISPER]</span>
+              <span>INVIO = REGISTRA A RUOLO</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- 3. SCHERMATA: ARCHIVIO FALDONI & OGGETTI FISICI                   -->
+      <!-- ================================================================= -->
+      <div id="view-archive" class="screen-view w-full justify-center hidden">
+        <div class="frame-target phone-mockup">
+          <div class="phone-notch"></div>
+
+          <!-- Header Archivio -->
+          <div class="pt-8 px-4 pb-2.5 bg-[#F8F5EE] border-b border-[#E3DDD1] flex items-center justify-between z-40">
+            <div>
+              <span class="font-space text-xs font-bold text-[#222220] block">INVENTARIO GENERALE</span>
+              <span class="text-[9px] font-mono-code text-[#7A7568]">12 OGGETTI • 18 FALDONI</span>
+            </div>
+            <button class="stamp-oli stamp-solid-sage text-[9px] cursor-pointer">
+              <i class="fa-solid fa-plus mr-1"></i> NUOVO RECORD
+            </button>
+          </div>
+          <div class="typewriter-ribbon"></div>
+
+          <!-- Filtri Categoria / Stanza -->
+          <div class="p-3 bg-[#F8F5EE] border-b border-[#E3DDD1] flex gap-1.5 overflow-x-auto text-[10px] font-space">
+            <button class="px-2.5 py-1 bg-[#3C5A48] text-white font-bold rounded-xs cursor-pointer">TUTTI</button>
+            <button class="px-2.5 py-1 bg-white border border-[#E3DDD1] text-[#7A7568] hover:text-[#222220] rounded-xs cursor-pointer">STUDIO (4)</button>
+            <button class="px-2.5 py-1 bg-white border border-[#E3DDD1] text-[#7A7568] hover:text-[#222220] rounded-xs cursor-pointer">CORRIDOIO (3)</button>
+            <button class="px-2.5 py-1 bg-white border border-[#E3DDD1] text-[#7A7568] hover:text-[#222220] rounded-xs cursor-pointer">INGRESSO (2)</button>
+          </div>
+
+          <!-- Lista Card Oggetti e Documenti -->
+          <div class="flex-1 overflow-y-auto custom-scroll p-3.5 space-y-3">
+            
+            <!-- Record 1: Passaporto -->
+            <div class="bg-white border-2 border-[#3C5A48] p-3 rounded-xs shadow-xs">
+              <div class="flex justify-between items-start">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs flex items-center justify-center text-xs text-[#3C5A48]">
+                    <i class="fa-solid fa-passport text-[#C84B31]"></i>
+                  </div>
+                  <div>
+                    <h4 class="text-xs font-bold text-[#222220]">Passaporto Italiano</h4>
+                    <span class="font-mono-code text-[9px] text-[#7A7568]">ID: OBJ-2026-001</span>
+                  </div>
+                </div>
+                <span class="stamp-oli text-[8px]">DOCUMENTO</span>
+              </div>
+              <div class="mt-2.5 bg-[#FAF8F2] border border-[#E3DDD1] p-2 text-[10px] font-mono-code rounded-xs">
+                <div class="text-[#7A7568]">COLLOCAZIONE ESATTA:</div>
+                <div class="font-bold text-[#222220]">Studio → Scrivania in noce → 1° Cassetto a destra</div>
+              </div>
+              <div class="mt-2 flex justify-between items-center text-[9px] font-mono-code text-[#7A7568]">
+                <span>Scadenza: 14 MAG 2031</span>
+                <span class="text-[#3C5A48] font-bold cursor-pointer">MODIFICA →</span>
+              </div>
+            </div>
+
+            <!-- Record 2: Scarpe Trekking -->
+            <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-xs">
+              <div class="flex justify-between items-start">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs flex items-center justify-center text-xs text-[#222220]">
+                    <i class="fa-solid fa-shoe-prints text-[#3C5A48]"></i>
+                  </div>
+                  <div>
+                    <h4 class="text-xs font-bold text-[#222220]">Scarpe da Trekking Decathlon</h4>
+                    <span class="font-mono-code text-[9px] text-[#7A7568]">ID: OBJ-2026-012</span>
+                  </div>
+                </div>
+                <span class="stamp-oli stamp-terracotta text-[8px]">NUOVO</span>
+              </div>
+              <div class="mt-2.5 bg-[#FAF8F2] border border-[#E3DDD1] p-2 text-[10px] font-mono-code rounded-xs">
+                <div class="text-[#7A7568]">COLLOCAZIONE ESATTA:</div>
+                <div class="font-bold text-[#222220]">Corridoio → Armadio a muro → Ripiano B</div>
+              </div>
+              <div class="mt-2 flex justify-between items-center text-[9px] font-mono-code text-[#7A7568]">
+                <span>Acquistate: 18 SET 2026 (€ 89,90)</span>
+                <span class="text-[#3C5A48] font-bold">1 FOTO ALLEGATA</span>
+              </div>
+            </div>
+
+            <!-- Record 3: Faldone Fiscale 2025 -->
+            <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-xs">
+              <div class="flex justify-between items-start">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs flex items-center justify-center text-xs text-[#3C5A48]">
+                    <i class="fa-solid fa-folder-closed text-[#C84B31]"></i>
+                  </div>
+                  <div>
+                    <h4 class="text-xs font-bold text-[#222220]">Faldone Fiscale & 730 (2025)</h4>
+                    <span class="font-mono-code text-[9px] text-[#7A7568]">FALD-FISC-25</span>
+                  </div>
+                </div>
+                <span class="stamp-oli text-[8px]">FALDONE FISICO</span>
+              </div>
+              <div class="mt-2.5 bg-[#FAF8F2] border border-[#E3DDD1] p-2 text-[10px] font-mono-code rounded-xs">
+                <div class="text-[#7A7568]">COLLOCAZIONE ESATTA:</div>
+                <div class="font-bold text-[#222220]">Studio → Libreria → Ripiano 3 (Dossier Rosso)</div>
+              </div>
+              <div class="mt-2 flex justify-between items-center text-[9px] font-mono-code text-[#7A7568]">
+                <span>Contiene: 14 scontrini, 3 CU</span>
+                <span class="text-[#3C5A48] font-bold cursor-pointer">SFOGLIA →</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bottom Navigation -->
+          <div class="bg-[#F8F5EE] border-t border-[#E3DDD1] p-2 flex items-center justify-around text-[10px] font-space text-[#7A7568]">
+            <button onclick="switchScreen('dashboard')" class="flex flex-col items-center hover:text-[#222220] cursor-pointer">
+              <i class="fa-solid fa-table-cells-large text-base mb-0.5"></i>
+              <span>DASHBOARD</span>
+            </button>
+            <button onclick="switchScreen('chat')" class="flex flex-col items-center hover:text-[#222220] cursor-pointer">
+              <i class="fa-solid fa-message text-base mb-0.5"></i>
+              <span>CONVERSA</span>
+            </button>
+            <button onclick="switchScreen('archive')" class="flex flex-col items-center text-[#3C5A48] font-bold cursor-pointer">
+              <i class="fa-solid fa-folder text-base mb-0.5"></i>
+              <span>FALDONI</span>
+            </button>
+            <button onclick="switchScreen('settings')" class="flex flex-col items-center hover:text-[#222220] cursor-pointer">
+              <i class="fa-solid fa-sliders text-base mb-0.5"></i>
+              <span>SISTEMA</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- 4. SCHERMATA: SCHEDA DETTAGLIO DOCUMENTO & PROTOCOLLO             -->
+      <!-- ================================================================= -->
+      <div id="view-detail" class="screen-view w-full justify-center hidden">
+        <div class="frame-target phone-mockup">
+          <div class="phone-notch"></div>
+
+          <!-- Header Scheda Dettaglio -->
+          <div class="pt-8 px-4 pb-2.5 bg-[#F8F5EE] border-b border-[#E3DDD1] flex items-center justify-between z-40">
+            <button onclick="switchScreen('dashboard')" class="stamp-oli hover:bg-[#3C5A48] hover:text-white transition text-[9px] cursor-pointer">
+              ← INDIETRO
+            </button>
+            <span class="font-space text-[10px] font-bold text-[#222220]">SCHEDA ATTO DI PROTOCOLLO</span>
+            <span class="stamp-oli stamp-terracotta text-[8px]">DOC #089</span>
+          </div>
+          <div class="typewriter-ribbon"></div>
+
+          <!-- Contenuto Scheda Tecnica -->
+          <div class="flex-1 overflow-y-auto custom-scroll p-4 space-y-3.5">
+            
+            <!-- Box Intestazione Documento -->
+            <div class="bg-white border-2 border-[#3C5A48] p-3.5 rounded-xs shadow-xs">
+              <div class="flex justify-between items-start border-b border-[#E3DDD1] pb-2">
+                <div>
+                  <span class="text-[9px] font-mono-code text-[#7A7568]">ENTE EMITTENTE</span>
+                  <h3 class="text-base font-black text-[#222220]">Enel Energia S.p.A.</h3>
+                </div>
+                <div class="text-right">
+                  <span class="text-[9px] font-mono-code text-[#7A7568]">IMPORTO A SALDO</span>
+                  <div class="text-xl font-black font-mono-code text-[#C84B31]">€ 68,40</div>
+                </div>
+              </div>
+
+              <!-- Griglia Metadati -->
+              <div class="mt-3 grid grid-cols-2 gap-2 text-[10px] font-mono-code">
+                <div>
+                  <span class="text-[#7A7568] block">OGGETTO:</span>
+                  <span class="font-bold text-[#222220]">Fattura Elettricità</span>
+                </div>
+                <div>
+                  <span class="text-[#7A7568] block">SCADENZA:</span>
+                  <span class="font-bold text-[#C84B31]">31 Ottobre 2026</span>
+                </div>
+                <div>
+                  <span class="text-[#7A7568] block">DATA EMISSIONE:</span>
+                  <span class="text-[#222220]">12 Ottobre 2026</span>
+                </div>
+                <div>
+                  <span class="text-[#7A7568] block">STATO:</span>
+                  <span class="font-bold text-[#C84B31]">DA PAGARE</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Coordinate Archivio Fisico & Digitale -->
+            <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-xs space-y-2">
+              <span class="font-space text-[10px] font-bold text-[#222220] block">UBICAZIONE ARCHIVISTICA</span>
+              
+              <div class="bg-[#FAF8F2] border border-[#E3DDD1] p-2 text-[10px] font-mono-code rounded-xs space-y-1">
+                <div class="flex justify-between">
+                  <span class="text-[#7A7568]">Faldone Cartaceo:</span>
+                  <span class="font-bold text-[#222220]">Utenze Casa 2026 (Raccoglitore Blu)</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-[#7A7568]">Stanza / Ripiano:</span>
+                  <span>Studio → Scaffale 2</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-[#7A7568]">File Digitale:</span>
+                  <span>enel_ottobre_2026.pdf (1.2 MB)</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-[#7A7568]">Crittografia:</span>
+                  <span class="text-emerald-800 font-bold">AES-256-GCM (Autenticato)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Azioni Documento Olivetti -->
+            <div class="space-y-2 pt-1">
+              <button class="w-full bg-[#C84B31] text-white p-2.5 font-space text-xs font-bold rounded-xs hover:bg-[#B23E26] transition flex items-center justify-center gap-2 cursor-pointer shadow-xs">
+                <i class="fa-solid fa-check"></i> REGISTRA PAGAMENTO / QUIETANZA
+              </button>
+              <div class="grid grid-cols-2 gap-2">
+                <button class="border border-[#3C5A48] bg-white text-[#3C5A48] p-2 font-space text-[10px] font-bold rounded-xs hover:bg-[#3C5A48] hover:text-white transition cursor-pointer">
+                  <i class="fa-solid fa-folder-open mr-1"></i> APRI IN EXPLORER
+                </button>
+                <button class="border border-[#3C5A48] bg-white text-[#3C5A48] p-2 font-space text-[10px] font-bold rounded-xs hover:bg-[#3C5A48] hover:text-white transition cursor-pointer">
+                  <i class="fa-solid fa-download mr-1"></i> SCARICA PDF
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bottom Bar -->
+          <div class="bg-[#F8F5EE] border-t border-[#E3DDD1] p-2.5 text-center text-[9px] font-mono-code text-[#7A7568]">
+            HASH SHA-256: 9f8a...31b2 • ARCHIVIO CENTRALE CERTIFICATO
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- 5. SCHERMATA: IMPOSTAZIONI & STATO CAVEAU                         -->
+      <!-- ================================================================= -->
+      <div id="view-settings" class="screen-view w-full justify-center hidden">
+        <div class="frame-target phone-mockup">
+          <div class="phone-notch"></div>
+
+          <!-- Header Impostazioni -->
+          <div class="pt-8 px-4 pb-2.5 bg-[#F8F5EE] border-b border-[#E3DDD1] flex items-center justify-between z-40">
+            <div>
+              <span class="font-space text-xs font-bold text-[#222220] block">PANNELLO DI CONTROLLO</span>
+              <span class="text-[9px] font-mono-code text-[#7A7568]">STATO SISTEMA & CAVEAU</span>
+            </div>
+            <span class="stamp-oli text-emerald-800 border-emerald-700 text-[8px]">ATTIVO</span>
+          </div>
+          <div class="typewriter-ribbon"></div>
+
+          <!-- Contenuto Impostazioni -->
+          <div class="flex-1 overflow-y-auto custom-scroll p-4 space-y-3.5">
+            
+            <!-- Modulo 1: Google Drive Sync -->
+            <div class="bg-white border-2 border-[#3C5A48] p-3 rounded-xs shadow-xs">
+              <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center gap-2">
+                  <i class="fa-brands fa-google-drive text-[#C84B31] text-sm"></i>
+                  <span class="font-space text-[11px] font-bold text-[#222220]">GOOGLE DRIVE SYNC</span>
+                </div>
+                <span class="stamp-oli stamp-terracotta text-[8px]">DUAL MODE</span>
+              </div>
+              <p class="text-[10px] text-[#7A7568] mb-2 font-mono-code">
+                I file sono custoditi localmente su PC e replicati cifrati sul tuo Drive personale.
+              </p>
+              <div class="bg-[#FAF8F2] border border-[#E3DDD1] p-2 text-[10px] font-mono-code rounded-xs space-y-1">
+                <div class="flex justify-between">
+                  <span class="text-[#7A7568]">Account Connesso:</span>
+                  <span class="font-bold">utente@gmail.com</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-[#7A7568]">Cartella Remota:</span>
+                  <span>DOVE-LO-AI-MESSO/VAULT</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-[#7A7568]">Spazio Occupato:</span>
+                  <span>48.2 MB / 15 GB</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Modulo 2: Cartelle PC Monitorate -->
+            <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-xs">
+              <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-hard-drive text-xs text-[#3C5A48]"></i>
+                  <span class="font-space text-[11px] font-bold text-[#222220]">CARTELLE PC MONITORATE</span>
+                </div>
+                <span class="stamp-oli text-[8px]">AUTO-SCAN</span>
+              </div>
+              <div class="space-y-1.5 font-mono-code text-[10px]">
+                <div class="p-1.5 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs flex justify-between items-center">
+                  <span>C:\Users\Leo\Downloads</span>
+                  <span class="text-[#3C5A48] font-bold">ATTIVO</span>
+                </div>
+                <div class="p-1.5 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs flex justify-between items-center">
+                  <span>C:\Users\Leo\Documents\Fatture</span>
+                  <span class="text-[#3C5A48] font-bold">ATTIVO</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Modulo 3: Sicurezza & Server MCP -->
+            <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-xs">
+              <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-shield-halved text-xs text-[#3C5A48]"></i>
+                  <span class="font-space text-[11px] font-bold text-[#222220]">SICUREZZA & SERVER MCP</span>
+                </div>
+                <span class="stamp-oli text-[8px]">20 TOOLS</span>
+              </div>
+              <div class="text-[10px] font-mono-code text-[#7A7568] space-y-1">
+                <div>• Chiave Locale: AES-256-GCM (Attiva in memoria)</div>
+                <div>• Server MCP Caveau: 20 tool per agenti esterni</div>
+                <div>• Motore AI: Gemini 2.5 Flash + Whisper Locale</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bottom Navigation -->
+          <div class="bg-[#F8F5EE] border-t border-[#E3DDD1] p-2 flex items-center justify-around text-[10px] font-space text-[#7A7568]">
+            <button onclick="switchScreen('dashboard')" class="flex flex-col items-center hover:text-[#222220] cursor-pointer">
+              <i class="fa-solid fa-table-cells-large text-base mb-0.5"></i>
+              <span>DASHBOARD</span>
+            </button>
+            <button onclick="switchScreen('chat')" class="flex flex-col items-center hover:text-[#222220] cursor-pointer">
+              <i class="fa-solid fa-message text-base mb-0.5"></i>
+              <span>CONVERSA</span>
+            </button>
+            <button onclick="switchScreen('archive')" class="flex flex-col items-center hover:text-[#222220] cursor-pointer">
+              <i class="fa-solid fa-folder text-base mb-0.5"></i>
+              <span>FALDONI</span>
+            </button>
+            <button onclick="switchScreen('settings')" class="flex flex-col items-center text-[#3C5A48] font-bold cursor-pointer">
+              <i class="fa-solid fa-sliders text-base mb-0.5"></i>
+              <span>SISTEMA</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CONTENITORE TUTTE LE SCHERMATE (Modalità Panoramica / Grid) -->
+    <div id="allScreensContainer" class="hidden w-full">
+      <div class="text-center mb-6">
+        <span class="stamp-oli stamp-solid-sage text-xs">PANORAMICA DI SISTEMA</span>
+        <h2 class="text-2xl font-bold text-white mt-1 font-space">TUTTE LE 5 SCHERMATE OLIVETTI</h2>
+        <p class="text-neutral-400 text-xs mt-0.5">L'intero ecosistema di "Dove lo AI messo" nello stile Olivetti Industrial</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 items-start justify-center">
+        <div id="clone-dashboard" class="flex flex-col items-center">
+          <span class="text-xs font-bold text-white mb-2 font-space">1. DASHBOARD</span>
+        </div>
+        <div id="clone-chat" class="flex flex-col items-center">
+          <span class="text-xs font-bold text-white mb-2 font-space">2. CHAT CONVERSAZIONALE</span>
+        </div>
+        <div id="clone-archive" class="flex flex-col items-center">
+          <span class="text-xs font-bold text-white mb-2 font-space">3. ARCHIVIO & STANZE</span>
+        </div>
+        <div id="clone-detail" class="flex flex-col items-center">
+          <span class="text-xs font-bold text-white mb-2 font-space">4. SCHEDA ATTO</span>
+        </div>
+        <div id="clone-settings" class="flex flex-col items-center">
+          <span class="text-xs font-bold text-white mb-2 font-space">5. IMPOSTAZIONI</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ======================================================================= -->
+  <!-- JAVASCRIPT PER LA NAVIGAZIONE                                           -->
+  <!-- ======================================================================= -->
+  <script>
+    let currentScreen = 'dashboard';
+    let currentDevice = 'mobile';
+
+    function switchScreen(screenId) {
+      currentScreen = screenId;
+      
+      document.querySelectorAll('.screen-view').forEach(el => {
+        el.classList.add('hidden');
+        el.classList.remove('flex');
+      });
+
+      const active = document.getElementById('view-' + screenId);
+      if (active) {
+        active.classList.remove('hidden');
+        active.classList.add('flex');
+      }
+
+      const tabs = ['dashboard', 'chat', 'archive', 'detail', 'settings'];
+      tabs.forEach(tab => {
+        const btn = document.getElementById('tab-' + tab);
+        if (btn) {
+          if (tab === screenId) {
+            btn.className = "px-3 py-1.5 rounded-lg transition bg-white text-black font-bold shadow cursor-pointer";
+          } else {
+            btn.className = "px-3 py-1.5 rounded-lg transition text-neutral-300 hover:text-white cursor-pointer";
+          }
+        }
+      });
+    }
+
+    function setDeviceMode(mode) {
+      currentDevice = mode;
+      const singleContainer = document.getElementById('singleViewContainer');
+      const allContainer = document.getElementById('allScreensContainer');
+      const tabsBar = document.getElementById('screenTabsBar');
+
+      document.getElementById('devBtn-mobile').className = mode === 'mobile' ? 'px-3 py-1.5 rounded-lg font-semibold transition bg-[#3C5A48] text-white cursor-pointer' : 'px-3 py-1.5 rounded-lg font-semibold transition text-neutral-400 hover:text-white cursor-pointer';
+      document.getElementById('devBtn-desktop').className = mode === 'desktop' ? 'px-3 py-1.5 rounded-lg font-semibold transition bg-[#3C5A48] text-white cursor-pointer' : 'px-3 py-1.5 rounded-lg font-semibold transition text-neutral-400 hover:text-white cursor-pointer';
+      document.getElementById('devBtn-all').className = mode === 'all-mobile' ? 'px-3 py-1.5 rounded-lg font-semibold transition bg-[#3C5A48] text-white cursor-pointer' : 'px-3 py-1.5 rounded-lg font-semibold transition text-neutral-400 hover:text-white cursor-pointer';
+
+      if (mode === 'all-mobile') {
+        singleContainer.classList.add('hidden');
+        tabsBar.classList.add('hidden');
+        allContainer.classList.remove('hidden');
+        renderAllScreens();
+      } else {
+        allContainer.classList.add('hidden');
+        singleContainer.classList.remove('hidden');
+        tabsBar.classList.remove('hidden');
+
+        document.querySelectorAll('.frame-target').forEach(frame => {
+          const notch = frame.querySelector('.phone-notch');
+          if (mode === 'desktop') {
+            frame.classList.remove('phone-mockup');
+            frame.classList.add('desktop-mockup');
+            if (notch) notch.style.display = 'none';
+          } else {
+            frame.classList.remove('desktop-mockup');
+            frame.classList.add('phone-mockup');
+            if (notch) notch.style.display = 'block';
+          }
+        });
+      }
+    }
+
+    function renderAllScreens() {
+      const targets = [
+        { id: 'view-dashboard', container: 'clone-dashboard' },
+        { id: 'view-chat', container: 'clone-chat' },
+        { id: 'view-archive', container: 'clone-archive' },
+        { id: 'view-detail', container: 'clone-detail' },
+        { id: 'view-settings', container: 'clone-settings' }
+      ];
+
+      targets.forEach(t => {
+        const dest = document.getElementById(t.container);
+        if (dest && dest.children.length <= 1) {
+          const srcFrame = document.querySelector('#' + t.id + ' .frame-target');
+          if (srcFrame) {
+            const clone = srcFrame.cloneNode(true);
+            clone.classList.remove('desktop-mockup');
+            clone.classList.add('phone-mockup');
+            const notch = clone.querySelector('.phone-notch');
+            if (notch) notch.style.display = 'block';
+            dest.appendChild(clone);
+          }
+        }
+      });
+    }
+
+    // Inizializza sulla Dashboard
+    switchScreen('dashboard');
+  </script>
+</body>
+</html>

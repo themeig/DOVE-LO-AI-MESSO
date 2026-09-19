@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dove lo AI messo — 3 Evoluzioni dello Stile Vintage Swiss</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #121316;
+      color: #E2E2DC;
+    }
+
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .font-space {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .font-editorial {
+      font-family: 'Newsreader', Georgia, serif;
+    }
+
+    /* Cornice Smartphone */
+    .phone-mockup {
+      width: 365px;
+      height: 730px;
+      border-radius: 44px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 10px #24262B, 0 0 0 12px #3A3D45;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .phone-notch {
+      width: 110px;
+      height: 22px;
+      background: #24262B;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      z-index: 60;
+    }
+
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.15);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col p-3 md:p-6 selection:bg-amber-500 selection:text-black">
+
+  <!-- ======================================================================= -->
+  <!-- BARRA DI CONTROLLO & HEADER                                             -->
+  <!-- ======================================================================= -->
+  <header class="max-w-6xl mx-auto w-full mb-6">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 border-b border-neutral-800">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-amber-500 text-neutral-950 flex items-center justify-center font-black text-lg shadow-md">
+          <i class="fa-solid fa-compass-drafting"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl md:text-2xl font-black tracking-tight text-white uppercase font-space">
+              Evoluzioni di "Vintage Swiss"
+            </h1>
+            <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 font-mono-code">
+              3 NUOVE VARIANTI AFFINI
+            </span>
+          </div>
+          <p class="text-xs text-neutral-400">
+            Tre declinazioni che conservano il rigore tipografico e l'eleganza tattile ma esplorano palette e dettagli unici.
+          </p>
+        </div>
+      </div>
+
+      <!-- Selettore Schermata (Dashboard vs Chat) -->
+      <div class="flex items-center gap-1 bg-neutral-900 p-1 rounded-xl border border-neutral-800 text-xs">
+        <button onclick="setTab('dashboard')" id="tabBtn-dashboard" class="px-3 py-1.5 rounded-lg font-semibold transition bg-amber-500 text-neutral-950 font-bold cursor-pointer">
+          <i class="fa-solid fa-chart-pie mr-1.5"></i> Vista Dashboard
+        </button>
+        <button onclick="setTab('chat')" id="tabBtn-chat" class="px-3 py-1.5 rounded-lg font-semibold transition text-neutral-400 hover:text-white cursor-pointer">
+          <i class="fa-solid fa-message mr-1.5"></i> Vista Chat
+        </button>
+      </div>
+    </div>
+
+    <!-- Barra Selettore Varianti -->
+    <div class="flex flex-wrap items-center justify-center gap-1.5 mt-4 p-1.5 bg-neutral-900/90 rounded-xl border border-neutral-800 max-w-4xl mx-auto text-xs font-semibold">
+      <button onclick="switchView('side-by-side')" id="btn-side" class="px-3 py-1.5 rounded-lg transition bg-white text-black font-bold shadow cursor-pointer">
+        <i class="fa-solid fa-table-columns mr-1 text-amber-500"></i> Confronto 3 Varianti
+      </button>
+      <button onclick="switchView('var-olivetti')" id="btn-olivetti" class="px-3 py-1.5 rounded-lg transition text-neutral-300 hover:text-white cursor-pointer">
+        A. Olivetti Industrial (Salvia & Avorio)
+      </button>
+      <button onclick="switchView('var-teenage')" id="btn-teenage" class="px-3 py-1.5 rounded-lg transition text-neutral-300 hover:text-white cursor-pointer">
+        B. Teenage Tech-Lab (Sabbia & Ocra)
+      </button>
+      <button onclick="switchView('var-vignelli')" id="btn-vignelli" class="px-3 py-1.5 rounded-lg transition text-neutral-300 hover:text-white cursor-pointer">
+        C. Vignelli Standards (Gesso & Vermiglio)
+      </button>
+    </div>
+  </header>
+
+
+  <!-- ======================================================================= -->
+  <!-- AREA CONTENUTO PRINCIPALE (3 VARIANTI A CONFRONTO)                     -->
+  <!-- ======================================================================= -->
+  <main class="max-w-7xl mx-auto w-full flex-1 flex items-center justify-center py-2">
+
+    <div id="variationsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start justify-center">
+
+      <!-- =================================================================== -->
+      <!-- 1. VARIANTE A: OLIVETTI INDUSTRIAL (Lettera 22 & Sottsass)          -->
+      <!-- =================================================================== -->
+      <div id="col-olivetti" class="flex flex-col items-center">
+        <div class="mb-3 text-center">
+          <span class="text-[10px] font-bold text-[#3C5A48] uppercase tracking-widest bg-[#3C5A48]/20 px-2 py-0.5 rounded border border-[#3C5A48]/30 font-mono-code">Variante A</span>
+          <h2 class="text-base font-bold text-white font-space mt-1">Olivetti Industrial</h2>
+          <p class="text-[11px] text-neutral-400">Avorio caldo `#F8F5EE`, Verde Salvia `#3C5A48`, Terracotta `#C84B31`</p>
+        </div>
+
+        <!-- Phone Frame -->
+        <div class="phone-mockup bg-[#F8F5EE] text-[#222220]">
+          <div class="phone-notch"></div>
+
+          <!-- Top Header -->
+          <div class="pt-8 px-4 pb-3 bg-[#F8F5EE] border-b border-[#E3DDD1] flex items-center justify-between z-40">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-sm bg-[#3C5A48] text-white flex items-center justify-center text-xs font-bold">
+                <i class="fa-solid fa-typewriter"></i>
+              </div>
+              <div>
+                <span class="text-xs font-black font-space tracking-wide text-[#222220] block">DOVE LO AI MESSO</span>
+                <span class="text-[9px] font-mono-code text-[#7A7568]">LETTERA 22 • REG. N. 2026</span>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 text-[9px] font-bold text-[#C84B31] border border-[#C84B31] rounded-sm font-mono-code">
+              ARCHIVIO
+            </span>
+          </div>
+
+          <!-- CONTENUTO DASHBOARD (Visibile se activeTab == 'dashboard') -->
+          <div class="content-dashboard flex-1 overflow-y-auto custom-scroll p-4 space-y-3.5">
+            <div class="flex items-center justify-between text-[10px] font-mono-code text-[#7A7568] border-b border-[#E3DDD1] pb-1.5">
+              <span>SABATO 19 SETTEMBRE</span>
+              <span class="text-[#3C5A48] font-bold">● PROTOCOLLO ATTIVO</span>
+            </div>
+
+            <!-- Bento-Grid Olivetti -->
+            <div class="grid grid-cols-2 gap-2.5">
+              <!-- KPI 1 -->
+              <div class="bg-white border-2 border-[#3C5A48] p-3 shadow-xs rounded-xs">
+                <span class="text-[9px] font-mono-code text-[#7A7568] uppercase block">Scadenzario</span>
+                <div class="text-2xl font-black font-mono-code text-[#222220] my-1">€ 68,40</div>
+                <div class="text-[9px] text-[#C84B31] font-bold font-mono-code">1 Utenza entro fine mese</div>
+              </div>
+              <!-- KPI 2 -->
+              <div class="bg-white border border-[#E3DDD1] p-3 shadow-xs rounded-xs">
+                <span class="text-[9px] font-mono-code text-[#7A7568] uppercase block">Documenti</span>
+                <div class="text-2xl font-black font-mono-code text-[#222220] my-1">24</div>
+                <div class="text-[9px] text-[#3C5A48] font-medium">100% catalogati</div>
+              </div>
+              <!-- KPI 3 -->
+              <div class="bg-white border border-[#E3DDD1] p-3 shadow-xs rounded-xs">
+                <span class="text-[9px] font-mono-code text-[#7A7568] uppercase block">Oggetti Fisici</span>
+                <div class="text-2xl font-black font-mono-code text-[#222220] my-1">12</div>
+                <div class="text-[9px] text-[#7A7568]">4 stanze censite</div>
+              </div>
+              <!-- KPI 4 -->
+              <div class="bg-white border border-[#E3DDD1] p-3 shadow-xs rounded-xs">
+                <span class="text-[9px] font-mono-code text-[#7A7568] uppercase block">Cloud Drive</span>
+                <div class="text-lg font-bold font-mono-code text-[#222220] my-1">DUAL-SYNC</div>
+                <div class="text-[9px] text-[#3C5A48] font-bold">Crittografato</div>
+              </div>
+            </div>
+
+            <!-- Registro Scadenze -->
+            <div class="bg-white border border-[#E3DDD1] p-3 shadow-xs">
+              <div class="flex justify-between items-center border-b border-[#E3DDD1] pb-1.5 mb-2">
+                <span class="text-[10px] font-bold font-space text-[#222220]">SCADENZE & TRIBUTI</span>
+                <span class="text-[9px] font-mono-code text-[#7A7568]">FALDONE U-01</span>
+              </div>
+              <div class="space-y-2">
+                <div class="p-2 bg-[#F8F5EE] border-l-3 border-[#C84B31] flex justify-between items-center">
+                  <div>
+                    <span class="font-bold text-xs text-[#222220]">Enel Energia</span>
+                    <span class="block text-[9px] font-mono-code text-[#7A7568]">Scad. 31 Ott • Luce Casa</span>
+                  </div>
+                  <div class="text-right">
+                    <span class="font-bold font-mono-code text-xs text-[#222220]">€ 68,40</span>
+                    <span class="block text-[8px] font-bold text-[#C84B31] font-mono-code">DA PAGARE</span>
+                  </div>
+                </div>
+                <div class="p-2 bg-white border border-[#E3DDD1] flex justify-between items-center opacity-80">
+                  <div>
+                    <span class="font-bold text-xs text-[#222220]">Decathlon Scarpe</span>
+                    <span class="block text-[9px] font-mono-code text-[#7A7568]">18 Settembre • Sport</span>
+                  </div>
+                  <div class="text-right">
+                    <span class="font-bold font-mono-code text-xs text-[#222220]">€ 89,90</span>
+                    <span class="block text-[8px] font-bold text-[#3C5A48] font-mono-code">SALDATO</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pulsantiere Azioni -->
+            <button class="w-full bg-[#3C5A48] text-white p-2.5 font-space text-xs font-bold rounded-sm hover:bg-[#2F4738] transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-plus"></i> ACQUISISCI DOCUMENTO
+            </button>
+          </div>
+
+          <!-- CONTENUTO CHAT (Nascosto di default, visibile se activeTab == 'chat') -->
+          <div class="content-chat flex-1 overflow-y-auto custom-scroll p-3.5 space-y-3 hidden">
+            <div class="flex flex-col items-end">
+              <span class="text-[9px] font-mono-code text-[#7A7568] mb-1">UTENTE • 14:15</span>
+              <div class="max-w-[85%] bg-white border border-[#3C5A48] p-3 shadow-xs text-xs text-[#222220]">
+                Ho comprato le scarpe da trekking da Decathlon, costo 89.90€. Le ho messe nell'armadio in corridoio, ripiano B.
+              </div>
+            </div>
+            <div class="flex flex-col items-start">
+              <span class="text-[9px] font-mono-code text-[#3C5A48] font-bold mb-1">CONCIERGE OLIVETTI</span>
+              <div class="max-w-[90%] bg-white border-l-4 border-[#3C5A48] border-t border-r border-b border-[#E3DDD1] p-3 text-xs text-[#222220] space-y-2">
+                <p>Spesa e collocazione archiviate a registro:</p>
+                <div class="bg-[#F8F5EE] border border-[#E3DDD1] p-2 text-[10px] font-mono-code space-y-1">
+                  <div><strong>Oggetto:</strong> Scarpe Trekking Decathlon</div>
+                  <div><strong>Importo:</strong> € 89,90 • Saldato</div>
+                  <div><strong>Posizione:</strong> Corridoio > Armadio > Ripiano B</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Bar -->
+          <div class="bg-[#F8F5EE] border-t border-[#E3DDD1] p-2.5 flex items-center justify-around text-[10px] font-mono-code text-[#7A7568]">
+            <span class="text-[#3C5A48] font-bold"><i class="fa-solid fa-table-cells mr-1"></i> DASHBOARD</span>
+            <span><i class="fa-solid fa-message mr-1"></i> CHAT</span>
+            <span><i class="fa-solid fa-folder mr-1"></i> FALDONI</span>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- =================================================================== -->
+      <!-- 2. VARIANTE B: TEENAGE TECH-LAB (Tactile, OP-1, Sand & Amber)       -->
+      <!-- =================================================================== -->
+      <div id="col-teenage" class="flex flex-col items-center">
+        <div class="mb-3 text-center">
+          <span class="text-[10px] font-bold text-amber-500 uppercase tracking-widest bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30 font-mono-code">Variante B</span>
+          <h2 class="text-base font-bold text-white font-space mt-1">Teenage Tech-Lab</h2>
+          <p class="text-[11px] text-neutral-400">Sabbia opaca `#EAE6DF`, Ardesia `#25272C`, Ocra Ambra `#E5A93C`</p>
+        </div>
+
+        <!-- Phone Frame -->
+        <div class="phone-mockup bg-[#EAE6DF] text-[#1E2024]">
+          <div class="phone-notch"></div>
+
+          <!-- Top Header -->
+          <div class="pt-8 px-4 pb-3 bg-[#EAE6DF] border-b-2 border-[#1E2024] flex items-center justify-between z-40">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 bg-[#E5A93C] text-black flex items-center justify-center text-xs font-black rounded-xs">
+                <i class="fa-solid fa-sliders"></i>
+              </div>
+              <div>
+                <span class="text-xs font-black font-mono-code tracking-tight text-[#1E2024] block">CAVEAU // SYS-01</span>
+                <span class="text-[9px] font-mono-code text-[#6B6E76]">PARAM: SYNC-OK • 44.1kHz</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+              <span class="px-1.5 py-0.5 text-[8px] font-black bg-[#1E2024] text-[#EAE6DF] font-mono-code">RUN</span>
+            </div>
+          </div>
+
+          <!-- CONTENUTO DASHBOARD -->
+          <div class="content-dashboard flex-1 overflow-y-auto custom-scroll p-4 space-y-3.5">
+            <div class="flex items-center justify-between text-[10px] font-mono-code text-[#6B6E76] border-b border-[#D4CFC6] pb-1.5">
+              <span>DATE // 19.09.2026</span>
+              <span class="font-bold text-[#1E2024]">[ ENCRYPTED ]</span>
+            </div>
+
+            <!-- Bento-Grid Teenage -->
+            <div class="grid grid-cols-2 gap-2.5">
+              <!-- KPI 1 -->
+              <div class="bg-white border-2 border-[#1E2024] p-3 shadow-[2px_2px_0px_#1E2024]">
+                <div class="flex justify-between items-center text-[9px] font-mono-code text-[#6B6E76]">
+                  <span>CH-01 // DUE</span>
+                  <span class="w-2 h-2 rounded-full bg-[#FF5500]"></span>
+                </div>
+                <div class="text-2xl font-black font-mono-code text-[#1E2024] my-1">€ 68.40</div>
+                <!-- Segmented visual bar -->
+                <div class="flex gap-0.5 mt-1">
+                  <div class="h-1.5 w-1/4 bg-[#FF5500]"></div>
+                  <div class="h-1.5 w-1/4 bg-[#FF5500]"></div>
+                  <div class="h-1.5 w-1/4 bg-[#FF5500]"></div>
+                  <div class="h-1.5 w-1/4 bg-[#D4CFC6]"></div>
+                </div>
+              </div>
+              <!-- KPI 2 -->
+              <div class="bg-white border-2 border-[#1E2024] p-3 shadow-[2px_2px_0px_#1E2024]">
+                <div class="flex justify-between items-center text-[9px] font-mono-code text-[#6B6E76]">
+                  <span>CH-02 // DOCS</span>
+                  <i class="fa-solid fa-folder-closed text-xs"></i>
+                </div>
+                <div class="text-2xl font-black font-mono-code text-[#1E2024] my-1">24</div>
+                <span class="text-[9px] font-mono-code text-[#E5A93C] font-bold">+3 INBOX</span>
+              </div>
+              <!-- KPI 3 -->
+              <div class="bg-white border-2 border-[#1E2024] p-3 shadow-[2px_2px_0px_#1E2024]">
+                <div class="flex justify-between items-center text-[9px] font-mono-code text-[#6B6E76]">
+                  <span>CH-03 // ITEMS</span>
+                  <i class="fa-solid fa-box text-xs"></i>
+                </div>
+                <div class="text-2xl font-black font-mono-code text-[#1E2024] my-1">12</div>
+                <span class="text-[9px] font-mono-code text-[#6B6E76]">4 ROOMS</span>
+              </div>
+              <!-- KPI 4 -->
+              <div class="bg-white border-2 border-[#1E2024] p-3 shadow-[2px_2px_0px_#1E2024]">
+                <div class="flex justify-between items-center text-[9px] font-mono-code text-[#6B6E76]">
+                  <span>CH-04 // DRIVE</span>
+                  <i class="fa-solid fa-cloud text-xs text-emerald-600"></i>
+                </div>
+                <div class="text-lg font-black font-mono-code text-[#1E2024] my-1">DUAL</div>
+                <span class="text-[9px] font-mono-code text-emerald-700 font-bold">LINKED</span>
+              </div>
+            </div>
+
+            <!-- Sezione Ledger con Bottoni Meccanici -->
+            <div class="bg-white border-2 border-[#1E2024] p-3 shadow-[2px_2px_0px_#1E2024]">
+              <div class="flex justify-between items-center border-b-2 border-[#1E2024] pb-1.5 mb-2">
+                <span class="text-[10px] font-black font-mono-code uppercase text-[#1E2024]">REGISTRY // DEADLINES</span>
+                <span class="text-[9px] font-mono-code bg-[#1E2024] text-white px-1">2026.10</span>
+              </div>
+              <div class="space-y-2">
+                <div class="p-2 border-2 border-[#1E2024] bg-[#FDFBF7] flex justify-between items-center">
+                  <div>
+                    <span class="font-bold text-xs font-mono-code text-[#1E2024]">ENEL_ENERGIA.PDF</span>
+                    <span class="block text-[9px] font-mono-code text-[#6B6E76]">EXP: 31.10.2026 // PWR-HOME</span>
+                  </div>
+                  <div class="text-right">
+                    <span class="font-black font-mono-code text-xs text-[#1E2024]">€ 68.40</span>
+                    <span class="block text-[8px] font-black text-[#FF5500] font-mono-code">[PAY_PENDING]</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pulsante Tattile Meccanico -->
+            <button class="w-full bg-[#E5A93C] text-[#1E2024] border-2 border-[#1E2024] p-2.5 font-mono-code text-xs font-black shadow-[3px_3px_0px_#1E2024] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_#1E2024] transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-barcode"></i> SCAN / ACQUIRE RECORD
+            </button>
+          </div>
+
+          <!-- CONTENUTO CHAT -->
+          <div class="content-chat flex-1 overflow-y-auto custom-scroll p-3.5 space-y-3 hidden">
+            <div class="flex flex-col items-end">
+              <span class="text-[9px] font-mono-code text-[#6B6E76] mb-1">IN // 14:15:02</span>
+              <div class="max-w-[85%] bg-white border-2 border-[#1E2024] p-2.5 shadow-[2px_2px_0px_#1E2024] text-xs font-mono-code text-[#1E2024]">
+                Ho comprato le scarpe da trekking da Decathlon, costo 89.90€. Le ho messe nell'armadio in corridoio, ripiano B.
+              </div>
+            </div>
+            <div class="flex flex-col items-start">
+              <span class="text-[9px] font-mono-code text-[#E5A93C] font-black mb-1">OUT // CAV-AI</span>
+              <div class="max-w-[90%] bg-white border-2 border-[#1E2024] p-2.5 shadow-[2px_2px_0px_#1E2024] text-xs font-mono-code text-[#1E2024] space-y-2">
+                <p>ACK // Record memorizzato con successo:</p>
+                <div class="bg-[#FDFBF7] border border-[#1E2024] p-2 text-[10px] space-y-0.5">
+                  <div>ITEM: SCARPE TREKKING</div>
+                  <div>COST: € 89.90 (DECATHLON)</div>
+                  <div>LOC : CORRIDOIO > ARMADIO > RIP-B</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Bar -->
+          <div class="bg-[#EAE6DF] border-t-2 border-[#1E2024] p-2 flex items-center justify-around text-[10px] font-mono-code text-[#1E2024]">
+            <span class="font-black bg-[#1E2024] text-[#EAE6DF] px-2 py-0.5"><i class="fa-solid fa-chart-pie mr-1"></i> DASH</span>
+            <span><i class="fa-solid fa-terminal mr-1"></i> CHAT</span>
+            <span><i class="fa-solid fa-box mr-1"></i> VAULT</span>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- =================================================================== -->
+      <!-- 3. VARIANTE C: VIGNELLI STANDARDS (NASA 1974, Milk, Ink & Crimson)  -->
+      <!-- =================================================================== -->
+      <div id="col-vignelli" class="flex flex-col items-center">
+        <div class="mb-3 text-center">
+          <span class="text-[10px] font-bold text-[#E63946] uppercase tracking-widest bg-[#E63946]/20 px-2 py-0.5 rounded border border-[#E63946]/30 font-mono-code">Variante C</span>
+          <h2 class="text-base font-bold text-white font-space mt-1">Vignelli Standards</h2>
+          <p class="text-[11px] text-neutral-400">Gesso freddo `#F4F4F2`, Inchiostro `#0F0F10`, Vermiglio `#E63946`</p>
+        </div>
+
+        <!-- Phone Frame -->
+        <div class="phone-mockup bg-[#F4F4F2] text-[#0F0F10]">
+          <div class="phone-notch"></div>
+
+          <!-- Top Header -->
+          <div class="pt-8 px-4 pb-3 bg-[#F4F4F2] border-b border-[#0F0F10] flex items-center justify-between z-40">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 bg-[#0F0F10] text-white flex items-center justify-center text-xs font-black">
+                <i class="fa-solid fa-square"></i>
+              </div>
+              <div>
+                <span class="text-xs font-black tracking-tight text-[#0F0F10] block uppercase font-space">DOVE LO AI MESSO</span>
+                <span class="text-[8px] font-mono-code text-[#666666]">STANDARDS MANUAL • SEC. 04</span>
+              </div>
+            </div>
+            <div class="bg-[#E63946] text-white text-[9px] font-black px-2 py-0.5 font-mono-code">
+              VERIFIED
+            </div>
+          </div>
+
+          <!-- CONTENUTO DASHBOARD -->
+          <div class="content-dashboard flex-1 overflow-y-auto custom-scroll p-4 space-y-3.5">
+            <div class="flex items-center justify-between text-[9px] font-mono-code text-[#666666] border-b border-[#D8D8D4] pb-1">
+              <span>SYSTEM REPORT • 19.09.2026</span>
+              <span class="text-[#E63946] font-bold">STATUS: NOMINAL</span>
+            </div>
+
+            <!-- Bento-Grid Vignelli (Griglie 1px decise) -->
+            <div class="grid grid-cols-2 gap-2">
+              <!-- KPI 1 -->
+              <div class="bg-white border border-[#0F0F10] p-3">
+                <span class="text-[8px] font-mono-code text-[#666666] uppercase block tracking-wider">01 / PAYABLES</span>
+                <div class="text-2xl font-black font-space text-[#0F0F10] my-1">€ 68,40</div>
+                <div class="text-[8px] text-[#E63946] font-bold font-mono-code uppercase">Due 31 Oct 2026</div>
+              </div>
+              <!-- KPI 2 -->
+              <div class="bg-white border border-[#0F0F10] p-3">
+                <span class="text-[8px] font-mono-code text-[#666666] uppercase block tracking-wider">02 / ARCHIVES</span>
+                <div class="text-2xl font-black font-space text-[#0F0F10] my-1">24</div>
+                <div class="text-[8px] text-[#0F0F10] font-mono-code">Indexed Files</div>
+              </div>
+              <!-- KPI 3 -->
+              <div class="bg-white border border-[#0F0F10] p-3">
+                <span class="text-[8px] font-mono-code text-[#666666] uppercase block tracking-wider">03 / INVENTORY</span>
+                <div class="text-2xl font-black font-space text-[#0F0F10] my-1">12</div>
+                <div class="text-[8px] text-[#666666] font-mono-code">Physical Items</div>
+              </div>
+              <!-- KPI 4 -->
+              <div class="bg-white border border-[#0F0F10] p-3">
+                <span class="text-[8px] font-mono-code text-[#666666] uppercase block tracking-wider">04 / CLOUD</span>
+                <div class="text-lg font-black font-space text-[#0F0F10] my-1">DUAL-SYNC</div>
+                <div class="text-[8px] text-[#0F0F10] font-mono-code">Drive Connected</div>
+              </div>
+            </div>
+
+            <!-- Registro Scadenze Rigoroso -->
+            <div class="bg-white border border-[#0F0F10] p-3">
+              <div class="flex justify-between items-center border-b border-[#0F0F10] pb-1 mb-2">
+                <span class="text-[10px] font-black uppercase text-[#0F0F10] font-space">DEADLINE SCHEDULE</span>
+                <span class="text-[8px] font-mono-code text-[#666666]">REF: SEC-09</span>
+              </div>
+              <div class="space-y-1.5 font-mono-code">
+                <div class="p-2 border-l-4 border-[#E63946] bg-[#F4F4F2] flex justify-between items-center">
+                  <div>
+                    <span class="font-black text-xs text-[#0F0F10]">ENEL ENERGIA</span>
+                    <span class="block text-[8px] text-[#666666]">31.10.2026 • ELECTRICITY</span>
+                  </div>
+                  <div class="text-right">
+                    <span class="font-black text-xs text-[#0F0F10]">€ 68.40</span>
+                    <span class="block text-[8px] font-bold text-[#E63946]">ACTION REQ.</span>
+                  </div>
+                </div>
+                <div class="p-2 border-l-4 border-[#0F0F10] bg-white flex justify-between items-center opacity-80">
+                  <div>
+                    <span class="font-bold text-xs text-[#0F0F10]">DECATHLON</span>
+                    <span class="block text-[8px] text-[#666666]">18.09.2026 • TREKKING</span>
+                  </div>
+                  <div class="text-right">
+                    <span class="font-black text-xs text-[#0F0F10]">€ 89.90</span>
+                    <span class="block text-[8px] font-bold text-[#0F0F10]">CLEARED</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bottone Primario Vermiglio -->
+            <button class="w-full bg-[#E63946] text-white p-2.5 font-space text-xs font-black uppercase tracking-wider hover:bg-[#D32F2F] transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-plus"></i> INGEST NEW DOCUMENT
+            </button>
+          </div>
+
+          <!-- CONTENUTO CHAT -->
+          <div class="content-chat flex-1 overflow-y-auto custom-scroll p-3.5 space-y-3 hidden">
+            <div class="flex flex-col items-end">
+              <span class="text-[8px] font-mono-code text-[#666666] mb-1">USER • 14:15</span>
+              <div class="max-w-[85%] bg-white border border-[#0F0F10] p-3 text-xs text-[#0F0F10]">
+                Ho comprato le scarpe da trekking da Decathlon, costo 89.90€. Le ho messe nell'armadio in corridoio, ripiano B.
+              </div>
+            </div>
+            <div class="flex flex-col items-start">
+              <span class="text-[8px] font-mono-code text-[#E63946] font-black mb-1">CONCIERGE • SEC-AI</span>
+              <div class="max-w-[90%] bg-white border-l-4 border-[#E63946] border-t border-r border-b border-[#0F0F10] p-3 text-xs text-[#0F0F10] space-y-2">
+                <p>Record catalogato con successo negli standard di sistema:</p>
+                <div class="bg-[#F4F4F2] border border-[#0F0F10] p-2 text-[10px] font-mono-code space-y-0.5">
+                  <div><strong>RECORD:</strong> SCARPE TREKKING</div>
+                  <div><strong>EXPENSE:</strong> € 89.90 (DECATHLON)</div>
+                  <div><strong>LOCATION:</strong> CORRIDOIO > ARMADIO > RIPIANO B</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Bar -->
+          <div class="bg-[#F4F4F2] border-t border-[#0F0F10] p-2.5 flex items-center justify-around text-[9px] font-mono-code text-[#0F0F10]">
+            <span class="font-black border-b-2 border-[#0F0F10] pb-0.5">01 / DASH</span>
+            <span>02 / CHAT</span>
+            <span>03 / VAULT</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ======================================================================= -->
+  <!-- JAVASCRIPT PER SWITCH TRA LE VISTE                                     -->
+  <!-- ======================================================================= -->
+  <script>
+    let activeTab = 'dashboard';
+
+    function setTab(tab) {
+      activeTab = tab;
+      
+      // Aggiorna classi bottoni
+      document.getElementById('tabBtn-dashboard').className = tab === 'dashboard' 
+        ? 'px-3 py-1.5 rounded-lg font-semibold transition bg-amber-500 text-neutral-950 font-bold cursor-pointer'
+        : 'px-3 py-1.5 rounded-lg font-semibold transition text-neutral-400 hover:text-white cursor-pointer';
+
+      document.getElementById('tabBtn-chat').className = tab === 'chat' 
+        ? 'px-3 py-1.5 rounded-lg font-semibold transition bg-amber-500 text-neutral-950 font-bold cursor-pointer'
+        : 'px-3 py-1.5 rounded-lg font-semibold transition text-neutral-400 hover:text-white cursor-pointer';
+
+      // Mostra / nascondi i contenuti in tutti e 3 i mockup contemporaneamente
+      document.querySelectorAll('.content-dashboard').forEach(el => {
+        if (tab === 'dashboard') {
+          el.classList.remove('hidden');
+          el.classList.add('flex-1');
+        } else {
+          el.classList.add('hidden');
+          el.classList.remove('flex-1');
+        }
+      });
+
+      document.querySelectorAll('.content-chat').forEach(el => {
+        if (tab === 'chat') {
+          el.classList.remove('hidden');
+          el.classList.add('flex-1');
+        } else {
+          el.classList.add('hidden');
+          el.classList.remove('flex-1');
+        }
+      });
+    }
+
+    function switchView(view) {
+      const colOlivetti = document.getElementById('col-olivetti');
+      const colTeenage = document.getElementById('col-teenage');
+      const colVignelli = document.getElementById('col-vignelli');
+
+      const btnSide = document.getElementById('btn-side');
+      const btnOli = document.getElementById('btn-olivetti');
+      const btnTeen = document.getElementById('btn-teenage');
+      const btnVig = document.getElementById('btn-vignelli');
+
+      // Reset bottoni
+      [btnSide, btnOli, btnTeen, btnVig].forEach(b => {
+        b.className = 'px-3 py-1.5 rounded-lg transition text-neutral-300 hover:text-white cursor-pointer';
+      });
+
+      if (view === 'side-by-side') {
+        colOlivetti.classList.remove('hidden');
+        colTeenage.classList.remove('hidden');
+        colVignelli.classList.remove('hidden');
+        btnSide.className = 'px-3 py-1.5 rounded-lg transition bg-white text-black font-bold shadow cursor-pointer';
+      } else if (view === 'var-olivetti') {
+        colOlivetti.classList.remove('hidden');
+        colTeenage.classList.add('hidden');
+        colVignelli.classList.add('hidden');
+        btnOli.className = 'px-3 py-1.5 rounded-lg transition bg-white text-black font-bold shadow cursor-pointer';
+      } else if (view === 'var-teenage') {
+        colOlivetti.classList.add('hidden');
+        colTeenage.classList.remove('hidden');
+        colVignelli.classList.add('hidden');
+        btnTeen.className = 'px-3 py-1.5 rounded-lg transition bg-white text-black font-bold shadow cursor-pointer';
+      } else if (view === 'var-vignelli') {
+        colOlivetti.classList.add('hidden');
+        colTeenage.classList.add('hidden');
+        colVignelli.classList.remove('hidden');
+        btnVig.className = 'px-3 py-1.5 rounded-lg transition bg-white text-black font-bold shadow cursor-pointer';
+      }
+    }
+  </script>
+</body>
+</html>

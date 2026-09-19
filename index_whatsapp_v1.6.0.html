@@ -7,8 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Space+Grotesk:wght@500;600;700;800&display=swap');
-
     :root {
       --wa-teal: #075E54;
       --wa-teal-light: #128C7E;
@@ -17,158 +15,6 @@
       --wa-bubble-user: #E7FFDB;
       --wa-bubble-ai: #FFFFFF;
       --wa-ticks: #53bdeb;
-
-      /* Olivetti Industrial Design Tokens */
-      --oli-paper: #F8F5EE;
-      --oli-paper-dark: #EFECE3;
-      --oli-card: #FFFFFF;
-      --oli-ink: #222220;
-      --oli-ink-muted: #7A7568;
-      --oli-line: #E3DDD1;
-      --oli-sage: #3C5A48;
-      --oli-sage-hover: #2F4738;
-      --oli-sage-light: #EBF1ED;
-      --oli-terracotta: #C84B31;
-      --oli-terracotta-hover: #B23E26;
-      --oli-terracotta-light: #FAECE8;
-    }
-
-    /* ========================================================================= */
-    /* OLIVETTI INDUSTRIAL THEME (LETTERA 22 & SOTTSASS)                        */
-    /* ========================================================================= */
-    body.theme-olivetti {
-      background-color: var(--oli-paper) !important;
-      color: var(--oli-ink) !important;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-
-    body.theme-olivetti .font-space {
-      font-family: 'Space Grotesk', sans-serif !important;
-    }
-    body.theme-olivetti .font-mono-code {
-      font-family: 'JetBrains Mono', monospace !important;
-    }
-
-    /* Nastro dattilografico bicolore sotto gli header */
-    .typewriter-ribbon {
-      display: none;
-      height: 3px;
-      width: 100%;
-      background: linear-gradient(to right, var(--oli-terracotta) 50%, var(--oli-sage) 50%);
-      z-index: 25;
-      position: relative;
-    }
-    body.theme-olivetti .typewriter-ribbon {
-      display: block !important;
-    }
-
-    /* Sfondo chat e pannelli */
-    body.theme-olivetti #chatView,
-    body.theme-olivetti #conversationPanel {
-      background-color: var(--oli-paper) !important;
-    }
-    body.theme-olivetti #sidebarPanel {
-      background-color: var(--oli-paper) !important;
-      border-right-color: var(--oli-line) !important;
-    }
-    body.theme-olivetti .wa-wallpaper {
-      background-color: var(--oli-paper) !important;
-      background-image: none !important;
-    }
-    body.theme-olivetti #threadsContainer {
-      background-color: var(--oli-paper) !important;
-    }
-
-    /* Header e Barre Superiori in Verde Salvia Olivetti */
-    body.theme-olivetti header.bg-\[\#075E54\],
-    body.theme-olivetti div.bg-\[\#075E54\],
-    body.theme-olivetti .bg-\[\#075E54\] {
-      background-color: var(--oli-sage) !important;
-      color: #FFFFFF !important;
-    }
-    body.theme-olivetti .bg-\[\#128C7E\] {
-      background-color: var(--oli-sage-hover) !important;
-    }
-    body.theme-olivetti .hover\:bg-\[\#0e7468\]:hover {
-      background-color: #24372C !important;
-    }
-
-    /* Bolle Conversazione Olivetti */
-    body.theme-olivetti .wa-bubble-out {
-      background-color: #FFFFFF !important;
-      border: 1.5px solid var(--oli-sage) !important;
-      border-radius: 4px !important;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
-      color: var(--oli-ink) !important;
-    }
-    body.theme-olivetti .wa-bubble-in {
-      background-color: #FFFFFF !important;
-      border-left: 4px solid var(--oli-sage) !important;
-      border-top: 1px solid var(--oli-line) !important;
-      border-right: 1px solid var(--oli-line) !important;
-      border-bottom: 1px solid var(--oli-line) !important;
-      border-radius: 4px !important;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
-      color: var(--oli-ink) !important;
-    }
-
-    /* Pulsante Invio e Accenti Terracotta */
-    body.theme-olivetti #sendBtn,
-    body.theme-olivetti button.bg-\[\#25D366\],
-    body.theme-olivetti .bg-\[\#25D366\] {
-      background-color: var(--oli-terracotta) !important;
-      color: #FFFFFF !important;
-      border-radius: 6px !important;
-    }
-    body.theme-olivetti #sendBtn:hover,
-    body.theme-olivetti button.bg-\[\#25D366\]:hover {
-      background-color: var(--oli-terracotta-hover) !important;
-    }
-
-    /* Input chat */
-    body.theme-olivetti #chatInputContainer,
-    body.theme-olivetti footer.bg-\[\#F0F2F5\] {
-      background-color: var(--oli-paper) !important;
-      border-top: 1px solid var(--oli-line) !important;
-    }
-    body.theme-olivetti #messageInput {
-      background-color: #FFFFFF !important;
-      border: 1px solid var(--oli-sage) !important;
-      border-radius: 4px !important;
-      color: var(--oli-ink) !important;
-      font-family: 'JetBrains Mono', monospace !important;
-    }
-    body.theme-olivetti #messageInput:focus {
-      border-color: var(--oli-terracotta) !important;
-    }
-
-    /* Dashboard Olivetti */
-    body.theme-olivetti #dashboardView {
-      background-color: var(--oli-paper) !important;
-    }
-    body.theme-olivetti #dashboardView header {
-      background-color: var(--oli-paper) !important;
-      border-bottom-color: var(--oli-line) !important;
-    }
-
-    /* Timbro Olivetti */
-    .stamp-oli {
-      border: 1.5px solid var(--oli-sage);
-      color: var(--oli-sage);
-      padding: 2px 7px;
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      border-radius: 3px;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-family: 'JetBrains Mono', monospace;
-    }
-    .stamp-oli.stamp-terracotta {
-      border-color: var(--oli-terracotta);
-      color: var(--oli-terracotta);
     }
     body {
       margin: 0;
@@ -318,7 +164,7 @@
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-semibold text-sm leading-tight">I tuoi Spazi & Chat</h2>
-              <span class="bg-white/20 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded app-version-badge">v1.7.0</span>
+              <span class="bg-white/20 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded app-version-badge">v1.4.0</span>
 
             </div>
             <p class="text-[10px] text-green-200">Dove lo AI messo</p>
@@ -365,7 +211,6 @@
           </button>
         </div>
       </div>
-      <div class="typewriter-ribbon"></div>
 
       <!-- Barra di Ricerca Chat WhatsApp -->
       <div class="p-2 border-b border-slate-100 bg-[#F0F2F5]">
@@ -421,7 +266,7 @@
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-semibold text-sm leading-tight truncate">Dove lo AI messo</h1>
-              <span class="bg-white/20 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 app-version-badge">v1.7.0</span>
+              <span class="bg-white/20 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 app-version-badge">v1.4.0</span>
 
             </div>
             <p id="activeThreadSubtitle" class="text-[11px] text-green-100 truncate">
@@ -460,18 +305,6 @@
             >0</span>
           </button>
  
-          <!-- Pulsante Cambio Tema (Olivetti / WhatsApp) -->
-          <button 
-            id="themeToggleHeaderBtn" 
-            onclick="toggleAppTheme()" 
-            class="bg-white/10 hover:bg-white/20 text-white text-xs font-medium px-2.5 py-1.5 rounded-full shadow-2xs transition flex items-center gap-1.5 active:scale-95 border border-white/20 cursor-pointer"
-            title="Cambia Stile (Olivetti Industrial / WhatsApp Classic)"
-            aria-label="Cambia Stile Visivo"
-          >
-            <i class="fa-solid fa-feather-pointed text-amber-300 text-[11px] theme-toggle-icon"></i>
-            <span class="text-[11px] font-semibold hidden sm:inline theme-toggle-label">Olivetti</span>
-          </button>
-
           <!-- Pulsante Blocca Caveau (Sicurezza) -->
           <button 
             id="lockVaultHeaderBtn" 
@@ -506,7 +339,6 @@
           </button>
         </div>
       </header>
-      <div class="typewriter-ribbon"></div>
 
       <!-- Banner Avviso Scadenze Automatico WhatsApp -->
       <div 
@@ -1779,7 +1611,7 @@
             <h2 class="font-bold text-sm text-slate-900 tracking-tight">Executive Vault & Scadenzario</h2>
             <span class="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
               <i class="fa-solid fa-code-branch text-[9px] text-slate-500"></i>
-              <span class="app-version-badge">v1.7.0</span>
+              <span class="app-version-badge">v1.4.0</span>
 
             </span>
             <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -1794,17 +1626,6 @@
       <!-- Azioni Rapide Compatte & Strumenti -->
       <div class="flex items-center space-x-2">
         
-        <!-- Pulsante Cambio Tema Dashboard -->
-        <button 
-          type="button"
-          onclick="toggleAppTheme()" 
-          class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold px-3 py-1.5 rounded-xl shadow-2xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
-          title="Cambia Stile Visivo (Olivetti Industrial / WhatsApp Classic)"
-        >
-          <i class="fa-solid fa-feather-pointed text-amber-600 text-xs theme-toggle-icon"></i>
-          <span class="theme-toggle-label hidden sm:inline">Olivetti</span>
-        </button>
-
         <!-- Menu a comparsa Strumenti & Altro -->
         <div class="relative">
           <button 
@@ -1824,26 +1645,6 @@
             id="dashboardToolsMenu" 
             class="hidden absolute right-0 mt-1.5 w-60 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 select-none"
           >
-            <!-- Opzione Cambio Tema nel Menu Strumenti -->
-            <button 
-              type="button" 
-              onclick="closeDashboardToolsMenu(); toggleAppTheme();" 
-              class="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-slate-50 text-slate-700 text-xs font-medium transition cursor-pointer"
-            >
-              <div class="w-7 h-7 rounded-lg bg-amber-50 text-[#C84B31] flex items-center justify-center text-xs shrink-0">
-                <i class="fa-solid fa-feather-pointed"></i>
-              </div>
-              <div class="text-left flex-1 min-w-0">
-                <div class="flex items-center justify-between w-full gap-2">
-                  <span class="text-slate-800 font-semibold text-xs truncate">Stile Visivo</span>
-                  <span class="bg-[#3C5A48] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 theme-toggle-label">Olivetti</span>
-                </div>
-                <div class="text-[10px] text-slate-400">Alterna tra Olivetti e WhatsApp</div>
-              </div>
-            </button>
-
-            <div class="h-px bg-slate-100 my-1"></div>
-
             <button 
               type="button" 
               onclick="closeDashboardToolsMenu(); openGoogleDriveModal();" 
@@ -1970,7 +1771,7 @@
             <!-- Versione App -->
             <div class="border-t border-slate-100 px-3.5 py-2 mt-1 flex items-center justify-between text-[11px] text-slate-400 select-none">
               <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-[10px]"></i> Versione App</span>
-              <span class="font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded text-[10px] app-version-badge">v1.7.0</span>
+              <span class="font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded text-[10px] app-version-badge">v1.4.0</span>
 
             </div>
           </div>
@@ -2008,7 +1809,6 @@
         </button>
       </div>
     </header>
-    <div class="typewriter-ribbon"></div>
 
     <!-- Contenuto Dashboard Scrollabile -->
     <main class="flex-1 p-6 overflow-y-auto space-y-6 max-w-6xl w-full mx-auto custom-scroll">
@@ -2238,51 +2038,6 @@
       }
     }
     fetchAppVersion();
-
-    // --- Gestione Tema Visivo (Olivetti Industrial / WhatsApp Classic) ---
-    function getActiveTheme() {
-      return localStorage.getItem('app_theme') || 'olivetti';
-    }
-
-    function setAppTheme(theme) {
-      const body = document.body;
-      if (theme === 'whatsapp') {
-        body.classList.remove('theme-olivetti');
-        body.classList.add('theme-whatsapp');
-        localStorage.setItem('app_theme', 'whatsapp');
-        updateThemeToggleUI('whatsapp');
-      } else {
-        body.classList.remove('theme-whatsapp');
-        body.classList.add('theme-olivetti');
-        localStorage.setItem('app_theme', 'olivetti');
-        updateThemeToggleUI('olivetti');
-      }
-    }
-
-    function toggleAppTheme() {
-      const current = getActiveTheme();
-      const nextTheme = current === 'olivetti' ? 'whatsapp' : 'olivetti';
-      setAppTheme(nextTheme);
-      if (typeof showActionToast === 'function') {
-        showActionToast(nextTheme === 'olivetti' ? 'Stile Attivo: Olivetti Industrial 🖋️' : 'Stile Attivo: WhatsApp Classic 💬');
-      }
-    }
-
-    function updateThemeToggleUI(theme) {
-      document.querySelectorAll('.theme-toggle-label').forEach(el => {
-        el.textContent = theme === 'olivetti' ? 'Olivetti' : 'WhatsApp';
-      });
-      document.querySelectorAll('.theme-toggle-icon').forEach(el => {
-        if (theme === 'olivetti') {
-          el.className = 'fa-solid fa-feather-pointed text-amber-300 text-[11px] theme-toggle-icon';
-        } else {
-          el.className = 'fa-brands fa-whatsapp text-emerald-300 text-[11px] theme-toggle-icon';
-        }
-      });
-    }
-
-    // Inizializza subito il tema salvato o predefinito (Olivetti Industrial)
-    setAppTheme(getActiveTheme());
 
     // --- Gestione Sicurezza Caveau & Lock Screen ---
     function togglePasswordVisibility() {

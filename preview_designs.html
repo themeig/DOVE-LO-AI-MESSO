@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dove lo AI messo — 6 Nuove Identità a Confronto</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .font-display {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .font-serif-vintage {
+      font-family: 'Newsreader', Georgia, serif;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Stile mockup smartphone */
+    .phone-mockup {
+      width: 360px;
+      height: 720px;
+      border-radius: 44px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 10px #1e293b, 0 0 0 12px #334155;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .phone-notch {
+      width: 110px;
+      height: 22px;
+      background: #1e293b;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      z-index: 50;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col p-4 md:p-8 selection:bg-emerald-500 selection:text-white">
+
+  <!-- Header Presentazione -->
+  <header class="max-w-6xl mx-auto w-full mb-8 text-center">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-3">
+      <i class="fa-solid fa-wand-magic-sparkles"></i>
+      Esplorazione Grafica • 6 Nuove Identità Senza Modificare l'App
+    </div>
+    <h1 class="text-3xl md:text-5xl font-extrabold font-display tracking-tight text-white mb-3">
+      Oltre WhatsApp: <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400">Nuovi Design per il Caveau</span>
+    </h1>
+    <p class="text-slate-400 max-w-2xl mx-auto text-sm md:text-base">
+      Sei personalità completamente diverse per rendere l'interfaccia unica, raffinata e immediatamente riconoscibile.
+    </p>
+
+    <!-- Barra Selettore Schede -->
+    <div class="flex flex-wrap items-center justify-center gap-1.5 mt-6 p-1.5 bg-slate-800/80 rounded-2xl border border-slate-700 max-w-4xl mx-auto">
+      <button onclick="switchView('side-by-side')" id="btn-side" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition bg-emerald-500 text-slate-950 shadow-md">
+        <i class="fa-solid fa-table-columns mr-1"></i> Tutti i 6 Stili
+      </button>
+      <button onclick="switchView('style-1')" id="btn-1" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition text-slate-300 hover:text-white">
+        1. Neo-Fintech
+      </button>
+      <button onclick="switchView('style-2')" id="btn-2" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition text-slate-300 hover:text-white">
+        2. Executive Concierge
+      </button>
+      <button onclick="switchView('style-3')" id="btn-3" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition text-slate-300 hover:text-white">
+        3. Cyber-Caveau
+      </button>
+      <button onclick="switchView('style-4')" id="btn-4" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition text-slate-300 hover:text-white">
+        4. Cupertino Glass
+      </button>
+      <button onclick="switchView('style-5')" id="btn-5" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition text-slate-300 hover:text-white">
+        5. Vintage Swiss
+      </button>
+      <button onclick="switchView('style-6')" id="btn-6" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition text-slate-300 hover:text-white">
+        6. Telegram Luxe
+      </button>
+    </div>
+  </header>
+
+  <!-- Contenitore Mockup a Griglia -->
+  <main class="max-w-7xl mx-auto w-full flex-1 flex items-center justify-center">
+
+    <div id="mockupsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start justify-center">
+
+      <!-- =================================================================== -->
+      <!-- 1. MOCKUP: VAULT NEO-FINTECH (Linear + Stripe)                      -->
+      <!-- =================================================================== -->
+      <div id="card-style-1" class="flex flex-col items-center">
+        <div class="mb-3 text-center">
+          <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest">Stile 1</span>
+          <h2 class="text-lg font-bold text-white font-display">Vault Neo-Fintech</h2>
+          <p class="text-xs text-slate-400">Minimalista, ardesia & smeraldo (Linear)</p>
+        </div>
+
+        <div class="phone-mockup bg-[#F8FAFC] text-slate-900">
+          <div class="phone-notch"></div>
+          <!-- Header -->
+          <div class="pt-8 px-4 pb-3 bg-white/90 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between z-40">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white flex items-center justify-center text-xs shadow-xs font-bold">
+                <i class="fa-solid fa-vault"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-bold text-sm text-slate-900 font-display">Caveau Personale</span>
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                </div>
+                <span class="text-[10px] text-slate-400">AES-128 • Protetto</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-1">
+              <button class="w-7 h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                <i class="fa-solid fa-chart-pie text-[11px]"></i>
+              </button>
+            </div>
+          </div>
+          <!-- Chat Area -->
+          <div class="flex-1 p-3.5 space-y-3 overflow-y-auto text-xs">
+            <div class="flex justify-end">
+              <div class="bg-slate-900 text-white rounded-2xl rounded-tr-xs p-3 max-w-[85%] shadow-xs space-y-1">
+                <p>Ho comprato le scarpe da trekking da Decathlon, costo 89.90€.</p>
+                <div class="flex items-center justify-end gap-1 text-[10px] text-slate-400">
+                  <span>14:32</span><i class="fa-solid fa-check text-emerald-400"></i>
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-start">
+              <div class="bg-white border border-slate-200/80 rounded-2xl rounded-tl-xs p-3.5 max-w-[90%] shadow-xs space-y-2">
+                <div class="flex items-center gap-2 border-b border-slate-100 pb-2">
+                  <div class="w-5 h-5 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px]">
+                    <i class="fa-solid fa-file-invoice"></i>
+                  </div>
+                  <span class="font-bold text-slate-800 text-[11px]">Scontrino Registrato</span>
+                  <span class="ml-auto text-[10px] font-mono font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">€ 89.90</span>
+                </div>
+                <p class="text-slate-600 leading-relaxed text-[11px]">
+                  Archiviato in <span class="font-semibold text-slate-800">Fatture & Spese</span> e collegato a <span class="font-semibold text-slate-800">"Scarpe Trekking"</span> (Studio / Armadio).
+                </p>
+                <div class="flex items-center gap-1 pt-1">
+                  <button class="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-medium text-slate-700">
+                    <i class="fa-solid fa-location-dot text-emerald-500"></i> Posizione
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-end">
+              <div class="bg-slate-900 text-white rounded-2xl rounded-tr-xs p-3 max-w-[85%] shadow-xs space-y-1">
+                <p>Cosa devo pagare entro fine mese?</p>
+                <div class="flex items-center justify-end gap-1 text-[10px] text-slate-400">
+                  <span>14:35</span><i class="fa-solid fa-check text-emerald-400"></i>
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-start">
+              <div class="bg-white border border-slate-200/80 rounded-2xl rounded-tl-xs p-3.5 max-w-[90%] shadow-xs space-y-2">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                  <span class="font-bold text-slate-800 text-[11px]">1 Scadenza Rilevata</span>
+                </div>
+                <div class="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200/60 flex justify-between items-center">
+                  <div>
+                    <span class="font-semibold text-slate-900 text-[11px] block">Enel Energia</span>
+                    <span class="text-[10px] text-amber-800">Scade il 31 Ottobre (12 gg)</span>
+                  </div>
+                  <span class="font-mono font-bold text-amber-700 text-xs">€ 68.40</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Command Bar -->
+          <div class="p-3 bg-white/95 backdrop-blur-md border-t border-slate-200/80">
+            <div class="flex items-center gap-1.5 bg-slate-100/90 rounded-2xl px-3 py-2 border border-slate-200 text-xs shadow-inner">
+              <button class="w-6 h-6 rounded-lg bg-white shadow-2xs text-slate-600 flex items-center justify-center">
+                <i class="fa-solid fa-plus text-xs"></i>
+              </button>
+              <input type="text" placeholder="Chiedi o cerca nel caveau..." class="bg-transparent flex-1 outline-none text-slate-800 text-xs">
+              <button class="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                <i class="fa-solid fa-arrow-up text-xs"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- =================================================================== -->
+      <!-- 2. MOCKUP: EXECUTIVE CONCIERGE (Notion / Sage)                      -->
+      <!-- =================================================================== -->
+      <div id="card-style-2" class="flex flex-col items-center">
+        <div class="mb-3 text-center">
+          <span class="text-xs font-bold text-amber-300 uppercase tracking-widest">Stile 2</span>
+          <h2 class="text-lg font-bold text-white font-display">Executive Concierge</h2>
+          <p class="text-xs text-slate-400">Crema avorio, salvia nobile & mastro (Notion)</p>
+        </div>
+
+        <div class="phone-mockup bg-[#FBFBFA] text-[#2F3437]">
+          <div class="phone-notch"></div>
+          <!-- Header -->
+          <div class="pt-8 px-4 pb-3 bg-[#F7F6F3] border-b border-[#E9E9E7] flex items-center justify-between z-40">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-full bg-[#2E5A44] text-[#E8F0EC] flex items-center justify-center text-xs font-semibold shadow-xs">
+                <span>D</span>
+              </div>
+              <div>
+                <span class="font-semibold text-sm text-[#2F3437] block">Dove lo AI messo</span>
+                <span class="text-[10px] text-[#787774] flex items-center gap-1">
+                  <i class="fa-solid fa-shield-halved text-[9px] text-[#2E5A44]"></i> Archivio Riservato
+                </span>
+              </div>
+            </div>
+            <span class="text-[10px] font-mono text-[#787774] bg-[#EFEFEF] px-2 py-0.5 rounded-md">18 doc</span>
+          </div>
+          <!-- Chat Area -->
+          <div class="flex-1 p-3.5 space-y-3.5 overflow-y-auto text-xs">
+            <div class="flex justify-end">
+              <div class="bg-[#2E5A44] text-white rounded-xl p-3 max-w-[85%] shadow-2xs space-y-1">
+                <p>Ho comprato le scarpe da trekking da Decathlon, costo 89.90€.</p>
+                <div class="text-right text-[9px] text-[#C4D7CE]">14:32 • Registrato</div>
+              </div>
+            </div>
+            <div class="flex justify-start">
+              <div class="bg-white border border-[#E9E9E7] rounded-xl p-3.5 max-w-[92%] shadow-xs space-y-2.5">
+                <div class="flex items-center justify-between text-[11px]">
+                  <span class="font-semibold text-[#2F3437]">Voce di Spesa Acquisita</span>
+                  <span class="font-serif italic font-bold text-[#2E5A44] text-sm">€ 89,90</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5 text-[10px] bg-[#F7F6F3] p-2 rounded-lg border border-[#E9E9E7]">
+                  <div><span class="text-[#787774] block">Categoria</span><span class="font-medium text-[#37352F]">📁 Fatture</span></div>
+                  <div><span class="text-[#787774] block">Posizione</span><span class="font-medium text-[#37352F]">📍 Armadio Studio</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-end">
+              <div class="bg-[#2E5A44] text-white rounded-xl p-3 max-w-[85%] shadow-2xs space-y-1">
+                <p>Cosa devo pagare entro fine mese?</p>
+                <div class="text-right text-[9px] text-[#C4D7CE]">14:35</div>
+              </div>
+            </div>
+            <div class="flex justify-start">
+              <div class="bg-white border border-[#E9E9E7] rounded-xl p-3.5 max-w-[92%] shadow-xs space-y-2">
+                <div class="flex items-center justify-between text-[11px]">
+                  <span class="font-semibold text-[#2F3437]">Scadenza Fiscale / Utenza</span>
+                  <span class="font-serif font-bold text-[#8F6B00]">€ 68,40</span>
+                </div>
+                <div class="text-[10px] text-[#787774]">Enel Energia • Scadenza: 31 Ottobre 2026</div>
+              </div>
+            </div>
+          </div>
+          <!-- Bottom Bar -->
+          <div class="p-3 bg-[#F7F6F3] border-t border-[#E9E9E7]">
+            <div class="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-[#E3E2DE] text-xs">
+              <input type="text" placeholder="Scrivi una nota o domanda..." class="bg-transparent flex-1 outline-none text-[#37352F] text-xs">
+              <button class="text-[#2E5A44] font-semibold text-xs px-1">Invia</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- =================================================================== -->
+      <!-- 3. MOCKUP: CYBER-CAVEAU & DYNAMIC ISLAND (Arc / Dark OLED)          -->
+      <!-- =================================================================== -->
+      <div id="card-style-3" class="flex flex-col items-center">
+        <div class="mb-3 text-center">
+          <span class="text-xs font-bold text-cyan-400 uppercase tracking-widest">Stile 3</span>
+          <h2 class="text-lg font-bold text-white font-display">Cyber-Caveau</h2>
+          <p class="text-xs text-slate-400">Nero OLED, Dynamic Island & ciano neon</p>
+        </div>
+
+        <div class="phone-mockup bg-[#090D14] text-slate-100 border border-slate-800">
+          <div class="phone-notch"></div>
+          <!-- Dynamic Island Header -->
+          <div class="pt-8 px-4 pb-2.5 flex flex-col items-center z-40 bg-[#090D14]/90 backdrop-blur-md border-b border-slate-800/80">
+            <div class="w-full max-w-[280px] bg-slate-900/90 border border-slate-700/80 rounded-full px-3 py-1.5 flex items-center justify-between shadow-lg shadow-cyan-950/20">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                <span class="text-[10px] font-mono text-cyan-300 font-semibold">CAVEAU ON</span>
+              </div>
+              <span class="text-[10px] text-slate-400">18 File Cifrati</span>
+              <i class="fa-solid fa-lock text-[9px] text-cyan-400"></i>
+            </div>
+          </div>
+          <!-- Chat Area -->
+          <div class="flex-1 p-3.5 space-y-3 overflow-y-auto text-xs">
+            <div class="flex justify-end">
+              <div class="bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-2xl rounded-tr-xs p-3 max-w-[85%] shadow-md shadow-cyan-900/20">
+                <p>Ho comprato le scarpe da trekking da Decathlon, costo 89.90€.</p>
+                <div class="text-right text-[9px] text-cyan-100/80 pt-1">14:32 • <i class="fa-solid fa-bolt text-[8px]"></i></div>
+              </div>
+            </div>
+            <div class="flex justify-start">
+              <div class="bg-slate-900/90 border border-slate-800 rounded-2xl rounded-tl-xs p-3.5 max-w-[92%] shadow-lg space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-cyan-400 font-mono text-[10px] uppercase"><i class="fa-solid fa-microchip"></i> Acquisizione</span>
+                  <span class="text-xs font-mono font-bold text-white bg-slate-800 px-2 py-0.5 rounded border border-slate-700">€ 89.90</span>
+                </div>
+                <p class="text-slate-300 text-[11px]">Inserito in <span class="text-cyan-300">Fatture</span>. Posizione: <span class="text-slate-200">Armadio Studio</span>.</p>
+              </div>
+            </div>
+            <div class="flex justify-end">
+              <div class="bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-2xl rounded-tr-xs p-3 max-w-[85%] shadow-md">
+                <p>Cosa devo pagare entro fine mese?</p>
+              </div>
+            </div>
+            <div class="flex justify-start">
+              <div class="bg-slate-900/90 border border-amber-500/30 rounded-2xl rounded-tl-xs p-3.5 max-w-[92%] shadow-lg space-y-1.5">
+                <div class="flex items-center justify-between text-[11px]">
+                  <span class="text-amber-400 font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> Scadenza</span>
+                  <span class="font-mono font-bold text-amber-300 text-xs">€ 68.40</span>
+                </div>
+                <div class="text-[10px] text-slate-300">Enel Energia • Scade tra 12 giorni</div>
+              </div>
+            </div>
+          </div>
+          <!-- Command Bar -->
+          <div class="p-3 bg-[#090D14]/95 border-t border-slate-800">
+            <div class="flex items-center gap-1.5 bg-slate-900 rounded-2xl px-3 py-2 border border-slate-700/80 text-xs">
+              <input type="text" placeholder="Interroga il caveau..." class="bg-transparent flex-1 outline-none text-slate-200 text-xs font-mono">
+              <button class="w-7 h-7 rounded-xl bg-cyan-500 text-slate-950 font-bold flex items-center justify-center">
+                <i class="fa-solid fa-arrow-up text-xs"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- =================================================================== -->
+      <!-- 4. MOCKUP: CUPERTINO GLASS (Apple iOS 18 / VisionOS)                -->
+      <!-- =================================================================== -->
+      <div id="card-style-4" class="flex flex-col items-center">
+        <div class="mb-3 text-center">
+          <span class="text-xs font-bold text-blue-400 uppercase tracking-widest">Stile 4</span>
+          <h2 class="text-lg font-bold text-white font-display">Cupertino Glass</h2>
+          <p class="text-xs text-slate-400">Vetro satinato, azzurro iMessage & sfocature (iOS)</p>
+        </div>
+
+        <div class="phone-mockup bg-[#F2F2F7] text-slate-900">
+          <div class="phone-notch"></div>
+          <!-- Header Glass iOS -->
+          <div class="pt-8 px-4 pb-3 bg-white/70 backdrop-blur-xl border-b border-white/60 flex items-center justify-between z-40 shadow-xs">
+            <div class="flex items-center gap-2">
+              <button class="text-[#007AFF] text-sm font-medium flex items-center gap-1">
+                <i class="fa-solid fa-chevron-left text-xs"></i> Chat
+              </button>
+            </div>
+            <div class="text-center">
+              <span class="font-semibold text-sm text-slate-900 block leading-tight">Caveau</span>
+              <span class="text-[10px] text-slate-400">Cifratura end-to-end</span>
+            </div>
+            <div class="w-8 h-8 rounded-full bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center text-xs font-bold">
+              <i class="fa-solid fa-shield-cat"></i>
+            </div>
+          </div>
+          <!-- Chat Area -->
+          <div class="flex-1 p-3.5 space-y-3 overflow-y-auto text-xs">
+            <div class="flex justify-end">
+              <div class="bg-gradient-to-b from-[#007AFF] to-[#0062D2] text-white rounded-3xl rounded-tr-sm px-4 py-2.5 max-w-[85%] shadow-xs space-y-0.5">
+                <p>Ho comprato le scarpe da trekking da Decathlon, costo 89.90€.</p>
+                <div class="text-right text-[9px] text-blue-100">14:32 • Consegnato</div>
+              </div>
+            </div>
+            <div class="flex justify-start">
+              <div class="bg-white/80 backdrop-blur-md border border-white/80 rounded-3xl rounded-tl-sm p-4 max-w-[90%] shadow-xs space-y-2">
+                <div class="flex items-center gap-2 text-slate-800 font-semibold text-xs">
+                  <span class="w-2 h-2 rounded-full bg-[#007AFF]"></span> Spesa Memorizzata
+                </div>
+                <p class="text-slate-600 text-[11px]">Scontrino aggiunto a <span class="text-slate-900 font-medium">Fatture</span> e scarpe collocate in <span class="text-slate-900 font-medium">Armadio Studio</span>.</p>
+                <div class="p-2 bg-blue-50/50 rounded-2xl border border-blue-100 flex items-center justify-between">
+                  <span class="text-[10px] text-blue-700 font-medium">Totale spesa</span>
+                  <span class="font-bold text-[#007AFF] text-xs">€ 89,90</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-end">
+              <div class="bg-gradient-to-b from-[#007AFF] to-[#0062D2] text-white rounded-3xl rounded-tr-sm px-4 py-2.5 max-w-[85%] shadow-xs">
+                <p>Cosa devo pagare entro fine mese?</p>
+              </div>
+            </div>
+            <div class="flex justify-start">
+              <div class="bg-white/80 backdrop-blur-md border border-white/80 rounded-3xl rounded-tl-sm p-4 max-w-[90%] shadow-xs space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="font-semibold text-slate-900 text-xs">Scadenza Bolletta</span>
+                  <span class="text-[#007AFF] font-bold text-xs">€ 68,40</span>
+                </div>
+                <div class="text-[10px] text-slate-500">Enel Energia • Scadenza: 31 Ottobre</div>
+              </div>
+            </div>
+          </div>
+          <!-- Command Bar iOS -->
+          <div class="p-3 bg-white/70 backdrop-blur-xl border-t border-white/60">
+            <div class="flex items-center gap-2 bg-[#E9E9EB] rounded-full px-3 py-2 text-xs">
+              <button class="w-6 h-6 rounded-full bg-white text-slate-600 flex items-center justify-center shadow-xs">
+                <i class="fa-solid fa-plus text-xs"></i>
+              </button>
+              <input type="text" placeholder="Messaggio iMessage..." class="bg-transparent flex-1 outline-none text-slate-900 text-xs">
+              <button class="w-7 h-7 rounded-full bg-[#007AFF] text-white flex items-center justify-center shadow-xs">
+                <i class="fa-solid fa-arrow-up text-xs"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- =================================================================== -->
+      <!-- 5. MOCKUP: VINTAGE SWISS / EDITORIAL (Braun / Dieter Rams)          -->
+      <!-- =================================================================== -->
+      <div id="card-style-5" class="flex flex-col items-center">
+        <div class="mb-3 text-center">
+          <span class="text-xs font-bold text-orange-400 uppercase tracking-widest">Stile 5</span>
+          <h2 class="text-lg font-bold text-white font-display">Vintage Swiss</h2>
+          <p class="text-xs text-slate-400">Razionalista, carta latte & arancione Braun</p>
+        </div>
+
+        <div class="phone-mockup bg-[#F5F5F0] text-[#111111]">
+          <div class="phone-notch"></div>
+          <!-- Header Razionalista -->
+          <div class="pt-8 px-4 pb-3 bg-[#EBEBE6] border-b-2 border-[#111111] flex items-center justify-between z-40">
+            <div>
+              <span class="font-mono-code text-[9px] uppercase tracking-widest text-[#666666] block">ARCHIVIO GENERALE</span>
+              <span class="font-serif-vintage font-bold text-base text-[#111111]">Dove lo AI messo</span>
+            </div>
+            <div class="px-2 py-1 bg-[#111111] text-[#F5F5F0] font-mono-code text-[10px] font-bold uppercase rounded-xs">
+              SEC • 01
+            </div>
+          </div>
+          <!-- Chat Area a Registro Tipografico -->
+          <div class="flex-1 p-3.5 space-y-3.5 overflow-y-auto text-xs">
+            <!-- Voce Utente -->
+            <div class="border-l-2 border-[#111111] pl-3 py-1 space-y-1">
+              <span class="font-mono-code text-[9px] uppercase text-[#777777] block">UTENTE • 14:32</span>
+              <p class="font-medium text-[#111111] text-[11px]">Ho comprato le scarpe da trekking da Decathlon, costo 89.90€.</p>
+            </div>
+
+            <!-- Voce Assistente Tipografica -->
+            <div class="bg-white border-2 border-[#111111] p-3 rounded-none shadow-[3px_3px_0px_#111111] space-y-2">
+              <div class="flex items-center justify-between border-b border-[#E0E0DB] pb-1.5">
+                <span class="font-mono-code text-[10px] font-bold text-[#FF5500] uppercase">REGISTRO #042</span>
+                <span class="font-mono-code font-bold text-xs bg-[#111111] text-white px-1.5 py-0.5">89.90 EUR</span>
+              </div>
+              <p class="text-[11px] leading-relaxed text-[#222222]">
+                Quietanza indicizzata nel faldone <span class="underline font-bold">Fatture</span>. Bene fisico posizionato in: <span class="font-bold">Studio / Armadio</span>.
+              </p>
+            </div>
+
+            <!-- Seconda Domanda -->
+            <div class="border-l-2 border-[#111111] pl-3 py-1 space-y-1">
+              <span class="font-mono-code text-[9px] uppercase text-[#777777] block">UTENTE • 14:35</span>
+              <p class="font-medium text-[#111111] text-[11px]">Cosa devo pagare entro fine mese?</p>
+            </div>
+
+            <!-- Risposta Scadenza Industriale -->
+            <div class="bg-[#FFF4ED] border-2 border-[#FF5500] p-3 shadow-[3px_3px_0px_#FF5500] space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="font-mono-code font-bold text-[10px] text-[#FF5500] uppercase">AVVISO DI SCADENZA</span>
+                <span class="font-mono-code font-bold text-xs text-[#111111]">68.40 EUR</span>
+              </div>
+              <p class="text-[11px] text-[#222222] font-medium">Enel Energia Elettrica • Termine: 31 Ottobre 2026</p>
+            </div>
+          </div>
+          <!-- Command Bar Bauhaus -->
+          <div class="p-3 bg-[#EBEBE6] border-t-2 border-[#111111]">
+            <div class="flex items-center gap-2 bg-white border-2 border-[#111111] px-3 py-1.5 shadow-[2px_2px_0px_#111111]">
+              <input type="text" placeholder="INSERISCI TESTO..." class="bg-transparent flex-1 outline-none text-[#111111] font-mono-code text-xs">
+              <button class="bg-[#FF5500] text-white font-mono-code text-xs font-bold px-3 py-1 hover:bg-[#e04b00]">
+                INVIO
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- =================================================================== -->
+      <!-- 6. MOCKUP: TELEGRAM LUXE (Telegram Premium / Superhuman)            -->
+      <!-- =================================================================== -->
+      <div id="card-style-6" class="flex flex-col items-center">
+        <div class="mb-3 text-center">
+          <span class="text-xs font-bold text-purple-400 uppercase tracking-widest">Stile 6</span>
+          <h2 class="text-lg font-bold text-white font-display">Telegram Luxe</h2>
+          <p class="text-xs text-slate-400">Blu notte, viola ametista & fluidità premium</p>
+        </div>
+
+        <div class="phone-mockup bg-[#0E1621] text-slate-100 border border-slate-800">
+          <div class="phone-notch"></div>
+          <!-- Header Telegram -->
+          <div class="pt-8 px-4 pb-3 bg-[#17212B] border-b border-slate-800 flex items-center justify-between z-40">
+            <div class="flex items-center gap-2.5">
+              <div class="relative">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-[#7053ff] to-[#9b51e0] flex items-center justify-center text-white text-xs font-bold shadow-md shadow-purple-900/30">
+                  <i class="fa-solid fa-lock"></i>
+                </div>
+                <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#17212B] rounded-full"></span>
+              </div>
+              <div>
+                <span class="font-semibold text-sm text-white block leading-tight">Caveau Intelligente</span>
+                <span class="text-[10px] text-[#8774E1]">online • assistente</span>
+              </div>
+            </div>
+            <button class="w-7 h-7 rounded-full bg-[#242F3D] text-[#8774E1] flex items-center justify-center text-xs">
+              <i class="fa-solid fa-ellipsis-vertical"></i>
+            </button>
+          </div>
+          <!-- Chat Area -->
+          <div class="flex-1 p-3.5 space-y-3 overflow-y-auto text-xs">
+            <div class="flex justify-end">
+              <div class="bg-gradient-to-r from-[#7053ff] to-[#9b51e0] text-white rounded-2xl rounded-tr-xs p-3 max-w-[85%] shadow-md shadow-purple-950/40 space-y-1">
+                <p>Ho comprato le scarpe da trekking da Decathlon, costo 89.90€.</p>
+                <div class="flex items-center justify-end gap-1 text-[9px] text-purple-200">
+                  <span>14:32</span><i class="fa-solid fa-check-double text-cyan-300 text-[10px]"></i>
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-start">
+              <div class="bg-[#242F3D] border border-white/5 rounded-2xl rounded-tl-xs p-3.5 max-w-[90%] shadow-md space-y-2">
+                <div class="flex items-center justify-between text-[11px]">
+                  <span class="text-[#8774E1] font-semibold"><i class="fa-solid fa-receipt mr-1"></i> Ricevuta Registrata</span>
+                  <span class="font-mono text-emerald-400 font-bold">€ 89.90</span>
+                </div>
+                <p class="text-slate-300 text-[11px] leading-relaxed">
+                  Scontrino salvato in <span class="text-white font-medium">Fatture</span>. Scarpe collocate in <span class="text-white font-medium">Studio / Armadio</span>.
+                </p>
+                <div class="flex gap-1.5 pt-1">
+                  <span class="px-2 py-0.5 rounded-md bg-[#17212B] text-[10px] text-slate-300">📂 Spese</span>
+                  <span class="px-2 py-0.5 rounded-md bg-[#17212B] text-[10px] text-slate-300">📍 Armadio</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-end">
+              <div class="bg-gradient-to-r from-[#7053ff] to-[#9b51e0] text-white rounded-2xl rounded-tr-xs p-3 max-w-[85%] shadow-md">
+                <p>Cosa devo pagare entro fine mese?</p>
+                <div class="flex items-center justify-end gap-1 text-[9px] text-purple-200 pt-1">
+                  <span>14:35</span><i class="fa-solid fa-check-double text-cyan-300 text-[10px]"></i>
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-start">
+              <div class="bg-[#242F3D] border border-amber-500/20 rounded-2xl rounded-tl-xs p-3.5 max-w-[90%] shadow-md space-y-1.5">
+                <div class="flex items-center justify-between text-[11px]">
+                  <span class="text-amber-400 font-semibold"><i class="fa-regular fa-clock mr-1"></i> Scadenza</span>
+                  <span class="font-mono text-amber-300 font-bold">€ 68.40</span>
+                </div>
+                <div class="text-[10px] text-slate-300">Enel Energia • Scadenza il 31 Ottobre</div>
+              </div>
+            </div>
+          </div>
+          <!-- Command Bar Telegram -->
+          <div class="p-3 bg-[#17212B] border-t border-slate-800">
+            <div class="flex items-center gap-2 bg-[#242F3D] rounded-full px-3 py-2 text-xs">
+              <button class="text-[#8774E1] hover:text-white">
+                <i class="fa-solid fa-paperclip text-sm"></i>
+              </button>
+              <input type="text" placeholder="Scrivi un messaggio..." class="bg-transparent flex-1 outline-none text-white text-xs">
+              <button class="w-7 h-7 rounded-full bg-[#7053ff] text-white flex items-center justify-center shadow-md shadow-purple-900/40">
+                <i class="fa-solid fa-paper-plane text-xs"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Schede Esplicative a Fondo Pagina -->
+  <section class="max-w-6xl mx-auto w-full mt-12 pt-8 border-t border-slate-800 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+    <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/80 space-y-1.5">
+      <span class="text-xs font-bold text-emerald-400 uppercase">1. Vault Neo-Fintech</span>
+      <p class="text-xs text-slate-300">Stile Linear / Stripe. Grigio ardesia e smeraldo. Perfetto se cerchi serietà, ordine e chiarezza assoluta senza fronzoli.</p>
+    </div>
+    <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/80 space-y-1.5">
+      <span class="text-xs font-bold text-amber-300 uppercase">2. Executive Concierge</span>
+      <p class="text-xs text-slate-300">Stile Notion / Mastro contabile. Crema calda e salvia. Dà una sensazione rilassante, classica e di taccuino personale di valore.</p>
+    </div>
+    <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/80 space-y-1.5">
+      <span class="text-xs font-bold text-cyan-400 uppercase">3. Cyber-Caveau</span>
+      <p class="text-xs text-slate-300">Stile Arc / Dark OLED. Dynamic Island e accenti neon. Ideale per chi ama i temi scuri tecnologici e l'enfasi sull'AI.</p>
+    </div>
+    <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/80 space-y-1.5">
+      <span class="text-xs font-bold text-blue-400 uppercase">4. Cupertino Glass</span>
+      <p class="text-xs text-slate-400">Stile Apple iOS 18 / VisionOS. Vetro satinato, sfocature e blu iMessage. Massima modernità, familiarità e leggerezza.</p>
+    </div>
+    <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/80 space-y-1.5">
+      <span class="text-xs font-bold text-orange-400 uppercase">5. Vintage Swiss</span>
+      <p class="text-xs text-slate-300">Stile Braun / Dieter Rams / Bauhaus. Tipografia marcata e schede registro con timbri. Molto originale, d'impatto e artistico.</p>
+    </div>
+    <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/80 space-y-1.5">
+      <span class="text-xs font-bold text-purple-400 uppercase">6. Telegram Luxe</span>
+      <p class="text-xs text-slate-300">Stile Telegram Premium / Superhuman. Blu notte e viola ametista. Dinamico, ultra-veloce e molto accattivante.</p>
+    </div>
+  </section>
+
+  <!-- Script Interattività Schede -->
+  <script>
+    function switchView(view) {
+      const grid = document.getElementById('mockupsGrid');
+      const cards = [
+        document.getElementById('card-style-1'),
+        document.getElementById('card-style-2'),
+        document.getElementById('card-style-3'),
+        document.getElementById('card-style-4'),
+        document.getElementById('card-style-5'),
+        document.getElementById('card-style-6')
+      ];
+
+      const btns = [
+        document.getElementById('btn-side'),
+        document.getElementById('btn-1'),
+        document.getElementById('btn-2'),
+        document.getElementById('btn-3'),
+        document.getElementById('btn-4'),
+        document.getElementById('btn-5'),
+        document.getElementById('btn-6')
+      ];
+
+      btns.forEach(b => {
+        b.className = "px-3 py-1.5 rounded-xl text-xs font-semibold transition text-slate-300 hover:text-white";
+      });
+
+      if (view === 'side-by-side') {
+        grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start justify-center";
+        cards.forEach(c => c.style.display = "flex");
+        document.getElementById('btn-side').className = "px-3 py-1.5 rounded-xl text-xs font-semibold transition bg-emerald-500 text-slate-950 shadow-md";
+      } else {
+        const index = parseInt(view.replace('style-', '')) - 1;
+        grid.className = "flex items-center justify-center";
+        cards.forEach((c, idx) => {
+          c.style.display = idx === index ? "flex" : "none";
+        });
+        const activeBtn = document.getElementById(`btn-${index + 1}`);
+        activeBtn.className = "px-3 py-1.5 rounded-xl text-xs font-semibold transition bg-emerald-500 text-slate-950 shadow-md";
+      }
+    }
+  </script>
+</body>
+</html>
