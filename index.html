@@ -109,7 +109,6 @@
       color: var(--oli-ink) !important;
     }
 
-    #chatView,
     #conversationPanel,
     #sidebarPanel,
     #threadsContainer {
@@ -485,6 +484,8 @@
       height: 100%;
       overflow: hidden;
       z-index: 20;
+      background: transparent !important;
+      background-color: transparent !important;
     }
     #dashboardView {
       position: absolute !important;
@@ -493,6 +494,7 @@
       height: 100%;
       overflow: hidden;
       z-index: 10;
+      background-color: var(--oli-paper) !important;
     }
   </style>
 </head>
@@ -508,7 +510,7 @@
   <!-- ================================================================= -->
   <!-- 1. VISTA CHAT (REGISTRO DATTILOSCRITTO OLIVETTI)                  -->
   <!-- ================================================================= -->
-  <div id="chatView" class="w-full h-full flex bg-white overflow-hidden" style="position:relative">
+  <div id="chatView" class="w-full h-full flex bg-transparent overflow-hidden">
     
     <!-- A. SIDEBAR CANALI / GRUPPI OLIVETTI -->
     <aside id="sidebarPanel" class="shrink-0 border-r border-[#E3DDD1] bg-[#F8F5EE] flex flex-col h-full z-10 transition-transform duration-300">
@@ -522,7 +524,7 @@
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220]">Dove lo AI messo</h2>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.5</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.6</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568]">REGISTRO CENTRALE & AREE</p>
           </div>
@@ -643,7 +645,7 @@
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-bold text-xs leading-tight truncate font-space text-[#222220]">Dove lo AI messo</h1>
-              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.5</span>
+              <span class="stamp-oli text-[8px] shrink-0 app-version-badge">v1.8.6</span>
             </div>
             <p id="activeThreadSubtitle" class="text-[9px] font-mono-code text-[#7A7568] truncate">
               Assistente Personale & Caveau • online
@@ -2025,7 +2027,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. CENTRALE</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v1.8.5</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v1.8.6</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PROTOCOLLO CRITTOGRAFATO AES-256-GCM • SINCRONIZZATO IN TEMPO REALE</p>
           </div>
@@ -2192,7 +2194,7 @@
             <!-- Versione App -->
             <div class="border-t border-[#E3DDD1] px-3.5 py-2 mt-1 flex items-center justify-between text-[11px] text-[#7A7568] select-none font-mono-code">
               <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-[10px]"></i> Versione App</span>
-              <span class="stamp-oli text-[9px] app-version-badge">v1.8.5</span>
+              <span class="stamp-oli text-[9px] app-version-badge">v1.8.6</span>
             </div>
           </div>
         </div>
@@ -2489,6 +2491,13 @@
     let currentFilter = 'all';
     let currentRecords = [];
     let allDashboardRecordsCache = [];
+    try {
+      const _cachedRecords = sessionStorage.getItem('vault_records_cache');
+      if (_cachedRecords) {
+        allDashboardRecordsCache = JSON.parse(_cachedRecords);
+        currentRecords = [...allDashboardRecordsCache];
+      }
+    } catch (e) {}
 
     // Allinea dinamicamente i badge di versione all'avvio
     (function syncAppVersion() {
@@ -2866,6 +2875,13 @@
 
     function openDashboard(filter = null) {
       if (isTransitioningScreens) return;
+
+      // Se la dashboard è già aperta e la chat è nascosta, cambia solo filtro senza ri-animare
+      if (chatView.classList.contains('hidden') || chatView.style.display === 'none') {
+        if (filter) filterTable(filter);
+        return;
+      }
+
       isTransitioningScreens = true;
 
       // 1. Prepara e mostra subito la Dashboard sul livello inferiore (z-10)
@@ -2882,6 +2898,14 @@
       chatView.style.zIndex = '20';
       chatView.style.pointerEvents = 'none';
 
+      // Azzera transizioni sulle ante per partire esattamente dalla posizione attuale (0, 0, 0)
+      sidebarPanel.style.transition = 'none';
+      conversationPanel.style.transition = 'none';
+      sidebarPanel.style.transform = 'translate3d(0, 0, 0)';
+      sidebarPanel.style.opacity = '1';
+      conversationPanel.style.transform = 'translate3d(0, 0, 0)';
+      conversationPanel.style.opacity = '1';
+
       if (filter) {
         filterTable(filter);
       } else {
@@ -2891,25 +2915,27 @@
 
       // 2. Anima l'apertura a sipario: sidebar a sinistra, conversazione a destra
       requestAnimationFrame(() => {
-        const curtainEase = 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease';
-        sidebarPanel.style.transition = curtainEase;
-        conversationPanel.style.transition = curtainEase;
-        sidebarPanel.style.willChange = 'transform, opacity';
-        conversationPanel.style.willChange = 'transform, opacity';
+        requestAnimationFrame(() => {
+          const curtainEase = 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease';
+          sidebarPanel.style.transition = curtainEase;
+          conversationPanel.style.transition = curtainEase;
+          sidebarPanel.style.willChange = 'transform, opacity';
+          conversationPanel.style.willChange = 'transform, opacity';
 
-        sidebarPanel.style.transform = 'translate3d(-100%, 0, 0)';
-        sidebarPanel.style.opacity = '0';
-        conversationPanel.style.transform = 'translate3d(100%, 0, 0)';
-        conversationPanel.style.opacity = '0';
+          sidebarPanel.style.transform = 'translate3d(-100%, 0, 0)';
+          sidebarPanel.style.opacity = '0';
+          conversationPanel.style.transform = 'translate3d(100%, 0, 0)';
+          conversationPanel.style.opacity = '0';
 
-        setTimeout(() => {
-          chatView.classList.add('hidden');
-          chatView.style.display = 'none';
-          chatView.style.pointerEvents = 'auto';
-          sidebarPanel.style.willChange = 'auto';
-          conversationPanel.style.willChange = 'auto';
-          isTransitioningScreens = false;
-        }, 430);
+          setTimeout(() => {
+            chatView.classList.add('hidden');
+            chatView.style.display = 'none';
+            chatView.style.pointerEvents = 'auto';
+            sidebarPanel.style.willChange = 'auto';
+            conversationPanel.style.willChange = 'auto';
+            isTransitioningScreens = false;
+          }, 430);
+        });
       });
     }
 
@@ -6105,6 +6131,9 @@
         currentRecords = data.records || [];
         if (currentFilter === 'all' && (!threadId || threadId === 'all')) {
           allDashboardRecordsCache = [...currentRecords];
+          try {
+            sessionStorage.setItem('vault_records_cache', JSON.stringify(allDashboardRecordsCache));
+          } catch (e) {}
         } else if (!allDashboardRecordsCache || allDashboardRecordsCache.length === 0) {
           allDashboardRecordsCache = [...currentRecords];
         }
@@ -6619,7 +6648,7 @@
           const style = roomStyles[roomName] || { icon: "fa-location-dot", color: "bg-slate-100 text-slate-700" };
 
           const detailsEl = document.createElement('details');
-          detailsEl.open = false;
+          detailsEl.open = (currentFilter === 'items' || currentFilter === 'oggetti') ? true : false;
           detailsEl.className = 'group dashboard-accordion bg-white border border-[#E3DDD1] rounded-xs shadow-xs transition-all overflow-hidden';
 
           let itemCardsHtml = '';
@@ -8616,7 +8645,7 @@
 
       <div class="pt-2 border-t border-[#E3DDD1] flex items-center justify-between text-[10px] text-[#7A7568] font-mono-code">
         <span>Password predefinita: <code class="font-mono font-bold text-[#222220] bg-[#FAF8F2] border border-[#E3DDD1] px-1 py-0.5 rounded-xs">1234</code></span>
-        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.8.5</span>
+        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v1.8.6</span>
       </div>
 
     </div>
