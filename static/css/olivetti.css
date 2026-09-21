@@ -137,6 +137,8 @@
       border-radius: 3px !important;
       box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
       color: var(--oli-ink) !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 12px !important;
     }
 
     .wa-bubble-in {
@@ -148,6 +150,19 @@
       border-radius: 3px !important;
       box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
       color: var(--oli-ink) !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 12px !important;
+    }
+
+    /* Font JetBrains Mono per tutto il testo dentro le bolle */
+    .wa-bubble-in *,
+    .wa-bubble-out *,
+    .message-body,
+    .message-body p,
+    .message-body li,
+    .message-body span {
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 12px !important;
     }
 
     /* Timbri Typewriter sopra le bolle */
