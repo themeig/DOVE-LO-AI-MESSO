@@ -1,0 +1,489 @@
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Space+Grotesk:wght@500;600;700;800&display=swap');
+
+    :root {
+      --wa-teal: #075E54;
+      --wa-teal-light: #128C7E;
+      --wa-green: #25D366;
+      --wa-bg: #EFEAE2;
+      --wa-bubble-user: #E7FFDB;
+      --wa-bubble-ai: #FFFFFF;
+      --wa-ticks: #53bdeb;
+
+      /* Olivetti Industrial Design Tokens */
+      --oli-paper: #F8F5EE;
+      --oli-paper-dark: #EFECE3;
+      --oli-card: #FFFFFF;
+      --oli-ink: #222220;
+      --oli-ink-muted: #7A7568;
+      --oli-line: #E3DDD1;
+      --oli-sage: #3C5A48;
+      --oli-sage-hover: #2F4738;
+      --oli-sage-light: #EBF1ED;
+      --oli-terracotta: #C84B31;
+      --oli-terracotta-hover: #B23E26;
+      --oli-terracotta-light: #FAECE8;
+    }
+
+    /* ========================================================================= */
+    /* OLIVETTI INDUSTRIAL THEME (LETTERA 22 & SOTTSASS) — DEFAULT LOOK & FEEL  */
+    /* ========================================================================= */
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      background-color: var(--oli-paper);
+      color: var(--oli-ink);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace !important;
+    }
+
+    .font-space {
+      font-family: 'Space Grotesk', sans-serif !important;
+    }
+
+    .font-editorial {
+      font-family: 'Newsreader', Georgia, serif !important;
+    }
+
+    /* Timbri e Badge Ufficiali Olivetti */
+    .stamp-oli {
+      border: 1.5px solid var(--oli-sage);
+      color: var(--oli-sage);
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-radius: 3px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stamp-oli.stamp-terracotta,
+    .stamp-terracotta {
+      border-color: var(--oli-terracotta) !important;
+      color: var(--oli-terracotta) !important;
+    }
+
+    .stamp-solid-sage {
+      background-color: var(--oli-sage) !important;
+      color: #FFFFFF !important;
+      border-color: var(--oli-sage) !important;
+    }
+
+    .stamp-solid-terracotta {
+      background-color: var(--oli-terracotta) !important;
+      color: #FFFFFF !important;
+      border-color: var(--oli-terracotta) !important;
+    }
+
+    /* Nastro dattilografico bicolore sotto gli header */
+    .typewriter-ribbon {
+      display: block;
+      height: 3px;
+      width: 100%;
+      background: linear-gradient(to right, var(--oli-terracotta) 50%, var(--oli-sage) 50%);
+      z-index: 25;
+      position: relative;
+    }
+
+    /* Sfondo e pannelli Olivetti Industrial */
+    body {
+      background-color: var(--oli-paper) !important;
+      color: var(--oli-ink) !important;
+    }
+
+    #conversationPanel,
+    #sidebarPanel,
+    #threadsContainer {
+      background-color: var(--oli-paper) !important;
+    }
+
+    #sidebarPanel {
+      border-right: 1px solid var(--oli-line) !important;
+    }
+
+    .wa-wallpaper {
+      background-color: var(--oli-paper) !important;
+      background-image: none !important;
+    }
+
+    /* Header e Barre Superiori in stile Carta Avorio & Verde Salvia Olivetti */
+    #sidebarPanel > div:first-child,
+    header {
+      background-color: var(--oli-paper) !important;
+      border-bottom: 1px solid var(--oli-line) !important;
+      color: var(--oli-ink) !important;
+    }
+
+    header h1,
+    header h2,
+    #sidebarPanel h2 {
+      font-family: 'Space Grotesk', sans-serif !important;
+      color: var(--oli-ink) !important;
+    }
+
+    /* Bolle Conversazione Olivetti (Schede Dattiloscritte con Bordi Salvia) */
+    .wa-bubble-out {
+      background-color: #FFFFFF !important;
+      border: 1.5px solid var(--oli-sage) !important;
+      border-radius: 3px !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+      color: var(--oli-ink) !important;
+    }
+
+    .wa-bubble-in {
+      background-color: #FFFFFF !important;
+      border-left: 4px solid var(--oli-sage) !important;
+      border-top: 1px solid var(--oli-line) !important;
+      border-right: 1px solid var(--oli-line) !important;
+      border-bottom: 1px solid var(--oli-line) !important;
+      border-radius: 3px !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+      color: var(--oli-ink) !important;
+    }
+
+    /* Timbri Typewriter sopra le bolle */
+    .user-bubble-stamp,
+    .ai-bubble-stamp {
+      display: inline-block !important;
+    }
+
+    /* Schede Documenti dentro la Chat */
+    .chat-doc-card {
+      background-color: #FAF8F2 !important;
+      border: 1.5px solid var(--oli-sage) !important;
+      border-radius: 3px !important;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+    }
+
+    /* Barra Preview Messaggio Quotato (Olivetti Industrial) */
+    #quotePreviewBar {
+      background-color: var(--oli-paper) !important;
+      border-top: 1px solid var(--oli-line) !important;
+      border-bottom: 1px solid var(--oli-line) !important;
+      padding: 6px 12px 6px 12px !important;
+    }
+
+    #quotePreviewBar .quote-preview-card,
+    #quotePreviewBar > div {
+      background-color: #FFFFFF !important;
+      border: 1px solid var(--oli-line) !important;
+      border-left: 4px solid var(--oli-sage) !important;
+      border-radius: 3px !important;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+      padding: 7px 10px !important;
+    }
+
+    #quotePreviewBar #quoteSenderName {
+      color: var(--oli-sage) !important;
+      font-family: 'Space Grotesk', sans-serif !important;
+      font-weight: 700 !important;
+      text-transform: uppercase !important;
+      font-size: 11px !important;
+      letter-spacing: 0.04em !important;
+    }
+
+    #quotePreviewBar .quote-reply-icon {
+      color: var(--oli-sage) !important;
+    }
+
+    #quotePreviewBar .quote-type-stamp {
+      display: inline-flex !important;
+    }
+
+    #quotePreviewBar #quotePreviewText {
+      color: var(--oli-ink-muted) !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 11px !important;
+      line-height: 1.35 !important;
+    }
+
+    #quotePreviewBar button {
+      border-radius: 3px !important;
+      border: 1px solid var(--oli-line) !important;
+      background-color: #FAF8F2 !important;
+      color: var(--oli-ink-muted) !important;
+      width: 26px !important;
+      height: 26px !important;
+      transition: all 0.15s ease !important;
+    }
+
+    #quotePreviewBar button:hover {
+      background-color: var(--oli-terracotta-light) !important;
+      color: var(--oli-terracotta) !important;
+      border-color: var(--oli-terracotta) !important;
+    }
+
+    /* Citazioni Blockquote in Markdown (Olivetti Industrial) */
+    blockquote {
+      border-left: 3.5px solid var(--oli-sage) !important;
+      background-color: #FAF8F2 !important;
+      border-top: 1px solid var(--oli-line) !important;
+      border-bottom: 1px solid var(--oli-line) !important;
+      border-right: 1px solid var(--oli-line) !important;
+      border-radius: 3px !important;
+      color: var(--oli-ink) !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-style: normal !important;
+      padding: 6px 10px !important;
+      margin: 6px 0 !important;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+    }
+
+    /* Quote bubble in chat (Widget Messaggio Quotato nelle bolle) */
+    .quoted-msg-widget {
+      background-color: #FAF8F2 !important;
+      border: 1px solid var(--oli-line) !important;
+      border-left: 3.5px solid var(--oli-sage) !important;
+      border-radius: 3px !important;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+      padding: 6px 9px !important;
+      margin-bottom: 7px !important;
+    }
+
+    .quoted-msg-widget .quoted-sender {
+      font-family: 'Space Grotesk', sans-serif !important;
+      font-weight: 700 !important;
+      text-transform: uppercase !important;
+      font-size: 10.5px !important;
+      color: var(--oli-sage) !important;
+      letter-spacing: 0.03em !important;
+    }
+
+    .quoted-msg-widget .quoted-text {
+      font-family: 'JetBrains Mono', monospace !important;
+      color: var(--oli-ink) !important;
+      font-size: 11px !important;
+    }
+
+    .copy-msg-btn:hover {
+      color: var(--oli-sage) !important;
+      background-color: var(--oli-sage-light) !important;
+    }
+
+    /* Input chat stile Tasti Lettera 22 */
+    #chatInputContainer,
+    footer {
+      background-color: var(--oli-paper) !important;
+      border-top: 1px solid var(--oli-line) !important;
+    }
+
+    #chatForm {
+      background-color: #FFFFFF !important;
+      border: 1.5px solid var(--oli-sage) !important;
+      border-radius: 3px !important;
+      box-shadow: none !important;
+    }
+
+    #messageInput {
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 12px !important;
+      color: var(--oli-ink) !important;
+    }
+
+    #sendBtn {
+      background-color: var(--oli-terracotta) !important;
+      color: #FFFFFF !important;
+      border-radius: 3px !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12) !important;
+    }
+    #sendBtn:hover {
+      background-color: var(--oli-terracotta-hover) !important;
+    }
+
+    #micBtn {
+      background-color: #FFFFFF !important;
+      border: 1.5px solid var(--oli-sage) !important;
+      color: var(--oli-sage) !important;
+      border-radius: 3px !important;
+    }
+    #micBtn:hover {
+      background-color: var(--oli-sage) !important;
+      color: #FFFFFF !important;
+    }
+
+    #attachmentBtn {
+      background-color: #FFFFFF !important;
+      border: 1.5px solid var(--oli-sage) !important;
+      color: var(--oli-sage) !important;
+      border-radius: 3px !important;
+    }
+    #attachmentBtn:hover {
+      background-color: var(--oli-sage) !important;
+      color: #FFFFFF !important;
+    }
+
+    #stopBtn {
+      background-color: var(--oli-terracotta) !important;
+      color: #FFFFFF !important;
+      border-radius: 3px !important;
+    }
+
+    .olivetti-input-subtext {
+      display: flex !important;
+    }
+
+    /* Dashboard Olivetti */
+    #dashboardView {
+      background-color: var(--oli-paper) !important;
+      color: var(--oli-ink) !important;
+    }
+
+    #dashboardView header {
+      background-color: var(--oli-paper) !important;
+      border-bottom: 1px solid var(--oli-line) !important;
+    }
+
+    .wa-ticks-icon {
+      display: none !important;
+    }
+
+    /* Finestre Modali Stile Olivetti Industrial */
+    .modal-card {
+      background-color: #FFFFFF !important;
+      border: 2px solid var(--oli-sage) !important;
+      border-radius: 3px !important;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3) !important;
+      color: var(--oli-ink) !important;
+    }
+    .modal-header {
+      background-color: var(--oli-paper) !important;
+      border-bottom: 1px solid var(--oli-line) !important;
+      color: var(--oli-ink) !important;
+    }
+    .modal-card input:not([type="checkbox"]):not([type="radio"]),
+    .modal-card select,
+    .modal-card textarea {
+      font-family: 'JetBrains Mono', monospace !important;
+      border: 1px solid var(--oli-sage) !important;
+      border-radius: 3px !important;
+      background-color: #FFFFFF !important;
+      color: var(--oli-ink) !important;
+    }
+    .modal-card input:focus,
+    .modal-card select:focus,
+    .modal-card textarea:focus {
+      border-color: var(--oli-terracotta) !important;
+      outline: none !important;
+    }
+
+    /* Selezione testo abilitata per bolle di chat e contenuti */
+    .wa-bubble-in, .wa-bubble-out, .selectable-text {
+      user-select: text !important;
+      -webkit-user-select: text !important;
+      -moz-user-select: text !important;
+      -ms-user-select: text !important;
+    }
+    .wa-bubble-in *, .wa-bubble-out * {
+      user-select: text !important;
+      -webkit-user-select: text !important;
+    }
+
+    /* Pulsante copia messaggio */
+    .copy-msg-btn {
+      opacity: 0;
+      transition: opacity 0.15s ease, transform 0.1s ease, color 0.15s ease;
+      cursor: pointer;
+    }
+    .group\/msg:hover .copy-msg-btn,
+    .copy-msg-btn:focus,
+    .copy-msg-btn:active {
+      opacity: 1;
+    }
+    @media (hover: none) {
+      .copy-msg-btn {
+        opacity: 0.7;
+      }
+    }
+
+    /* Scrollbar calda per Olivetti */
+    .custom-scroll::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #D8D2C4;
+      border-radius: 3px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: #C4BDAE;
+    }
+
+    /* Layout panels — prevent horizontal scroll durante le transizioni mobile */
+    #chatView {
+      overflow: hidden;
+    }
+    #sidebarPanel,
+    #conversationPanel {
+      will-change: transform, opacity;
+      backface-visibility: hidden;
+    }
+
+    /* Typing indicator Olivetti Industrial */
+    .typing-indicator {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 14px;
+      background: #FFFFFF;
+      border-radius: 4px;
+      border-left: 3px solid var(--oli-sage);
+      border-top: 1px solid var(--oli-line);
+      border-right: 1px solid var(--oli-line);
+      border-bottom: 1px solid var(--oli-line);
+      width: fit-content;
+      max-width: 90%;
+      min-width: 60px;
+      margin: 2px 0 6px 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.06);
+      transition: all 0.2s ease-in-out;
+    }
+    .typing-dots {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .typing-dots span {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--oli-sage);
+      display: block;
+      animation: typing-bounce 1.4s infinite ease-in-out;
+    }
+    .typing-dots span:nth-child(1) { animation-delay: 0s; }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing-bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* Transizione a Sipario Meccanico (Olivetti Layer Reveal) */
+    #chatView {
+      position: absolute !important;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      z-index: 20;
+      background: transparent !important;
+      background-color: transparent !important;
+    }
+    #dashboardView {
+      position: absolute !important;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      z-index: 10;
+      background-color: var(--oli-paper) !important;
+    }

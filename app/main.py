@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.models.database import init_db
@@ -111,6 +112,11 @@ app.include_router(export_router)
 app.include_router(drive_router)
 
 settings = get_settings()
+
+# Serve static assets (CSS, JS) from /static/
+_static_dir = settings.BASE_DIR / "static"
+if _static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 def _serve_decrypted_file(filename: str):
     file_path = get_settings().STORAGE_DIR / filename
