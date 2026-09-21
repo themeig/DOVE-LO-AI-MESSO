@@ -1943,7 +1943,7 @@
 
       if (!text) return;
 
-      const defaultAssistantName = 'Concierge Olivetti';
+      const defaultAssistantName = 'Assistente';
       const senderName = senderType === 'user' ? 'Tu' : defaultAssistantName;
       currentQuotedMessage = {
         sender: senderType,
