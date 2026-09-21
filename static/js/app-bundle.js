@@ -2613,7 +2613,7 @@
       }
 
       aiBubble.innerHTML = `
-        <span class="text-[9px] font-mono-code text-[#3C5A48] font-bold mb-1 ai-bubble-stamp">CONCIERGE OLIVETTI • ${getTime()}</span>
+        <span class="text-[9px] font-mono-code text-[#3C5A48] font-bold mb-1 ai-bubble-stamp">ASSISTENTE • ${getTime()}</span>
         <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug max-w-full relative group/msg select-text">
           <div class="flex items-start justify-between gap-2">
             <div class="message-body selectable-text min-w-0 flex-1 break-words">
