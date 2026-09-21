@@ -154,13 +154,18 @@
       font-size: 12px !important;
     }
 
-    /* Font JetBrains Mono per tutto il testo dentro le bolle */
-    .wa-bubble-in *,
-    .wa-bubble-out *,
+    /* Font JetBrains Mono per tutto il testo dentro le bolle (escluse le icone FA) */
+    .wa-bubble-in p,
+    .wa-bubble-in li,
+    .wa-bubble-in span:not([class*="fa"]),
+    .wa-bubble-in div:not([class*="fa"]),
+    .wa-bubble-out p,
+    .wa-bubble-out li,
+    .wa-bubble-out span:not([class*="fa"]),
+    .wa-bubble-out div:not([class*="fa"]),
     .message-body,
     .message-body p,
-    .message-body li,
-    .message-body span {
+    .message-body li {
       font-family: 'JetBrains Mono', monospace !important;
       font-size: 12px !important;
     }
