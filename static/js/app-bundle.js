@@ -1093,9 +1093,22 @@
       }
     }
 
-    // --- Helper Download File: forza il download tramite fetch+Blob (compatibile con pywebview) ---
-    async function downloadFileFromUrl(url, filename) {
+    // --- Helper Download File: salva tramite Python sul PC (compatibile con pywebview) ---
+    async function downloadFileFromUrl(url, filename, docId = null) {
       try {
+        // Se abbiamo un docId usiamo l'endpoint Python che salva nella cartella Download
+        // e apre Explorer — è l'unico modo affidabile in pywebview
+        if (docId) {
+          const res = await fetch(`/api/documents/${docId}/save-to-downloads`, {
+            method: 'POST',
+            headers: authHeaders()
+          });
+          if (!res.ok) throw new Error('Errore server: ' + res.status);
+          const data = await res.json();
+          showToast(`✅ Salvato in Download: ${data.filename}`, 'success', 5000);
+          return;
+        }
+        // Fallback blob per file senza docId
         const res = await fetch(url, { headers: authHeaders() });
         if (!res.ok) throw new Error('Risposta server: ' + res.status);
         const blob = await res.blob();
@@ -1108,7 +1121,7 @@
         setTimeout(() => { URL.revokeObjectURL(blobUrl); a.remove(); }, 2000);
       } catch (err) {
         console.error('Errore download:', err);
-        showToast('Errore durante il download: ' + err.message, 'error');
+        showToast('❌ Errore durante il download: ' + err.message, 'error');
       }
     }
 
@@ -2454,7 +2467,7 @@
                         </button>
                       ` : ''}
                       ${downloadUrl ? `
-                        <button type="button" onclick="downloadFileFromUrl('${downloadUrl}', '${safeDownloadName}')" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] hover:text-[#2F4738] border border-[#3C5A48] text-[10px] font-bold px-2 py-1 rounded-xs shadow-xs transition flex items-center gap-1 active:scale-95 cursor-pointer font-space" title="Scarica documento sul tuo dispositivo">
+                        <button type="button" onclick="downloadFileFromUrl('${downloadUrl}', '${safeDownloadName}', ${docId || 'null'})" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] hover:text-[#2F4738] border border-[#3C5A48] text-[10px] font-bold px-2 py-1 rounded-xs shadow-xs transition flex items-center gap-1 active:scale-95 cursor-pointer font-space" title="Scarica documento sul tuo dispositivo">
                           <i class="fa-solid fa-download text-xs text-[#3C5A48]"></i>
                           <span>Scarica</span>
                         </button>
@@ -4732,7 +4745,7 @@
       downloadBtn.removeAttribute('href');
       downloadBtn.removeAttribute('download');
       downloadBtn.onclick = (targetDl && targetDl !== '#')
-        ? () => downloadFileFromUrl(targetDl, safeDownloadName)
+        ? () => downloadFileFromUrl(targetDl, safeDownloadName, docId || null)
         : null;
 
       pdfFrame.classList.add('hidden');

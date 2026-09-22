@@ -495,6 +495,59 @@ def download_document_file(document_id: int, db: Session = Depends(get_db)):
         headers=headers
     )
 
+
+@router.post("/{document_id}/save-to-downloads")
+def save_to_downloads(document_id: int, db: Session = Depends(get_db)):
+    """
+    Salva il file decifrato direttamente nella cartella Download dell'utente
+    e apre Explorer su quel file. Soluzione per pywebview che non gestisce
+    i download browser nativamente.
+    """
+    import subprocess
+    from app.services.document_service import read_decrypted_file
+
+    doc = db.query(Document).filter(Document.id == document_id).first()
+    if not doc or not Path(doc.file_path).exists():
+        raise HTTPException(status_code=404, detail="File non trovato")
+
+    decrypted_bytes = read_decrypted_file(doc.file_path)
+
+    # Costruisce nome file pulito
+    nfkd = unicodedata.normalize('NFKD', doc.title)
+    ascii_title = nfkd.encode('ASCII', 'ignore').decode('ASCII')
+    clean_title = re.sub(r'[^a-zA-Z0-9_\-]+', '_', ascii_title).strip('_') or f"documento_{doc.id}"
+    file_ext = Path(doc.file_path).suffix.lstrip(".") or doc.file_type or "bin"
+    if not clean_title.lower().endswith(f".{file_ext.lower()}"):
+        filename = f"{clean_title}.{file_ext}"
+    else:
+        filename = clean_title
+
+    # Salva nella cartella Download dell'utente corrente
+    downloads_dir = Path.home() / "Downloads"
+    downloads_dir.mkdir(exist_ok=True)
+    dest = downloads_dir / filename
+
+    # Se esiste già, aggiunge suffisso numerico
+    counter = 1
+    while dest.exists():
+        dest = downloads_dir / f"{clean_title}_{counter}.{file_ext}"
+        counter += 1
+
+    dest.write_bytes(decrypted_bytes)
+
+    # Apre Explorer selezionando il file appena salvato
+    try:
+        subprocess.Popen(["explorer", "/select,", str(dest)])
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "saved_to": str(dest),
+        "filename": dest.name,
+        "message": f"File salvato in: {dest}"
+    }
+
 @router.patch("/{document_id}/status")
 def update_document_status(
     document_id: int,
