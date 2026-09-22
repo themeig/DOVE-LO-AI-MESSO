@@ -40,16 +40,6 @@
         </div>
 
         <div class="flex items-center space-x-1.5">
-          <!-- Crea Nuovo Gruppo / Area -->
-          <button 
-            onclick="openNewThreadModal()" 
-            class="stamp-oli stamp-solid-sage hover:bg-[#2F4738] transition cursor-pointer text-[9px]"
-            title="Crea nuovo gruppo o area tematica"
-          >
-            <i class="fa-solid fa-plus text-[9px]"></i>
-            <span class="font-space">NUOVO</span>
-          </button>
-
           <!-- Apri Dashboard -->
           <button 
             onclick="openDashboard()" 
@@ -93,11 +83,20 @@
         </div>
       </div>
 
-      <!-- Filtri: Tutte, Gruppi, Aree -->
+      <!-- Filtri: Tutte, Gruppi, Aree + Nuovo -->
       <div class="flex items-center gap-1.5 px-3 py-2 border-b border-[#E3DDD1] bg-[#F8F5EE] select-none overflow-x-auto custom-scroll">
         <button id="pillAll" onclick="setThreadFilter('all')" class="px-2.5 py-1 text-[10px] rounded-xs font-space font-bold transition bg-[#3C5A48] text-white cursor-pointer">TUTTE</button>
         <button id="pillGroup" onclick="setThreadFilter('group')" class="px-2.5 py-1 text-[10px] rounded-xs font-space font-bold transition bg-white border border-[#E3DDD1] text-[#7A7568] hover:text-[#222220] cursor-pointer">GRUPPI 👥</button>
         <button id="pillThematic" onclick="setThreadFilter('thematic')" class="px-2.5 py-1 text-[10px] rounded-xs font-space font-bold transition bg-white border border-[#E3DDD1] text-[#7A7568] hover:text-[#222220] cursor-pointer">AREE 🗂️</button>
+        <!-- Crea Nuovo Gruppo / Area -->
+        <button 
+          onclick="openNewThreadModal()" 
+          class="ml-auto stamp-oli stamp-solid-sage hover:bg-[#2F4738] transition cursor-pointer text-[9px] shrink-0"
+          title="Crea nuovo gruppo o area tematica"
+        >
+          <i class="fa-solid fa-plus text-[9px]"></i>
+          <span class="font-space">NUOVO</span>
+        </button>
       </div>
 
       <!-- Lista dei Canali / Thread -->
