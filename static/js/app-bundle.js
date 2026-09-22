@@ -1093,6 +1093,25 @@
       }
     }
 
+    // --- Helper Download File: forza il download tramite fetch+Blob (compatibile con pywebview) ---
+    async function downloadFileFromUrl(url, filename) {
+      try {
+        const res = await fetch(url, { headers: authHeaders() });
+        if (!res.ok) throw new Error('Risposta server: ' + res.status);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename || 'documento';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(blobUrl); a.remove(); }, 2000);
+      } catch (err) {
+        console.error('Errore download:', err);
+        showToast('Errore durante il download: ' + err.message, 'error');
+      }
+    }
+
     // --- Gestione Impostazioni Modello AI (Switch Gratuito / Gemini Flash Lite) ---
     let currentAiModel = 'google/gemini-2.5-flash-lite';
 
@@ -2435,10 +2454,10 @@
                         </button>
                       ` : ''}
                       ${downloadUrl ? `
-                        <a href="${downloadUrl}" download="${safeDownloadName}" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] hover:text-[#2F4738] border border-[#3C5A48] text-[10px] font-bold px-2 py-1 rounded-xs shadow-xs transition flex items-center gap-1 active:scale-95 font-space" title="Scarica documento sul tuo dispositivo">
+                        <button type="button" onclick="downloadFileFromUrl('${downloadUrl}', '${safeDownloadName}')" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] hover:text-[#2F4738] border border-[#3C5A48] text-[10px] font-bold px-2 py-1 rounded-xs shadow-xs transition flex items-center gap-1 active:scale-95 cursor-pointer font-space" title="Scarica documento sul tuo dispositivo">
                           <i class="fa-solid fa-download text-xs text-[#3C5A48]"></i>
                           <span>Scarica</span>
-                        </a>
+                        </button>
                       ` : ''}
                       ${docId ? `
                         <button type="button" onclick="openFileInExplorer(${docId})" class="bg-[#FAF8F2] hover:bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] text-[10px] font-bold px-2 py-1 rounded-xs shadow-xs transition flex items-center gap-1 active:scale-95 cursor-pointer font-space" title="Apri file in Esplora Risorse del PC">
@@ -4708,11 +4727,13 @@
       const safeTitle = title || 'Documento';
       titleEl.textContent = safeTitle;
       const targetDl = downloadUrl || url || '#';
-      downloadBtn.href = targetDl;
-      if (targetDl && targetDl !== '#') {
-        const safeDownloadName = safeTitle.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        downloadBtn.setAttribute('download', safeDownloadName);
-      }
+      const safeDownloadName = safeTitle.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      // Usa fetch+Blob per compatibilità con pywebview (l'attributo download non funziona nel webview nativo)
+      downloadBtn.removeAttribute('href');
+      downloadBtn.removeAttribute('download');
+      downloadBtn.onclick = (targetDl && targetDl !== '#')
+        ? () => downloadFileFromUrl(targetDl, safeDownloadName)
+        : null;
 
       pdfFrame.classList.add('hidden');
       pdfFrame.src = '';
