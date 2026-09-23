@@ -17,3 +17,13 @@ def test_mock_ai_route_intent_query():
     ai = MockAIService()
     intent = ai.classify_and_extract_intent("Dov'è il passaporto?")
     assert intent.intent == "QUERY_LOCATION"
+
+def test_mock_ai_extract_identity_card_with_deadline():
+    ai = MockAIService()
+    result = ai.extract_document(b"fake id content", "image/jpeg", filename="carta_identita_mario.jpg")
+    assert result.doc_type == "documento_identita"
+    assert result.amount is None
+    assert result.due_date == "2034-05-18"
+    assert result.is_payable is True
+    assert result.category == "documenti_identita"
+

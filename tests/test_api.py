@@ -287,3 +287,18 @@ def test_classify_document_category_songs_vs_utilities():
     assert t_key == "utenze"
     assert t_label == "Utenze & Bollette"
 
+def test_upload_identity_document_has_deadline_and_status_da_pagare():
+    fake_img = io.BytesIO(b"fake image bytes")
+    upload_res = client.post("/api/documents/upload", files={"file": ("carta_identita_luigi.jpg", fake_img, "image/jpeg")})
+    assert upload_res.status_code == 201
+    doc_id = upload_res.json()["document_id"]
+    
+    # Verifica che il documento abbia status da_pagare e due_date nel feed dashboard
+    dash = client.get("/api/dashboard?filter=deadlines").json()
+    found = next((r for r in dash["records"] if r["id"] == doc_id), None)
+    assert found is not None
+    assert found["status"] == "da_pagare"
+    assert found["due_date"] == "2034-05-18"
+    assert found["amount"] is None
+
+

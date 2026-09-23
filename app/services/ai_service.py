@@ -92,6 +92,7 @@ class MockAIService:
 
     def _raw_extract_document(self, file_bytes: bytes, mime_type: str, filename: str = "") -> ExtractedDocument:
         fn = filename.lower()
+        clean_name = Path(filename).stem.replace("_", " ").replace("-", " ").strip().title()
         if "tolc" in fn or "certificate" in fn or "certificat" in fn:
             return ExtractedDocument(
                 title="Certificato Test TOLC-E CISIA",
@@ -113,6 +114,7 @@ class MockAIService:
                 issuer="Agenzia delle Entrate",
                 amount=2450.00,
                 due_date="2026-09-16",
+                is_payable=True,
                 summary="Modello F24 versamento IVA trimestrale.",
                 tags=["f24", "fisco", "iva"],
                 suggest_rename=False,
@@ -120,7 +122,21 @@ class MockAIService:
                 category_label="Fisco, Tributi & F24",
                 category_icon="fa-landmark"
             )
-        clean_name = Path(filename).stem.replace("_", " ").replace("-", " ").strip().title()
+        if any(k in fn for k in ["identit", "patente", "passaporto", "cie"]):
+            return ExtractedDocument(
+                title=f"Carta d'Identità {clean_name}" if "identit" in fn or "cie" in fn else f"Documento {clean_name}",
+                doc_type="documento_identita",
+                issuer="Ministero dell'Interno",
+                amount=None,
+                due_date="2034-05-18",
+                is_payable=True,
+                summary="Documento di riconoscimento in corso di validità con data di scadenza.",
+                tags=["identità", "documento", "personale", "scadenza"],
+                suggest_rename=False,
+                category="documenti_identita",
+                category_label="Documenti Personali & Identità",
+                category_icon="fa-id-card"
+            )
         if any(k in fn for k in ["canzon", "music", "poesi", "brano", "strof", "liric"]):
             return ExtractedDocument(
                 title=f"Testo di {clean_name or 'Canzone'}",
@@ -376,24 +392,27 @@ class OpenRouterAIService:
 ---
 
 Identifica con la massima precisione:
-1. 'title': un titolo chiaro, elegante e sintetico per il documento (es. 'Certificato TOLC-E CISIA', 'Bolletta Enel Energia Luce', 'Modello F24 IVA')
-2. 'doc_type': tipo documento (certificato, bolletta, f24, contratto, ricevuta, fattura, testo_personale, generico)
-3. 'issuer': nome ente, università, azienda o fornitore (oppure null)
-4. Se è una bolletta o tributo da pagare con scadenza, estrai 'amount' e 'due_date'. Se NON è una bolletta da pagare, imposta amount=null e due_date=null!
-5. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano che riassume tutti i dettagli (punteggi, codici, esiti, intestatario, date).
-6. 'suggest_rename': false (i documenti formali hanno già un titolo chiaro).
-7. 'category_label': consulta PRIMA queste cartelle generali di sistema: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Fatture, Spese & Ricevute', 'Contratti, Polizze & Assicurazioni', 'Documenti Personali & Identità', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Archivi Compressi & ZIP', 'Foto, Immagini & Ricordi'. Se il file è inerente a una di esse, USA QUELLA CARTELLA per evitare doppioni! Crea una nuova sezione tematica SOLO se il file non ha alcuna pertinenza con quelle sopra.
-8. 'category': slug normalizzato in minuscolo con underscore (es. 'canzoni_musica', 'utenze_bollette', 'fisco_tributi', 'ricette_cucina').
-9. 'category_icon': l'icona FontAwesome 6 più appropriata (es. 'fa-music', 'fa-bolt', 'fa-landmark', 'fa-id-card', 'fa-file-signature', 'fa-receipt', 'fa-heart-pulse', 'fa-graduation-cap', 'fa-utensils', 'fa-car', 'fa-paw', 'fa-plane', 'fa-folder-closed').
-10. 'subfolder': estrai l'anno a 4 cifre (es. '2026', '2025', '2024') se presente una data/scadenza, oppure un sotto-tema (es. 'Locazioni', 'Album'); altrimenti imposta null.
+1. 'title': un titolo chiaro, elegante e sintetico per il documento (es. 'Certificato TOLC-E CISIA', 'Bolletta Enel Energia Luce', 'Modello F24 IVA', 'Carta d'Identità Mario Rossi')
+2. 'doc_type': tipo documento (certificato, bolletta, f24, contratto, ricevuta, fattura, documento_identita, patente, polizza, testo_personale, generico)
+3. 'issuer': nome ente, università, azienda, fornitore o ministero (oppure null)
+4. 'due_date': se il documento presenta una data di scadenza, termine di pagamento o fine validità (es. bollette, fatture, F24, ma anche carte d'identità, patenti, passaporti, contratti di affitto, polizze assicurative, abbonamenti, tessere sanitarie), estrai la data nel formato YYYY-MM-DD. ATTENZIONE: estrai ESCLUSIVAMENTE la data di scadenza ('valido fino al', 'scade il', 'data di scadenza', 'termine'); NON confondere la data di rilascio, stipula o emissione con la scadenza! Se non c'è alcuna scadenza o termine, imposta rigorosamente due_date=null.
+5. 'amount': se è presente un importo monetario da pagare o saldare, estrailo come numero decimale (es. 64.20). Se il documento NON richiede un pagamento in denaro (es. carta d'identità, patente, certificato o contratto senza importo pendente), imposta rigorosamente amount=null.
+6. 'is_payable': true se il documento ha una scadenza attiva o richiede un'azione di pagamento/rinnovo da monitorare nello scadenzario; false altrimenti.
+7. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano che riassume tutti i dettagli (punteggi, codici, esiti, intestatario, date).
+8. 'suggest_rename': false (i documenti formali hanno già un titolo chiaro).
+9. 'category_label': consulta PRIMA queste cartelle generali di sistema: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Fatture, Spese & Ricevute', 'Contratti, Polizze & Assicurazioni', 'Documenti Personali & Identità', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Archivi Compressi & ZIP', 'Foto, Immagini & Ricordi'. Se il file è inerente a una di esse, USA QUELLA CARTELLA per evitare doppioni! Crea una nuova sezione tematica SOLO se il file non ha alcuna pertinenza con quelle sopra.
+10. 'category': slug normalizzato in minuscolo con underscore (es. 'canzoni_musica', 'utenze_bollette', 'fisco_tributi', 'documenti_identita').
+11. 'category_icon': l'icona FontAwesome 6 più appropriata (es. 'fa-music', 'fa-bolt', 'fa-landmark', 'fa-id-card', 'fa-file-signature', 'fa-receipt', 'fa-heart-pulse', 'fa-graduation-cap', 'fa-utensils', 'fa-car', 'fa-paw', 'fa-plane', 'fa-folder-closed').
+12. 'subfolder': estrai l'anno a 4 cifre (es. '2026', '2025', '2024') se presente una data/scadenza, oppure un sotto-tema (es. 'Locazioni', 'Album'); altrimenti imposta null.
 
 Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
 {{
   "title": "titolo chiaro ed elegante",
-  "doc_type": "certificato" | "bolletta" | "f24" | "contratto" | "ricevuta" | "fattura" | "generico",
+  "doc_type": "certificato" | "bolletta" | "f24" | "contratto" | "ricevuta" | "fattura" | "documento_identita" | "polizza" | "generico",
   "issuer": "nome ente o fornitore" o null,
   "amount": null oppure numero decimale,
   "due_date": null oppure "YYYY-MM-DD",
+  "is_payable": true oppure false,
   "summary": "riassunto dettagliato in 2-3 frasi in italiano",
   "tags": ["tag1", "tag2", "tag3"],
   "suggest_rename": false,
@@ -430,13 +449,15 @@ Identifica con la massima precisione:
 1. 'title': un titolo chiaro, elegante e sintetico (es. 'Contratto di Consulenza Software', 'Foglio Spese e Scadenze Aziendali', 'Elenco Fornitori', 'Testo Canzone ...')
 2. 'doc_type': scegli liberamente il tipo più adatto (es. 'canzone', 'poesia', 'testo_personale', 'ricetta', 'contratto', 'foglio_calcolo', 'spese', 'fattura', 'ricevuta', 'documento_word', 'report', 'generico'). Se il testo contiene strofe, canzoni, versi, rime o poesie, NON classificarlo MAI come bolletta o utenza!
 3. 'issuer': nome ente, azienda, autore, artista o controparte (oppure null)
-4. Se contiene importi da pagare o scadenze specifiche di pagamento, estrai 'amount' e 'due_date' (YYYY-MM-DD), altrimenti null.
-5. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano con i punti chiave, autore, argomenti, intestatari o dati più importanti.
-6. 'suggest_rename': false.
-7. 'category_label': consulta PRIMA queste cartelle generali di sistema: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Fatture, Spese & Ricevute', 'Contratti, Polizze & Assicurazioni', 'Documenti Personali & Identità', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Archivi Compressi & ZIP', 'Foto, Immagini & Ricordi'. Se il file è inerente a una di esse (es. testo canzone/poesia -> 'Canzoni, Musica & Testi Personali', scontrino/ricevuta -> 'Fatture, Spese & Ricevute'), USA QUELLA CARTELLA per evitare doppioni! Crea una nuova sezione tematica SOLO se il file non ha alcuna pertinenza con quelle sopra.
-8. 'category': slug normalizzato in minuscolo con underscore (es. 'canzoni_musica', 'ricette_cucina', 'fogli_calcolo', 'contratti_polizze').
-9. 'category_icon': l'icona FontAwesome 6 più appropriata (es. 'fa-music', 'fa-utensils', 'fa-graduation-cap', 'fa-car', 'fa-paw', 'fa-plane', 'fa-table', 'fa-file-lines', 'fa-bolt', 'fa-landmark', 'fa-receipt', 'fa-file-signature').
-10. 'subfolder': estrai l'anno a 4 cifre (es. '2026', '2025', '2024') se presente una data, competenza o scadenza, oppure un sotto-tema (es. 'Locazioni', 'Bozze'); altrimenti imposta null.
+4. 'due_date': se contiene una data di scadenza, fine validità, termine o rinnovo (es. termine contratto, scadenza polizza, termine pagamento fattura/canone, foglio scadenze), estraila in formato YYYY-MM-DD. NON confondere la data di stipula con la scadenza! Se non c'è una scadenza o termine, imposta null.
+5. 'amount': se è presente un importo monetario da saldare o pagare, estrailo come numero decimale (es. 1500.00), altrimenti null.
+6. 'is_payable': true se ha una scadenza attiva o richiede pagamento/rinnovo da monitorare nello scadenzario; false altrimenti.
+7. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano con i punti chiave, autore, argomenti, intestatari o dati più importanti.
+8. 'suggest_rename': false.
+9. 'category_label': consulta PRIMA queste cartelle generali di sistema: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Fatture, Spese & Ricevute', 'Contratti, Polizze & Assicurazioni', 'Documenti Personali & Identità', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Archivi Compressi & ZIP', 'Foto, Immagini & Ricordi'. Se il file è inerente a una di esse (es. testo canzone/poesia -> 'Canzoni, Musica & Testi Personali', scontrino/ricevuta -> 'Fatture, Spese & Ricevute'), USA QUELLA CARTELLA per evitare doppioni! Crea una nuova sezione tematica SOLO se il file non ha alcuna pertinenza con quelle sopra.
+10. 'category': slug normalizzato in minuscolo con underscore (es. 'canzoni_musica', 'ricette_cucina', 'fogli_calcolo', 'contratti_polizze').
+11. 'category_icon': l'icona FontAwesome 6 più appropriata (es. 'fa-music', 'fa-utensils', 'fa-graduation-cap', 'fa-car', 'fa-paw', 'fa-plane', 'fa-table', 'fa-file-lines', 'fa-bolt', 'fa-landmark', 'fa-receipt', 'fa-file-signature').
+12. 'subfolder': estrai l'anno a 4 cifre (es. '2026', '2025', '2024') se presente una data, competenza o scadenza, oppure un sotto-tema (es. 'Locazioni', 'Bozze'); altrimenti imposta null.
 
 Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
 {{
@@ -445,6 +466,7 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
   "issuer": "nome ente o fornitore" o null,
   "amount": null oppure numero decimale,
   "due_date": null oppure "YYYY-MM-DD",
+  "is_payable": true oppure false,
   "summary": "riassunto dettagliato in 2-3 frasi in italiano",
   "tags": ["tag1", "tag2", "tag3"],
   "suggest_rename": false,
@@ -494,24 +516,27 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                 "Sei l'assistente 'Dove lo AI messo'. Analizza con precisione visiva questa immagine caricata dall'utente.\n\n"
                 "Istruzioni:\n"
                 "1. 'title': genera un titolo sintetico e descrittivo (massimo 4-6 parole) di ciò che vedi nell'immagine. "
-                "Ad esempio se vedi un volante o quick release scrivi 'Base Volante con attacco rapido', se vedi delle chiavi scrivi 'Mazzo chiavi con telecomando', se vedi una bolletta scrivi 'Bolletta Enel Energia', se vedi una patente scrivi 'Patente di Guida'. "
+                "Ad esempio se vedi un volante o quick release scrivi 'Base Volante con attacco rapido', se vedi delle chiavi scrivi 'Mazzo chiavi con telecomando', se vedi una bolletta scrivi 'Bolletta Enel Energia', se vedi una patente scrivi 'Patente di Guida', se vedi una carta d'identità scrivi 'Carta d'Identità'. "
                 "NON usare MAI 'Generico File Utente' o nomi anonimi!\n"
-                "2. 'doc_type': scegli tra 'bolletta', 'f24', 'ricevuta', 'fattura', 'patente', 'documento_identita', 'foto', 'screenshot', 'oggetto_fisico', 'generico'.\n"
-                "3. 'issuer': se riconosci un ente, azienda o marchio visibile (es. 'Enel', 'Fanatec', 'Apple', 'Bosch', 'INPS'), indicalo; altrimenti imposta null.\n"
-                "4. Se è una bolletta, fattura o tributo con scadenza di pagamento reale, estrai 'amount' e 'due_date' (YYYY-MM-DD). Altrimenti imposta rigorosamente amount=null e due_date=null.\n"
-                "5. 'summary': descrizione ricca ed accurata in 1-2 frasi in italiano di ciò che si vede visivamente nell'immagine (colori, forme, dettagli, marchi o testi visibili).\n"
-                "6. 'suggest_rename': imposta true se si tratta della foto di un oggetto fisico, componente, dispositivo, screenshot o allegato non formale per cui è opportuno chiedere all'utente se desidera assegnargli un nome specifico o dove lo ripone. Imposta false per bollette ed F24 con mittente certo.\n"
-                "7. 'category_label': consulta PRIMA queste macro-cartelle generali di sistema per evitare doppioni: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Documenti Personali & Identità', 'Fatture, Spese & Ricevute', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Foto, Immagini & Ricordi', 'Archivi Compressi & ZIP'. Se il file è inerente a una di esse, USA QUELLA CARTELLA! Altrimenti crea una nuova sezione specifica.\n"
-                "8. 'category': slug minuscolo con underscore (es. 'utenze_bollette', 'oggetti_fisici', 'foto_immagini').\n"
-                "9. 'category_icon': icona FontAwesome 6 adatta (es. 'fa-bolt', 'fa-landmark', 'fa-id-card', 'fa-receipt', 'fa-boxes-stacked', 'fa-camera', 'fa-image').\n"
-                "10. 'subfolder': estrai l'anno a 4 cifre se presente una scadenza o data (es. '2026') oppure un sotto-tema; altrimenti imposta null.\n\n"
+                "2. 'doc_type': scegli tra 'bolletta', 'f24', 'ricevuta', 'fattura', 'patente', 'documento_identita', 'polizza', 'contratto', 'foto', 'screenshot', 'oggetto_fisico', 'generico'.\n"
+                "3. 'issuer': se riconosci un ente, azienda, marchio o ministero visibile (es. 'Enel', 'Fanatec', 'Apple', 'Ministero Interno', 'INPS'), indicalo; altrimenti imposta null.\n"
+                "4. 'due_date': se l'immagine mostra un documento con una data di scadenza o fine validità (es. scadenza carta d'identità, patente, passaporto, bolletta, revisione auto, contratti, polizze), estrai la data nel formato YYYY-MM-DD. NON confondere la data di rilascio con la scadenza! Se non c'è una data di scadenza, imposta null.\n"
+                "5. 'amount': se è visibile un importo monetario da pagare o saldare, estrailo come numero decimale (es. 45.50); per documenti di identità, patenti, passaporti, foto o oggetti personali, imposta rigorosamente amount=null.\n"
+                "6. 'is_payable': true se il documento ha una scadenza attiva o richiede pagamento/rinnovo da monitorare nello scadenzario; false altrimenti.\n"
+                "7. 'summary': descrizione ricca ed accurata in 1-2 frasi in italiano di ciò che si vede visivamente nell'immagine (colori, forme, dettagli, marchi o testi visibili).\n"
+                "8. 'suggest_rename': imposta true se si tratta della foto di un oggetto fisico, componente, dispositivo, screenshot o allegato non formale per cui è opportuno chiedere all'utente se desidera assegnargli un nome specifico o dove lo ripone. Imposta false per bollette, F24 e documenti d'identità con mittente certo.\n"
+                "9. 'category_label': consulta PRIMA queste macro-cartelle generali di sistema per evitare doppioni: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Documenti Personali & Identità', 'Fatture, Spese & Ricevute', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Foto, Immagini & Ricordi', 'Archivi Compressi & ZIP'. Se il file è inerente a una di esse, USA QUELLA CARTELLA! Altrimenti crea una nuova sezione specifica.\n"
+                "10. 'category': slug minuscolo con underscore (es. 'utenze_bollette', 'documenti_identita', 'oggetti_fisici', 'foto_immagini').\n"
+                "11. 'category_icon': icona FontAwesome 6 adatta (es. 'fa-bolt', 'fa-landmark', 'fa-id-card', 'fa-receipt', 'fa-boxes-stacked', 'fa-camera', 'fa-image').\n"
+                "12. 'subfolder': estrai l'anno a 4 cifre se presente una scadenza o data (es. '2026') oppure un sotto-tema; altrimenti imposta null.\n\n"
                 "Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:\n"
                 "{\n"
                 '  "title": "Titolo descrittivo intelligente",\n'
-                '  "doc_type": "bolletta" | "f24" | "ricevuta" | "foto" | "screenshot" | "oggetto_fisico" | "generico",\n'
+                '  "doc_type": "bolletta" | "f24" | "ricevuta" | "fattura" | "patente" | "documento_identita" | "polizza" | "foto" | "screenshot" | "oggetto_fisico" | "generico",\n'
                 '  "issuer": "marchio/ente oppure null",\n'
                 '  "amount": null oppure numero decimale,\n'
                 '  "due_date": null oppure "YYYY-MM-DD",\n'
+                '  "is_payable": true oppure false,\n'
                 '  "summary": "descrizione accurata in italiano di cosa si vede",\n'
                 '  "tags": ["tag1", "tag2"],\n'
                 '  "suggest_rename": true,\n'

@@ -1284,7 +1284,7 @@ def fast_extract_document_metadata(file_bytes: bytes, filename: str, mime_type: 
 
     # Estrazione data scadenza (da testo o pattern)
     date_patterns = [
-        r'(?:scadenza|entro il|scade il|termine|data scadenza)[:\s]+(\d{1,2})[/\.-](\d{1,2})[/\.-](\d{2,4})',
+        r'(?:scadenza|entro il|scade il|termine|data scadenza|valido fino al|valida fino al|validità fino al)[:\s]+(\d{1,2})[/\.-](\d{1,2})[/\.-](\d{2,4})',
         r'(\d{4})-(\d{2})-(\d{2})'
     ]
     for pat in date_patterns:
@@ -1523,8 +1523,8 @@ def unzip_document_to_vault(
                     clean_stem = Path(inner_filename).stem.replace("_", " ").strip()
                     title = clean_stem.capitalize()
 
-                is_payable = (extracted.amount is not None) and (extracted.doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"])
-                doc_status = "da_pagare" if is_payable else "archiviato"
+                has_deadline = bool(due_date_obj) or getattr(extracted, "is_payable", False) or ((extracted.amount is not None) and (extracted.doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"]))
+                doc_status = "da_pagare" if has_deadline else "archiviato"
 
                 # Sincronizzazione automatica con Google Drive se attivo
                 drive_file_id = None

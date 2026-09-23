@@ -4309,9 +4309,11 @@
 
             let statusBadge = '';
             if (rec.status === 'da_pagare') {
-              statusBadge = `<span class="stamp-oli stamp-terracotta text-[8px]">DA SALDARE</span>`;
+              const lbl = rec.amount != null ? 'DA SALDARE' : 'IN SCADENZA';
+              statusBadge = `<span class="stamp-oli stamp-terracotta text-[8px]">${lbl}</span>`;
             } else if (rec.status === 'quietanzato') {
-              statusBadge = `<span class="stamp-oli text-emerald-800 border-emerald-700 text-[8px]">QUIETANZATO</span>`;
+              const lbl = rec.amount != null ? 'QUIETANZATO' : 'RINNOVATO';
+              statusBadge = `<span class="stamp-oli text-emerald-800 border-emerald-700 text-[8px]">${lbl}</span>`;
             } else {
               statusBadge = `<span class="stamp-oli text-[8px]">${escapeHtml(rec.status).toUpperCase()}</span>`;
             }
@@ -4349,7 +4351,9 @@
 
             let payBtn = '';
             if (rec.status === 'da_pagare') {
-              payBtn = `<button onclick="markAsPaid(${rec.id})" class="stamp-oli stamp-solid-terracotta text-[8px] hover:opacity-90 transition active:scale-95 cursor-pointer">SALDA</button>`;
+              const lbl = rec.amount != null ? 'SALDA' : 'RINNOVA';
+              const titleAction = rec.amount != null ? 'Segna come pagato/quietanzato' : 'Segna come rinnovato o archiviato';
+              payBtn = `<button onclick="markAsPaid(${rec.id})" class="stamp-oli stamp-solid-terracotta text-[8px] hover:opacity-90 transition active:scale-95 cursor-pointer" title="${titleAction}">${lbl}</button>`;
             }
 
             const deleteBtn = `
@@ -4715,9 +4719,11 @@
         if (rec.type === 'physical_item') {
           statusHtml = `<span class="text-[#222220] font-mono-code text-xs">📍 ${escapeHtml(rec.location_or_notes || 'Posizione registrata')}</span>`;
         } else if (rec.status === 'da_pagare') {
-          statusHtml = `<span class="stamp-oli stamp-terracotta text-[8px]">DA SALDARE</span>`;
+          const lbl = rec.amount != null ? 'DA SALDARE' : 'IN SCADENZA';
+          statusHtml = `<span class="stamp-oli stamp-terracotta text-[8px]">${lbl}</span>`;
         } else if (rec.status === 'quietanzato') {
-          statusHtml = `<span class="stamp-oli text-emerald-800 border-emerald-700 text-[8px]">QUIETANZATO</span>`;
+          const lbl = rec.amount != null ? 'QUIETANZATO' : 'RINNOVATO';
+          statusHtml = `<span class="stamp-oli text-emerald-800 border-emerald-700 text-[8px]">${lbl}</span>`;
         } else {
           statusHtml = `<span class="stamp-oli text-[8px]">${escapeHtml(rec.status).toUpperCase()}</span>`;
         }
@@ -4764,9 +4770,12 @@
           }
           let payBtn = '';
           if (rec.status === 'da_pagare') {
-            payBtn = `<button onclick="markAsPaid(${rec.id})" class="stamp-oli stamp-solid-terracotta text-[8px] hover:opacity-90 transition active:scale-95 cursor-pointer">SALDA</button>`;
+            const lbl = rec.amount != null ? 'SALDA' : 'RINNOVA';
+            const titleAction = rec.amount != null ? 'Segna come pagato/quietanzato' : 'Segna come rinnovato o archiviato';
+            payBtn = `<button onclick="markAsPaid(${rec.id})" class="stamp-oli stamp-solid-terracotta text-[8px] hover:opacity-90 transition active:scale-95 cursor-pointer" title="${titleAction}">${lbl}</button>`;
           } else if (rec.status === 'quietanzato') {
-            payBtn = `<span class="stamp-oli text-emerald-800 border-emerald-700 text-[8px]">SALDATO</span>`;
+            const lbl = rec.amount != null ? 'SALDATO' : 'RINNOVATO';
+            payBtn = `<span class="stamp-oli text-emerald-800 border-emerald-700 text-[8px]">${lbl}</span>`;
           }
           actionHtml = `
             <div class="flex items-center justify-end gap-1.5 flex-wrap">

@@ -443,10 +443,13 @@ def get_upcoming_deadlines(query: str = "") -> str:
         for d in unpaid:
             cat = categorize_deadline(d.due_date, today)
             urg_tag = f" — ⚠️ {cat['urgency_label']}" if d.due_date else ""
-            amt = d.amount or 0.0
-            total_amount += amt
+            if d.amount is not None:
+                amt_str = f"{d.amount:.2f} € "
+                total_amount += d.amount
+            else:
+                amt_str = "(Scadenza atto/rinnovo) "
             lines.append(
-                f"- **{d.title}** ({d.issuer or 'N/D'}): {amt:.2f} € entro il {d.due_date or 'data non definita'}{urg_tag} | Download: /api/documents/{d.id}/download"
+                f"- **{d.title}** ({d.issuer or 'N/D'}): {amt_str}entro il {d.due_date or 'data non definita'}{urg_tag} | Download: /api/documents/{d.id}/download"
             )
         date_info = get_current_date_info()
         return f"Scadenze e bollette da pagare in sospeso (Oggi: {date_info['formatted_italian']} - Totale: {total_amount:.2f} €):\n" + "\n".join(lines)
