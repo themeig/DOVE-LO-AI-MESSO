@@ -458,6 +458,9 @@
         return;
       }
 
+      // Aggiorna subito lo stato attivo della barra inferiore fissa
+      updateAllBottomNavs(normalizedTarget);
+
       const fromIndex = SCREEN_ORDER[normalizedCurrent] ?? 1;
       const toIndex = SCREEN_ORDER[normalizedTarget] ?? 1;
       const movingForward = toIndex > fromIndex; // true: verso destra (slides scorrono a sinistra), false: verso sinistra (slides scorrono a destra)
@@ -486,30 +489,19 @@
       const startIncomingX = movingForward ? '100%' : '-100%';
       const endOutgoingX = movingForward ? '-100%' : '100%';
 
-      // 1. Prepara il container di destinazione: visibile, posizionato all'offset di partenza dello scorrimento
+      // 1. Prepara il container di destinazione all'offset di partenza
       toEl.classList.remove('hidden');
       toEl.classList.add('flex');
-      toEl.style.display = 'flex';
-      toEl.style.position = 'absolute';
-      toEl.style.top = '0';
-      toEl.style.left = '0';
-      toEl.style.width = '100%';
-      toEl.style.height = '100%';
       toEl.style.zIndex = '20';
       toEl.style.transform = `translate3d(${startIncomingX}, 0, 0)`;
       toEl.style.transition = 'none';
 
       // 2. Prepara la schermata corrente come livello sottostante
-      fromEl.style.position = 'absolute';
-      fromEl.style.top = '0';
-      fromEl.style.left = '0';
-      fromEl.style.width = '100%';
-      fromEl.style.height = '100%';
       fromEl.style.zIndex = '10';
       fromEl.style.transform = 'translate3d(0, 0, 0)';
       fromEl.style.transition = 'none';
 
-      // 3. Avvia lo scorrimento orizzontale sincronizzato tra le due schermate (effetto slide naturale)
+      // 3. Avvia lo scorrimento orizzontale sincronizzato tra le due schermate (effetto slide fluido)
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           const slideEasing = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
@@ -523,24 +515,13 @@
             // 4. Pulizia al termine dello scorrimento
             fromEl.classList.add('hidden');
             fromEl.classList.remove('flex');
-            fromEl.style.display = 'none';
-            fromEl.style.position = '';
-            fromEl.style.top = '';
-            fromEl.style.left = '';
-            fromEl.style.width = '';
-            fromEl.style.height = '';
             fromEl.style.zIndex = '';
-            fromEl.style.transform = 'none';
-            fromEl.style.transition = 'none';
+            fromEl.style.transform = '';
+            fromEl.style.transition = '';
 
-            toEl.style.position = '';
-            toEl.style.top = '';
-            toEl.style.left = '';
-            toEl.style.width = '';
-            toEl.style.height = '';
             toEl.style.zIndex = '';
-            toEl.style.transform = 'none';
-            toEl.style.transition = 'none';
+            toEl.style.transform = '';
+            toEl.style.transition = '';
 
             currentActiveScreen = normalizedTarget;
             isTransitioningScreens = false;

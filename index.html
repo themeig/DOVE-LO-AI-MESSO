@@ -18,9 +18,14 @@
   <input type="file" id="itemPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleItemPhotoSelected(event)">
 
   <!-- ================================================================= -->
-  <!-- 1. VISTA CHAT (REGISTRO DATTILOSCRITTO OLIVETTI)                  -->
+  <!-- VIEWPORT SCHERMATE APPLICATIVE (SLIDE CONTAINER ORIZZONTALE)      -->
   <!-- ================================================================= -->
-  <div id="chatView" class="w-full h-full flex flex-col bg-[#F8F5EE] overflow-hidden">
+  <div id="appScreensViewport" class="flex-1 w-full overflow-hidden relative">
+
+    <!-- ================================================================= -->
+    <!-- 1. VISTA CHAT (REGISTRO DATTILOSCRITTO OLIVETTI)                  -->
+    <!-- ================================================================= -->
+    <div id="chatView" class="w-full h-full flex flex-col bg-[#F8F5EE] overflow-hidden">
     
     <!-- Area Principale Chat: Sidebar + Conversazione affiancate -->
     <div id="chatMainArea" class="flex-1 flex w-full overflow-hidden relative">
@@ -172,7 +177,7 @@
           </button>
 
           <!-- Versione App Olivetti Badge -->
-          <span class="stamp-oli text-[9px] font-mono-code font-bold app-version-badge select-none" title="Versione App Caveau">v2.1.7</span>
+          <span class="stamp-oli text-[9px] font-mono-code font-bold app-version-badge select-none" title="Versione App Caveau">v2.1.9</span>
 
           <!-- Elimina Gruppo/Area Personalizzata -->
           <button 
@@ -466,22 +471,6 @@
         </div>
       </footer>
     </main>
-  </div>
-
-  <!-- Bottom Navigation Bar Chat Olivetti (FULL WIDTH IDENTICA ALLA DASHBOARD E SISTEMA) -->
-  <div class="bottom-nav-bar bg-[#F8F5EE] border-t border-[#E3DDD1] p-2 flex items-center justify-around text-[10px] font-space text-[#7A7568] shrink-0 select-none z-20">
-    <button onclick="switchScreen('dashboard')" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
-      <i class="fa-solid fa-table-cells-large text-base mb-0.5"></i>
-      <span>DASHBOARD</span>
-    </button>
-    <button onclick="switchScreen('chat')" class="flex flex-col items-center text-[#3C5A48] font-bold cursor-pointer">
-      <i class="fa-solid fa-message text-base mb-0.5"></i>
-      <span>CONVERSA</span>
-    </button>
-    <button onclick="switchScreen('settings')" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
-      <i class="fa-solid fa-sliders text-base mb-0.5"></i>
-      <span>SISTEMA</span>
-    </button>
   </div>
 
 </div>
@@ -1349,7 +1338,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. CENTRALE</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v2.1.7</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v2.1.9</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PROTOCOLLO CRITTOGRAFATO AES-256-GCM • SINCRONIZZATO IN TEMPO REALE</p>
           </div>
@@ -1622,22 +1611,6 @@
 
     </main>
 
-    <!-- Bottom Navigation Bar Dashboard Olivetti (DASHBOARD • CONVERSA • FALDONI • SISTEMA) -->
-    <div class="bottom-nav-bar bg-[#F8F5EE] border-t border-[#E3DDD1] p-2 flex items-center justify-around text-[10px] font-space text-[#7A7568] shrink-0 select-none">
-      <button onclick="switchScreen('dashboard')" id="navBtnDashboard" class="flex flex-col items-center text-[#3C5A48] font-bold cursor-pointer">
-        <i class="fa-solid fa-table-cells-large text-base mb-0.5"></i>
-        <span>DASHBOARD</span>
-      </button>
-      <button onclick="switchScreen('chat')" id="navBtnChat" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
-        <i class="fa-solid fa-message text-base mb-0.5"></i>
-        <span>CONVERSA</span>
-      </button>
-      <button onclick="switchScreen('settings')" id="navBtnSettings" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
-        <i class="fa-solid fa-sliders text-base mb-0.5"></i>
-        <span>SISTEMA</span>
-      </button>
-    </div>
-
   </div>
 
   <!-- ================================================================= -->
@@ -1678,7 +1651,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">SISTEMA & CONFIGURAZIONE</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. SISTEMA</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v2.1.7</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v2.1.9</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PARAMETRI OPERATIVI • MOTORI AI • ARCHIVIAZIONE CLOUD • BACKUP & CRITTOGRAFIA</p>
           </div>
@@ -2150,23 +2123,28 @@
 
     </main>
 
-    <!-- Bottom Navigation Bar Sistema Olivetti (DASHBOARD • CONVERSA • SISTEMA) -->
-    <div class="bottom-nav-bar bg-[#F8F5EE] border-t border-[#E3DDD1] p-2 flex items-center justify-around text-[10px] font-space text-[#7A7568] shrink-0 select-none">
-      <button onclick="switchScreen('dashboard')" id="navBtnDashboardFromSys" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
-        <i class="fa-solid fa-table-cells-large text-base mb-0.5"></i>
-        <span>DASHBOARD</span>
-      </button>
-      <button onclick="switchScreen('chat')" id="navBtnChatFromSys" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
-        <i class="fa-solid fa-message text-base mb-0.5"></i>
-        <span>CONVERSA</span>
-      </button>
-      <button onclick="switchScreen('settings')" id="navBtnSettingsFromSys" class="flex flex-col items-center text-[#3C5A48] font-bold cursor-pointer">
-        <i class="fa-solid fa-sliders text-base mb-0.5"></i>
-        <span>SISTEMA</span>
-      </button>
-    </div>
-
   </div>
+
+</div> <!-- /#appScreensViewport -->
+
+  <!-- ================================================================= -->
+  <!-- BARRA DI NAVIGAZIONE GLOBALE FISSA (OLIVETTI INDUSTRIAL)          -->
+  <!-- Esterna al viewport animato: fissa e permanente in basso          -->
+  <!-- ================================================================= -->
+  <nav id="globalBottomNav" class="bottom-nav-bar bg-[#F8F5EE] border-t border-[#E3DDD1] p-2 flex items-center justify-around text-[10px] font-space text-[#7A7568] shrink-0 select-none z-40 w-full">
+    <button onclick="switchScreen('dashboard')" id="globalNavBtnDashboard" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
+      <i class="fa-solid fa-table-cells-large text-base mb-0.5"></i>
+      <span>DASHBOARD</span>
+    </button>
+    <button onclick="switchScreen('chat')" id="globalNavBtnChat" class="flex flex-col items-center text-[#3C5A48] font-bold cursor-pointer">
+      <i class="fa-solid fa-message text-base mb-0.5"></i>
+      <span>CONVERSA</span>
+    </button>
+    <button onclick="switchScreen('settings')" id="globalNavBtnSettings" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
+      <i class="fa-solid fa-sliders text-base mb-0.5"></i>
+      <span>SISTEMA</span>
+    </button>
+  </nav>
 
   <!-- JAVASCRIPT: Gestione Transizione, Live API Chat & Dashboard -->
   <script src="/static/js/app-bundle.js" defer></script>
@@ -2350,7 +2328,7 @@
 
       <div class="pt-2 border-t border-[#E3DDD1] flex items-center justify-between text-[10px] text-[#7A7568] font-mono-code">
         <span>Password predefinita: <code class="font-mono font-bold text-[#222220] bg-[#FAF8F2] border border-[#E3DDD1] px-1 py-0.5 rounded-xs">1234</code></span>
-        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v2.1.4</span>
+        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v2.1.9</span>
       </div>
 
     </div>
