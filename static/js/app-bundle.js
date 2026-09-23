@@ -1122,38 +1122,77 @@
       }
     }
 
-    // --- Helper Download File: salva tramite Python sul PC (compatibile con pywebview) ---
+    // --- Helper Download File: salva tramite Python sul PC (compatibile con pywebview) e via Blob per browser ---
     async function downloadFileFromUrl(url, filename, docId = null) {
       try {
-        // Se abbiamo un docId usiamo l'endpoint Python che salva nella cartella Download
-        // e apre Explorer — è l'unico modo affidabile in pywebview
+        let savedLocally = false;
+        let downloadedFilename = filename || 'documento';
+
+        // 1. In pywebview o ambiente desktop locale, salva nella cartella Download di sistema ed apre Explorer
         if (docId) {
-          const res = await fetch(`/api/documents/${docId}/save-to-downloads`, {
-            method: 'POST',
-            headers: authHeaders()
-          });
-          if (!res.ok) throw new Error('Errore server: ' + res.status);
-          const data = await res.json();
-          showToast(`File archiviato nella cartella Download: ${data.filename}`, 'success', 5000);
-          return;
+          try {
+            const res = await fetch(`/api/documents/${docId}/save-to-downloads`, {
+              method: 'POST',
+              headers: typeof authHeaders === 'function' ? authHeaders() : {}
+            });
+            if (res.ok) {
+              const data = await res.json();
+              savedLocally = true;
+              if (data.filename) downloadedFilename = data.filename;
+              showToast(`File archiviato nella cartella Download: ${downloadedFilename}`, 'success', 5000);
+            }
+          } catch (e) {
+            console.warn("save-to-downloads background attempt:", e);
+          }
         }
-        // Fallback blob per file senza docId
-        const res = await fetch(url, { headers: authHeaders() });
-        if (!res.ok) throw new Error('Risposta server: ' + res.status);
-        const blob = await res.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = filename || 'documento';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { URL.revokeObjectURL(blobUrl); a.remove(); }, 2000);
-        showToast(`Download avviato: ${filename || 'documento'}`, 'info', 4000);
+
+        // 2. Download via Blob nativo nel browser (Chrome, Edge, Firefox, Safari, Mobile)
+        const targetUrl = url || (docId ? `/api/documents/${docId}/download` : null);
+        if (targetUrl) {
+          try {
+            const res = await fetch(targetUrl, {
+              headers: typeof authHeaders === 'function' ? authHeaders() : {}
+            });
+            if (res.ok) {
+              const blob = await res.blob();
+              const blobUrl = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = blobUrl;
+              a.download = downloadedFilename;
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(() => { URL.revokeObjectURL(blobUrl); a.remove(); }, 2000);
+              if (!savedLocally) {
+                showToast(`Download completato: ${downloadedFilename}`, 'success', 4000);
+              }
+            } else if (!savedLocally) {
+              throw new Error('Risposta server: ' + res.status);
+            }
+          } catch (blobErr) {
+            if (!savedLocally) throw blobErr;
+          }
+        }
       } catch (err) {
         console.error('Errore download:', err);
         showToast('Errore durante il download: ' + err.message, 'error');
       }
     }
+    window.downloadFileFromUrl = downloadFileFromUrl;
+
+    async function downloadDashboardDoc(docId) {
+      if (!docId) return;
+      const downloadUrl = `/api/documents/${docId}/download`;
+      let docTitle = 'documento';
+      if (typeof currentRecords !== 'undefined' && Array.isArray(currentRecords)) {
+        const found = currentRecords.find(r => r.id === docId && r.type === 'document');
+        if (found && found.title) docTitle = found.title;
+      } else if (typeof allDashboardRecordsCache !== 'undefined' && Array.isArray(allDashboardRecordsCache)) {
+        const found = allDashboardRecordsCache.find(r => r.id === docId && r.type === 'document');
+        if (found && found.title) docTitle = found.title;
+      }
+      await downloadFileFromUrl(downloadUrl, docTitle, docId);
+    }
+    window.downloadDashboardDoc = downloadDashboardDoc;
 
     // --- Gestione Impostazioni Modello AI (Switch Gratuito / Gemini Flash Lite) ---
     let currentAiModel = 'google/gemini-2.5-flash-lite';
@@ -4299,9 +4338,9 @@
                   <i class="fa-regular fa-eye text-xs"></i> Vedi
                 </button>
                 ${unzipBtn}
-                <a href="${downloadUrl}" download title="Scarica documento" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] border border-[#3C5A48] text-[10px] font-bold px-2 py-1 rounded-xs transition active:scale-95 flex items-center gap-1 cursor-pointer font-space">
+                <button onclick="downloadDashboardDoc(${rec.id})" title="Scarica documento" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] border border-[#3C5A48] text-[10px] font-bold px-2 py-1 rounded-xs transition active:scale-95 flex items-center gap-1 cursor-pointer font-space">
                   <i class="fa-solid fa-download text-xs"></i>
-                </a>
+                </button>
                 <button onclick="openFileInExplorer(${rec.id})" title="Apri in Esplora Risorse di Windows" class="bg-white hover:bg-[#FAF8F2] text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] text-[10px] font-bold px-2 py-1 rounded-xs transition active:scale-95 flex items-center gap-1 cursor-pointer font-space">
                   <i class="fa-regular fa-folder-open text-xs text-[#C84B31]"></i>
                 </button>
@@ -4715,9 +4754,9 @@
                 <i class="fa-regular fa-eye text-xs"></i> Vedi
               </button>
               ${unzipBtn}
-              <a href="${downloadUrl}" download title="Scarica documento" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] border border-[#3C5A48] text-[10px] font-bold px-2 py-1 rounded-xs transition active:scale-95 flex items-center gap-1 cursor-pointer font-space">
+              <button onclick="downloadDashboardDoc(${rec.id})" title="Scarica documento" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] border border-[#3C5A48] text-[10px] font-bold px-2 py-1 rounded-xs transition active:scale-95 flex items-center gap-1 cursor-pointer font-space">
                 <i class="fa-solid fa-download text-xs"></i>
-              </a>
+              </button>
               <button onclick="openFileInExplorer(${rec.id})" title="Apri file in Esplora Risorse del PC" class="bg-white hover:bg-[#FAF8F2] text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] text-[10px] font-bold px-2 py-1 rounded-xs transition active:scale-95 flex items-center gap-1 cursor-pointer font-space">
                 <i class="fa-regular fa-folder-open text-xs text-[#C84B31]"></i>
               </button>
