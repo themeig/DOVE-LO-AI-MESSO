@@ -1246,7 +1246,7 @@
           });
           if (!res.ok) throw new Error('Errore server: ' + res.status);
           const data = await res.json();
-          showToast(`✅ Salvato in Download: ${data.filename}`, 'success', 5000);
+          showToast(`File archiviato nella cartella Download: ${data.filename}`, 'success', 5000);
           return;
         }
         // Fallback blob per file senza docId
@@ -1260,9 +1260,10 @@
         document.body.appendChild(a);
         a.click();
         setTimeout(() => { URL.revokeObjectURL(blobUrl); a.remove(); }, 2000);
+        showToast(`Download avviato: ${filename || 'documento'}`, 'info', 4000);
       } catch (err) {
         console.error('Errore download:', err);
-        showToast('❌ Errore durante il download: ' + err.message, 'error');
+        showToast('Errore durante il download: ' + err.message, 'error');
       }
     }
 
@@ -1893,51 +1894,80 @@
       renderThreadsList();
     }
 
-    // --- Sistema Toast & Notifiche In-App (Linear/Stripe Style) ---
-    function showToast(message, type = 'info', duration = 3500) {
+    // --- Sistema Notifiche & Schede Protocollo Toast (Olivetti Industrial) ---
+    function showToast(message, type = 'info', duration = 4000) {
       const container = document.getElementById('toastContainer');
       if (!container) return;
 
       const toast = document.createElement('div');
-      toast.className = 'pointer-events-auto flex items-center gap-3 p-3.5 rounded-2xl shadow-xl border text-xs font-medium transition-all duration-300 transform translate-y-2 opacity-0 backdrop-blur-md';
+      toast.className = 'pointer-events-auto bg-white rounded-xs border-2 p-3 shadow-xl transition-all duration-300 transform translate-y-3 opacity-0 select-text';
 
-      let bg = 'bg-slate-900/95 text-white border-slate-700/80';
-      let icon = '<i class="fa-solid fa-circle-info text-blue-400"></i>';
+      let borderColor = 'border-[#3C5A48]';
+      let iconBg = 'bg-[#EBF1ED] text-[#3C5A48] border-[#3C5A48]/40';
+      let iconHtml = '<i class="fa-solid fa-bell text-xs"></i>';
+      let stampText = 'REGISTRO CAVEAU';
+      let stampClass = 'stamp-solid-sage';
 
       if (type === 'success') {
-        bg = 'bg-emerald-950/95 text-emerald-100 border-emerald-700/80';
-        icon = '<i class="fa-solid fa-circle-check text-emerald-400"></i>';
+        borderColor = 'border-[#3C5A48]';
+        iconBg = 'bg-[#EBF1ED] text-[#3C5A48] border-[#3C5A48]/40';
+        iconHtml = '<i class="fa-solid fa-check text-xs"></i>';
+        stampText = 'OPERAZIONE COMPLETATA';
+        stampClass = 'stamp-solid-sage';
       } else if (type === 'error') {
-        bg = 'bg-rose-950/95 text-rose-100 border-rose-700/80';
-        icon = '<i class="fa-solid fa-circle-exclamation text-rose-400"></i>';
+        borderColor = 'border-[#C84B31]';
+        iconBg = 'bg-[#FAECE8] text-[#C84B31] border-[#C84B31]/40';
+        iconHtml = '<i class="fa-solid fa-triangle-exclamation text-xs"></i>';
+        stampText = 'AVVISO DI SISTEMA';
+        stampClass = 'stamp-terracotta';
       } else if (type === 'warning') {
-        bg = 'bg-amber-950/95 text-amber-100 border-amber-700/80';
-        icon = '<i class="fa-solid fa-triangle-exclamation text-amber-400"></i>';
+        borderColor = 'border-[#C84B31]';
+        iconBg = 'bg-[#FAECE8] text-[#C84B31] border-[#C84B31]/40';
+        iconHtml = '<i class="fa-solid fa-circle-exclamation text-xs"></i>';
+        stampText = 'ATTENZIONE PROTOCOLLO';
+        stampClass = 'stamp-terracotta';
+      } else {
+        borderColor = 'border-[#7A7568]';
+        iconBg = 'bg-[#FAF8F2] text-[#222220] border-[#E3DDD1]';
+        iconHtml = '<i class="fa-solid fa-info text-xs"></i>';
+        stampText = 'NOTIFICA ATTO';
+        stampClass = 'stamp-oli';
       }
 
-      toast.className += ` ${bg}`;
+      toast.classList.add(borderColor);
       toast.innerHTML = `
-        <div class="text-base shrink-0">${icon}</div>
-        <div class="flex-1 leading-snug break-words">${escapeHtml(message)}</div>
-        <button type="button" class="text-white/60 hover:text-white shrink-0 p-1 cursor-pointer">
-          <i class="fa-solid fa-xmark text-xs"></i>
-        </button>
+        <div class="flex items-start gap-2.5">
+          <div class="w-7 h-7 rounded-xs ${iconBg} border flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+            ${iconHtml}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="stamp-oli ${stampClass} text-[8px] tracking-wider">${stampText}</span>
+              <button type="button" class="text-[#7A7568] hover:text-[#222220] p-0.5 rounded-xs transition cursor-pointer" title="Chiudi notifica">
+                <i class="fa-solid fa-xmark text-xs"></i>
+              </button>
+            </div>
+            <p class="text-xs font-mono-code text-[#222220] leading-snug break-words">${escapeHtml(message)}</p>
+          </div>
+        </div>
       `;
 
       const closeBtn = toast.querySelector('button');
-      closeBtn.onclick = () => {
-        toast.classList.add('opacity-0', 'translate-y-2');
-        setTimeout(() => toast.remove(), 250);
-      };
+      if (closeBtn) {
+        closeBtn.onclick = () => {
+          toast.classList.add('opacity-0', 'translate-y-3');
+          setTimeout(() => toast.remove(), 250);
+        };
+      }
 
       container.appendChild(toast);
       requestAnimationFrame(() => {
-        toast.classList.remove('translate-y-2', 'opacity-0');
+        toast.classList.remove('translate-y-3', 'opacity-0');
       });
 
       setTimeout(() => {
         if (toast.parentElement) {
-          toast.classList.add('opacity-0', 'translate-y-2');
+          toast.classList.add('opacity-0', 'translate-y-3');
           setTimeout(() => toast.remove(), 300);
         }
       }, duration);
