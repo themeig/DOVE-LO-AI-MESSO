@@ -1067,6 +1067,99 @@ def test_strip_tool_tags_cleans_echoed_tool_json_and_payloads():
     assert strip_tool_tags(normal_text) == normal_text
 
 
+def test_temporal_query_interpreted_by_llm_when_api_key_present():
+    """Verifica che quando la chiave API è presente, query come 'dimmi la data' NON vengano
+    intercettate prima del modello da regex o risposte automatiche, ma vengano elaborate dall'LLM."""
+    from unittest.mock import patch, MagicMock
+
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = "test_key_active"
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "content": "Certamente! Oggi siamo nel 2026 ed è mercoledì 23 settembre. Posso aiutarti a trovare qualcosa nel caveau?"
+                }
+            }]
+        }
+
+        with patch("httpx.post", return_value=mock_resp) as mock_post:
+            res = agent.run_turn("dimmi la data", session, thread_id="general")
+
+            # Verifica che OpenRouter sia stato effettivamente chiamato (nessuna intercettazione precoce)
+            assert mock_post.called
+            call_kwargs = mock_post.call_args[1]
+            req_body = call_kwargs["json"]
+
+            # Verifica che il prompt di sistema includa il calendario di ground truth
+            sys_msg = next((m for m in req_body["messages"] if m["role"] == "system"), None)
+            assert sys_msg is not None
+            assert "[GROUND TRUTH - CALENDARIO E TEMPO REALE]" in sys_msg["content"]
+            assert "OGGI È:" in sys_msg["content"]
+
+            # Verifica che la risposta restituita sia quella interpretata dal modello e non una stringa automatica rigida
+            assert res.reply == "Certamente! Oggi siamo nel 2026 ed è mercoledì 23 settembre. Posso aiutarti a trovare qualcosa nel caveau?"
+            assert res.action == "REPLY"
+
+
+def test_temporal_query_fallback_when_offline():
+    """Verifica che in assenza di chiave API (offline), la richiesta temporale
+    restituisca correttamente la data tramite il fallback deterministico locale."""
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = ""  # Modalità offline
+
+        res = agent.run_turn("dimmi la data", session, thread_id="general")
+
+        assert "📅 Oggi è" in res.reply
+        assert res.action == "get_current_date"
+
+
+def test_where_request_preserves_llm_direct_reply():
+    """Verifica che quando il modello fornisce una risposta testuale diretta (direct_reply)
+    a una domanda su una posizione, la risposta formulata dal modello venga preservata
+    e non sovrascritta da template rigidi."""
+    from unittest.mock import patch, MagicMock
+
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        # Inserisci un oggetto fisico
+        it = PhysicalItem(item_name="Chiavi di casa", primary_location="Svuotatasche", detailed_location="Ingresso")
+        session.add(it)
+        session.commit()
+
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = "test_key_active"
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "content": "Ho verificato con piacere nel tuo registro: le tue chiavi di casa si trovano nello svuotatasche all'ingresso."
+                }
+            }]
+        }
+
+        with patch("httpx.post", return_value=mock_resp):
+            res = agent.run_turn("dove sono le chiavi di casa", session, thread_id="general")
+
+            # La risposta dell'LLM deve essere preservata intatta
+            assert "Ho verificato con piacere nel tuo registro: le tue chiavi di casa si trovano nello svuotatasche all'ingresso." in res.reply
+            assert res.action == "search_vault"
+
+
+
 
 
 

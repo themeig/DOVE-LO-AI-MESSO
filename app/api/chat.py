@@ -52,59 +52,18 @@ def handle_chat_message(
         except Exception as e:
             logger.warning(f"Errore nel salvataggio del vocale cifrato: {e}")
 
-        # Se il client ha già fornito la trascrizione (Web Speech API), usala prioritariamente
-        if content_text and content_text != "🎤 Messaggio vocale":
+        # Se il client ha già fornito testo (es. Web Speech API opzionale), usalo; altrimenti il modello multimodale (Gemini) ascolta direttamente l'audio
+        if content_text and content_text not in ["🎤 Messaggio vocale", "Messaggio vocale", "🎤"]:
             transcribed_text = content_text
-        elif audio_bytes:
-            from app.services.transcription_service import transcribe_audio
-            try:
-                transcribed_text = transcribe_audio(audio_bytes, audio_format=fmt)
-            except Exception as tr_err:
-                logger.warning(f"Errore durante trascrizione audio: {tr_err}")
-                transcribed_text = None
-
-        if transcribed_text and transcribed_text.strip():
-            content_text = transcribed_text.strip()
             user_metadata["transcription"] = content_text
             user_msg_content = f"🎤 {content_text}"
         else:
+            transcribed_text = None
             content_text = ""
             user_metadata["transcription"] = None
             user_msg_content = "🎤 Messaggio vocale"
     else:
         user_msg_content = content_text
-
-    # Se l'utente ha inviato un audio completamente silenzioso o incomprensibile
-    if msg_type == "audio" and not content_text:
-        user_msg = ChatMessage(
-            thread_id=thread_id,
-            sender="user",
-            message_type=msg_type,
-            content=user_msg_content,
-            metadata_json=json.dumps(user_metadata) if user_metadata else None
-        )
-        db.add(user_msg)
-        db.commit()
-
-        silence_reply = (
-            "🎤 Non sono riuscito a comprendere chiaramente le parole nel messaggio vocale. "
-            "Puoi riprovare scandendo bene le parole oppure scrivermi direttamente nella barra in basso!"
-        )
-        asst_msg = ChatMessage(
-            thread_id=thread_id,
-            sender="assistant",
-            message_type="text",
-            content=silence_reply,
-            metadata_json=json.dumps({"action": "REPLY"})
-        )
-        db.add(asst_msg)
-        db.commit()
-
-        return ChatResponse(
-            reply=silence_reply,
-            action="REPLY",
-            transcription=None
-        )
 
     user_msg = ChatMessage(
         thread_id=thread_id,

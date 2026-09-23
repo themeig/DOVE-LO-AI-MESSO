@@ -530,6 +530,7 @@
 
       // Ricarica parametri e status
       loadAiModelSetting();
+      loadOpenRouterCredits();
       loadGoogleDriveStatus();
       loadWatchedFolders();
 
@@ -1372,6 +1373,135 @@
     function closeAiSettingsModal() {
       closeToChat();
     }
+
+    // --- Gestione Bilancio & Crediti OpenRouter ---
+    let openrouterCreditsData = null;
+
+    async function loadOpenRouterCredits(forceRefresh = false) {
+      const refreshBtn = document.getElementById('btnRefreshCredits');
+      const refreshIcon = refreshBtn ? refreshBtn.querySelector('i') : null;
+      if (refreshIcon) refreshIcon.classList.add('fa-spin');
+
+      try {
+        const res = await fetch('/api/settings/openrouter-credits');
+        if (!res.ok) {
+          console.warn("Impossibile caricare crediti OpenRouter:", res.status);
+          return;
+        }
+        const data = await res.json();
+        openrouterCreditsData = data;
+        updateOpenRouterCreditsUI(data);
+        if (forceRefresh) {
+          showToast('🟢 Saldo crediti OpenRouter aggiornato in tempo reale!', 'success');
+        }
+      } catch (err) {
+        console.warn("Errore fetch crediti OpenRouter:", err);
+      } finally {
+        if (refreshIcon) {
+          setTimeout(() => refreshIcon.classList.remove('fa-spin'), 350);
+        }
+      }
+    }
+
+    function updateOpenRouterCreditsUI(data) {
+      if (!data) return;
+
+      const valRemaining = document.getElementById('valCreditsRemaining');
+      const valTotal = document.getElementById('valCreditsTotal');
+      const valUsage = document.getElementById('valCreditsUsage');
+      const labelPct = document.getElementById('labelCreditsPct');
+      const ratioText = document.getElementById('creditsRatioText');
+      const progressBar = document.getElementById('creditsProgressBar');
+      const valKeyUsage = document.getElementById('valKeyUsage');
+      const valKeyDaily = document.getElementById('valKeyDaily');
+      const valFreeRequests = document.getElementById('valFreeRequests');
+      const statusBadge = document.getElementById('creditsStatusBadge');
+      const quickCreditsVal = document.getElementById('quickCreditsVal');
+
+      const isConfigured = data.is_configured;
+      const rem = typeof data.remaining_credits === 'number' ? data.remaining_credits : 0.0;
+      const tot = typeof data.total_credits === 'number' ? data.total_credits : 0.0;
+      const usg = typeof data.total_usage === 'number' ? data.total_usage : 0.0;
+      const pct = typeof data.percentage_remaining === 'number' ? data.percentage_remaining : 0.0;
+      const isFreeTier = data.is_free_tier;
+
+      // Quick badge in top header
+      if (quickCreditsVal) {
+        if (!isConfigured) {
+          quickCreditsVal.textContent = 'Non config.';
+          quickCreditsVal.className = 'font-mono-code font-bold text-[#7A7568]';
+        } else if (isFreeTier && rem <= 0.001) {
+          quickCreditsVal.textContent = 'FREE TIER';
+          quickCreditsVal.className = 'font-mono-code font-bold text-[#3C5A48]';
+        } else {
+          quickCreditsVal.textContent = `$${rem.toFixed(2)}`;
+          quickCreditsVal.className = rem < 2.0 
+            ? 'font-mono-code font-bold text-[#C84B31]' 
+            : 'font-mono-code font-bold text-[#3C5A48]';
+        }
+      }
+
+      if (!isConfigured) {
+        if (valRemaining) valRemaining.textContent = 'N/D';
+        if (valTotal) valTotal.textContent = '$0.00';
+        if (valUsage) valUsage.textContent = '$0.00';
+        if (labelPct) labelPct.textContent = '0%';
+        if (ratioText) ratioText.textContent = 'Chiave OpenRouter non impostata';
+        if (progressBar) progressBar.style.width = '0%';
+        if (statusBadge) {
+          statusBadge.className = 'stamp-oli text-[8px] border-[#C84B31] text-[#C84B31]';
+          statusBadge.textContent = 'NON CONFIGURATO';
+        }
+        return;
+      }
+
+      if (valRemaining) valRemaining.textContent = `$${rem.toFixed(2)}`;
+      if (valTotal) valTotal.textContent = `$${tot.toFixed(2)}`;
+      if (valUsage) valUsage.textContent = `$${usg.toFixed(2)}`;
+      if (labelPct) labelPct.textContent = `${pct.toFixed(1)}%`;
+      if (ratioText) ratioText.textContent = `Consumati $${usg.toFixed(2)} di $${tot.toFixed(2)}`;
+      
+      if (progressBar) {
+        progressBar.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+        if (pct < 15) {
+          progressBar.className = 'h-full bg-[#C84B31] rounded-xs transition-all duration-500';
+        } else if (pct < 35) {
+          progressBar.className = 'h-full bg-amber-600 rounded-xs transition-all duration-500';
+        } else {
+          progressBar.className = 'h-full bg-[#3C5A48] rounded-xs transition-all duration-500';
+        }
+      }
+
+      if (valKeyUsage) {
+        const kUsg = (data.key_usage !== null && data.key_usage !== undefined) ? `$${Number(data.key_usage).toFixed(3)}` : `$${usg.toFixed(2)}`;
+        valKeyUsage.textContent = kUsg;
+      }
+
+      if (valKeyDaily) {
+        const kDaily = (data.key_usage_daily !== null && data.key_usage_daily !== undefined) ? `$${Number(data.key_usage_daily).toFixed(3)}` : '0.00 $';
+        valKeyDaily.textContent = kDaily;
+      }
+
+      if (valFreeRequests) {
+        const freeReq = data.free_model_daily_requests;
+        valFreeRequests.textContent = (freeReq !== null && freeReq !== undefined) ? `${freeReq} / 100` : 'Illimitate';
+      }
+
+      if (statusBadge) {
+        if (rem <= 0.05 && tot > 0) {
+          statusBadge.className = 'stamp-oli stamp-terracotta text-[8px]';
+          statusBadge.textContent = 'IN ESAURIMENTO';
+        } else if (rem > 0) {
+          statusBadge.className = 'stamp-oli text-[8px] text-[#3C5A48] border-[#3C5A48]';
+          statusBadge.textContent = 'SALDO POSITIVO';
+        } else {
+          statusBadge.className = 'stamp-oli text-[8px] text-[#3C5A48] border-[#3C5A48]';
+          statusBadge.textContent = 'ATTIVO (FREE)';
+        }
+      }
+    }
+
+    window.loadOpenRouterCredits = loadOpenRouterCredits;
 
     // --- Google Drive Cloud Sync Handlers ---
     let googleDriveStatusCache = null;
@@ -6239,6 +6369,7 @@
     function initApp() {
       applyLayout();
       loadAiModelSetting();
+      loadOpenRouterCredits();
       loadThreads();
       loadDashboard('all');
       checkDeadlineAlerts();

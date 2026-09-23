@@ -2707,11 +2707,12 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             documents=matching_files[:5]
         )
 
-    def resolve_agent_model(self, user_text: str, lower_t: str, configured_model: str) -> str:
+    def resolve_agent_model(self, user_text: str, lower_t: str, configured_model: str, has_audio: bool = False) -> str:
         """
         Risolve dinamicamente il modello da utilizzare:
         - Se configured_model != 'auto', rispetta la scelta manuale dell'utente.
         - Se configured_model == 'auto':
+            - Se è presente audio vocale multimodale -> 'google/gemini-2.5-pro' (comprensione audio nativa via API)
             - Se l'intento è di immagazzinamento/salvataggio/caricamento rapido:
                 -> 'google/gemini-2.5-flash-lite'
             - Se l'intento è di ricerca, calcolo, scadenze, domande complesse o spiegazioni:
@@ -2724,6 +2725,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         if cfg != "auto":
             return cfg
+
+        if has_audio:
+            return "google/gemini-2.5-pro"
 
         # 1. Ricerche, calcoli, scadenze, domande e spiegazioni -> PRO (Thinking Process)
         search_calc_patterns = [
@@ -2768,9 +2772,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         audio_format: Optional[str] = "wav"
     ) -> ChatResponse:
         """Esegue un turno conversazionale applicando la risoluzione del modello tramite Router Intelligente."""
-        lower_t = user_text.lower()
+        lower_t = (user_text or "").lower()
         configured_model = get_app_setting(db, "ai_model", default=self.settings.OPENROUTER_MODEL) or "auto"
-        effective_model = self.resolve_agent_model(user_text, lower_t, configured_model)
+        effective_model = self.resolve_agent_model(user_text, lower_t, configured_model, has_audio=bool(audio_base64))
 
         resp = self._run_turn_impl(
             user_text=user_text,
@@ -2802,251 +2806,15 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         effective_model: Optional[str] = None
     ) -> ChatResponse:
         """Esegue l'elaborazione interna di un turno conversazionale con tool-calling dell'agente."""
-        # Se è stato inviato audio ma user_text è vuoto o placeholder, trascrivi il parlato
-        if audio_base64 and (not user_text or user_text.strip() in ["🎤 Messaggio vocale", "Messaggio vocale", "🎤"]):
-            from app.services.transcription_service import transcribe_audio
-            try:
-                raw_b = base64.b64decode(audio_base64)
-                transcribed = transcribe_audio(raw_b, audio_format=audio_format or "wav")
-                if transcribed and transcribed.strip():
-                    user_text = transcribed.strip()
-            except Exception as e:
-                logger.warning(f"Errore auto-transcription in _run_turn_impl: {e}")
+        lower_t = (user_text or "").lower()
 
-        lower_t = user_text.lower()
-
-        # Se il testo utente è letteralmente solo il placeholder vocale (senza audio o con audio non comprensibile)
+        # Se il testo utente è letteralmente solo il placeholder vocale SENZA audio allegato
         clean_user_voice = re.sub(r"[🎤\s]+", "", lower_t)
-        if clean_user_voice in ["messaggiovocale", "vocale"]:
+        if not audio_base64 and clean_user_voice in ["messaggiovocale", "vocale"]:
             return ChatResponse(
-                reply="🎤 Non ho rilevato alcun comando vocale comprensibile in questo messaggio. Prova a ripetere scandendo bene le parole o a scrivermi nella chat!",
+                reply="🎤 Non ho rilevato alcun comando vocale comprensibile in questo messaggio. Prova a ripetere registrando con il microfono o a scrivermi nella chat!",
                 action="REPLY"
             )
-
-        # Intercetta immediatamente domande sulla data/ora odierna, ieri o domani con calcolo istantaneo esatto
-        temp_resp = self._handle_temporal_intent(user_text, lower_t)
-        if temp_resp:
-            return temp_resp
-
-        # Intercetta immediatamente richieste di cancellazione/eliminazione sicura
-        del_resp = self._handle_deletion_intent(user_text, lower_t, db, thread_id=thread_id)
-        if del_resp:
-            return del_resp
-
-        # Intercetta immediatamente richieste di scompattazione / estrazione archivi ZIP
-        is_unzip_phrase = any(k in lower_t for k in [
-            "scompatta", "scompattami", "scompattalo", "scompattare",
-            "decomprimi", "decomprimimi", "decomprimilo", "decomprimere",
-            "unzip", "fai l'unzip", "fai unzip",
-            "estrai lo zip", "estrai l'archivio", "estrai archivio", "estrai i file dallo zip", "estrai tutti i file dallo zip"
-        ])
-        if is_unzip_phrase:
-            from app.services.archive_service import unzip_document_to_vault
-            m_id = re.search(r"\b(?:id\s*[:=]?\s*|numero\s+)?(\d+)\b", lower_t)
-            target_id = int(m_id.group(1)) if m_id else None
-            m_name = re.search(r"[\"']([a-zA-Z0-9_\-.]+\.zip)[\"']", lower_t)
-            target_name = m_name.group(1) if m_name else None
-
-            extracted = unzip_document_to_vault(
-                db=db,
-                document_id=target_id,
-                document_title=target_name,
-                thread_id=thread_id
-            )
-            if extracted:
-                doc_lines = []
-                for idx, d in enumerate(extracted, 1):
-                    details = []
-                    if d.category_label:
-                        details.append(f"📁 *{d.category_label}*")
-                    elif d.doc_type:
-                        details.append(f"*{d.doc_type.capitalize()}*")
-                    if d.amount is not None:
-                        details.append(f"💶 **€ {d.amount:.2f}**")
-                    if d.due_date:
-                        details.append(f"📅 Scadenza: **{d.due_date.strftime('%d/%m/%Y')}**")
-                    detail_str = f" ({' • '.join(details)})" if details else ""
-                    summary_line = f"\n   _{d.summary}_" if d.summary else ""
-                    doc_lines.append(f"**{idx}.** 📄 **{d.title}**{detail_str}{summary_line}")
-
-                reply = (
-                    f"📦 Ho scompattato con successo l'archivio ed esaminato ciascun file singolarmente con l'AI. "
-                    f"Ecco il dettaglio dei **{len(extracted)} documenti** estratti e catalogati nel Caveau:\n\n"
-                    + "\n\n".join(doc_lines) +
-                    "\n\nHo inserito ciascun documento nella sezione corrispondente e aggiornato lo scadenzario. Puoi aprirli, visualizzarli o scaricarli direttamente dalle schede qui sotto! ⬇️"
-                )
-                docs_info = [
-                    {
-                        "id": d.id,
-                        "document_id": d.id,
-                        "title": d.title,
-                        "issuer": d.issuer,
-                        "doc_type": d.doc_type,
-                        "category": d.category,
-                        "category_label": d.category_label,
-                        "category_icon": d.category_icon,
-                        "amount": d.amount,
-                        "due_date": d.due_date.isoformat() if d.due_date else None,
-                        "status": d.status,
-                        "summary": d.summary,
-                        "file_url": f"/uploads/{Path(d.file_path).name}" if d.file_path else None,
-                        "download_url": f"/api/documents/{d.id}/download",
-                        "file_type": d.file_type
-                    }
-                    for d in extracted
-                ]
-                return ChatResponse(
-                    reply=reply,
-                    action="show_document_card",
-                    data={"extracted_count": len(extracted), "documents": docs_info},
-                    documents=docs_info
-                )
-            else:
-                return ChatResponse(
-                    reply="⚠️ Non ho trovato alcun archivio ZIP nel caveau da decomprimere, oppure l'archivio non contiene file validi. Puoi caricare un file .zip con l'icona della graffetta 📎 in basso!",
-                    action="unzip_vault_archive",
-                    data={"success": False}
-                )
-
-        # Rileva se si tratta di una richiesta esplicita di lista o elenco
-        is_listing_phrase = any(k in lower_t for k in [
-            "lista", "elenco", "elencami", "quali documenti", "quali oggetti",
-            "cosa c'è", "cosa ce", "cosa ho", "cosa hai", "che documenti", "che oggetti"
-        ])
-
-        # Intercetta risposte affermative, selezioni multiple ("entrambi", "tutti e due", "si di entrambi", "scaricali") e richieste di download
-        is_download_intent = any(k in lower_t for k in [
-            "download", "scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala", "scaricarli", "scaricali", "scaricare",
-            "fare il download", "voglio scaricare", "voglio il download", "voglio fare il download", "scaricale", "scaricali"
-        ])
-        is_multi_select = (
-            lower_t.strip(" !.?") in [
-                "entrambi", "entrambe", "tutti", "tutte", "tutti e due", "tutte e due", "tutti quanti",
-                "si di entrambi", "sì di entrambi", "si entrambi", "sì entrambi", "tutti e 2", "tutte e 2",
-                "scaricali", "scaricale", "scaricali entrambi", "scarica entrambi", "scaricali tutti", "scarica tutti",
-                "scarica tutte", "scaricale tutte", "mostrali tutti", "mostrameli tutti", "mostrale tutte", "mostramele tutte",
-                "apri entrambi", "apri tutti", "visualizzali entrambi", "visualizzali tutti", "vedili entrambi", "vedili tutti"
-            ]
-            or any(k in lower_t for k in [
-                "entrambi", "entrambe", "tutti e due", "tutte e due", "tutti e 2", "tutte e 2",
-                "mostrameli tutti", "mostrali tutti", "mostrale tutte", "mostramele tutte",
-                "scarica tutti", "scarica tutte", "scarica entrambi", "scaricali entrambi", "scaricali tutti", "scaricale tutte",
-                "scaricali", "scaricale", "si di entrambi", "sì di entrambi", "apri entrambi", "visualizzali entrambi"
-            ])
-        ) and not is_listing_phrase
-
-        is_affirmative = (
-            lower_t.strip(" !.?") in [
-                "si", "sì", "ok", "va bene", "certo", "mostramelo", "mostramela", "mostrameli", "mostrali", "mostrale",
-                "fammi vedere", "apri", "yes", "vai", "entrambi", "entrambe", "tutti e due", "tutte e due",
-                "si di entrambi", "sì di entrambi", "si entrambi", "sì entrambi", "tutti", "tutte",
-                "scaricali", "scaricale", "scaricalo", "scaricala", "scarica", "download", "apri entrambi", "mostrali tutti"
-            ]
-            or is_multi_select
-            or (is_download_intent and len(lower_t.split()) <= 6)
-        ) and not is_listing_phrase
-        if is_affirmative:
-            last_asst = (
-                db.query(ChatMessage)
-                .filter(ChatMessage.thread_id == thread_id, ChatMessage.sender == "assistant")
-                .order_by(ChatMessage.id.desc())
-                .first()
-            )
-            if last_asst and last_asst.content:
-                all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
-                matched_docs = []
-
-                # 1. Trova documenti il cui titolo compare direttamente nel testo del messaggio precedente
-                for d in all_docs:
-                    if d.title and len(d.title) >= 3 and d.title.lower() in last_asst.content.lower():
-                        if d not in matched_docs:
-                            matched_docs.append(d)
-
-                # 2. Cerca nomi esplicitamente citati tra virgolette, grassetto o punti elenco (* 📄 Titolo)
-                cand_names = (
-                    re.findall(r"['\"]([^'\"]{2,})['\"]", last_asst.content) +
-                    re.findall(r"\*\*([^*]{2,})\*\*", last_asst.content) +
-                    re.findall(r"[*•-]\s*(?:📄\s*)?([^\n:]+?)(?:\s*:|\s*—|\s*\(|$)", last_asst.content)
-                )
-
-                for cand in cand_names:
-                    c_clean = cand.strip(" *📄\"'")
-                    if c_clean and len(c_clean) >= 3:
-                        s_matches = search_vault_documents(db, c_clean, thread_id=thread_id)
-                        if s_matches:
-                            top_d = db.query(Document).filter(Document.id == s_matches[0]["id"]).first()
-                            if top_d and top_d not in matched_docs:
-                                matched_docs.append(top_d)
-                        for d in all_docs:
-                            if d.title and (d.title.lower() == c_clean.lower() or c_clean.lower() in d.title.lower() or d.title.lower() in c_clean.lower()):
-                                if d not in matched_docs:
-                                    matched_docs.append(d)
-
-                # 3. Se non trovati per titolo intero, controlla sovrapposizione parole chiave
-                if not matched_docs:
-                    for d in all_docs:
-                        d_words = [w for w in re.split(r"[^\w]+", d.title.lower()) if len(w) > 3 and w not in ITALIAN_STOPWORDS]
-                        if d_words and sum(1 for w in d_words if w in last_asst.content.lower()) >= max(1, len(d_words) * 0.5):
-                            if d not in matched_docs:
-                                matched_docs.append(d)
-
-                # 4. Controlla se fa riferimento a un oggetto fisico
-                matched_item = None
-                if not matched_docs:
-                    all_items = db.query(PhysicalItem).order_by(PhysicalItem.updated_at.desc()).all()
-                    for it in all_items:
-                        if it.item_name and len(it.item_name) >= 3 and it.item_name.lower() in last_asst.content.lower():
-                            matched_item = it
-                            break
-                    if not matched_item and cand_names:
-                        for cand in cand_names:
-                            c_clean = cand.strip(" *📄\"'")
-                            for it in all_items:
-                                if it.item_name and (it.item_name.lower() == c_clean.lower() or c_clean.lower() in it.item_name.lower()):
-                                    matched_item = it
-                                    break
-
-                # Se ci sono documenti trovati:
-                if matched_docs:
-                    # Se l'utente non ha chiesto 'entrambi' o 'tutti' e ha specificato parole di uno solo:
-                    specific_doc = None
-                    if not is_multi_select and not any(k in lower_t for k in ["entrambi", "tutti", "tutte", "scaricali", "scaricale", "mostrali", "mostrameli"]):
-                        for d in matched_docs:
-                            d_words = [w for w in re.split(r"[^\w]+", d.title.lower()) if len(w) > 2 and w not in ITALIAN_STOPWORDS]
-                            if any(w in lower_t for w in d_words):
-                                specific_doc = d
-                                break
-
-                    docs_to_show = [specific_doc] if specific_doc else matched_docs
-                    doc_ids_to_call = [d.id for d in docs_to_show]
-                    card_res = self.execute_tool("show_document_card", {"document_ids": doc_ids_to_call}, db=db, thread_id=thread_id)
-                    docs_info = card_res.get("documents") or []
-                    if docs_info:
-                        if len(docs_info) > 1:
-                            lines = [f"- 📄 **{d['title']}** ({d.get('issuer') or d.get('doc_type', '')})" for d in docs_info]
-                            reply_text = (
-                                f"📄 Certamente! Ecco le schede per i {len(docs_info)} documenti:\n\n" +
-                                "\n".join(lines) +
-                                "\n\nPuoi visualizzarli con il pulsante 'Vedi' o scaricarli direttamente con il pulsante 'Scarica' nelle rispettive schede qui sotto! ⬇️"
-                            )
-                        else:
-                            d = docs_info[0]
-                            reply_text = f"📄 Eccolo! Ho recuperato il documento **{d['title']}** ({d.get('issuer') or d.get('doc_type', '')}):\n💡 {d.get('summary', '')}"
-
-                        return ChatResponse(
-                            reply=reply_text,
-                            action="show_document_card",
-                            data=card_res,
-                            documents=docs_info
-                        )
-
-                elif matched_item:
-                    loc_str = matched_item.primary_location + (f" ({matched_item.detailed_location})" if matched_item.detailed_location else "")
-                    return ChatResponse(
-                        reply=f"📍 Ho verificato la posizione di **{matched_item.item_name}**: si trova in **{loc_str}**.",
-                        action="search_vault",
-                        data={"item": {"item_id": matched_item.id, "item_name": matched_item.item_name, "location_str": loc_str}}
-                    )
 
         # Rileva ultimo oggetto citato nel thread per eventuale risoluzione pronomi (es. "mettila in...")
         last_item_name = None
@@ -3181,20 +2949,249 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             ]) or (any(k in lower_t for k in ["riga", "colonna", "cella", "importo", "fatturato", "valore"]) and any(k in lower_t for k in ["excel", "xlsx", "xls", "tabella", "foglio"]))
         ) and not is_delete_request and not is_rename_request
 
+        is_unzip_request = any(k in lower_t for k in [
+            "scompatta", "scompattami", "scompattalo", "scompattare",
+            "decomprimi", "decomprimimi", "decomprimilo", "decomprimere",
+            "unzip", "fai l'unzip", "fai unzip",
+            "estrai lo zip", "estrai l'archivio", "estrai archivio", "estrai i file dallo zip", "estrai tutti i file dallo zip"
+        ])
+
         stored_item_result = None
-        if is_store_or_update:
-            item_n, loc_n = self._extract_item_and_location(user_text, last_item_in_context=last_item_name)
-            if item_n and loc_n:
-                stored_item_result = self.execute_tool("store_physical_item", {"item_name": item_n, "primary_location": loc_n}, db=db, thread_id=thread_id)
-            else:
-                is_store_or_update = False
 
         # Se non c'è chiave API, fallback deterministico per test offline
         if not self.settings.OPENROUTER_API_KEY:
+            # Fallback deterministico per messaggi vocali nei test offline
+            if audio_base64 and (not user_text or user_text.strip() in ["🎤 Messaggio vocale", "Messaggio vocale", "🎤", ""]):
+                return ChatResponse(
+                    reply="🎤 Ho ricevuto il tuo messaggio vocale. (Modalità offline/test: per consentire al modello Gemini Pro di ascoltare ed eseguire la richiesta via API, configura la chiave OpenRouter).",
+                    action="REPLY"
+                )
+
+            # Fallback deterministico per richieste temporali nei test offline
+            temp_resp = self._handle_temporal_intent(user_text, lower_t)
+            if temp_resp:
+                return temp_resp
+
             # Fallback deterministico per richieste di eliminazione nei test offline
             del_resp = self._handle_deletion_intent(user_text, lower_t, db, thread_id=thread_id)
             if del_resp:
                 return del_resp
+
+            # Fallback deterministico per richieste di estrazione ZIP nei test offline
+            if is_unzip_request:
+                from app.services.archive_service import unzip_document_to_vault
+                m_id = re.search(r"\b(?:id\s*[:=]?\s*|numero\s+)?(\d+)\b", lower_t)
+                target_id = int(m_id.group(1)) if m_id else None
+                m_name = re.search(r"[\"']([a-zA-Z0-9_\-.]+\.zip)[\"']", lower_t)
+                target_name = m_name.group(1) if m_name else None
+
+                extracted = unzip_document_to_vault(
+                    db=db,
+                    document_id=target_id,
+                    document_title=target_name,
+                    thread_id=thread_id
+                )
+                if extracted:
+                    doc_lines = []
+                    for idx, d in enumerate(extracted, 1):
+                        details = []
+                        if d.category_label:
+                            details.append(f"📁 *{d.category_label}*")
+                        elif d.doc_type:
+                            details.append(f"*{d.doc_type.capitalize()}*")
+                        if d.amount is not None:
+                            details.append(f"💶 **€ {d.amount:.2f}**")
+                        if d.due_date:
+                            details.append(f"📅 Scadenza: **{d.due_date.strftime('%d/%m/%Y')}**")
+                        detail_str = f" ({' • '.join(details)})" if details else ""
+                        summary_line = f"\n   _{d.summary}_" if d.summary else ""
+                        doc_lines.append(f"**{idx}.** 📄 **{d.title}**{detail_str}{summary_line}")
+
+                    reply = (
+                        f"📦 Ho scompattato con successo l'archivio ed esaminato ciascun file singolarmente con l'AI. "
+                        f"Ecco il dettaglio dei **{len(extracted)} documenti** estratti e catalogati nel Caveau:\n\n"
+                        + "\n\n".join(doc_lines) +
+                        "\n\nHo inserito ciascun documento nella sezione corrispondente e aggiornato lo scadenzario. Puoi aprirli, visualizzarli o scaricarli direttamente dalle schede qui sotto! ⬇️"
+                    )
+                    docs_info = [
+                        {
+                            "id": d.id,
+                            "document_id": d.id,
+                            "title": d.title,
+                            "issuer": d.issuer,
+                            "doc_type": d.doc_type,
+                            "category": d.category,
+                            "category_label": d.category_label,
+                            "category_icon": d.category_icon,
+                            "amount": d.amount,
+                            "due_date": d.due_date.isoformat() if d.due_date else None,
+                            "status": d.status,
+                            "summary": d.summary,
+                            "file_url": f"/uploads/{Path(d.file_path).name}" if d.file_path else None,
+                            "download_url": f"/api/documents/{d.id}/download",
+                            "file_type": d.file_type
+                        }
+                        for d in extracted
+                    ]
+                    return ChatResponse(
+                        reply=reply,
+                        action="show_document_card",
+                        data={"extracted_count": len(extracted), "documents": docs_info},
+                        documents=docs_info
+                    )
+                else:
+                    return ChatResponse(
+                        reply="⚠️ Non ho trovato alcun archivio ZIP nel caveau da decomprimere, oppure l'archivio non contiene file validi. Puoi caricare un file .zip con l'icona della graffetta 📎 in basso!",
+                        action="unzip_vault_archive",
+                        data={"success": False}
+                    )
+
+            # Fallback deterministico per risposte affermative e selezioni nei test offline
+            is_listing_phrase = any(k in lower_t for k in [
+                "lista", "elenco", "elencami", "quali documenti", "quali oggetti",
+                "cosa c'è", "cosa ce", "cosa ho", "cosa hai", "che documenti", "che oggetti"
+            ])
+
+            is_download_intent = any(k in lower_t for k in [
+                "download", "scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala", "scaricarli", "scaricali", "scaricare",
+                "fare il download", "voglio scaricare", "voglio il download", "voglio fare il download", "scaricale", "scaricali"
+            ])
+            is_multi_select = (
+                lower_t.strip(" !.?") in [
+                    "entrambi", "entrambe", "tutti", "tutte", "tutti e due", "tutte e due", "tutti quanti",
+                    "si di entrambi", "sì di entrambi", "si entrambi", "sì entrambi", "tutti e 2", "tutte e 2",
+                    "scaricali", "scaricale", "scaricali entrambi", "scarica entrambi", "scaricali tutti", "scarica tutti",
+                    "scarica tutte", "scaricale tutte", "mostrali tutti", "mostrameli tutti", "mostrale tutte", "mostramele tutte",
+                    "apri entrambi", "apri tutti", "visualizzali entrambi", "visualizzali tutti", "vedili entrambi", "vedili tutti"
+                ]
+                or any(k in lower_t for k in [
+                    "entrambi", "entrambe", "tutti e due", "tutte e due", "tutti e 2", "tutte e 2",
+                    "mostrameli tutti", "mostrali tutti", "mostrale tutte", "mostramele tutte",
+                    "scarica tutti", "scarica tutte", "scarica entrambi", "scaricali entrambi", "scaricali tutti", "scaricale tutte",
+                    "scaricali", "scaricale", "si di entrambi", "sì di entrambi", "apri entrambi", "visualizzali entrambi"
+                ])
+            ) and not is_listing_phrase
+
+            is_affirmative = (
+                lower_t.strip(" !.?") in [
+                    "si", "sì", "ok", "va bene", "certo", "mostramelo", "mostramela", "mostrameli", "mostrali", "mostrale",
+                    "fammi vedere", "apri", "yes", "vai", "entrambi", "entrambe", "tutti e due", "tutte e due",
+                    "si di entrambi", "sì di entrambi", "si entrambi", "sì entrambi", "tutti", "tutte",
+                    "scaricali", "scaricale", "scaricalo", "scaricala", "scarica", "download", "apri entrambi", "mostrali tutti"
+                ]
+                or is_multi_select
+                or (is_download_intent and len(lower_t.split()) <= 6)
+            ) and not is_listing_phrase
+            if is_affirmative:
+                last_asst = (
+                    db.query(ChatMessage)
+                    .filter(ChatMessage.thread_id == thread_id, ChatMessage.sender == "assistant")
+                    .order_by(ChatMessage.id.desc())
+                    .first()
+                )
+                if last_asst and last_asst.content:
+                    all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
+                    matched_docs = []
+
+                    # 1. Trova documenti il cui titolo compare direttamente nel testo del messaggio precedente
+                    for d in all_docs:
+                        if d.title and len(d.title) >= 3 and d.title.lower() in last_asst.content.lower():
+                            if d not in matched_docs:
+                                matched_docs.append(d)
+
+                    # 2. Cerca nomi esplicitamente citati tra virgolette, grassetto o punti elenco (* 📄 Titolo)
+                    cand_names = (
+                        re.findall(r"['\"]([^'\"]{2,})['\"]", last_asst.content) +
+                        re.findall(r"\*\*([^*]{2,})\*\*", last_asst.content) +
+                        re.findall(r"[*•-]\s*(?:📄\s*)?([^\n:]+?)(?:\s*:|\s*—|\s*\(|$)", last_asst.content)
+                    )
+
+                    for cand in cand_names:
+                        c_clean = cand.strip(" *📄\"'")
+                        if c_clean and len(c_clean) >= 3:
+                            s_matches = search_vault_documents(db, c_clean, thread_id=thread_id)
+                            if s_matches:
+                                top_d = db.query(Document).filter(Document.id == s_matches[0]["id"]).first()
+                                if top_d and top_d not in matched_docs:
+                                    matched_docs.append(top_d)
+                            for d in all_docs:
+                                if d.title and (d.title.lower() == c_clean.lower() or c_clean.lower() in d.title.lower() or d.title.lower() in c_clean.lower()):
+                                    if d not in matched_docs:
+                                        matched_docs.append(d)
+
+                    # 3. Se non trovati per titolo intero, controlla sovrapposizione parole chiave
+                    if not matched_docs:
+                        for d in all_docs:
+                            d_words = [w for w in re.split(r"[^\w]+", d.title.lower()) if len(w) > 3 and w not in ITALIAN_STOPWORDS]
+                            if d_words and sum(1 for w in d_words if w in last_asst.content.lower()) >= max(1, len(d_words) * 0.5):
+                                if d not in matched_docs:
+                                    matched_docs.append(d)
+
+                    # 4. Controlla se fa riferimento a un oggetto fisico
+                    matched_item = None
+                    if not matched_docs:
+                        all_items = db.query(PhysicalItem).order_by(PhysicalItem.updated_at.desc()).all()
+                        for it in all_items:
+                            if it.item_name and len(it.item_name) >= 3 and it.item_name.lower() in last_asst.content.lower():
+                                matched_item = it
+                                break
+                        if not matched_item and cand_names:
+                            for cand in cand_names:
+                                c_clean = cand.strip(" *📄\"'")
+                                for it in all_items:
+                                    if it.item_name and (it.item_name.lower() == c_clean.lower() or c_clean.lower() in it.item_name.lower()):
+                                        matched_item = it
+                                        break
+
+                    # Se ci sono documenti trovati:
+                    if matched_docs:
+                        # Se l'utente non ha chiesto 'entrambi' o 'tutti' e ha specificato parole di uno solo:
+                        specific_doc = None
+                        if not is_multi_select and not any(k in lower_t for k in ["entrambi", "tutti", "tutte", "scaricali", "scaricale", "mostrali", "mostrameli"]):
+                            for d in matched_docs:
+                                d_words = [w for w in re.split(r"[^\w]+", d.title.lower()) if len(w) > 2 and w not in ITALIAN_STOPWORDS]
+                                if any(w in lower_t for w in d_words):
+                                    specific_doc = d
+                                    break
+
+                        docs_to_show = [specific_doc] if specific_doc else matched_docs
+                        doc_ids_to_call = [d.id for d in docs_to_show]
+                        card_res = self.execute_tool("show_document_card", {"document_ids": doc_ids_to_call}, db=db, thread_id=thread_id)
+                        docs_info = card_res.get("documents") or []
+                        if docs_info:
+                            if len(docs_info) > 1:
+                                lines = [f"- 📄 **{d['title']}** ({d.get('issuer') or d.get('doc_type', '')})" for d in docs_info]
+                                reply_text = (
+                                    f"📄 Certamente! Ecco le schede per i {len(docs_info)} documenti:\n\n" +
+                                    "\n".join(lines) +
+                                    "\n\nPuoi visualizzarli con il pulsante 'Vedi' o scaricarli direttamente con il pulsante 'Scarica' nelle rispettive schede qui sotto! ⬇️"
+                                )
+                            else:
+                                d = docs_info[0]
+                                reply_text = f"📄 Eccolo! Ho recuperato il documento **{d['title']}** ({d.get('issuer') or d.get('doc_type', '')}):\n💡 {d.get('summary', '')}"
+
+                            return ChatResponse(
+                                reply=reply_text,
+                                action="show_document_card",
+                                data=card_res,
+                                documents=docs_info
+                            )
+
+                    elif matched_item:
+                        loc_str = matched_item.primary_location + (f" ({matched_item.detailed_location})" if matched_item.detailed_location else "")
+                        return ChatResponse(
+                            reply=f"📍 Ho verificato la posizione di **{matched_item.item_name}**: si trova in **{loc_str}**.",
+                            action="search_vault",
+                            data={"item": {"item_id": matched_item.id, "item_name": matched_item.item_name, "location_str": loc_str}}
+                        )
+
+            # Fallback deterministico per memorizzazione posizione nei test offline
+            if is_store_or_update:
+                item_n, loc_n = self._extract_item_and_location(user_text, last_item_in_context=last_item_name)
+                if item_n and loc_n:
+                    stored_item_result = self.execute_tool("store_physical_item", {"item_name": item_n, "primary_location": loc_n}, db=db, thread_id=thread_id)
+                else:
+                    is_store_or_update = False
 
             # Fallback deterministico per richieste Google Drive nei test offline
             drive_resp = self._handle_drive_intent(user_text, lower_t, db, thread_id=thread_id)
@@ -3507,6 +3504,8 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             tool_choice_cfg = {"type": "function", "function": {"name": "read_vault_document_content"}}
         elif is_delete_request:
             tool_choice_cfg = {"type": "function", "function": {"name": "delete_vault_record"}}
+        elif is_unzip_request:
+            tool_choice_cfg = {"type": "function", "function": {"name": "unzip_vault_archive"}}
         elif is_link_photo_intent:
             tool_choice_cfg = {"type": "function", "function": {"name": "link_document_to_item"}}
         elif is_rename_request:
@@ -3612,7 +3611,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
                         docs_found = None
                         if isinstance(tool_data, dict):
-                            docs_found = tool_data.get("found_documents") or tool_data.get("recent_documents") or tool_data.get("documents")
+                            docs_found = tool_data.get("found_documents") or tool_data.get("recent_documents") or tool_data.get("documents") or tool_data.get("extracted_documents")
 
                         if not final_text:
                             if tool_action == "search_vault":
@@ -3680,6 +3679,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                 tbl = (tool_data or {}).get("markdown_table") or (tool_data or {}).get("content_text") or ""
                                 sheet_info = f" (Foglio: **{(tool_data or {}).get('active_sheet')}**)" if (tool_data or {}).get('active_sheet') else ""
                                 final_text = f"📊 **Dati estratti dal file '{doc_title}'**{sheet_info}:\n\n{tbl}\n\n💡 *{(tool_data or {}).get('summary', '')}*"
+                            elif tool_action == "unzip_vault_archive":
+                                ext_cnt = (tool_data or {}).get("extracted_count", 0)
+                                final_text = f"📦 Ho scompattato con successo l'archivio ed estratto {ext_cnt} documenti nel Caveau!"
                             else:
                                 final_text = "Operazione completata con successo nel caveau."
                         else:
@@ -3754,6 +3756,11 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                 if n_title and n_title.lower() not in final_text.lower():
                                     final_text = f"✅ Ho rinominato il file in '**{n_title}**'!\n{final_text}"
 
+                            elif tool_action == "unzip_vault_archive":
+                                if "scompattat" not in final_text.lower() and "estratti" not in final_text.lower():
+                                    ext_cnt = (tool_data or {}).get("extracted_count", len(docs_found) if docs_found else 0)
+                                    final_text = f"📦 Ho scompattato con successo l'archivio ZIP ({ext_cnt} documenti estratti)!\n\n{final_text}"
+
                         # Sanitizzazione anti-esitazione:
                         final_text = re.sub(r"per scaricare entrambi i documenti,?\s*dovrai farlo singolarmente\.?", "", final_text, flags=re.IGNORECASE).strip()
                         is_meta_or_help = any(
@@ -3777,8 +3784,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
                         # Niente automatismi: se il modello ha chiamato show_document_card, allega le schede.
                         # Se ha chiamato search_vault, allega solo se l'utente chiedeva documenti specifici ed erano pertinenti.
-                        if tool_action == "show_document_card":
+                        if tool_action in ["show_document_card", "unzip_vault_archive"]:
                             filtered_docs = docs_found
+                            tool_action = "show_document_card"
                         elif tool_action == "search_vault":
                             filtered_docs = filter_relevant_documents(docs_found, final_text, user_text)
                         else:
@@ -3938,14 +3946,19 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                             "summary": d_rec.summary, "file_url": f"/uploads/{fn}" if fn else None,
                                             "download_url": f"/api/documents/{d_rec.id}/download", "file_type": d_rec.file_type
                                         })
-                            return ChatResponse(reply=clean_rep, action="search_vault", data=s_res, documents=docs_to_attach if docs_to_attach else None)
+                            reply_out = direct_reply if direct_reply else clean_rep
+                            if (it.get("has_photo") or it.get("document_id")) and "📸" not in reply_out:
+                                reply_out += "\n\n📸 Ho allegato la foto della posizione qui sotto!"
+                            return ChatResponse(reply=reply_out, action="search_vault", data=s_res, documents=docs_to_attach if docs_to_attach else None)
                         elif found_docs:
                             d = found_docs[0]
                             clean_rep = f"📄 Ho trovato il documento **{d['title']}** ({d.get('issuer', '')}).\n💡 {d.get('summary', '')}"
-                            return ChatResponse(reply=clean_rep, action="search_vault", data=s_res, documents=[d])
+                            reply_out = direct_reply if direct_reply else clean_rep
+                            return ChatResponse(reply=reply_out, action="search_vault", data=s_res, documents=[d])
                         else:
                             clean_rep = f"Ho cercato nel caveau, ma non ho trovato '{search_q}'. Potrebbe essere stato eliminato o non ancora registrato."
-                            return ChatResponse(reply=clean_rep, action="search_vault", data=s_res)
+                            reply_out = direct_reply if direct_reply else clean_rep
+                            return ChatResponse(reply=reply_out, action="search_vault", data=s_res)
 
                     if is_listing_request:
                         target = "physical_items" if any(k in lower_t for k in ["oggett", "cose"]) else ("documents" if any(k in lower_t for k in ["document", "file", "bollett", "fattur"]) else "all")
@@ -3957,7 +3970,8 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                 rep = "📍 Ecco gli oggetti fisici memorizzati nel caveau:\n\n" + "\n".join(lines)
                             else:
                                 rep = "Nel caveau non sono presenti oggetti fisici memorizzati al momento. Dimmi pure dove riponi i tuoi oggetti e li registrerò subito! 📍"
-                            return ChatResponse(reply=rep, action="list_vault_contents", data=l_res)
+                            reply_out = direct_reply if direct_reply else rep
+                            return ChatResponse(reply=reply_out, action="list_vault_contents", data=l_res)
                         elif target == "documents":
                             docs = l_res.get("documents", [])
                             if docs:
@@ -3965,7 +3979,8 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                 rep = f"📄 Ecco i {len(docs)} documenti presenti nel caveau:\n\n" + "\n".join(lines)
                             else:
                                 rep = "Nel caveau non sono presenti documenti archiviati al momento."
-                            return ChatResponse(reply=rep, action="list_vault_contents", data=l_res, documents=docs[:5])
+                            reply_out = direct_reply if direct_reply else rep
+                            return ChatResponse(reply=reply_out, action="list_vault_contents", data=l_res, documents=docs[:5])
                         else:
                             items = l_res.get("physical_items", [])
                             docs = l_res.get("documents", [])
@@ -3977,7 +3992,8 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                                 lines = [f"- 📍 **{it['item_name']}**: {it['location_str']}" for it in items]
                                 parts.append("📍 **Oggetti fisici:**\n" + "\n".join(lines))
                             rep = "\n\n".join(parts) if parts else "Nel caveau non sono presenti documenti o oggetti memorizzati al momento."
-                            return ChatResponse(reply=rep, action="list_vault_contents", data=l_res, documents=docs[:5])
+                            reply_out = direct_reply if direct_reply else rep
+                            return ChatResponse(reply=reply_out, action="list_vault_contents", data=l_res, documents=docs[:5])
 
                     if is_deadline_request:
                         d_res = self.execute_tool("get_upcoming_deadlines", {}, db=db, thread_id=thread_id)
@@ -3990,7 +4006,8 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             rep = "📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines)
                         else:
                             rep = "✅ Non ci sono scadenze o pagamenti in sospeso al momento."
-                        return ChatResponse(reply=rep, action="get_upcoming_deadlines", data=d_res, documents=docs)
+                        reply_out = direct_reply if direct_reply else rep
+                        return ChatResponse(reply=reply_out, action="get_upcoming_deadlines", data=d_res, documents=docs)
 
                     if is_download_or_show:
                         last_asst_msg = (
@@ -4061,6 +4078,86 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 reply="🎤 Non ho rilevato alcun comando vocale comprensibile in questo messaggio. Prova a ripetere scandendo bene le parole o a scrivermi nella chat!",
                 action="REPLY"
             )
+
+        # 0. Richieste temporali in caso di fallback offline o errore API
+        temp_resp = self._handle_temporal_intent(user_text, lower_t)
+        if temp_resp:
+            return temp_resp
+
+        # 0. Scompattamento archivio ZIP in caso di fallback offline o errore API
+        is_unzip_request = any(k in lower_t for k in [
+            "scompatta", "scompattami", "scompattalo", "scompattare",
+            "decomprimi", "decomprimimi", "decomprimilo", "decomprimere",
+            "unzip", "fai l'unzip", "fai unzip",
+            "estrai lo zip", "estrai l'archivio", "estrai archivio", "estrai i file dallo zip", "estrai tutti i file dallo zip"
+        ])
+        if is_unzip_request:
+            from app.services.archive_service import unzip_document_to_vault
+            m_id = re.search(r"\b(?:id\s*[:=]?\s*|numero\s+)?(\d+)\b", lower_t)
+            target_id = int(m_id.group(1)) if m_id else None
+            m_name = re.search(r"[\"']([a-zA-Z0-9_\-.]+\.zip)[\"']", lower_t)
+            target_name = m_name.group(1) if m_name else None
+
+            extracted = unzip_document_to_vault(
+                db=db,
+                document_id=target_id,
+                document_title=target_name,
+                thread_id=thread_id
+            )
+            if extracted:
+                doc_lines = []
+                for idx, d in enumerate(extracted, 1):
+                    details = []
+                    if d.category_label:
+                        details.append(f"📁 *{d.category_label}*")
+                    elif d.doc_type:
+                        details.append(f"*{d.doc_type.capitalize()}*")
+                    if d.amount is not None:
+                        details.append(f"💶 **€ {d.amount:.2f}**")
+                    if d.due_date:
+                        details.append(f"📅 Scadenza: **{d.due_date.strftime('%d/%m/%Y')}**")
+                    detail_str = f" ({' • '.join(details)})" if details else ""
+                    summary_line = f"\n   _{d.summary}_" if d.summary else ""
+                    doc_lines.append(f"**{idx}.** 📄 **{d.title}**{detail_str}{summary_line}")
+
+                reply = (
+                    f"📦 Ho scompattato con successo l'archivio ed esaminato ciascun file singolarmente con l'AI. "
+                    f"Ecco il dettaglio dei **{len(extracted)} documenti** estratti e catalogati nel Caveau:\n\n"
+                    + "\n\n".join(doc_lines) +
+                    "\n\nHo inserito ciascun documento nella sezione corrispondente e aggiornato lo scadenzario. Puoi aprirli, visualizzarli o scaricarli direttamente dalle schede qui sotto! ⬇️"
+                )
+                docs_info = [
+                    {
+                        "id": d.id,
+                        "document_id": d.id,
+                        "title": d.title,
+                        "issuer": d.issuer,
+                        "doc_type": d.doc_type,
+                        "category": d.category,
+                        "category_label": d.category_label,
+                        "category_icon": d.category_icon,
+                        "amount": d.amount,
+                        "due_date": d.due_date.isoformat() if d.due_date else None,
+                        "status": d.status,
+                        "summary": d.summary,
+                        "file_url": f"/uploads/{Path(d.file_path).name}" if d.file_path else None,
+                        "download_url": f"/api/documents/{d.id}/download",
+                        "file_type": d.file_type
+                    }
+                    for d in extracted
+                ]
+                return ChatResponse(
+                    reply=reply,
+                    action="show_document_card",
+                    data={"extracted_count": len(extracted), "documents": docs_info},
+                    documents=docs_info
+                )
+            else:
+                return ChatResponse(
+                    reply="⚠️ Non ho trovato alcun archivio ZIP nel caveau da decomprimere, oppure l'archivio non contiene file validi. Puoi caricare un file .zip con l'icona della graffetta 📎 in basso!",
+                    action="unzip_vault_archive",
+                    data={"success": False}
+                )
 
         # 0a. Eliminazione sicura di documenti o oggetti
         del_resp = self._handle_deletion_intent(user_text, lower_t, db, thread_id=thread_id)
@@ -4161,15 +4258,6 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         if item_n and loc_n:
             db_res = self.execute_tool("store_physical_item", {"item_name": item_n, "primary_location": loc_n}, db, thread_id=thread_id)
             return ChatResponse(reply=f"✅ Memorizzato! Ho salvato la posizione di '{item_n}' in: {loc_n}.", action="store_physical_item", data=db_res)
-
-        # 2. Data e ora odierna
-        if any(k in lower_t for k in ["che giorno è", "che giorno e", "data di oggi", "quanti ne abbiamo", "che data è", "che data e", "data odierna", "che ore sono"]):
-            d_info = get_current_date_info()
-            return ChatResponse(
-                reply=f"📅 Oggi è **{d_info['formatted_italian']}** (ore {d_info['current_time']}).",
-                action="get_current_date",
-                data=d_info
-            )
 
         # 3. Scadenze in sospeso
         if any(k in lower_t for k in ["scadenz", "da pagare", "quanto devo pagare", "cosa scade"]):

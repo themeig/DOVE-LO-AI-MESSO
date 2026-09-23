@@ -1,5 +1,6 @@
 import logging
 import math
+import httpx
 from pathlib import Path
 from typing import Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -220,3 +221,121 @@ def wipe_database(
         deleted_folders=folder_count,
         drive_deleted=drive_deleted
     )
+
+
+@router.get("/openrouter-credits")
+def get_openrouter_credits(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Recupera i dati in tempo reale sul saldo crediti e consumi dell'account OpenRouter tramite API ufficiale.
+    Restituisce quanti crediti rimangono (saldo residuo), quanti crediti ci sono in totale (acquistati/depositati),
+    e il dettaglio dei consumi dell'account e della specifica chiave API.
+    """
+    key = get_app_setting(db, "openrouter_api_key") or get_settings().OPENROUTER_API_KEY or ""
+    key = key.strip()
+
+    if not key:
+        return {
+            "connected": False,
+            "is_configured": False,
+            "has_key": False,
+            "message": "Nessuna chiave API OpenRouter configurata nel sistema.",
+            "total_credits": 0.0,
+            "total_usage": 0.0,
+            "remaining_credits": 0.0,
+            "percentage_remaining": 0.0
+        }
+
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "HTTP-Referer": "http://localhost:8000",
+        "X-Title": "Dove lo AI messo"
+    }
+
+    try:
+        total_credits = 0.0
+        total_usage = 0.0
+        r_credits = httpx.get("https://openrouter.ai/api/v1/credits", headers=headers, timeout=10.0)
+        if r_credits.status_code == 200:
+            c_data = r_credits.json().get("data", {})
+            total_credits = float(c_data.get("total_credits") or 0.0)
+            total_usage = float(c_data.get("total_usage") or 0.0)
+        elif r_credits.status_code == 401:
+            return {
+                "connected": False,
+                "has_key": True,
+                "error": "Chiave API non valida o non autorizzata (401).",
+                "message": "La chiave OpenRouter configurata non è valida o è scaduta."
+            }
+
+        remaining_credits = max(0.0, total_credits - total_usage)
+        percentage_remaining = round((remaining_credits / total_credits * 100), 1) if total_credits > 0 else 0.0
+
+        key_label = "Chiave OpenRouter"
+        key_usage = 0.0
+        key_usage_daily = 0.0
+        key_usage_weekly = 0.0
+        key_usage_monthly = 0.0
+        free_requests_remaining = 1000
+        is_free_tier = False
+
+        try:
+            r_key = httpx.get("https://openrouter.ai/api/v1/auth/key", headers=headers, timeout=10.0)
+            if r_key.status_code == 200:
+                k_data = r_key.json().get("data", {})
+                key_label = k_data.get("label") or key_label
+                key_usage = float(k_data.get("usage") or 0.0)
+                key_usage_daily = float(k_data.get("usage_daily") or 0.0)
+                key_usage_weekly = float(k_data.get("usage_weekly") or 0.0)
+                key_usage_monthly = float(k_data.get("usage_monthly") or 0.0)
+                is_free_tier = bool(k_data.get("is_free_tier", False))
+                free_req_data = k_data.get("free_model_daily_requests") or {}
+                free_requests_remaining = int(free_req_data.get("remaining", 1000))
+        except Exception as e_key:
+            logger.warning(f"Errore secondario query auth/key OpenRouter: {e_key}")
+
+        if remaining_credits > 5.0:
+            status_level = "healthy"
+            status_text = "DISPONIBILI"
+        elif remaining_credits > 1.0:
+            status_level = "warning"
+            status_text = "IN ESAURIMENTO"
+        elif remaining_credits > 0.0:
+            status_level = "critical"
+            status_text = "QUASI ESAURITI"
+        else:
+            status_level = "depleted"
+            status_text = "ESAURITI"
+
+        masked_key = f"{key[:10]}...{key[-4:]}" if len(key) >= 16 else "sk-or-v1-***"
+
+        return {
+            "connected": True,
+            "is_configured": True,
+            "has_key": True,
+            "total_credits": round(total_credits, 2),
+            "total_usage": round(total_usage, 2),
+            "remaining_credits": round(remaining_credits, 2),
+            "percentage_remaining": percentage_remaining,
+            "key_label": key_label,
+            "masked_key": masked_key,
+            "key_usage": round(key_usage, 2),
+            "key_usage_daily": round(key_usage_daily, 2),
+            "key_usage_weekly": round(key_usage_weekly, 2),
+            "key_usage_monthly": round(key_usage_monthly, 2),
+            "free_requests_remaining": free_requests_remaining,
+            "is_free_tier": is_free_tier,
+            "status_level": status_level,
+            "status_text": status_text,
+            "currency": "USD ($)"
+        }
+
+    except Exception as e:
+        logger.error(f"Errore recupero crediti OpenRouter: {e}")
+        return {
+            "connected": False,
+            "is_configured": True,
+            "has_key": True,
+            "error": str(e),
+            "message": "Impossibile contattare i server OpenRouter al momento. Verifica la tua connessione."
+        }
+

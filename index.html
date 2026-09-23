@@ -185,7 +185,7 @@
           </button>
 
           <!-- Versione App Olivetti Badge -->
-          <span class="stamp-oli text-[9px] font-mono-code font-bold app-version-badge select-none" title="Versione App Caveau">v2.1.3</span>
+          <span class="stamp-oli text-[9px] font-mono-code font-bold app-version-badge select-none" title="Versione App Caveau">v2.1.5</span>
 
           <!-- Elimina Gruppo/Area Personalizzata -->
           <button 
@@ -1351,7 +1351,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. CENTRALE</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v2.1.3</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v2.1.5</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PROTOCOLLO CRITTOGRAFATO AES-256-GCM • SINCRONIZZATO IN TEMPO REALE</p>
           </div>
@@ -1680,7 +1680,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">SISTEMA & CONFIGURAZIONE</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. SISTEMA</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v2.1.3</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v2.1.5</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PARAMETRI OPERATIVI • MOTORI AI • ARCHIVIAZIONE CLOUD • BACKUP & CRITTOGRAFIA</p>
           </div>
@@ -1689,6 +1689,18 @@
 
       <!-- Azioni Rapide a Destra -->
       <div class="flex items-center space-x-2">
+        <!-- Badge Rapido Crediti OpenRouter -->
+        <div 
+          id="systemCreditsQuickBadge" 
+          class="stamp-oli text-[9px] flex items-center gap-1.5 cursor-pointer bg-white hover:bg-[#FAF8F2] transition" 
+          onclick="document.getElementById('creditsBentoCard')?.scrollIntoView({behavior:'smooth'})" 
+          title="Crediti OpenRouter disponibili (clicca per visualizzare)"
+        >
+          <i class="fa-solid fa-coins text-[#3C5A48] text-[10px]"></i>
+          <span class="font-space hidden xs:inline text-[#7A7568]">CREDITI:</span>
+          <span id="quickCreditsVal" class="font-mono-code font-bold text-[#3C5A48]">...</span>
+        </div>
+
         <button 
           type="button" 
           onclick="lockVault()" 
@@ -1842,10 +1854,94 @@
           </div>
         </div>
 
-        <!-- COLONNA DESTRA (5/12): CLOUD DRIVE + CARTELLE PC -->
+        <!-- COLONNA DESTRA (5/12): BILANCIO CREDITI + CLOUD DRIVE + CARTELLE PC -->
         <div class="lg:col-span-5 space-y-5 flex flex-col">
           
-          <!-- CARD 2: GOOGLE DRIVE CLOUD SYNC -->
+          <!-- CARD 2: BILANCIO & CREDITI OPENROUTER -->
+          <div id="creditsBentoCard" class="bg-white rounded-xs border border-[#E3DDD1] p-5 shadow-xs flex flex-col justify-between">
+            <div>
+              <!-- Header Card Crediti -->
+              <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3 mb-3">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-sm shadow-2xs">
+                    <i class="fa-solid fa-coins"></i>
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Bilancio & Crediti OpenRouter</h3>
+                    <p class="text-[10px] text-[#7A7568] font-mono-code">DISPONIBILITÀ • CONSUMI • TIER API</p>
+                  </div>
+                </div>
+                <span id="creditsStatusBadge" class="stamp-oli text-[8px] text-[#3C5A48] border-[#3C5A48]">Verifica...</span>
+              </div>
+
+              <!-- KPI Principale Rimanenza -->
+              <div class="bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-3.5 mb-3.5 shadow-2xs">
+                <div class="flex items-baseline justify-between mb-1">
+                  <span class="text-[10px] font-bold text-[#7A7568] font-space uppercase tracking-wider">Crediti Rimanenti</span>
+                  <span id="labelCreditsPct" class="font-mono-code font-bold text-xs text-[#3C5A48]">--%</span>
+                </div>
+                <div class="flex items-baseline gap-2 mb-2">
+                  <span id="valCreditsRemaining" class="text-2xl font-bold font-mono-code text-[#222220]">--</span>
+                  <span class="text-[11px] text-[#7A7568] font-mono-code">disponibili all'uso</span>
+                </div>
+
+                <!-- Progress Bar Olivetti -->
+                <div class="w-full bg-[#E3DDD1] h-2 rounded-xs overflow-hidden mb-1.5 p-0.5">
+                  <div id="creditsProgressBar" class="h-full bg-[#3C5A48] rounded-xs transition-all duration-500" style="width: 0%;"></div>
+                </div>
+
+                <div class="flex items-center justify-between text-[10px] text-[#7A7568] font-mono-code pt-1">
+                  <span id="creditsRatioText">Caricamento saldo...</span>
+                  <span>Totale: <strong id="valCreditsTotal" class="text-[#222220]">--</strong></span>
+                </div>
+              </div>
+
+              <!-- Mini-Grid Metriche di Dettaglio -->
+              <div class="grid grid-cols-3 gap-2 mb-3.5">
+                <!-- Cella 1: Consumo Totale -->
+                <div class="bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-2.5 text-center">
+                  <span class="text-[9px] text-[#7A7568] font-space uppercase block font-bold mb-0.5">Consumo Totale</span>
+                  <span id="valCreditsUsage" class="text-xs font-bold font-mono-code text-[#222220] block">--</span>
+                </div>
+                <!-- Cella 2: Chiave Attuale -->
+                <div class="bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-2.5 text-center">
+                  <span class="text-[9px] text-[#7A7568] font-space uppercase block font-bold mb-0.5">Uso Chiave</span>
+                  <span id="valKeyUsage" class="text-xs font-bold font-mono-code text-[#222220] block">--</span>
+                </div>
+                <!-- Cella 3: Richieste Free -->
+                <div class="bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-2.5 text-center">
+                  <span class="text-[9px] text-[#7A7568] font-space uppercase block font-bold mb-0.5">Free Daily</span>
+                  <span id="valFreeRequests" class="text-xs font-bold font-mono-code text-[#3C5A48] block">--</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer Azioni Card -->
+            <div class="flex items-center justify-between pt-2 border-t border-[#E3DDD1]">
+              <button 
+                id="btnRefreshCredits"
+                type="button" 
+                onclick="loadOpenRouterCredits(true)" 
+                class="px-2.5 py-1 bg-[#FAF8F2] hover:bg-[#EFECE3] text-[#222220] border border-[#D5CEBF] rounded-xs font-space font-bold text-[11px] shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+                title="Ricarica i dati di credito in tempo reale da OpenRouter"
+              >
+                <i class="fa-solid fa-arrows-rotate text-[10px] text-[#3C5A48]"></i>
+                <span>Aggiorna Saldo</span>
+              </button>
+
+              <a 
+                href="https://openrouter.ai/credits" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                class="text-[11px] font-mono-code text-[#3C5A48] hover:underline flex items-center gap-1"
+              >
+                <span>Gestisci su OpenRouter</span>
+                <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+              </a>
+            </div>
+          </div>
+          
+          <!-- CARD 3: GOOGLE DRIVE CLOUD SYNC -->
           <div class="bg-white rounded-xs border border-[#E3DDD1] p-5 shadow-xs flex-1 flex flex-col justify-between">
             <div>
               <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3 mb-3">
@@ -2238,7 +2334,7 @@
 
       <div class="pt-2 border-t border-[#E3DDD1] flex items-center justify-between text-[10px] text-[#7A7568] font-mono-code">
         <span>Password predefinita: <code class="font-mono font-bold text-[#222220] bg-[#FAF8F2] border border-[#E3DDD1] px-1 py-0.5 rounded-xs">1234</code></span>
-        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v2.1.3</span>
+        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v2.1.4</span>
       </div>
 
     </div>

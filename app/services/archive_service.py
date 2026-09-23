@@ -1421,19 +1421,41 @@ def unzip_document_to_vault(
             return []
     elif document_title:
         term = document_title.strip().lower()
+        clean_term = re.sub(r"\.zip$", "", term).strip()
+        term_spaced = re.sub(r"[_\-]+", " ", term).strip()
+        clean_spaced = re.sub(r"[_\-]+", " ", clean_term).strip()
+        term_words = [w for w in re.split(r"[_\W]+", clean_term) if len(w) > 2 and w not in ["zip", "archivio", "file"]]
+
         all_zips = db.query(Document).filter(
             or_(Document.file_type == "zip", Document.doc_type == "archivio_zip")
         ).all()
-        doc = next((d for d in all_zips if term in (d.title or "").lower() or term in (d.summary or "").lower()), None)
-        if not doc:
-            logger.warning(f"Nessun documento ZIP trovato con titolo '{document_title}'")
+        doc = next((
+            d for d in all_zips 
+            if term in (d.title or "").lower() 
+            or term in (d.summary or "").lower()
+            or (d.file_path and term in Path(d.file_path).name.lower())
+            or (clean_term and clean_term in (d.title or "").lower())
+            or (clean_spaced and clean_spaced in (d.title or "").lower())
+            or (term_spaced and term_spaced in (d.title or "").lower())
+            or (term_words and all(w in (d.title or "").lower() for w in term_words))
+            or (d.file_path and clean_term and clean_term in Path(d.file_path).name.lower())
+        ), None)
+        if not doc and clean_spaced in ["", "zip", "archivio", "file", "file zip", "archivio zip", "lo zip", "l archivio", "l'archivio"]:
+            # Se il termine fornito era puramente generico (es. 'zip' o 'archivio'), lascia procedere al fallback dell'ultimo zip
+            pass
+        elif not doc:
+            logger.warning(f"Nessun documento ZIP trovato con titolo o file '{document_title}'")
             return []
 
     if not doc:
-        # Cerca l'ultimo zip caricato solo se nessun parametro specifico è stato fornito
-        doc = db.query(Document).filter(
+        # Cerca l'ultimo zip caricato (priorità al canale/thread attuale se specificato)
+        q_zip = db.query(Document).filter(
             or_(Document.file_type == "zip", Document.doc_type == "archivio_zip")
-        ).order_by(Document.created_at.desc()).first()
+        )
+        if thread_id and thread_id != "general" and thread_id != "all":
+            doc = q_zip.filter(Document.thread_id == thread_id).order_by(Document.created_at.desc()).first()
+        if not doc:
+            doc = q_zip.order_by(Document.created_at.desc()).first()
 
 
     if not doc or not doc.file_path:
