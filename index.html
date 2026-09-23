@@ -20,10 +20,13 @@
   <!-- ================================================================= -->
   <!-- 1. VISTA CHAT (REGISTRO DATTILOSCRITTO OLIVETTI)                  -->
   <!-- ================================================================= -->
-  <div id="chatView" class="w-full h-full flex bg-transparent overflow-hidden">
+  <div id="chatView" class="w-full h-full flex flex-col bg-[#F8F5EE] overflow-hidden">
     
-    <!-- A. SIDEBAR CANALI / GRUPPI OLIVETTI -->
-    <aside id="sidebarPanel" class="shrink-0 border-r border-[#E3DDD1] bg-[#F8F5EE] flex flex-col h-full z-10 transition-transform duration-300">
+    <!-- Area Principale Chat: Sidebar + Conversazione affiancate -->
+    <div id="chatMainArea" class="flex-1 flex w-full overflow-hidden relative">
+
+      <!-- A. SIDEBAR CANALI / GRUPPI OLIVETTI -->
+      <aside id="sidebarPanel" class="shrink-0 border-r border-[#E3DDD1] bg-[#F8F5EE] flex flex-col h-full z-10 transition-transform duration-300">
       
       <!-- Top Bar Sidebar -->
       <div class="h-[60px] bg-[#F8F5EE] border-b border-[#E3DDD1] text-[#222220] px-3.5 flex items-center justify-between shrink-0 select-none box-border">
@@ -102,22 +105,6 @@
       <!-- Lista dei Canali / Thread -->
       <div id="threadsContainer" class="flex-1 overflow-y-auto divide-y divide-[#E3DDD1] custom-scroll bg-[#F8F5EE]">
         <!-- Renderizzato da renderThreadsList() -->
-      </div>
-
-      <!-- Bottom Navigation Bar Sidebar Olivetti -->
-      <div class="bottom-nav-bar bg-[#F8F5EE] border-t border-[#E3DDD1] p-2 flex items-center justify-around text-[10px] font-space text-[#7A7568] shrink-0 select-none">
-        <button onclick="switchScreen('dashboard')" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
-          <i class="fa-solid fa-table-cells-large text-base mb-0.5"></i>
-          <span>DASHBOARD</span>
-        </button>
-        <button onclick="switchScreen('chat')" class="flex flex-col items-center text-[#3C5A48] font-bold cursor-pointer">
-          <i class="fa-solid fa-message text-base mb-0.5"></i>
-          <span>CONVERSA</span>
-        </button>
-        <button onclick="switchScreen('settings')" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
-          <i class="fa-solid fa-sliders text-base mb-0.5"></i>
-          <span>SISTEMA</span>
-        </button>
       </div>
     </aside>
 
@@ -479,8 +466,25 @@
         </div>
       </footer>
     </main>
-
   </div>
+
+  <!-- Bottom Navigation Bar Chat Olivetti (FULL WIDTH IDENTICA ALLA DASHBOARD E SISTEMA) -->
+  <div class="bottom-nav-bar bg-[#F8F5EE] border-t border-[#E3DDD1] p-2 flex items-center justify-around text-[10px] font-space text-[#7A7568] shrink-0 select-none z-20">
+    <button onclick="switchScreen('dashboard')" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
+      <i class="fa-solid fa-table-cells-large text-base mb-0.5"></i>
+      <span>DASHBOARD</span>
+    </button>
+    <button onclick="switchScreen('chat')" class="flex flex-col items-center text-[#3C5A48] font-bold cursor-pointer">
+      <i class="fa-solid fa-message text-base mb-0.5"></i>
+      <span>CONVERSA</span>
+    </button>
+    <button onclick="switchScreen('settings')" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
+      <i class="fa-solid fa-sliders text-base mb-0.5"></i>
+      <span>SISTEMA</span>
+    </button>
+  </div>
+
+</div>
 
   <!-- ================================================================= -->
   <!-- MODAL: CREA NUOVO GRUPPO O AREA TEMATICA (OLIVETTI INDUSTRIAL)    -->

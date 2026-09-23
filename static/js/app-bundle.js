@@ -398,276 +398,181 @@
       }
     }
 
-    // --- Apertura e Chiusura Schermate con Effetto Sipario Meccanico (Olivetti Layer Reveal) ---
+    // --- Navigazione & Scorrimento Orizzontale a Slide tra Schermate (Slides Carousel) ---
     let isTransitioningScreens = false;
+    let currentActiveScreen = 'chat'; // 'dashboard' | 'chat' | 'settings'
 
-    function openDashboard(filter = null) {
-      if (isTransitioningScreens) return;
+    const SCREEN_ORDER = {
+      'dashboard': 0,
+      'chat': 1,
+      'settings': 2,
+      'system': 2
+    };
 
-      const sysView = document.getElementById('systemView');
+    function getScreenElement(name) {
+      if (name === 'dashboard') return document.getElementById('dashboardView');
+      if (name === 'settings' || name === 'system') return document.getElementById('systemView');
+      return document.getElementById('chatView');
+    }
 
-      // Se la dashboard è già aperta e la chat è nascosta, cambia solo filtro senza ri-animare
-      if (!dashboardView.classList.contains('hidden') && (chatView.classList.contains('hidden') || chatView.style.display === 'none')) {
-        if (filter) filterTable(filter);
-        return;
-      }
+    function updateAllBottomNavs(activeScreen) {
+      const normActive = (activeScreen === 'system' || activeScreen === 'settings') ? 'settings' : activeScreen;
+      document.querySelectorAll('.bottom-nav-bar').forEach(nav => {
+        const btns = nav.querySelectorAll('button');
+        btns.forEach(btn => {
+          const oc = btn.getAttribute('onclick') || '';
+          let isTarget = false;
+          if (normActive === 'dashboard' && oc.includes("'dashboard'")) isTarget = true;
+          if (normActive === 'chat' && oc.includes("'chat'")) isTarget = true;
+          if (normActive === 'settings' && (oc.includes("'settings'") || oc.includes("'system'"))) isTarget = true;
 
-      // Se il sistema è aperto e la chat è nascosta: shutter effect (le ante della chat si chiudono e si riaprono su dashboard)
-      if (sysView && !sysView.classList.contains('hidden') && (chatView.classList.contains('hidden') || chatView.style.display === 'none')) {
-        closeToChatAndThen(() => {
-          openDashboard(filter);
+          if (isTarget) {
+            btn.classList.add('text-[#3C5A48]', 'font-bold');
+            btn.classList.remove('text-[#7A7568]', 'hover:text-[#222220]');
+          } else {
+            btn.classList.remove('text-[#3C5A48]', 'font-bold');
+            btn.classList.add('text-[#7A7568]', 'hover:text-[#222220]');
+          }
         });
+      });
+    }
+
+    function slideToScreen(targetScreen, onComplete = null) {
+      const normalizedTarget = (targetScreen === 'system') ? 'settings' : targetScreen;
+      const normalizedCurrent = (currentActiveScreen === 'system') ? 'settings' : currentActiveScreen;
+
+      // Se siamo già nella schermata richiesta
+      if (normalizedCurrent === normalizedTarget) {
+        if (typeof onComplete === 'function') onComplete();
         return;
       }
 
+      if (isTransitioningScreens) return;
       isTransitioningScreens = true;
 
-      // 1. Prepara e mostra subito la Dashboard sul livello inferiore (z-10) e nasconde systemView
-      if (sysView) {
-        sysView.classList.add('hidden');
-        sysView.classList.remove('flex');
+      const fromEl = getScreenElement(normalizedCurrent);
+      const toEl = getScreenElement(normalizedTarget);
+
+      if (!fromEl || !toEl) {
+        isTransitioningScreens = false;
+        return;
       }
-      dashboardView.classList.remove('hidden');
-      dashboardView.classList.add('flex');
-      dashboardView.style.zIndex = '10';
-      dashboardView.style.transform = 'none';
-      dashboardView.style.opacity = '1';
-      dashboardView.style.transition = 'none';
 
-      // Assicura che la Chat sia visibile sopra (z-20) e blocca click temporanei
-      chatView.classList.remove('hidden');
-      chatView.style.display = 'flex';
-      chatView.style.zIndex = '20';
-      chatView.style.pointerEvents = 'none';
+      const fromIndex = SCREEN_ORDER[normalizedCurrent] ?? 1;
+      const toIndex = SCREEN_ORDER[normalizedTarget] ?? 1;
+      const movingForward = toIndex > fromIndex; // true: verso destra (slides scorrono a sinistra), false: verso sinistra (slides scorrono a destra)
 
-      // Azzera transizioni sulle ante per partire esattamente dalla posizione attuale (0, 0, 0)
-      sidebarPanel.style.transition = 'none';
-      conversationPanel.style.transition = 'none';
-      sidebarPanel.style.transform = 'translate3d(0, 0, 0)';
-      sidebarPanel.style.opacity = '1';
-      conversationPanel.style.transform = 'translate3d(0, 0, 0)';
-      conversationPanel.style.opacity = '1';
-
-      if (filter) {
-        filterTable(filter);
-      } else {
+      // Pre-caricamento dati per la schermata di destinazione
+      if (normalizedTarget === 'dashboard') {
         renderDashboardView();
         loadDashboard(currentFilter);
+      } else if (normalizedTarget === 'settings') {
+        loadAiModelSetting();
+        loadOpenRouterCredits();
+        loadGoogleDriveStatus();
+        loadWatchedFolders();
+      } else if (normalizedTarget === 'chat') {
+        if (isMobileView) {
+          if (conversationPanel.classList.contains('mobile-active')) {
+            _mobileShowConversation(false);
+          } else {
+            _mobileShowSidebar(false);
+          }
+        } else {
+          applyLayout();
+        }
       }
 
-      // 2. Anima l'apertura a sipario: sidebar a sinistra, conversazione a destra
+      const startIncomingX = movingForward ? '100%' : '-100%';
+      const endOutgoingX = movingForward ? '-100%' : '100%';
+
+      // 1. Prepara il container di destinazione: visibile, posizionato all'offset di partenza dello scorrimento
+      toEl.classList.remove('hidden');
+      toEl.classList.add('flex');
+      toEl.style.display = 'flex';
+      toEl.style.position = 'absolute';
+      toEl.style.top = '0';
+      toEl.style.left = '0';
+      toEl.style.width = '100%';
+      toEl.style.height = '100%';
+      toEl.style.zIndex = '20';
+      toEl.style.transform = `translate3d(${startIncomingX}, 0, 0)`;
+      toEl.style.transition = 'none';
+
+      // 2. Prepara la schermata corrente come livello sottostante
+      fromEl.style.position = 'absolute';
+      fromEl.style.top = '0';
+      fromEl.style.left = '0';
+      fromEl.style.width = '100%';
+      fromEl.style.height = '100%';
+      fromEl.style.zIndex = '10';
+      fromEl.style.transform = 'translate3d(0, 0, 0)';
+      fromEl.style.transition = 'none';
+
+      // 3. Avvia lo scorrimento orizzontale sincronizzato tra le due schermate (effetto slide naturale)
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          const curtainEase = 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease';
-          sidebarPanel.style.transition = curtainEase;
-          conversationPanel.style.transition = curtainEase;
-          sidebarPanel.style.willChange = 'transform, opacity';
-          conversationPanel.style.willChange = 'transform, opacity';
+          const slideEasing = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
+          toEl.style.transition = slideEasing;
+          fromEl.style.transition = slideEasing;
 
-          sidebarPanel.style.transform = 'translate3d(-100%, 0, 0)';
-          sidebarPanel.style.opacity = '0';
-          conversationPanel.style.transform = 'translate3d(100%, 0, 0)';
-          conversationPanel.style.opacity = '0';
+          toEl.style.transform = 'translate3d(0, 0, 0)';
+          fromEl.style.transform = `translate3d(${endOutgoingX}, 0, 0)`;
 
           setTimeout(() => {
-            chatView.classList.add('hidden');
-            chatView.style.display = 'none';
-            chatView.style.pointerEvents = 'auto';
-            sidebarPanel.style.willChange = 'auto';
-            conversationPanel.style.willChange = 'auto';
+            // 4. Pulizia al termine dello scorrimento
+            fromEl.classList.add('hidden');
+            fromEl.classList.remove('flex');
+            fromEl.style.display = 'none';
+            fromEl.style.position = '';
+            fromEl.style.top = '';
+            fromEl.style.left = '';
+            fromEl.style.width = '';
+            fromEl.style.height = '';
+            fromEl.style.zIndex = '';
+            fromEl.style.transform = 'none';
+            fromEl.style.transition = 'none';
+
+            toEl.style.position = '';
+            toEl.style.top = '';
+            toEl.style.left = '';
+            toEl.style.width = '';
+            toEl.style.height = '';
+            toEl.style.zIndex = '';
+            toEl.style.transform = 'none';
+            toEl.style.transition = 'none';
+
+            currentActiveScreen = normalizedTarget;
             isTransitioningScreens = false;
-          }, 430);
+
+            updateAllBottomNavs(normalizedTarget);
+
+            if (typeof onComplete === 'function') {
+              onComplete();
+            }
+          }, 360);
         });
+      });
+    }
+
+    function openDashboard(filter = null) {
+      slideToScreen('dashboard', () => {
+        if (filter) filterTable(filter);
       });
     }
 
     function openSystem() {
-      if (isTransitioningScreens) return;
-
-      const sysView = document.getElementById('systemView');
-      if (!sysView) return;
-
-      // Se il sistema è già aperto e la chat è nascosta, non ri-animare
-      if (!sysView.classList.contains('hidden') && (chatView.classList.contains('hidden') || chatView.style.display === 'none')) {
-        return;
-      }
-
-      // Se la dashboard è aperta e la chat è nascosta: shutter effect (le ante della chat si chiudono e si riaprono su sistema)
-      if (dashboardView && !dashboardView.classList.contains('hidden') && (chatView.classList.contains('hidden') || chatView.style.display === 'none')) {
-        closeToChatAndThen(() => {
-          openSystem();
-        });
-        return;
-      }
-
-      isTransitioningScreens = true;
-
-      // 1. Prepara e mostra subito la Vista Sistema sul livello inferiore (z-10) e nasconde dashboardView
-      if (dashboardView) {
-        dashboardView.classList.add('hidden');
-        dashboardView.classList.remove('flex');
-      }
-      sysView.classList.remove('hidden');
-      sysView.classList.add('flex');
-      sysView.style.zIndex = '10';
-      sysView.style.transform = 'none';
-      sysView.style.opacity = '1';
-      sysView.style.transition = 'none';
-
-      // Assicura che la Chat sia visibile sopra (z-20) e blocca click temporanei
-      chatView.classList.remove('hidden');
-      chatView.style.display = 'flex';
-      chatView.style.zIndex = '20';
-      chatView.style.pointerEvents = 'none';
-
-      // Azzera transizioni sulle ante per partire esattamente dalla posizione attuale (0, 0, 0)
-      sidebarPanel.style.transition = 'none';
-      conversationPanel.style.transition = 'none';
-      sidebarPanel.style.transform = 'translate3d(0, 0, 0)';
-      sidebarPanel.style.opacity = '1';
-      conversationPanel.style.transform = 'translate3d(0, 0, 0)';
-      conversationPanel.style.opacity = '1';
-
-      // Ricarica parametri e status
-      loadAiModelSetting();
-      loadOpenRouterCredits();
-      loadGoogleDriveStatus();
-      loadWatchedFolders();
-
-      // 2. Anima l'apertura a sipario: sidebar a sinistra, conversazione a destra
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const curtainEase = 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease';
-          sidebarPanel.style.transition = curtainEase;
-          conversationPanel.style.transition = curtainEase;
-          sidebarPanel.style.willChange = 'transform, opacity';
-          conversationPanel.style.willChange = 'transform, opacity';
-
-          sidebarPanel.style.transform = 'translate3d(-100%, 0, 0)';
-          sidebarPanel.style.opacity = '0';
-          conversationPanel.style.transform = 'translate3d(100%, 0, 0)';
-          conversationPanel.style.opacity = '0';
-
-          setTimeout(() => {
-            chatView.classList.add('hidden');
-            chatView.style.display = 'none';
-            chatView.style.pointerEvents = 'auto';
-            sidebarPanel.style.willChange = 'auto';
-            conversationPanel.style.willChange = 'auto';
-            isTransitioningScreens = false;
-          }, 430);
-        });
-      });
+      slideToScreen('settings');
     }
 
     function closeToChat() {
-      if (isTransitioningScreens) return;
-      isTransitioningScreens = true;
-
-      const sysView = document.getElementById('systemView');
-
-      // 1. Rendi visibile la chat sopra con le ante già spalancate
-      chatView.classList.remove('hidden');
-      chatView.style.display = 'flex';
-      chatView.style.zIndex = '20';
-      if (dashboardView) dashboardView.style.zIndex = '10';
-      if (sysView) sysView.style.zIndex = '10';
-      chatView.style.pointerEvents = 'none';
-
-      sidebarPanel.style.transition = 'none';
-      conversationPanel.style.transition = 'none';
-      sidebarPanel.style.transform = 'translate3d(-100%, 0, 0)';
-      sidebarPanel.style.opacity = '0';
-      conversationPanel.style.transform = 'translate3d(100%, 0, 0)';
-      conversationPanel.style.opacity = '0';
-
-      if (dashboardView) dashboardView.style.transition = 'none';
-      if (sysView) sysView.style.transition = 'none';
-
-      // 2. Anima la richiusura a sipario verso il centro
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const curtainEase = 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease';
-          sidebarPanel.style.transition = curtainEase;
-          conversationPanel.style.transition = curtainEase;
-          sidebarPanel.style.willChange = 'transform, opacity';
-          conversationPanel.style.willChange = 'transform, opacity';
-
-          sidebarPanel.style.transform = 'translate3d(0, 0, 0)';
-          sidebarPanel.style.opacity = '1';
-          conversationPanel.style.transform = 'translate3d(0, 0, 0)';
-          conversationPanel.style.opacity = '1';
-
-          setTimeout(() => {
-            if (dashboardView) {
-              dashboardView.classList.add('hidden');
-              dashboardView.classList.remove('flex');
-              dashboardView.style.transform = 'none';
-              dashboardView.style.opacity = '1';
-            }
-            if (sysView) {
-              sysView.classList.add('hidden');
-              sysView.classList.remove('flex');
-              sysView.style.transform = 'none';
-              sysView.style.opacity = '1';
-            }
-            chatView.style.pointerEvents = 'auto';
-            sidebarPanel.style.willChange = 'auto';
-            conversationPanel.style.willChange = 'auto';
-            
-            // Ripristina stili puliti
-            if (isMobileView) {
-              if (conversationPanel.classList.contains('mobile-active')) {
-                _mobileShowConversation(false);
-              } else {
-                _mobileShowSidebar(false);
-              }
-            } else {
-              applyLayout();
-            }
-            isTransitioningScreens = false;
-          }, 430);
-        });
-      });
+      slideToScreen('chat');
     }
 
     function closeDashboard() {
-      closeToChat();
+      slideToScreen('chat');
     }
 
-    function closeToChatAndThen(callback) {
-      isTransitioningScreens = true;
-      chatView.classList.remove('hidden');
-      chatView.style.display = 'flex';
-      chatView.style.zIndex = '20';
-      chatView.style.pointerEvents = 'none';
-
-      sidebarPanel.style.transition = 'none';
-      conversationPanel.style.transition = 'none';
-      sidebarPanel.style.transform = 'translate3d(-100%, 0, 0)';
-      sidebarPanel.style.opacity = '0';
-      conversationPanel.style.transform = 'translate3d(100%, 0, 0)';
-      conversationPanel.style.opacity = '0';
-
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const curtainEase = 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease';
-          sidebarPanel.style.transition = curtainEase;
-          conversationPanel.style.transition = curtainEase;
-          sidebarPanel.style.transform = 'translate3d(0, 0, 0)';
-          sidebarPanel.style.opacity = '1';
-          conversationPanel.style.transform = 'translate3d(0, 0, 0)';
-          conversationPanel.style.opacity = '1';
-
-          setTimeout(() => {
-            isTransitioningScreens = false;
-            if (callback) callback();
-          }, 330);
-        });
-      });
-    }
-
-    // --- Navigazione Rapida Schermate (Olivetti Industrial) ---
     function switchScreen(screen) {
       if (screen === 'dashboard') {
         openDashboard('all');
@@ -6383,6 +6288,7 @@
 
     function initApp() {
       applyLayout();
+      updateAllBottomNavs('chat');
       loadAiModelSetting();
       loadOpenRouterCredits();
       loadThreads();
