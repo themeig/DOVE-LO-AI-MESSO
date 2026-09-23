@@ -498,7 +498,8 @@
       background: transparent !important;
       background-color: transparent !important;
     }
-    #dashboardView {
+    #dashboardView,
+    #systemView {
       position: absolute !important;
       inset: 0;
       width: 100%;

@@ -49,11 +49,11 @@
             <i class="fa-solid fa-chart-pie"></i>
           </button>
 
-          <!-- Impostazioni Modello AI -->
+          <!-- Sistema & Configurazione -->
           <button 
-            onclick="openAiSettingsModal()" 
+            onclick="switchScreen('settings')" 
             class="w-8 h-8 border border-[#E3DDD1] bg-white text-[#7A7568] hover:text-[#222220] rounded-xs flex items-center justify-center hover:bg-[#EFECE3] transition cursor-pointer text-xs" 
-            title="Impostazioni Modello AI"
+            title="Sistema & Configurazione Caveau"
           >
             <i class="fa-solid fa-sliders"></i>
           </button>
@@ -185,7 +185,7 @@
           </button>
 
           <!-- Versione App Olivetti Badge -->
-          <span class="stamp-oli text-[9px] font-mono-code font-bold app-version-badge select-none" title="Versione App Caveau">v2.0.0</span>
+          <span class="stamp-oli text-[9px] font-mono-code font-bold app-version-badge select-none" title="Versione App Caveau">v2.1.0</span>
 
           <!-- Elimina Gruppo/Area Personalizzata -->
           <button 
@@ -588,149 +588,7 @@
     </div>
   </div>
 
-  <!-- Modal Impostazioni Modello AI (Olivetti Industrial) -->
-  <div id="aiSettingsModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 backdrop-blur-xs">
-    <div class="modal-card bg-white rounded-xs max-w-lg w-full p-5 shadow-2xl space-y-3.5 animate-fade-in border-2 border-[#3C5A48] select-none">
-      <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
-        <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-sm shadow-xs">
-            <i class="fa-solid fa-sliders"></i>
-          </div>
-          <div>
-            <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Configurazione Motore AI</h3>
-            <p class="text-[10px] text-[#7A7568] font-mono-code">REGISTRO MODELLI • CHAT, VISIONE & DEDUZIONE</p>
-          </div>
-        </div>
-        <button onclick="closeAiSettingsModal()" class="text-[#7A7568] hover:text-[#222220] p-1.5 rounded-xs hover:bg-[#FAF8F2] transition cursor-pointer">
-          <i class="fa-solid fa-xmark text-sm"></i>
-        </button>
-      </div>
 
-      <!-- Quick Switch Pill / Toggle Modalità Gratuita Olivetti -->
-      <div class="bg-[#FAF8F2] p-3 rounded-xs border border-[#E3DDD1] flex items-center justify-between shadow-2xs">
-        <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-xs bg-white text-[#3C5A48] border border-[#E3DDD1] flex items-center justify-center text-xs shadow-2xs">
-            <i class="fa-solid fa-gift"></i>
-          </div>
-          <div>
-            <span class="text-xs font-bold text-[#222220] font-space uppercase block">Modalità 100% Gratuita</span>
-            <span class="text-[10px] text-[#7A7568] font-mono-code">Zero costi API, nessun addebito OpenRouter</span>
-          </div>
-        </div>
-        <!-- Toggle Switch Olivetti Industrial (squadrato con bordo) -->
-        <label class="relative inline-flex items-center cursor-pointer">
-          <input type="checkbox" id="freeModelToggle" onchange="handleFreeToggle(this.checked)" class="sr-only peer">
-          <div class="w-10 h-5 bg-[#E3DDD1] rounded-xs border border-[#D5CEBF] peer-focus:outline-none peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#D5CEBF] after:border after:rounded-xs after:h-4 after:w-4 after:transition-all peer-checked:bg-[#3C5A48] peer-checked:border-[#3C5A48]"></div>
-        </label>
-      </div>
-
-      <!-- Scelte Modello Card Olivetti -->
-      <div class="space-y-2.5" id="aiModelsList">
-        <!-- Opzione 0: Router Intelligente Dinamico (Consigliato) -->
-        <div 
-          id="modelCard_auto"
-          onclick="selectAiModel('auto')" 
-          class="model-option-card p-3 rounded-xs border border-[#E3DDD1] cursor-pointer transition relative bg-white hover:border-[#3C5A48] flex flex-col gap-1.5"
-        >
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-xs shrink-0">
-                <i class="fa-solid fa-wand-magic-sparkles"></i>
-              </div>
-              <span class="font-bold text-xs text-[#222220] font-space uppercase">Router Intelligente Dinamico</span>
-            </div>
-            <span class="stamp-oli stamp-solid-sage text-[8px] shrink-0">CONSIGLIATO</span>
-          </div>
-          <p class="text-[11px] text-[#7A7568] font-mono-code leading-snug">
-            Instradamento ottimale: usa <strong>Flash Lite</strong> per salvare file, foto e posizioni in pochi ms a costo minimo, e attiva <strong>Pro (Thinking)</strong> per ricerche, scadenze, calcoli e deduzioni.
-          </p>
-          <div class="flex items-center justify-between pt-1.5 text-[10px] text-[#7A7568] font-mono-code border-t border-[#E3DDD1]">
-            <span>Ottimizzazione: <strong>Massima velocità & Risparmio</strong></span>
-            <span id="check_auto" class="stamp-oli text-[8px] hidden"><i class="fa-solid fa-check text-[8px]"></i> IN USO</span>
-          </div>
-        </div>
-
-        <!-- Opzione 1: Google Gemini 2.5 Flash Lite -->
-        <div 
-          id="modelCard_gemini"
-          onclick="selectAiModel('google/gemini-2.5-flash-lite')" 
-          class="model-option-card p-3 rounded-xs border border-[#E3DDD1] cursor-pointer transition relative bg-white hover:border-[#3C5A48] flex flex-col gap-1.5"
-        >
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#C84B31] flex items-center justify-center text-xs shrink-0">
-                <i class="fa-solid fa-bolt"></i>
-              </div>
-              <span class="font-bold text-xs text-[#222220] font-space uppercase">Google Gemini 2.5 Flash Lite</span>
-            </div>
-            <span class="stamp-oli stamp-terracotta text-[8px] shrink-0">VELOCE & LEGGERO</span>
-          </div>
-          <p class="text-[11px] text-[#7A7568] font-mono-code leading-snug">
-            Visione multimodale ad altissima precisione (tabelle, scontrini, F24) e Tool Calling nativo istantaneo.
-          </p>
-          <div class="flex items-center justify-between pt-1.5 text-[10px] text-[#7A7568] font-mono-code border-t border-[#E3DDD1]">
-            <span>Costo: <strong>~$0.10 / 1M token</strong></span>
-            <span id="check_gemini" class="stamp-oli text-[8px]"><i class="fa-solid fa-check text-[8px]"></i> IN USO</span>
-          </div>
-        </div>
-
-        <!-- Opzione 2: Google Gemini 2.5 Pro (Thinking / Ragionamento) -->
-        <div 
-          id="modelCard_thinking"
-          onclick="selectAiModel('google/gemini-2.5-pro')" 
-          class="model-option-card p-3 rounded-xs border border-[#E3DDD1] cursor-pointer transition relative bg-white hover:border-[#3C5A48] flex flex-col gap-1.5"
-        >
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#222220] flex items-center justify-center text-xs shrink-0">
-                <i class="fa-solid fa-brain"></i>
-              </div>
-              <span class="font-bold text-xs text-[#222220] font-space uppercase">Google Gemini 2.5 Pro (Thinking)</span>
-            </div>
-            <span class="stamp-oli text-[8px] shrink-0">RAGIONAMENTO</span>
-          </div>
-          <p class="text-[11px] text-[#7A7568] font-mono-code leading-snug">
-            Processo di pensiero attivo (Thinking Process): ragiona e riflette prima di formulare risposte, ideale per deduzioni logiche e documenti complessi.
-          </p>
-          <div class="flex items-center justify-between pt-1.5 text-[10px] text-[#7A7568] font-mono-code border-t border-[#E3DDD1]">
-            <span>Costo: <strong>Pay-as-you-go</strong> (Ragionamento profondo)</span>
-            <span id="check_thinking" class="stamp-oli text-[8px] hidden"><i class="fa-solid fa-check text-[8px]"></i> IN USO</span>
-          </div>
-        </div>
-
-        <!-- Opzione 3: Nex-AGI Nex-N2.5-Pro (Free) -->
-        <div 
-          id="modelCard_nex"
-          onclick="selectAiModel('nex-agi/nex-n2.5-pro:free')" 
-          class="model-option-card p-3 rounded-xs border border-[#E3DDD1] cursor-pointer transition relative bg-white hover:border-[#3C5A48] flex flex-col gap-1.5"
-        >
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-xs shrink-0">
-                <i class="fa-solid fa-cube"></i>
-              </div>
-              <span class="font-bold text-xs text-[#222220] font-space uppercase">Nex-AGI Nex-N2.5-Pro (Free)</span>
-            </div>
-            <span class="stamp-oli text-[8px] shrink-0">100% GRATUITO</span>
-          </div>
-          <p class="text-[11px] text-[#7A7568] font-mono-code leading-snug">
-            Modello open gratuito. Supporta visione di foto/PDF e function calling sul caveau a costo zero.
-          </p>
-          <div class="flex items-center justify-between pt-1.5 text-[10px] text-[#7A7568] font-mono-code border-t border-[#E3DDD1]">
-            <span>Costo: <strong>0,00 € per sempre</strong></span>
-            <span id="check_nex" class="stamp-oli text-[8px] hidden"><i class="fa-solid fa-check text-[8px]"></i> IN USO</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex items-center justify-between pt-2 border-t border-[#E3DDD1]">
-        <span id="aiModelSavingNotice" class="text-[10px] text-[#7A7568] font-mono-code">Salvataggio automatico istantaneo</span>
-        <button type="button" onclick="closeAiSettingsModal()" class="px-4 py-2 bg-[#3C5A48] hover:bg-[#2F4738] text-white rounded-xs font-bold font-space uppercase text-xs shadow-xs transition active:scale-95 cursor-pointer">
-          Chiudi
-        </button>
-      </div>
-    </div>
-  </div>
 
   <!-- Modal Esporta Backup ZIP Caveau con Consiglio di Sicurezza & Selezione Cartella -->
   <div id="exportVaultModal" onclick="if(event.target === this) closeExportVaultModal()" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4 backdrop-blur-xs">
@@ -1493,7 +1351,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. CENTRALE</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v2.0.0</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v2.1.0</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PROTOCOLLO CRITTOGRAFATO AES-256-GCM • SINCRONIZZATO IN TEMPO REALE</p>
           </div>
@@ -1505,154 +1363,18 @@
         
 
 
-        <!-- Menu a comparsa Strumenti & Altro -->
-        <div class="relative">
+        <!-- Tasto Vai a Pagina Sistema Olivetti -->
+        <div>
           <button 
-            type="button"
+            type="button" 
             id="dashboardToolsBtn"
-            onclick="toggleDashboardToolsMenu(event)"
+            onclick="switchScreen('settings')" 
             class="border border-[#E3DDD1] bg-white hover:bg-[#FAF8F2] text-[#222220] text-xs font-bold font-space px-2.5 py-1.5 rounded-xs shadow-2xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
-            title="Strumenti, White Paper, Presentazione ed Esportazione"
+            title="Apri Registro di Sistema e Configurazione"
           >
-            <i class="fa-solid fa-ellipsis text-[#7A7568] text-xs"></i>
-            <span class="hidden sm:inline">STRUMENTI</span>
-            <i class="fa-solid fa-chevron-down text-[9px] text-[#7A7568]"></i>
+            <i class="fa-solid fa-sliders text-[#3C5A48] text-xs"></i>
+            <span class="hidden sm:inline">SISTEMA</span>
           </button>
-
-          <!-- Dropdown Popover -->
-          <div 
-            id="dashboardToolsMenu" 
-            class="hidden absolute right-0 mt-1.5 w-64 bg-white rounded-xs shadow-xl border border-[#E3DDD1] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 select-none"
-          >
-            <button 
-              type="button" 
-              onclick="closeDashboardToolsMenu(); openGoogleDriveModal();" 
-              class="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-[#FAF8F2] text-slate-700 text-xs font-medium transition cursor-pointer"
-            >
-              <div class="w-7 h-7 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-emerald-700 flex items-center justify-center text-xs shrink-0">
-                <i class="fa-brands fa-google-drive"></i>
-              </div>
-              <div class="text-left flex-1 min-w-0">
-                <div class="flex items-center justify-between w-full gap-2">
-                  <span class="text-[#222220] font-bold text-xs truncate font-space">Google Drive Cloud Sync</span>
-                  <span id="toolsDriveBadge" class="hidden stamp-oli text-[8px] shrink-0">Attivo</span>
-                </div>
-                <div class="text-[10px] text-[#7A7568] font-mono-code">Archiviazione cloud e backup</div>
-              </div>
-            </button>
-
-            <button 
-              type="button" 
-              onclick="closeDashboardToolsMenu(); openWatchedFoldersModal();" 
-              class="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-[#FAF8F2] text-slate-700 text-xs font-medium transition cursor-pointer"
-            >
-              <div class="w-7 h-7 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-xs shrink-0">
-                <i class="fa-solid fa-folder-tree"></i>
-              </div>
-              <div class="text-left flex-1 min-w-0">
-                <div class="flex items-center justify-between w-full gap-2">
-                  <span class="text-[#222220] font-bold text-xs truncate font-space">Cartelle PC Monitorate</span>
-                  <span id="toolsFoldersBadge" class="hidden stamp-oli stamp-terracotta text-[8px] shrink-0">0</span>
-                </div>
-                <div class="text-[10px] text-[#7A7568] font-mono-code">Download, Documenti & Rilevamento</div>
-              </div>
-            </button>
-
-            <button 
-              type="button" 
-              onclick="closeDashboardToolsMenu(); openExportVaultModal();" 
-              class="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-[#FAF8F2] text-slate-700 text-xs font-medium transition cursor-pointer"
-              id="exportVaultBtn"
-            >
-              <div class="w-7 h-7 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-xs shrink-0">
-                <i class="fa-solid fa-file-zipper"></i>
-              </div>
-              <div class="text-left">
-                <div class="text-[#222220] font-bold text-xs font-space">Esporta Backup ZIP</div>
-                <div class="text-[10px] text-[#7A7568] font-mono-code">Tutti i file e indice metadata</div>
-              </div>
-            </button>
-
-            <button 
-              type="button" 
-              onclick="closeDashboardToolsMenu(); openImportVaultModal();" 
-              class="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-[#FAF8F2] text-slate-700 text-xs font-medium transition cursor-pointer"
-              id="importVaultBtn"
-            >
-              <div class="w-7 h-7 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#C84B31] flex items-center justify-center text-xs shrink-0">
-                <i class="fa-solid fa-file-import"></i>
-              </div>
-              <div class="text-left">
-                <div class="text-[#222220] font-bold text-xs font-space">Importa Backup ZIP</div>
-                <div class="text-[10px] text-[#7A7568] font-mono-code">Ripristina file, scadenze e oggetti</div>
-              </div>
-            </button>
-
-            <a 
-              href="/showcase" 
-              target="_blank" 
-              onclick="closeDashboardToolsMenu()"
-              class="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-[#FAF8F2] text-slate-700 text-xs font-medium transition cursor-pointer"
-            >
-              <div class="w-7 h-7 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-emerald-700 flex items-center justify-center text-xs shrink-0">
-                <i class="fa-solid fa-sparkles"></i>
-              </div>
-              <div class="text-left">
-                <div class="text-[#222220] font-bold text-xs font-space">Showcase & Pitch Deck</div>
-                <div class="text-[10px] text-[#7A7568] font-mono-code">Presentazione interattiva del prodotto</div>
-              </div>
-            </a>
-
-            <button 
-              type="button" 
-              onclick="closeDashboardToolsMenu(); openWhitePaperModal();" 
-              class="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-[#FAF8F2] text-slate-700 text-xs font-medium transition cursor-pointer"
-            >
-              <div class="w-7 h-7 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-xs shrink-0">
-                <i class="fa-solid fa-book-bookmark"></i>
-              </div>
-              <div class="text-left">
-                <div class="text-[#222220] font-bold text-xs font-space">White Paper Tecnico</div>
-                <div class="text-[10px] text-[#7A7568] font-mono-code">Specifiche e architettura completa</div>
-              </div>
-            </button>
-
-            <div class="h-px bg-[#E3DDD1] my-1"></div>
-
-            <button 
-              type="button" 
-              onclick="closeDashboardToolsMenu(); lockVault();" 
-              class="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-rose-50 text-rose-700 text-xs font-medium transition cursor-pointer"
-            >
-              <div class="w-7 h-7 rounded-xs bg-rose-100 text-rose-700 flex items-center justify-center text-xs shrink-0">
-                <i class="fa-solid fa-lock"></i>
-              </div>
-              <div class="text-left">
-                <div class="text-rose-700 font-bold text-xs font-space">Blocca Caveau</div>
-                <div class="text-[10px] text-rose-400 font-mono-code">Scarica chiavi di cifratura dalla RAM</div>
-              </div>
-            </button>
-
-            <button 
-              type="button" 
-              onclick="closeDashboardToolsMenu(); openWipeDatabaseModal();" 
-              class="w-full px-3.5 py-2 flex items-center gap-2.5 hover:bg-red-50 text-red-700 text-xs font-medium transition cursor-pointer"
-            >
-              <div class="w-7 h-7 rounded-xs bg-red-100 text-red-700 flex items-center justify-center text-xs shrink-0">
-                <i class="fa-solid fa-trash-can"></i>
-              </div>
-              <div class="text-left">
-                <div class="text-red-700 font-bold text-xs font-space">Elimina Tutto il Database</div>
-                <div class="text-[10px] text-red-400 font-mono-code">Resetta caveau, file e opzionale Drive</div>
-              </div>
-            </button>
-
-            <!-- Versione App -->
-            <div class="border-t border-[#E3DDD1] px-3.5 py-2 mt-1 flex items-center justify-between text-[11px] text-[#7A7568] select-none font-mono-code">
-              <span class="flex items-center gap-1.5"><i class="fa-solid fa-code-branch text-[10px]"></i> Versione App</span>
-              <span class="stamp-oli text-[9px] app-version-badge">v2.0.0</span>
-            </div>
-          </div>
         </div>
 
         <!-- Pulsante Rapido Blocca -->
@@ -1920,6 +1642,420 @@
 
   </div>
 
+  <!-- ================================================================= -->
+  <!-- 2B. VISTA SISTEMA (REGISTRO CONFIGURAZIONE & PARAMETRI OLIVETTI)  -->
+  <!-- ================================================================= -->
+  <div id="systemView" class="hidden w-full h-full flex-col bg-[#F8F5EE] overflow-hidden relative">
+    
+    <!-- Top Bar Sistema Olivetti -->
+    <header class="bg-[#F8F5EE] border-b border-[#E3DDD1] px-4 md:px-6 py-3 flex items-center justify-between shrink-0 select-none">
+      
+      <!-- Torna alla Chat e Titolo -->
+      <div class="flex items-center space-x-3">
+        <button 
+          onclick="closeToChat()" 
+          class="stamp-oli hover:bg-[#3C5A48] hover:text-white transition cursor-pointer text-[10px]"
+          title="Torna alla sessione di chat"
+        >
+          <i class="fa-solid fa-arrow-left text-[#C84B31] mr-1"></i>
+          <span class="font-space">TORNA ALLA CHAT</span>
+        </button>
+
+        <button 
+          onclick="switchScreen('dashboard')" 
+          class="stamp-oli hover:bg-[#3C5A48] hover:text-white transition cursor-pointer text-[10px]"
+          title="Passa al registro scadenze e faldoni"
+        >
+          <i class="fa-solid fa-table-cells-large text-[#3C5A48] mr-1"></i>
+          <span class="font-space">DASHBOARD</span>
+        </button>
+
+        <div class="h-5 w-px bg-[#E3DDD1] hidden sm:block"></div>
+
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs font-black shadow-xs">
+            <i class="fa-solid fa-sliders"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">SISTEMA & CONFIGURAZIONE</h2>
+              <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. SISTEMA</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v2.1.0</span>
+            </div>
+            <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PARAMETRI OPERATIVI • MOTORI AI • ARCHIVIAZIONE CLOUD • BACKUP & CRITTOGRAFIA</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Azioni Rapide a Destra -->
+      <div class="flex items-center space-x-2">
+        <button 
+          type="button" 
+          onclick="lockVault()" 
+          class="stamp-oli stamp-terracotta hover:bg-[#C84B31] hover:text-white transition cursor-pointer text-[10px]"
+          title="Blocca immediatamente il Caveau (scarica le chiavi dalla memoria)"
+        >
+          <i class="fa-solid fa-lock text-[10px]"></i>
+          <span class="font-space hidden sm:inline">BLOCCA CAVEAU</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Contenuto Scrollabile Sistema Olivetti (Bento-Grid) -->
+    <main class="flex-1 p-4 md:p-6 overflow-y-auto space-y-6 max-w-6xl w-full mx-auto custom-scroll bg-[#F8F5EE]">
+
+      <!-- BENTO GRID -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        
+        <!-- CARD 1: CONFIGURAZIONE MOTORE AI (Colonna larga: 7/12) -->
+        <div class="lg:col-span-7 bg-white rounded-xs border border-[#E3DDD1] p-5 shadow-xs flex flex-col justify-between">
+          <div class="space-y-4">
+            <!-- Header Card -->
+            <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-sm shadow-2xs">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+                <div>
+                  <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Motore di Intelligenza Artificiale</h3>
+                  <p class="text-[10px] text-[#7A7568] font-mono-code">ROUTING DINAMICO • VISIONE • DEDUZIONE</p>
+                </div>
+              </div>
+              <span id="aiModelSavingNotice" class="text-[10px] text-[#7A7568] font-mono-code">Salvataggio automatico</span>
+            </div>
+
+            <!-- Quick Switch Pill / Toggle Modalità Gratuita Olivetti -->
+            <div class="bg-[#FAF8F2] p-3 rounded-xs border border-[#E3DDD1] flex items-center justify-between shadow-2xs">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xs bg-white text-[#3C5A48] border border-[#E3DDD1] flex items-center justify-center text-xs shadow-2xs">
+                  <i class="fa-solid fa-gift"></i>
+                </div>
+                <div>
+                  <span class="text-xs font-bold text-[#222220] font-space uppercase block">Modalità 100% Gratuita</span>
+                  <span class="text-[10px] text-[#7A7568] font-mono-code">Zero costi API, nessun addebito OpenRouter</span>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="freeModelToggle" onchange="handleFreeToggle(this.checked)" class="sr-only peer">
+                <div class="w-10 h-5 bg-[#E3DDD1] rounded-xs border border-[#D5CEBF] peer-focus:outline-none peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#D5CEBF] after:border after:rounded-xs after:h-4 after:w-4 after:transition-all peer-checked:bg-[#3C5A48] peer-checked:border-[#3C5A48]"></div>
+              </label>
+            </div>
+
+            <!-- Scelte Modello Card Olivetti -->
+            <div class="space-y-2.5" id="aiModelsList">
+              <!-- Opzione 0: Router Intelligente Dinamico (Consigliato) -->
+              <div 
+                id="modelCard_auto"
+                onclick="selectAiModel('auto')" 
+                class="model-option-card p-3 rounded-xs border border-[#E3DDD1] cursor-pointer transition relative bg-white hover:border-[#3C5A48] flex flex-col gap-1.5"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-xs shrink-0">
+                      <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <span class="font-bold text-xs text-[#222220] font-space uppercase">Router Intelligente Dinamico</span>
+                  </div>
+                  <span class="stamp-oli stamp-solid-sage text-[8px] shrink-0">CONSIGLIATO</span>
+                </div>
+                <p class="text-[11px] text-[#7A7568] font-mono-code leading-snug">
+                  Instradamento ottimale: usa <strong>Flash Lite</strong> per salvare file, foto e posizioni in pochi ms a costo minimo, e attiva <strong>Pro (Thinking)</strong> per ricerche, scadenze, calcoli e deduzioni.
+                </p>
+                <div class="flex items-center justify-between pt-1.5 text-[10px] text-[#7A7568] font-mono-code border-t border-[#E3DDD1]">
+                  <span>Ottimizzazione: <strong>Massima velocità & Risparmio</strong></span>
+                  <span id="check_auto" class="stamp-oli text-[8px] hidden"><i class="fa-solid fa-check text-[8px]"></i> IN USO</span>
+                </div>
+              </div>
+
+              <!-- Opzione 1: Google Gemini 2.5 Flash Lite -->
+              <div 
+                id="modelCard_gemini"
+                onclick="selectAiModel('google/gemini-2.5-flash-lite')" 
+                class="model-option-card p-3 rounded-xs border border-[#E3DDD1] cursor-pointer transition relative bg-white hover:border-[#3C5A48] flex flex-col gap-1.5"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#C84B31] flex items-center justify-center text-xs shrink-0">
+                      <i class="fa-solid fa-bolt"></i>
+                    </div>
+                    <span class="font-bold text-xs text-[#222220] font-space uppercase">Google Gemini 2.5 Flash Lite</span>
+                  </div>
+                  <span class="stamp-oli stamp-terracotta text-[8px] shrink-0">VELOCE & LEGGERO</span>
+                </div>
+                <p class="text-[11px] text-[#7A7568] font-mono-code leading-snug">
+                  Visione multimodale ad altissima precisione (tabelle, scontrini, F24) e Tool Calling nativo istantaneo.
+                </p>
+                <div class="flex items-center justify-between pt-1.5 text-[10px] text-[#7A7568] font-mono-code border-t border-[#E3DDD1]">
+                  <span>Costo: <strong>~$0.10 / 1M token</strong></span>
+                  <span id="check_gemini" class="stamp-oli text-[8px]"><i class="fa-solid fa-check text-[8px]"></i> IN USO</span>
+                </div>
+              </div>
+
+              <!-- Opzione 2: Google Gemini 2.5 Pro (Thinking / Ragionamento) -->
+              <div 
+                id="modelCard_thinking"
+                onclick="selectAiModel('google/gemini-2.5-pro')" 
+                class="model-option-card p-3 rounded-xs border border-[#E3DDD1] cursor-pointer transition relative bg-white hover:border-[#3C5A48] flex flex-col gap-1.5"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#222220] flex items-center justify-center text-xs shrink-0">
+                      <i class="fa-solid fa-brain"></i>
+                    </div>
+                    <span class="font-bold text-xs text-[#222220] font-space uppercase">Google Gemini 2.5 Pro (Thinking)</span>
+                  </div>
+                  <span class="stamp-oli text-[8px] shrink-0">RAGIONAMENTO</span>
+                </div>
+                <p class="text-[11px] text-[#7A7568] font-mono-code leading-snug">
+                  Processo di pensiero attivo (Thinking Process): ragiona e riflette prima di formulare risposte, ideale per deduzioni logiche e documenti complessi.
+                </p>
+                <div class="flex items-center justify-between pt-1.5 text-[10px] text-[#7A7568] font-mono-code border-t border-[#E3DDD1]">
+                  <span>Costo: <strong>Pay-as-you-go</strong> (Ragionamento profondo)</span>
+                  <span id="check_thinking" class="stamp-oli text-[8px] hidden"><i class="fa-solid fa-check text-[8px]"></i> IN USO</span>
+                </div>
+              </div>
+
+              <!-- Opzione 3: Nex-AGI Nex-N2.5-Pro (Free) -->
+              <div 
+                id="modelCard_nex"
+                onclick="selectAiModel('nex-agi/nex-n2.5-pro:free')" 
+                class="model-option-card p-3 rounded-xs border border-[#E3DDD1] cursor-pointer transition relative bg-white hover:border-[#3C5A48] flex flex-col gap-1.5"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-xs shrink-0">
+                      <i class="fa-solid fa-cube"></i>
+                    </div>
+                    <span class="font-bold text-xs text-[#222220] font-space uppercase">Nex-AGI Nex-N2.5-Pro (Free)</span>
+                  </div>
+                  <span class="stamp-oli text-[8px] shrink-0">100% GRATUITO</span>
+                </div>
+                <p class="text-[11px] text-[#7A7568] font-mono-code leading-snug">
+                  Modello open gratuito. Supporta visione di foto/PDF e function calling sul caveau a costo zero.
+                </p>
+                <div class="flex items-center justify-between pt-1.5 text-[10px] text-[#7A7568] font-mono-code border-t border-[#E3DDD1]">
+                  <span>Costo: <strong>0,00 € per sempre</strong></span>
+                  <span id="check_nex" class="stamp-oli text-[8px] hidden"><i class="fa-solid fa-check text-[8px]"></i> IN USO</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COLONNA DESTRA (5/12): CLOUD DRIVE + CARTELLE PC -->
+        <div class="lg:col-span-5 space-y-5 flex flex-col">
+          
+          <!-- CARD 2: GOOGLE DRIVE CLOUD SYNC -->
+          <div class="bg-white rounded-xs border border-[#E3DDD1] p-5 shadow-xs flex-1 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3 mb-3">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-emerald-700 flex items-center justify-center text-sm shadow-2xs">
+                    <i class="fa-brands fa-google-drive"></i>
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Google Drive Sync</h3>
+                    <p class="text-[10px] text-[#7A7568] font-mono-code">BACKUP REMOTO & CRITTOGRAFIA</p>
+                  </div>
+                </div>
+                <span id="toolsDriveBadge" class="stamp-oli text-[8px]">Verifica...</span>
+              </div>
+
+              <p class="text-xs text-[#7A7568] font-mono-code leading-relaxed mb-4">
+                Sincronizza in sicurezza foto, contratti e bollette sul tuo spazio Google Drive in modalità cifrata o duale.
+              </p>
+            </div>
+
+            <div class="flex flex-wrap gap-2 pt-2">
+              <button 
+                type="button" 
+                onclick="openGoogleDriveModal()" 
+                class="px-3 py-1.5 bg-[#3C5A48] hover:bg-[#2F4738] text-white rounded-xs font-space font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <i class="fa-brands fa-google-drive text-xs"></i>
+                <span>Gestisci Connessione Drive</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- CARD 3: CARTELLE PC MONITORATE -->
+          <div class="bg-white rounded-xs border border-[#E3DDD1] p-5 shadow-xs flex-1 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3 mb-3">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-sm shadow-2xs">
+                    <i class="fa-solid fa-folder-tree"></i>
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Cartelle PC Monitorate</h3>
+                    <p class="text-[10px] text-[#7A7568] font-mono-code">RILEVAMENTO AUTOMATICO DOCUMENTI</p>
+                  </div>
+                </div>
+                <span id="toolsFoldersBadge" class="stamp-oli stamp-terracotta text-[8px]">0 Cartelle</span>
+              </div>
+
+              <p class="text-xs text-[#7A7568] font-mono-code leading-relaxed mb-4">
+                Scansiona in background le tue cartelle (es. Download) per rilevare bollette, F24 e ricevute da catalogare.
+              </p>
+            </div>
+
+            <div class="flex flex-wrap gap-2 pt-2">
+              <button 
+                type="button" 
+                onclick="openWatchedFoldersModal()" 
+                class="px-3 py-1.5 bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] rounded-xs font-space font-bold text-xs shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <i class="fa-solid fa-folder-open text-[#C84B31] text-xs"></i>
+                <span>Configura Cartelle</span>
+              </button>
+              <button 
+                type="button" 
+                onclick="triggerScanSensitiveFiles()" 
+                class="px-3 py-1.5 bg-[#3C5A48] hover:bg-[#2F4738] text-white rounded-xs font-space font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                <span>Scansiona Ora</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- SECONDA RIGA BENTO GRID (3 CARD IN ORIZZONTALE) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        
+        <!-- CARD 4: BACKUP & ARCHIVI ZIP -->
+        <div class="bg-white rounded-xs border border-[#E3DDD1] p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2.5 border-b border-[#E3DDD1] pb-3 mb-3">
+              <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-sm shadow-2xs">
+                <i class="fa-solid fa-file-zipper"></i>
+              </div>
+              <div>
+                <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Backup & Ripristino</h3>
+                <p class="text-[10px] text-[#7A7568] font-mono-code">ARCHIVIO ZIP PORTABILE</p>
+              </div>
+            </div>
+            <p class="text-xs text-[#7A7568] font-mono-code leading-relaxed mb-4">
+              Esporta l'intero archivio (file decifrati + indice JSON) o ripristina un backup precedente in qualsiasi momento.
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2 pt-2">
+            <button 
+              type="button" 
+              onclick="openExportVaultModal()" 
+              class="px-3 py-1.5 bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] rounded-xs font-space font-bold text-xs shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <i class="fa-solid fa-download text-xs text-[#3C5A48]"></i>
+              <span>Esporta ZIP</span>
+            </button>
+            <button 
+              type="button" 
+              onclick="openImportVaultModal()" 
+              class="px-3 py-1.5 bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] rounded-xs font-space font-bold text-xs shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <i class="fa-solid fa-upload text-xs text-[#C84B31]"></i>
+              <span>Importa ZIP</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- CARD 5: WHITE PAPER & SHOWCASE -->
+        <div class="bg-white rounded-xs border border-[#E3DDD1] p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2.5 border-b border-[#E3DDD1] pb-3 mb-3">
+              <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-sm shadow-2xs">
+                <i class="fa-solid fa-book-bookmark"></i>
+              </div>
+              <div>
+                <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Documentazione & Pitch</h3>
+                <p class="text-[10px] text-[#7A7568] font-mono-code">ARCHITETTURA & PRESENTAZIONE</p>
+              </div>
+            </div>
+            <p class="text-xs text-[#7A7568] font-mono-code leading-relaxed mb-4">
+              Consulta le specifiche tecniche dell'algoritmo di deduzione o apri la presentazione interattiva per investitori.
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2 pt-2">
+            <button 
+              type="button" 
+              onclick="openWhitePaperModal()" 
+              class="px-3 py-1.5 bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] rounded-xs font-space font-bold text-xs shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <i class="fa-solid fa-file-lines text-xs text-[#3C5A48]"></i>
+              <span>White Paper</span>
+            </button>
+            <a 
+              href="/showcase" 
+              target="_blank" 
+              class="px-3 py-1.5 bg-[#3C5A48] hover:bg-[#2F4738] text-white rounded-xs font-space font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <i class="fa-solid fa-sparkles text-xs"></i>
+              <span>Showcase ↗</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- CARD 6: SICUREZZA & RESET CAVEAU -->
+        <div class="bg-white rounded-xs border border-[#E3DDD1] p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2.5 border-b border-[#E3DDD1] pb-3 mb-3">
+              <div class="w-8 h-8 rounded-xs bg-[#FAECE8] border border-[#C84B31]/30 text-[#C84B31] flex items-center justify-center text-sm shadow-2xs">
+                <i class="fa-solid fa-shield-halved"></i>
+              </div>
+              <div>
+                <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Sicurezza & Manutenzione</h3>
+                <p class="text-[10px] text-[#7A7568] font-mono-code">CRITTOGRAFIA & WIPE EMERGENZA</p>
+              </div>
+            </div>
+            <p class="text-xs text-[#7A7568] font-mono-code leading-relaxed mb-4">
+              Paradigma Zero-Knowledge: i dati locali sono crittografati in AES-256-GCM. Puoi bloccare la sessione o eseguire un ripristino di fabbrica.
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2 pt-2">
+            <button 
+              type="button" 
+              onclick="lockVault()" 
+              class="px-3 py-1.5 bg-white hover:bg-[#FAECE8] text-[#C84B31] border border-[#C84B31]/40 rounded-xs font-space font-bold text-xs shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <i class="fa-solid fa-lock text-xs"></i>
+              <span>Blocca Sessione</span>
+            </button>
+            <button 
+              type="button" 
+              onclick="openWipeDatabaseModal()" 
+              class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xs font-space font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <i class="fa-solid fa-trash-can text-xs"></i>
+              <span>Wipe Totale</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Bottom Navigation Bar Sistema Olivetti (DASHBOARD • CONVERSA • SISTEMA) -->
+    <div class="bottom-nav-bar bg-[#F8F5EE] border-t border-[#E3DDD1] p-2 flex items-center justify-around text-[10px] font-space text-[#7A7568] shrink-0 select-none">
+      <button onclick="switchScreen('dashboard')" id="navBtnDashboardFromSys" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
+        <i class="fa-solid fa-table-cells-large text-base mb-0.5"></i>
+        <span>DASHBOARD</span>
+      </button>
+      <button onclick="switchScreen('chat')" id="navBtnChatFromSys" class="flex flex-col items-center hover:text-[#222220] transition cursor-pointer">
+        <i class="fa-solid fa-message text-base mb-0.5"></i>
+        <span>CONVERSA</span>
+      </button>
+      <button onclick="switchScreen('settings')" id="navBtnSettingsFromSys" class="flex flex-col items-center text-[#3C5A48] font-bold cursor-pointer">
+        <i class="fa-solid fa-sliders text-base mb-0.5"></i>
+        <span>SISTEMA</span>
+      </button>
+    </div>
+
+  </div>
+
   <!-- JAVASCRIPT: Gestione Transizione, Live API Chat & Dashboard -->
   <script src="/static/js/app-bundle.js" defer></script>
 
@@ -2102,7 +2238,7 @@
 
       <div class="pt-2 border-t border-[#E3DDD1] flex items-center justify-between text-[10px] text-[#7A7568] font-mono-code">
         <span>Password predefinita: <code class="font-mono font-bold text-[#222220] bg-[#FAF8F2] border border-[#E3DDD1] px-1 py-0.5 rounded-xs">1234</code></span>
-        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v2.0.0</span>
+        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v2.1.0</span>
       </div>
 
     </div>
