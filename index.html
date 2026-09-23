@@ -185,7 +185,7 @@
           </button>
 
           <!-- Versione App Olivetti Badge -->
-          <span class="stamp-oli text-[9px] font-mono-code font-bold app-version-badge select-none" title="Versione App Caveau">v2.1.5</span>
+          <span class="stamp-oli text-[9px] font-mono-code font-bold app-version-badge select-none" title="Versione App Caveau">v2.1.6</span>
 
           <!-- Elimina Gruppo/Area Personalizzata -->
           <button 
@@ -476,12 +476,6 @@
           >
             <i class="fa-solid fa-stop text-sm"></i>
           </button>
-        </div>
-
-        <!-- Didascalia Macchina per Scrivere Olivetti -->
-        <div class="olivetti-input-subtext flex items-center justify-between mt-1.5 text-[9px] font-mono-code text-[#7A7568] px-1 select-none">
-          <span>[🎤 TRASCRIZIONE WHISPER]</span>
-          <span>INVIO = REGISTRA A RUOLO</span>
         </div>
       </footer>
     </main>
@@ -1351,7 +1345,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. CENTRALE</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v2.1.5</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v2.1.6</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PROTOCOLLO CRITTOGRAFATO AES-256-GCM • SINCRONIZZATO IN TEMPO REALE</p>
           </div>
@@ -1680,7 +1674,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">SISTEMA & CONFIGURAZIONE</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. SISTEMA</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v2.1.5</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v2.1.6</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PARAMETRI OPERATIVI • MOTORI AI • ARCHIVIAZIONE CLOUD • BACKUP & CRITTOGRAFIA</p>
           </div>
@@ -1751,6 +1745,24 @@
                 <input type="checkbox" id="freeModelToggle" onchange="handleFreeToggle(this.checked)" class="sr-only peer">
                 <div class="w-10 h-5 bg-[#E3DDD1] rounded-xs border border-[#D5CEBF] peer-focus:outline-none peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#D5CEBF] after:border after:rounded-xs after:h-4 after:w-4 after:transition-all peer-checked:bg-[#3C5A48] peer-checked:border-[#3C5A48]"></div>
               </label>
+            </div>
+
+            <!-- Pill Bilancio & Crediti OpenRouter nel Motore AI -->
+            <div class="bg-white p-2.5 rounded-xs border border-[#E3DDD1] flex items-center justify-between text-[11px] font-mono-code shadow-2xs">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-coins text-[#3C5A48] text-xs"></i>
+                <span class="text-[#7A7568]">Bilancio Crediti:</span>
+                <span id="aiModelCreditsSummary" class="font-bold text-[#222220]">Caricamento...</span>
+              </div>
+              <button 
+                type="button"
+                onclick="loadOpenRouterCredits(true)" 
+                class="text-[10px] text-[#3C5A48] hover:text-[#2F4738] hover:underline font-space font-bold uppercase flex items-center gap-1 cursor-pointer"
+                title="Ricarica saldo in tempo reale da OpenRouter"
+              >
+                <i class="fa-solid fa-arrows-rotate text-[9px]"></i>
+                <span>Aggiorna</span>
+              </button>
             </div>
 
             <!-- Scelte Modello Card Olivetti -->
