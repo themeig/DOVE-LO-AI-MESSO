@@ -5756,9 +5756,10 @@
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.detail || "Impossibile aprire Esplora File per questo documento");
         }
+        showToast("File aperto sul computer ed evidenziato in Esplora Risorse", "success", 4000);
       } catch (err) {
         console.error("Errore openFileInExplorer:", err);
-        alert(err.message);
+        showToast("Errore apertura su PC: " + err.message, "error", 4000);
       }
     }
 

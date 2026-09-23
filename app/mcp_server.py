@@ -708,30 +708,33 @@ def list_watched_folders() -> str:
 
 @mcp.tool()
 def open_local_file_in_explorer(document_title: str = "", document_id: Optional[int] = None, path: str = "") -> str:
-    """Apre direttamente un file o una cartella in Esplora File di Windows (File Explorer) evidenziandolo."""
+    """Apre direttamente un file o una cartella in Esplora File di Windows (File Explorer) decifrandolo se necessario."""
     with _get_db_session() as db:
-        from app.services.folder_service import open_path_in_explorer
+        from app.services.folder_service import open_path_in_explorer, prepare_document_for_local_open
         
         target_path = None
+        matched_doc = None
         if document_id:
-            doc = db.query(Document).filter(Document.id == document_id).first()
-            if doc:
-                target_path = doc.original_path or doc.file_path
+            matched_doc = db.query(Document).filter(Document.id == document_id).first()
         elif document_title:
             matches = search_vault_documents(db, document_title)
             if matches:
-                doc = db.query(Document).filter(Document.id == matches[0]["document_id"]).first()
-                if doc:
-                    target_path = doc.original_path or doc.file_path
+                matched_doc = db.query(Document).filter(Document.id == matches[0]["document_id"]).first()
         elif path:
             target_path = path
+
+        if matched_doc:
+            try:
+                target_path = prepare_document_for_local_open(matched_doc)
+            except Exception as e:
+                return f"Errore decifratura documento per apertura locale: {e}"
 
         if not target_path or not Path(target_path).exists():
             return f"File o percorso non trovato sul computer: {target_path or document_title or document_id}."
 
-        opened = open_path_in_explorer(target_path)
+        opened = open_path_in_explorer(target_path, open_file=True)
         if opened:
-            return f"Aperto con successo '{Path(target_path).name}' in Esplora Risorse di Windows."
+            return f"Aperto con successo '{Path(target_path).name}' sul computer."
         return f"Impossibile aprire Esplora Risorse per il percorso: {target_path}."
 
 

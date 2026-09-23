@@ -1890,7 +1890,7 @@ class AgenticChatService:
             }
 
         elif name == "open_local_file_in_explorer":
-            from app.services.folder_service import open_path_in_explorer
+            from app.services.folder_service import open_path_in_explorer, prepare_document_for_local_open
             doc_id = args.get("document_id")
             doc_title = (args.get("document_title") or "").strip()
             path_arg = (args.get("path") or "").strip()
@@ -1905,7 +1905,13 @@ class AgenticChatService:
                     matched_doc = db.query(Document).filter(Document.id == matches[0]["id"]).first()
 
             if matched_doc:
-                target_path = matched_doc.original_path or matched_doc.file_path
+                try:
+                    target_path = prepare_document_for_local_open(matched_doc)
+                except Exception as e:
+                    return {
+                        "success": False,
+                        "error": f"Errore decifratura per apertura locale: {e}"
+                    }
             elif path_arg:
                 target_path = path_arg
 
@@ -1915,12 +1921,12 @@ class AgenticChatService:
                     "error": f"File o cartella non trovata sul computer: {target_path or doc_title or doc_id}"
                 }
 
-            opened = open_path_in_explorer(target_path)
+            opened = open_path_in_explorer(target_path, open_file=True)
             return {
                 "success": opened,
                 "path": target_path,
                 "title": matched_doc.title if matched_doc else Path(target_path).name,
-                "message": f"Aperto '{Path(target_path).name}' in Esplora File." if opened else "Impossibile aprire Esplora File."
+                "message": f"Aperto '{Path(target_path).name}' sul computer." if opened else "Impossibile aprire Esplora File."
             }
 
         elif name == "create_zip_archive":

@@ -163,19 +163,25 @@ def delete_watched_folder(folder_id: int, db: Session = Depends(get_db)):
 
 @router.post("/open-in-explorer")
 def open_in_explorer(payload: OpenInExplorerRequest, db: Session = Depends(get_db)):
-    """Apre il file o la cartella in Esplora File di Windows evidenziando il file."""
+    """Apre il file o la cartella in Esplora File di Windows evidenziando il file decifrato."""
+    from app.services.folder_service import prepare_document_for_local_open
+
     target_path = None
     if payload.document_id:
         doc = db.query(Document).filter(Document.id == payload.document_id).first()
-        if doc:
-            target_path = doc.original_path or doc.file_path
+        if not doc:
+            raise HTTPException(status_code=404, detail="Documento non trovato nel caveau")
+        try:
+            target_path = prepare_document_for_local_open(doc)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Errore decifratura per apertura locale: {e}")
     elif payload.path:
         target_path = payload.path
 
     if not target_path or not Path(target_path).exists():
         raise HTTPException(status_code=404, detail=f"Percorso o file non trovato sul computer: {target_path}")
 
-    success = open_path_in_explorer(target_path)
+    success = open_path_in_explorer(target_path, open_file=True)
     if not success:
         raise HTTPException(status_code=500, detail="Impossibile aprire Esplora File per questo percorso")
 

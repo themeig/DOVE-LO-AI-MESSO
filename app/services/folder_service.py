@@ -40,10 +40,70 @@ def select_folder_dialog(initial_dir: Optional[str] = None) -> Optional[str]:
         return None
 
 
-def open_path_in_explorer(target_path: str) -> bool:
+def prepare_document_for_local_open(doc) -> str:
+    """
+    Restituisce un percorso su disco decifrato, pronto e leggibile per l'apertura su Windows / PC.
+    Se doc.original_path esiste ed è un file in chiaro sul computer (non in storage/uploads),
+    restituisce doc.original_path.
+    Altrimenti, decifra il file dal caveau, lo scrive con nome pulito nella cartella Downloads
+    dell'utente e restituisce il percorso del file decifrato.
+    """
+    from app.services.document_service import read_decrypted_file
+    import unicodedata
+    import re
+
+    # 1. Se il file originale esiste ancora sul computer ed è fuori dalla cartella storage cifrata
+    if getattr(doc, 'original_path', None):
+        p_orig = Path(doc.original_path)
+        try:
+            if p_orig.exists() and "storage" not in str(p_orig.resolve()).lower():
+                return str(p_orig.resolve())
+        except Exception:
+            pass
+
+    # 2. Altrimenti, decifra il file dal caveau
+    if not doc.file_path or not Path(doc.file_path).exists():
+        raise FileNotFoundError(f"File del documento non trovato: {doc.file_path}")
+
+    decrypted_bytes = read_decrypted_file(doc.file_path)
+
+    # Costruisci nome pulito e leggibile
+    nfkd = unicodedata.normalize('NFKD', doc.title or f"documento_{doc.id}")
+    ascii_title = nfkd.encode('ASCII', 'ignore').decode('ASCII')
+    clean_title = re.sub(r'[^a-zA-Z0-9_\-]+', '_', ascii_title).strip('_') or f"documento_{doc.id}"
+
+    file_ext = Path(doc.file_path).suffix.lstrip(".") or getattr(doc, 'file_type', None) or "bin"
+    if not clean_title.lower().endswith(f".{file_ext.lower()}"):
+        filename = f"{clean_title}.{file_ext}"
+    else:
+        filename = clean_title
+
+    # Salva nella cartella Download dell'utente
+    downloads_dir = Path.home() / "Downloads"
+    downloads_dir.mkdir(exist_ok=True)
+    dest = downloads_dir / filename
+
+    # Se esiste già, controlliamo se il contenuto è identico
+    if dest.exists():
+        try:
+            if dest.read_bytes() == decrypted_bytes:
+                return str(dest.resolve())
+        except Exception:
+            pass
+        counter = 1
+        while dest.exists():
+            dest = downloads_dir / f"{clean_title}_{counter}.{file_ext}"
+            counter += 1
+
+    dest.write_bytes(decrypted_bytes)
+    return str(dest.resolve())
+
+
+def open_path_in_explorer(target_path: str, open_file: bool = True) -> bool:
     """
     Apre il percorso specificato in Esplora Risorse di Windows (o gestore file di sistema).
-    Se è un file, lo evidenzia (/select). Se è una cartella, la apre.
+    Se è un file, lo evidenzia (/select) e se open_file=True lo apre con l'app di sistema predefinita.
+    Se è una cartella, la apre.
     """
     p = Path(target_path)
     if not p.exists():
@@ -55,12 +115,19 @@ def open_path_in_explorer(target_path: str) -> bool:
         if sys.platform == "win32" or os.name == "nt":
             if p.is_file():
                 subprocess.Popen(["explorer.exe", f"/select,{norm_path}"])
+                if open_file:
+                    try:
+                        os.startfile(norm_path)
+                    except Exception as start_err:
+                        logger.warning(f"Impossibile avviare direttamente il file: {start_err}")
             else:
                 os.startfile(norm_path)
             return True
         elif sys.platform == "darwin":
             if p.is_file():
                 subprocess.Popen(["open", "-R", norm_path])
+                if open_file:
+                    subprocess.Popen(["open", norm_path])
             else:
                 subprocess.Popen(["open", norm_path])
             return True
