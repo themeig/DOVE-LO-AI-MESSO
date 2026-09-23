@@ -2802,7 +2802,26 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         effective_model: Optional[str] = None
     ) -> ChatResponse:
         """Esegue l'elaborazione interna di un turno conversazionale con tool-calling dell'agente."""
+        # Se è stato inviato audio ma user_text è vuoto o placeholder, trascrivi il parlato
+        if audio_base64 and (not user_text or user_text.strip() in ["🎤 Messaggio vocale", "Messaggio vocale", "🎤"]):
+            from app.services.transcription_service import transcribe_audio
+            try:
+                raw_b = base64.b64decode(audio_base64)
+                transcribed = transcribe_audio(raw_b, audio_format=audio_format or "wav")
+                if transcribed and transcribed.strip():
+                    user_text = transcribed.strip()
+            except Exception as e:
+                logger.warning(f"Errore auto-transcription in _run_turn_impl: {e}")
+
         lower_t = user_text.lower()
+
+        # Se il testo utente è letteralmente solo il placeholder vocale (senza audio o con audio non comprensibile)
+        clean_user_voice = re.sub(r"[🎤\s]+", "", lower_t)
+        if clean_user_voice in ["messaggiovocale", "vocale"]:
+            return ChatResponse(
+                reply="🎤 Non ho rilevato alcun comando vocale comprensibile in questo messaggio. Prova a ripetere scandendo bene le parole o a scrivermi nella chat!",
+                action="REPLY"
+            )
 
         # Intercetta immediatamente domande sulla data/ora odierna, ieri o domani con calcolo istantaneo esatto
         temp_resp = self._handle_temporal_intent(user_text, lower_t)
@@ -3395,7 +3414,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                     return ChatResponse(reply="📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines), action="get_upcoming_deadlines", data=t_out, documents=docs)
                 return ChatResponse(reply="✅ Non ci sono scadenze o pagamenti in sospeso al momento.", action="get_upcoming_deadlines", data=t_out)
 
-            if audio_base64:
+            if audio_base64 and (not user_text or user_text.strip() in ["🎤 Messaggio vocale", "Messaggio vocale", "🎤"]):
                 return ChatResponse(
                     reply="🎤 Ho ascoltato il tuo messaggio vocale! Tutto chiaro, richiesta registrata con successo.",
                     action="REPLY"
@@ -3440,24 +3459,24 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         if audio_base64:
             clean_fmt = (audio_format or "wav").lower().lstrip(".")
-            voice_prompt = (
-                user_llm_content
-                if user_llm_content and user_llm_content != "🎤 Messaggio vocale"
-                else "Ascolta attentamente questo messaggio vocale dell'utente in italiano ed esegui le azioni necessarie tramite gli strumenti o rispondi in modo naturale e preciso."
-            )
-            history_messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": voice_prompt},
-                    {
-                        "type": "input_audio",
-                        "input_audio": {
-                            "data": audio_base64,
-                            "format": clean_fmt
+            if user_llm_content and user_llm_content not in ["🎤 Messaggio vocale", "Messaggio vocale", "🎤"]:
+                voice_prompt = f"[Messaggio Vocale Trascritto]: {user_llm_content}"
+                history_messages.append({"role": "user", "content": voice_prompt})
+            else:
+                voice_prompt = "Ascolta attentamente questo messaggio vocale dell'utente in italiano ed esegui le azioni necessarie tramite gli strumenti o rispondi in modo naturale e preciso."
+                history_messages.append({
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": voice_prompt},
+                        {
+                            "type": "input_audio",
+                            "input_audio": {
+                                "data": audio_base64,
+                                "format": clean_fmt
+                            }
                         }
-                    }
-                ]
-            })
+                    ]
+                })
         else:
             history_messages.append({"role": "user", "content": user_llm_content})
 
@@ -4035,7 +4054,15 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
     def _fallback_deterministic_response(self, user_text: str, lower_t: str, db: Session, thread_id: str) -> ChatResponse:
         """Fallback locale robusto per memorizzazione, ricerca e scadenze in caso di rate-limit API o disconnessione."""
-        # 0. Eliminazione sicura di documenti o oggetti
+        # 0. Anti-placeholder audio: non cercare MAI "🎤 Messaggio vocale" o simili nel caveau
+        clean_audio_check = re.sub(r"[🎤\s]+", "", lower_t)
+        if clean_audio_check in ["messaggiovocale", "vocale", "messaggio", ""]:
+            return ChatResponse(
+                reply="🎤 Non ho rilevato alcun comando vocale comprensibile in questo messaggio. Prova a ripetere scandendo bene le parole o a scrivermi nella chat!",
+                action="REPLY"
+            )
+
+        # 0a. Eliminazione sicura di documenti o oggetti
         del_resp = self._handle_deletion_intent(user_text, lower_t, db, thread_id=thread_id)
         if del_resp:
             return del_resp
@@ -4320,6 +4347,12 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                     data=s_res,
                     documents=[linked_d] if linked_d else None
                 )
+
+        if clean_audio_check in ["messaggiovocale", "vocale"]:
+            return ChatResponse(
+                reply="🎤 Non ho rilevato alcun comando vocale comprensibile in questo messaggio. Prova a ripetere scandendo bene le parole o a scrivermi nella chat!",
+                action="REPLY"
+            )
 
         return ChatResponse(
             reply=f"Non ho trovato nessun documento o oggetto corrispondente a '{user_text}' nel tuo caveau. Puoi chiedermi dove si trova un oggetto, cercare un documento o verificare le scadenze!",

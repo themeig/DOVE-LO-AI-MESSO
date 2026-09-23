@@ -62,6 +62,7 @@ class ChatResponse(BaseModel):
     documents: Optional[List[dict]] = None
     confirmation: Optional[dict] = None
     routed_model: Optional[str] = None
+    transcription: Optional[str] = None
 
 
 class DocumentStatusUpdate(BaseModel):

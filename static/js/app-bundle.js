@@ -923,7 +923,8 @@
           if (m.sender === 'user') {
             const quoted = m.metadata && m.metadata.quoted_message ? m.metadata.quoted_message : null;
             if (m.message_type === 'audio' && m.metadata && m.metadata.audio_url) {
-              appendUserAudioBubble(m.metadata.audio_url, m.metadata.duration || 0, quoted);
+              const trText = m.metadata.transcription || (m.content && m.content.startsWith('🎤 ') ? m.content.slice(2).trim() : null);
+              appendUserAudioBubble(m.metadata.audio_url, m.metadata.duration || 0, quoted, trText);
             } else {
               appendUserBubble(m.content, quoted);
             }
@@ -2304,9 +2305,9 @@
       }
     }
 
-    function appendUserAudioBubble(audioUrl, duration = 0, quoted = null) {
+    function appendUserAudioBubble(audioUrl, duration = 0, quoted = null, transcription = null) {
       const userBubble = document.createElement('div');
-      userBubble.className = 'flex flex-col items-end';
+      userBubble.className = 'flex flex-col items-end user-voice-bubble-wrapper';
       const isOli = getActiveTheme() === 'olivetti';
 
       let quoteHtml = '';
@@ -2351,6 +2352,20 @@
         ? 'relative w-8 h-8 rounded-xs bg-[#FAF8F2] text-[#3C5A48] flex items-center justify-center shrink-0 text-sm select-none border border-[#E3DDD1] shadow-xs' 
         : 'relative w-9 h-9 rounded-full bg-emerald-100 text-[#128C7E] flex items-center justify-center shrink-0 text-sm select-none border border-emerald-300/60 shadow-2xs';
 
+      let transcriptionHtml = '';
+      const cleanTr = (transcription || '').trim();
+      if (cleanTr && cleanTr !== '🎤 Messaggio vocale' && !cleanTr.startsWith('🎤 Messaggio vocale')) {
+        transcriptionHtml = `
+          <div class="voice-transcription-preview text-[11px] text-[#333] italic font-mono-code pt-1.5 mt-1 border-t border-[#E3DDD1]/70 flex items-start gap-1.5 select-text">
+            <i class="fa-solid fa-quote-left text-[8px] text-[#3C5A48] mt-0.5 opacity-60 shrink-0"></i>
+            <span class="break-words">“${escapeHtml(cleanTr)}”</span>
+          </div>
+        `;
+      }
+
+      const quoteArg = cleanTr ? ('🎤 ' + cleanTr) : '🎤 Messaggio vocale';
+      const safeQuoteArg = escapeHtml(quoteArg).replace(/'/g, "\\'");
+
       userBubble.innerHTML = `
         <span class="text-[9px] font-mono-code text-[#7A7568] mb-1 user-bubble-stamp">UTENTE • ${getTime()}</span>
         <div class="wa-bubble-out p-2.5 max-w-[85%] sm:max-w-[70%] text-sm text-gray-800 leading-snug relative group/msg select-text">
@@ -2381,8 +2396,10 @@
             </div>
           </div>
 
+          <div class="voice-transcription-slot">${transcriptionHtml}</div>
+
           <div class="flex justify-end items-center gap-1.5 mt-1 select-none">
-            <button type="button" onclick="replyToMessage(this, 'user', '🎤 Messaggio vocale')" class="copy-msg-btn hover:text-[#075E54] text-slate-500 text-[11px] p-0.5 rounded transition cursor-pointer" title="Rispondi / Quota">
+            <button type="button" onclick="replyToMessage(this, 'user', '${safeQuoteArg}')" class="copy-msg-btn hover:text-[#075E54] text-slate-500 text-[11px] p-0.5 rounded transition cursor-pointer" title="Rispondi / Quota">
               <i class="fa-solid fa-reply"></i>
             </button>
             <span class="text-[10px] text-gray-500 font-mono-code">${getTime()}</span>
@@ -2392,6 +2409,7 @@
       `;
       chatFeed.appendChild(userBubble);
       scrollBottom();
+      return userBubble;
     }
 
     function appendUserFileBubble(fileName, fileSize, previewUrl = null, isImage = false, isPdf = false) {
@@ -3538,6 +3556,8 @@
     // --- Registratore Vocale Reale & Elaborazione Multimodale AI ---
     let voiceMediaStream = null;
     let voiceMediaRecorder = null;
+    let voiceSpeechRecognition = null;
+    let voiceLiveTranscription = '';
     let voiceAudioChunks = [];
     let voiceTimerInterval = null;
     let voiceRecordStartTime = null;
@@ -3554,6 +3574,34 @@
         console.error("Accesso microfono negato:", err);
         showToast("⚠️ Permesso microfono negato. Abilita il microfono per registrare vocali.", "error");
         return;
+      }
+
+      voiceLiveTranscription = '';
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        try {
+          const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+          voiceSpeechRecognition = new SpeechRec();
+          voiceSpeechRecognition.lang = 'it-IT';
+          voiceSpeechRecognition.continuous = true;
+          voiceSpeechRecognition.interimResults = true;
+          voiceSpeechRecognition.onresult = (e) => {
+            let full = '';
+            for (let i = 0; i < e.results.length; i++) {
+              if (e.results[i] && e.results[i][0]) {
+                full += e.results[i][0].transcript + ' ';
+              }
+            }
+            if (full.trim()) {
+              voiceLiveTranscription = full.trim();
+            }
+          };
+          voiceSpeechRecognition.onerror = (e) => {
+            console.debug("Web Speech API status:", e.error);
+          };
+          voiceSpeechRecognition.start();
+        } catch (recErr) {
+          voiceSpeechRecognition = null;
+        }
       }
 
       voiceAudioChunks = [];
@@ -3609,6 +3657,11 @@
       clearInterval(voiceTimerInterval);
       voiceTimerInterval = null;
 
+      if (voiceSpeechRecognition) {
+        try { voiceSpeechRecognition.stop(); } catch (e) {}
+        voiceSpeechRecognition = null;
+      }
+
       if (voiceMediaRecorder && voiceMediaRecorder.state !== 'inactive') {
         try {
           voiceMediaRecorder.stop();
@@ -3643,6 +3696,11 @@
 
       const durationSec = Math.max(1, Math.round((Date.now() - voiceRecordStartTime) / 1000));
 
+      if (voiceSpeechRecognition) {
+        try { voiceSpeechRecognition.stop(); } catch (e) {}
+        voiceSpeechRecognition = null;
+      }
+
       const stopPromise = new Promise(resolve => {
         voiceMediaRecorder.onstop = resolve;
       });
@@ -3676,7 +3734,7 @@
       const quotedToSend = currentQuotedMessage;
       cancelQuoteReply();
 
-      // Converti raw audio in WAV PCM 16-bit 16kHz compatibile al 100% con Gemini e OpenRouter
+      // Converti raw audio in WAV PCM 16-bit 16kHz compatibile al 100% con speech_recognition e Gemini
       let wavBlob = rawBlob;
       let base64Audio = '';
       try {
@@ -3699,8 +3757,8 @@
 
       const localAudioUrl = URL.createObjectURL(wavBlob);
 
-      // Mostra all'istante la bolla vocale con player nella chat
-      appendUserAudioBubble(localAudioUrl, durationSec, quotedToSend);
+      // Mostra all'istante la bolla vocale con player nella chat (con testo trascritto se già disponibile)
+      const userVoiceBubbleEl = appendUserAudioBubble(localAudioUrl, durationSec, quotedToSend, voiceLiveTranscription || null);
 
       // Feedback assistente
       setGenerationActive(true, "L'assistente sta ascoltando il tuo messaggio vocale...", null, targetThreadId);
@@ -3711,7 +3769,7 @@
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
-            message: "",
+            message: voiceLiveTranscription || "",
             audio_base64: base64Audio,
             audio_format: "wav",
             audio_duration: durationSec,
@@ -3724,6 +3782,19 @@
         setGenerationActive(false, "", null, targetThreadId);
         if (!res.ok) throw new Error('Errore nella risposta del server');
         const data = await res.json();
+
+        // Se il server ha trascritto l'audio e la bolla non mostrava ancora il testo, mostralo adesso!
+        if (data.transcription && userVoiceBubbleEl) {
+          const slot = userVoiceBubbleEl.querySelector('.voice-transcription-slot');
+          if (slot && !slot.innerHTML.trim()) {
+            slot.innerHTML = `
+              <div class="voice-transcription-preview text-[11px] text-[#333] italic font-mono-code pt-1.5 mt-1 border-t border-[#E3DDD1]/70 flex items-start gap-1.5 select-text">
+                <i class="fa-solid fa-quote-left text-[8px] text-[#3C5A48] mt-0.5 opacity-60 shrink-0"></i>
+                <span class="break-words">“${escapeHtml(data.transcription.trim())}”</span>
+              </div>
+            `;
+          }
+        }
 
         let itemPhoto = null;
         let storeItem = null;

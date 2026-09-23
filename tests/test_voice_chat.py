@@ -89,3 +89,66 @@ def test_api_chat_voice_message_flow():
     assert audio_res.status_code == 200
     assert audio_res.headers.get('content-type') == 'audio/wav'
     assert len(audio_res.content) > 44
+
+
+def test_voice_silence_returns_helpful_message_without_vault_search():
+    """Verifica che un audio silenzioso non cerchi '🎤 Messaggio vocale' nel caveau ma dia un messaggio cortese."""
+    b64_audio = create_synthetic_wav_base64(0.3)
+    payload = {
+        'message': '',
+        'audio_base64': b64_audio,
+        'audio_format': 'wav',
+        'audio_duration': 1.0,
+        'thread_id': 'general'
+    }
+
+    res = client.post('/api/chat', json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    reply = data['reply']
+    # Non deve MAI dire "Non ho trovato nessun documento o oggetto corrispondente a '🎤 Messaggio vocale'"
+    assert "corrispondente a '🎤 Messaggio vocale'" not in reply
+    assert "corrispondente a '🎤 messaggio vocale'" not in reply
+    assert "parole" in reply.lower() or "vocale" in reply.lower() or "comprendere" in reply.lower()
+
+
+def test_voice_with_transcribed_speech_stores_and_queries_location():
+    """Verifica che un messaggio vocale con testo trascritto esegua l'azione richiesta."""
+    b64_audio = create_synthetic_wav_base64(0.4)
+    # 1. Memorizza posizione tramite vocale
+    store_payload = {
+        'message': 'Ho messo il passaporto nella scrivania dello studio',
+        'audio_base64': b64_audio,
+        'audio_format': 'wav',
+        'audio_duration': 2.5,
+        'thread_id': 'general'
+    }
+    r_store = client.post('/api/chat', json=store_payload)
+    assert r_store.status_code == 200
+    d_store = r_store.json()
+    assert "memorizzato" in d_store['reply'].lower() or "scrivania" in d_store['reply'].lower() or "salvato" in d_store['reply'].lower() or "passaporto" in d_store['reply'].lower()
+
+    # 2. Chiedi dov'è l'oggetto tramite vocale
+    query_payload = {
+        'message': "Dov'è il passaporto?",
+        'audio_base64': b64_audio,
+        'audio_format': 'wav',
+        'audio_duration': 1.8,
+        'thread_id': 'general'
+    }
+    r_query = client.post('/api/chat', json=query_payload)
+    assert r_query.status_code == 200
+    d_query = r_query.json()
+    assert "passaporto" in d_query['reply'].lower()
+    assert "scrivania" in d_query['reply'].lower() or "studio" in d_query['reply'].lower()
+
+
+def test_anti_placeholder_guard_direct_call():
+    """Verifica che chiamare direttamente agent.run_turn con il testo placeholder non cerchi nel caveau."""
+    engine = get_engine('sqlite:///:memory:')
+    init_db(engine)
+    with Session(engine) as session:
+        agent = AgenticChatService()
+        resp = agent.run_turn('🎤 Messaggio vocale', db=session, thread_id='general')
+        assert "Non ho trovato nessun documento o oggetto corrispondente a '🎤 Messaggio vocale'" not in resp.reply
+        assert "vocale" in resp.reply.lower() or "comando" in resp.reply.lower()
