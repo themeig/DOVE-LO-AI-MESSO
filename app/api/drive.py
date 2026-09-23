@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/drive", tags=["drive"])
 
 
 class DriveSettingsUpdate(BaseModel):
-    storage_mode: Literal["dual", "cloud_only"]
+    storage_mode: Literal["dual", "cloud_only", "local_only"]
 
 
 @router.get("/status")
@@ -165,7 +165,7 @@ def update_drive_settings(
     body: DriveSettingsUpdate,
     db: Session = Depends(get_db),
 ):
-    """Aggiorna le impostazioni della modalità di salvataggio ('dual' o 'cloud_only')."""
+    """Aggiorna le impostazioni della modalità di salvataggio ('dual', 'cloud_only' o 'local_only')."""
     cred = db.query(GoogleDriveCredential).first()
     if not cred:
         raise HTTPException(

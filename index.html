@@ -880,6 +880,22 @@
               <p class="text-[11px] text-[#7A7568] font-mono-code mt-0.5">I file vengono caricati solo su Google Drive, lasciando un puntatore leggero nel database locale.</p>
             </div>
           </label>
+
+          <label class="flex items-start gap-3 p-3 rounded-xs border border-[#E3DDD1] bg-white hover:border-[#3C5A48] cursor-pointer transition">
+            <input 
+              type="radio" 
+              name="driveStorageMode" 
+              value="local_only" 
+              onchange="updateDriveStorageMode('local_only')"
+              class="mt-1 text-[#3C5A48] focus:ring-[#3C5A48] h-4 w-4"
+            >
+            <div class="text-xs">
+              <div class="font-bold text-[#222220] font-space">
+                💾 Solo Locale nel Caveau (Nessun caricamento su Google Drive)
+              </div>
+              <p class="text-[11px] text-[#7A7568] font-mono-code mt-0.5">I file vengono cifrati e salvati esclusivamente sul tuo PC, senza essere caricati o sincronizzati su Google Drive.</p>
+            </div>
+          </label>
         </div>
       </div>
     </div>

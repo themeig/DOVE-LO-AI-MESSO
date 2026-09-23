@@ -189,7 +189,7 @@ class GoogleDriveCredential(Base):
     access_token = Column(EncryptedText, nullable=False)
     refresh_token = Column(EncryptedText, nullable=False)
     token_expiry = Column(DateTime, nullable=True)
-    storage_mode = Column(String(50), default="dual")  # 'dual' o 'cloud_only'
+    storage_mode = Column(String(50), default="dual")  # 'dual', 'cloud_only' o 'local_only'
     root_folder_id = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

@@ -1501,7 +1501,10 @@
 
           const kpiDriveEl = document.getElementById('kpiDriveState');
           if (kpiDriveEl) {
-            kpiDriveEl.textContent = targetMode.toUpperCase();
+            let label = 'DUAL';
+            if (targetMode === 'cloud_only') label = 'CLOUD';
+            else if (targetMode === 'local_only') label = 'LOCALE';
+            kpiDriveEl.textContent = label;
             kpiDriveEl.className = "text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#3C5A48] font-mono-code leading-none";
           }
           const kpiDriveDot = document.getElementById('kpiDriveDot');
@@ -1579,6 +1582,13 @@
         const data = await res.json();
         if (googleDriveStatusCache) {
           googleDriveStatusCache.storage_mode = data.storage_mode;
+        }
+        const kpiDriveEl = document.getElementById('kpiDriveState');
+        if (kpiDriveEl) {
+          let label = 'DUAL';
+          if (data.storage_mode === 'cloud_only') label = 'CLOUD';
+          else if (data.storage_mode === 'local_only') label = 'LOCALE';
+          kpiDriveEl.textContent = label;
         }
         showToast("Modalità archiviazione aggiornata", "success");
       } catch (err) {

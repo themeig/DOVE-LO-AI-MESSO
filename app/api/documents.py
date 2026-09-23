@@ -60,7 +60,7 @@ def _process_and_save_single_doc(
     drive_file_id = None
     drive_web_url = None
     active_cred = db.query(GoogleDriveCredential).first()
-    if active_cred:
+    if active_cred and getattr(active_cred, "storage_mode", "dual") != "local_only":
         try:
             drive_service = get_drive_service()
             folder_path = resolve_drive_folder_path(

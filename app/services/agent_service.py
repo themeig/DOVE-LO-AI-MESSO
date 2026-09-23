@@ -473,7 +473,7 @@ TOOLS_DEFINITION = [
             "name": "get_google_drive_status",
             "description": (
                 "Recupera lo stato attuale della connessione Google Drive Cloud Sync, la modalità di archiviazione "
-                "('dual' = locale + cloud, o 'cloud_only' = solo Google Drive), l'account Google associato, "
+                "('dual' = locale + cloud, 'cloud_only' = solo Google Drive, o 'local_only' = solo locale nel caveau), l'account Google associato, "
                 "e l'elenco dei documenti e file sincronizzati su Google Drive con la relativa cartella (es. 'DoveLoAIMesso / 2026 / Bollette & Utenze / ...' "
                 "o 'DoveLoAIMesso / Documenti & Foto / ...') e il link diretto di apertura [Drive ↗]. "
                 "Usalo SEMPRE quando l'utente chiede cosa c'è su Google Drive, come hai organizzato le cartelle su Drive, "
@@ -630,6 +630,7 @@ REGOLE OPERATIVE:
     - MODALITÀ DI ARCHIVIAZIONE DISPONIBILI:
       * "dual" (Copia locale cifrata nel caveau + Google Drive): conserva sia il file cifrato locale nel caveau, sia la copia organizzata su Google Drive.
       * "cloud_only" (Solo Google Drive): il file fisico originale risiede unicamente su Google Drive (zero file locali su disco); nel caveau locale rimangono i metadati, l'estrazione AI e il link diretto `drive_web_url`.
+      * "local_only" (Solo Locale nel Caveau): i file vengono cifrati e salvati esclusivamente sul computer locale senza alcun caricamento o sincronizzazione su Google Drive.
     - STRUTTURA AD ALBERO DELLE CARTELLE SU GOOGLE DRIVE:
       Tutti i file sincronizzati su Drive sono archiviati in modo strutturato dentro la cartella principale `DoveLoAIMesso`:
       * Con data di scadenza (es. bollette, F24, tributi, rate): `DoveLoAIMesso / <Anno> / <Categoria> / <NomeFile>` (es. `DoveLoAIMesso/2026/Bollette & Utenze/2026-10-28_Enel_64.20eur.pdf`).
@@ -2094,7 +2095,12 @@ class AgenticChatService:
                     "file_type": d.file_type
                 })
 
-            mode_desc = "Solo Google Drive (i file fisici risiedono su Google Drive, metadati nel caveau)" if cred.storage_mode == "cloud_only" else "Copia locale cifrata nel caveau + Google Drive (doppia copia)"
+            if cred.storage_mode == "local_only":
+                mode_desc = "Solo Locale nel Caveau (i file vengono cifrati e salvati esclusivamente sul tuo computer locale, nessun caricamento su Google Drive)"
+            elif cred.storage_mode == "cloud_only":
+                mode_desc = "Solo Google Drive (i file fisici risiedono su Google Drive, metadati nel caveau)"
+            else:
+                mode_desc = "Copia locale cifrata nel caveau + Google Drive (doppia copia)"
 
             return {
                 "connected": True,
@@ -2286,7 +2292,12 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         drive_docs = q_drive.order_by(Document.id.desc()).all() if db else []
 
         if drive_cred:
-            mode_desc = "Solo Google Drive (i file fisici risiedono su Google Drive, metadati nel caveau)" if drive_cred.storage_mode == "cloud_only" else "Copia locale cifrata nel caveau + Google Drive (doppia copia)"
+            if drive_cred.storage_mode == "local_only":
+                mode_desc = "Solo Locale nel Caveau (i file vengono cifrati e salvati esclusivamente sul computer locale, nessun caricamento su Google Drive)"
+            elif drive_cred.storage_mode == "cloud_only":
+                mode_desc = "Solo Google Drive (i file fisici risiedono su Google Drive, metadati nel caveau)"
+            else:
+                mode_desc = "Copia locale cifrata nel caveau + Google Drive (doppia copia)"
             vault_summary.append(f"\n[STATO SINCRONIZZAZIONE GOOGLE DRIVE CLOUD SYNC]:")
             vault_summary.append(f"- Connessione: ATTIVA E COLLEGATA")
             vault_summary.append(f"- Account Google associato: {drive_cred.user_email or 'Account collegato'}")
@@ -2664,7 +2675,12 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
         email = status_data.get("user_email") or "Account collegato"
         mode = status_data.get("storage_mode", "dual")
-        mode_label = "**Solo Google Drive** (i file fisici risiedono unicamente sul cloud Google Drive, nessun file memorizzato sul disco locale)" if mode == "cloud_only" else "**Copia locale cifrata nel caveau + Google Drive** (doppio salvataggio sicuro)"
+        if mode == "local_only":
+            mode_label = "**Solo Locale nel Caveau** (i file vengono cifrati e salvati esclusivamente sul tuo computer locale, nessun caricamento su Google Drive)"
+        elif mode == "cloud_only":
+            mode_label = "**Solo Google Drive** (i file fisici risiedono unicamente sul cloud Google Drive, nessun file memorizzato sul disco locale)"
+        else:
+            mode_label = "**Copia locale cifrata nel caveau + Google Drive** (doppio salvataggio sicuro)"
         total_files = status_data.get("total_files_on_drive", 0)
         folders_overview = status_data.get("folders_overview") or {}
         matching_files = status_data.get("matching_files") or []

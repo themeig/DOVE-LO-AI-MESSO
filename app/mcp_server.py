@@ -65,7 +65,7 @@ GUIDA PER SITUAZIONI SPECIFICHE:
 4. Scadenze: usa `get_upcoming_deadlines`, calcola l'urgenza esatta rispetto alla data odierna, avvisando con prontezza delle scadenze imminenti o scadute.
 5. File Office: per fogli Excel (.xlsx/.xls) e Word (.docx), informa l'utente che cliccando su [👁️ Vedi] potrà consultare tabelle stilizzate e testi formattati direttamente a schermo intero.
 6. Archivi ZIP: usa `create_zip_archive` per raggruppare file e `unzip_vault_archive` per estrarli e catalogarli automaticamente nel caveau.
-7. Google Drive: usa `get_google_drive_status`. Conosci le modalità 'dual' e 'cloud_only', l'alberatura `DoveLoAIMesso / <Anno> / <Categoria> / ...` e il pulsante [Drive ↗]. Non dire mai di non avere accesso a Drive!
+7. Google Drive: usa `get_google_drive_status`. Conosci le modalità 'dual', 'cloud_only' e 'local_only', l'alberatura `DoveLoAIMesso / <Anno> / <Categoria> / ...` e il pulsante [Drive ↗]. Non dire mai di non avere accesso a Drive!
 8. Cartelle PC: usa `scan_local_folder`, `list_watched_folders` e `open_local_file_in_explorer` per aprire i file nativamente in Windows Explorer.
 9. Sicurezza: il caveau usa crittografia a riposo AES-128 / Fernet, blocco con scarico chiavi dalla RAM e wipe database protetto da password.
 10. Lettura Dati Puntuali e Tabelle (Zero Allucinazioni): quando l'utente o il client richiede dettagli precisi su righe, colonne, valori, importi o celle di un foglio Excel, CSV, Word o documento (es. 'cosa c'è nella riga 5?', 'chi ha l'importo più alto?'), USA SEMPRE `read_vault_document_content` per leggere i dati reali e calcolati dal file in memoria prima di rispondere.
@@ -128,6 +128,7 @@ def google_drive_sync_guidelines() -> str:
 2. Modalità di Archiviazione:
    - 'dual': Conserva una copia cifrata in locale nel caveau e carica una copia organizzata su Google Drive.
    - 'cloud_only': Elimina la copia fisica da locale e conserva solo il file su Google Drive (zero spazio su disco, visualizzabile via cloud).
+   - 'local_only': Salva i file esclusivamente nel caveau locale crittografato senza effettuare l'upload o la sincronizzazione su Google Drive.
 3. Struttura ad Albero Dinamica:
    - Con scadenza (Bollette, Tributi, F24): `DoveLoAIMesso / <Anno> / <Categoria> / <File>`
    - Senza scadenza (Documenti Personali, Contratti, Foto): `DoveLoAIMesso / <Categoria> / <File>`
@@ -625,7 +626,7 @@ def unzip_vault_archive(document_id: Optional[int] = None, document_title: str =
 
 @mcp.tool()
 def get_google_drive_status(query: str = "") -> str:
-    """Recupera lo stato attuale della connessione Google Drive Cloud Sync, la modalità ('dual' o 'cloud_only') e l'alberatura delle cartelle su Google Drive."""
+    """Recupera lo stato attuale della connessione Google Drive Cloud Sync, la modalità ('dual', 'cloud_only' o 'local_only') e l'alberatura delle cartelle su Google Drive."""
     with _get_db_session() as db:
         cred = db.query(GoogleDriveCredential).first()
         if not cred:
@@ -644,11 +645,18 @@ def get_google_drive_status(query: str = "") -> str:
             q_drive = q_drive.filter(or_(Document.title.ilike(q_term), Document.doc_type.ilike(q_term)))
 
         drive_docs = q_drive.order_by(Document.id.desc()).all()
+        if cred.storage_mode == "local_only":
+            mode_desc = "Solo locale nel Caveau (nessun upload su Drive)"
+        elif cred.storage_mode == "cloud_only":
+            mode_desc = "Solo cloud su Drive"
+        else:
+            mode_desc = "Copia locale + Drive"
+
         lines = [
             f"=== STATO GOOGLE DRIVE CLOUD SYNC ===",
             f"- Stato: Connesso",
-            f"- Modalità di archiviazione: {cred.storage_mode} ({'Copia locale + Drive' if cred.storage_mode == 'dual' else 'Solo cloud su Drive'})",
-            f"- Account Google: {cred.account_email or 'Non specificato'}",
+            f"- Modalità di archiviazione: {cred.storage_mode} ({mode_desc})",
+            f"- Account Google: {cred.user_email or 'Non specificato'}",
             f"- Cartella Principale: 'DoveLoAIMesso'",
             f"- Documenti sincronizzati: {len(drive_docs)}"
         ]

@@ -112,3 +112,53 @@ def test_document_upload_drive_error_fallback():
         assert data["drive_web_url"] is None
 
     client.post("/api/drive/disconnect")
+
+
+def test_document_upload_with_local_only_mode():
+    init_db()
+    # 1. Connetti Drive
+    client.get("/api/drive/callback?code=test_code")
+    
+    # 2. Imposta storage_mode su 'local_only'
+    res_mode = client.patch("/api/drive/settings", json={"storage_mode": "local_only"})
+    assert res_mode.status_code == 200
+    assert res_mode.json()["storage_mode"] == "local_only"
+
+    # 3. Carica documento singolo
+    dummy_pdf = io.BytesIO(b"%PDF-1.4 test local only mode document")
+    res = client.post(
+        "/api/documents/upload",
+        files={"file": ("contratto_privato.pdf", dummy_pdf, "application/pdf")},
+        data={"thread_id": "general"}
+    )
+    assert res.status_code in (200, 201)
+    data = res.json()
+
+    # Verifica che NON sia stato caricato su Drive
+    assert "drive_file_id" in data
+    assert data["drive_file_id"] is None
+    assert "drive_web_url" in data
+    assert data["drive_web_url"] is None
+
+    # Verifica nel database
+    SessionLocal = get_session_maker()
+    with SessionLocal() as db:
+        doc = db.query(Document).filter(Document.id == data["document_id"]).first()
+        assert doc is not None
+        assert doc.drive_file_id is None
+        assert doc.drive_web_url is None
+
+    # 4. Verifica batch upload in modalità local_only
+    dummy_batch = io.BytesIO(b"%PDF-1.4 batch local only")
+    res_batch = client.post(
+        "/api/documents/upload-batch",
+        files=[("files", ("batch_local.pdf", dummy_batch, "application/pdf"))],
+        data={"thread_id": "general"}
+    )
+    assert res_batch.status_code in (200, 201)
+    batch_data = res_batch.json()
+    assert batch_data["documents"][0].get("drive_file_id") is None
+    assert batch_data["documents"][0].get("drive_web_url") is None
+
+    # Pulizia
+    client.post("/api/drive/disconnect")

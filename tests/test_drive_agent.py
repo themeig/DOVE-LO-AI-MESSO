@@ -130,3 +130,37 @@ def test_agent_drive_status_connected_and_intent():
         assert resp_polizza.action in ["search_vault", "show_document_card"]
         found_docs = resp_polizza.documents or (resp_polizza.data or {}).get("found_documents", [])
         assert any("Polizza" in (d.get("title") or "") for d in found_docs)
+
+
+def test_agent_drive_status_local_only():
+    engine = get_engine("sqlite:///:memory:")
+    init_db(engine)
+    with Session(engine) as session:
+        cred = GoogleDriveCredential(
+            user_email="marco@example.com",
+            storage_mode="local_only",
+            access_token="fake_access_token",
+            refresh_token="fake_refresh_token"
+        )
+        session.add(cred)
+        session.commit()
+
+        agent = AgenticChatService()
+        agent.settings.OPENROUTER_API_KEY = ""
+
+        # 1. Tool execution
+        status_res = agent.execute_tool("get_google_drive_status", {}, session)
+        assert status_res["connected"] is True
+        assert status_res["storage_mode"] == "local_only"
+        assert "Solo Locale" in status_res["storage_mode_description"]
+
+        # 2. Agent conversational turn
+        resp = agent.run_turn("come sono impostate le cartelle su google drive?", session)
+        assert resp.action == "get_google_drive_status"
+        assert "Solo Locale nel Caveau" in resp.reply
+        assert "nessun caricamento" in resp.reply.lower()
+
+        # 3. System prompt check
+        prompt = agent.build_system_prompt(session)
+        assert "local_only" in prompt
+        assert "Solo Locale nel Caveau" in prompt

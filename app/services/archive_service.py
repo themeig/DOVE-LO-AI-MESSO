@@ -1526,10 +1526,10 @@ def unzip_document_to_vault(
                 has_deadline = bool(due_date_obj) or getattr(extracted, "is_payable", False) or ((extracted.amount is not None) and (extracted.doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"]))
                 doc_status = "da_pagare" if has_deadline else "archiviato"
 
-                # Sincronizzazione automatica con Google Drive se attivo
+                # Sincronizzazione automatica con Google Drive se attivo (e non solo locale)
                 drive_file_id = None
                 drive_web_url = None
-                if active_cred:
+                if active_cred and getattr(active_cred, "storage_mode", "dual") != "local_only":
                     try:
                         from app.services.drive_service import get_drive_service, resolve_drive_folder_path
                         drive_service = get_drive_service()

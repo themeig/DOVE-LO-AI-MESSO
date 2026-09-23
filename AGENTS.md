@@ -70,7 +70,7 @@ Il server MCP (`app/mcp_server.py`) espone **tutti i 20 tool del caveau** per co
 13. `delete_vault_record`: eliminazione sicura singola o cumulativa (confermabile).
 14. `create_zip_archive`: creazione e download archivio compresso ZIP di file selezionati.
 15. `unzip_vault_archive`: decompressione e catalogazione automatica AI dei file dello ZIP.
-16. `get_google_drive_status`: stato connessione Drive, modalità ('dual'/'cloud_only') e struttura cartelle.
+16. `get_google_drive_status`: stato connessione Drive, modalità ('dual'/'cloud_only'/'local_only') e struttura cartelle.
 17. `scan_local_folder`: scansione e indicizzazione cartelle del computer (es. Download).
 18. `list_watched_folders`: elenco cartelle locali monitorate.
 19. `open_local_file_in_explorer`: apertura nativa in Esplora File di Windows (`explorer.exe`).

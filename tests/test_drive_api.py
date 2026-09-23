@@ -1,4 +1,4 @@
-﻿# tests/test_drive_api.py
+# tests/test_drive_api.py
 from fastapi.testclient import TestClient
 from app.main import app
 from app.models.database import init_db
@@ -35,10 +35,20 @@ def test_drive_callback_and_disconnect():
     assert res_status.json()["connected"] is True
     assert res_status.json()["user_email"] is not None
 
-    # Modifica modalità
+    # Modifica modalità cloud_only
     res_patch = client.patch("/api/drive/settings", json={"storage_mode": "cloud_only"})
     assert res_patch.status_code == 200
     assert res_patch.json()["storage_mode"] == "cloud_only"
+
+    # Modifica modalità local_only
+    res_patch_local = client.patch("/api/drive/settings", json={"storage_mode": "local_only"})
+    assert res_patch_local.status_code == 200
+    assert res_patch_local.json()["storage_mode"] == "local_only"
+
+    # Verifica recupero status con local_only
+    res_status_local = client.get("/api/drive/status")
+    assert res_status_local.status_code == 200
+    assert res_status_local.json()["storage_mode"] == "local_only"
 
     # Disconnessione
     res_disc = client.post("/api/drive/disconnect")
