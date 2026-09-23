@@ -7,6 +7,8 @@
     const micBtn = document.getElementById('micBtn');
     const sendBtn = document.getElementById('sendBtn');
     const chatFeed = document.getElementById('chatFeed');
+    const scrollToBottomBtn = document.getElementById('scrollToBottomBtn');
+    const scrollUnreadBadge = document.getElementById('scrollUnreadBadge');
     const realFileInput = document.getElementById('realFileInput');
 
     let currentThreadId = 'general';
@@ -1720,8 +1722,46 @@
       }
     });
 
-    function scrollBottom() {
-      chatFeed.scrollTop = chatFeed.scrollHeight;
+    function updateScrollToBottomVisibility() {
+      if (!chatFeed || !scrollToBottomBtn) return;
+      const distanceFromBottom = chatFeed.scrollHeight - chatFeed.scrollTop - chatFeed.clientHeight;
+      if (distanceFromBottom > 140) {
+        scrollToBottomBtn.classList.remove('hidden');
+      } else {
+        scrollToBottomBtn.classList.add('hidden');
+        if (scrollUnreadBadge) scrollUnreadBadge.classList.add('hidden');
+      }
+    }
+
+    if (chatFeed) {
+      chatFeed.addEventListener('scroll', updateScrollToBottomVisibility, { passive: true });
+    }
+
+    function scrollToBottom(smooth = false) {
+      if (!chatFeed) return;
+      if (smooth) {
+        chatFeed.scrollTo({ top: chatFeed.scrollHeight, behavior: 'smooth' });
+      } else {
+        chatFeed.scrollTop = chatFeed.scrollHeight;
+      }
+      if (scrollToBottomBtn) scrollToBottomBtn.classList.add('hidden');
+      if (scrollUnreadBadge) scrollUnreadBadge.classList.add('hidden');
+    }
+    window.scrollToBottom = scrollToBottom;
+
+    function scrollBottom(force = false) {
+      if (!chatFeed) return;
+      const distanceFromBottom = chatFeed.scrollHeight - chatFeed.scrollTop - chatFeed.clientHeight;
+      if (force || distanceFromBottom <= 140) {
+        chatFeed.scrollTop = chatFeed.scrollHeight;
+        if (scrollToBottomBtn) scrollToBottomBtn.classList.add('hidden');
+        if (scrollUnreadBadge) scrollUnreadBadge.classList.add('hidden');
+      } else {
+        if (scrollToBottomBtn) {
+          scrollToBottomBtn.classList.remove('hidden');
+          if (scrollUnreadBadge) scrollUnreadBadge.classList.remove('hidden');
+        }
+      }
     }
 
     function getTime() {

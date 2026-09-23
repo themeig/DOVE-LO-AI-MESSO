@@ -177,7 +177,7 @@
           </button>
 
           <!-- Versione App Olivetti Badge -->
-          <span class="stamp-oli text-[9px] font-mono-code font-bold app-version-badge select-none" title="Versione App Caveau">v2.3.0</span>
+          <span class="stamp-oli text-[9px] font-mono-code font-bold app-version-badge select-none" title="Versione App Caveau">v2.3.1</span>
 
           <!-- Elimina Gruppo/Area Personalizzata -->
           <button 
@@ -290,6 +290,19 @@
         <section id="chatFeed" class="flex-1 wa-wallpaper p-3.5 overflow-y-auto space-y-3 custom-scroll">
           <!-- I messaggi vengono iniettati dinamicamente -->
         </section>
+
+        <!-- Pulsante Torna in Basso (Scroll to Bottom) Olivetti -->
+        <button 
+          id="scrollToBottomBtn" 
+          type="button" 
+          onclick="scrollToBottom(true)" 
+          title="Torna agli ultimi messaggi" 
+          aria-label="Torna in fondo alla chat"
+          class="hidden absolute bottom-3 right-4 z-30 w-9 h-9 rounded-xs bg-[#FAF8F2] hover:bg-[#3C5A48] text-[#3C5A48] hover:text-white border border-[#3C5A48] shadow-md transition-all duration-200 flex items-center justify-center cursor-pointer active:scale-90 select-none group"
+        >
+          <i class="fa-solid fa-chevron-down text-sm transition-transform group-hover:translate-y-0.5"></i>
+          <span id="scrollUnreadBadge" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#C84B31] border border-white rounded-full"></span>
+        </button>
 
         <!-- Overlay Drag & Drop per file e cartelle -->
         <div id="dragDropOverlay" class="hidden absolute inset-0 bg-[#3C5A48]/95 z-40 flex flex-col items-center justify-center text-white backdrop-blur-xs transition-all p-6 text-center pointer-events-auto select-none">
@@ -1327,7 +1340,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. CENTRALE</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v2.3.0</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v2.3.1</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PROTOCOLLO CRITTOGRAFATO AES-256-GCM • SINCRONIZZATO IN TEMPO REALE</p>
           </div>
@@ -1606,7 +1619,7 @@
             <div class="flex items-center gap-2">
               <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">SISTEMA & CONFIGURAZIONE</h2>
               <span class="stamp-oli text-[8px]"><span class="w-1.5 h-1.5 rounded-full bg-[#3C5A48] animate-pulse"></span> REG. SISTEMA</span>
-              <span class="stamp-oli text-[8px] app-version-badge">v2.3.0</span>
+              <span class="stamp-oli text-[8px] app-version-badge">v2.3.1</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568] hidden sm:block">PARAMETRI OPERATIVI • MOTORI AI • ARCHIVIAZIONE CLOUD • BACKUP & CRITTOGRAFIA</p>
           </div>
@@ -2283,7 +2296,7 @@
 
       <div class="pt-2 border-t border-[#E3DDD1] flex items-center justify-between text-[10px] text-[#7A7568] font-mono-code">
         <span>Password predefinita: <code class="font-mono font-bold text-[#222220] bg-[#FAF8F2] border border-[#E3DDD1] px-1 py-0.5 rounded-xs">1234</code></span>
-        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v2.3.0</span>
+        <span class="font-mono text-[10px] text-[#7A7568] app-version-badge">v2.3.1</span>
       </div>
 
     </div>
