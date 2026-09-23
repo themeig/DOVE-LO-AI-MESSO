@@ -1297,6 +1297,10 @@
         freeToggle.checked = isFree;
       }
 
+      if (openrouterCreditsData) {
+        updateOpenRouterCreditsUI(openrouterCreditsData);
+      }
+
       if (headerLabel) {
         if (isAuto) {
           headerLabel.textContent = 'Router Intelligente';
@@ -1417,6 +1421,7 @@
       const valFreeRequests = document.getElementById('valFreeRequests');
       const statusBadge = document.getElementById('creditsStatusBadge');
       const quickCreditsVal = document.getElementById('quickCreditsVal');
+      const aiModelSummary = document.getElementById('aiModelCreditsSummary');
 
       const isConfigured = data.is_configured;
       const rem = typeof data.remaining_credits === 'number' ? data.remaining_credits : 0.0;
@@ -1438,6 +1443,16 @@
           quickCreditsVal.className = rem < 2.0 
             ? 'font-mono-code font-bold text-[#C84B31]' 
             : 'font-mono-code font-bold text-[#3C5A48]';
+        }
+      }
+
+      if (aiModelSummary) {
+        if (!isConfigured) {
+          aiModelSummary.textContent = 'Non configurato';
+        } else if (isFreeTier && rem <= 0.001) {
+          aiModelSummary.textContent = 'Modalità Gratuita (Free Tier)';
+        } else {
+          aiModelSummary.textContent = `$${rem.toFixed(2)} disponibili (su $${tot.toFixed(2)} depositati)`;
         }
       }
 
