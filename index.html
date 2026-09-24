@@ -49,6 +49,7 @@
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220]">Dove lo AI messo</h2>
+              <span class="stamp-oli text-[8px] app-version-badge cursor-pointer hover:bg-[#FAF8F2] transition" onclick="window.checkAppUpdates(true)" title="Verifica aggiornamenti">v2.6.1</span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568]">REGISTRO CENTRALE & AREE</p>
           </div>
@@ -147,6 +148,7 @@
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-bold text-xs leading-tight truncate font-space text-[#222220]">Dove lo AI messo</h1>
+              <span class="stamp-oli text-[8px] app-version-badge cursor-pointer hover:bg-[#FAF8F2] transition shrink-0" onclick="window.checkAppUpdates(true)" title="Verifica aggiornamenti">v2.6.1</span>
             </div>
             <p id="activeThreadSubtitle" class="text-[9px] font-mono-code text-[#7A7568] truncate">
               Assistente Personale & Caveau • online
@@ -1701,6 +1703,9 @@
           </div>
         </div>
         <div class="flex items-center gap-2 self-end sm:self-center">
+          <button type="button" onclick="window.checkAppUpdates(true)" class="px-2.5 py-1 text-[10px] font-mono-code text-[#3C5A48] hover:text-white border border-[#3C5A48] rounded-xs bg-white hover:bg-[#3C5A48] transition flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95" title="Verifica la disponibilità di nuovi aggiornamenti">
+            <i class="fa-solid fa-arrows-rotate text-[9px]"></i> Verifica Aggiornamenti
+          </button>
           <a href="/?desktop=true" class="px-2.5 py-1 text-[10px] font-mono-code text-[#7A7568] hover:text-[#3C5A48] border border-[#E3DDD1] rounded-xs bg-[#FAF8F2] hover:bg-white transition flex items-center gap-1.5" title="Forza la visualizzazione Desktop">
             <i class="fa-solid fa-desktop text-[9px]"></i> Visualizzazione Desktop (?desktop=true)
           </a>

@@ -1,6 +1,6 @@
 {
-  "version_code": 260,
-  "version_name": "2.6.0",
+  "version_code": 261,
+  "version_name": "2.6.1",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ All'apertura della chat la visualizzazione scorre subito all'ultimo messaggio; pulsante 'Torna in basso' riposizionato sopra il microfono sia su app Android che desktop."
+  "release_notes": "✨ Sistema aggiornamenti automatico e manuale con bridge nativo AndroidUpdater; verifica istantanea dai badge versione e ripristino in background senza blocchi."
 }

@@ -88,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
     private File pendingInstallApkFile = null;
     private String currentServerUrl;
     private NativeVoiceBridge mNativeVoiceBridge;
+    private long lastAutoCheckTime = 0;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -114,7 +115,8 @@ public class MainActivity extends AppCompatActivity {
         checkAndRequestAppPermissions();
 
         loadUrl(currentServerUrl);
-        checkForUpdates();
+        checkForUpdates(false);
+        lastAutoCheckTime = System.currentTimeMillis();
 
         // Gestione tasto indietro hardware nativo
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -138,6 +140,13 @@ public class MainActivity extends AppCompatActivity {
                 pendingInstallApkFile = null;
                 installDownloadedApk(toInstall);
             }
+        }
+
+        // Controllo periodico aggiornamenti al rientro dall'attività in background (cooldown 60s)
+        long now = System.currentTimeMillis();
+        if (now - lastAutoCheckTime > 60000) {
+            lastAutoCheckTime = now;
+            checkForUpdates(false);
         }
     }
 
@@ -222,13 +231,16 @@ public class MainActivity extends AppCompatActivity {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
 
-        // User Agent mobile moderno
+        // User Agent mobile moderno con versione dinamica
         String defaultUA = settings.getUserAgentString();
-        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/2.6.0");
+        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/" + getLocalVersionName());
 
         // Bridge nativo microfono per registrazione vocale hardware senza vincoli WebRTC HTTP
         mNativeVoiceBridge = new NativeVoiceBridge();
         webView.addJavascriptInterface(mNativeVoiceBridge, "AndroidNativeVoice");
+
+        // Bridge nativo per verifica aggiornamenti manuale da JavaScript
+        webView.addJavascriptInterface(new AndroidUpdater(), "AndroidUpdater");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -432,18 +444,47 @@ public class MainActivity extends AppCompatActivity {
     // SISTEMA AGGIORNAMENTI AUTOMATICI OVER-THE-AIR (OTA) DA GITHUB / LAN
     // =========================================================================
 
+    public long getLocalVersionCode() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                return getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode();
+            } else {
+                return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+            }
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    public String getLocalVersionName() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception ignored) {
+            return "2.6.1";
+        }
+    }
+
     private void checkForUpdates() {
+        checkForUpdates(false);
+    }
+
+    private void checkForUpdates(boolean isManual) {
         Executors.newSingleThreadExecutor().execute(() -> {
-            try {
-                // Attendi 2.5 secondi per dare priorità al caricamento iniziale della UI
-                Thread.sleep(2500);
-            } catch (InterruptedException ignored) {}
+            if (!isManual) {
+                try {
+                    // Attendi 2.5 secondi per dare priorità al caricamento iniziale della UI
+                    Thread.sleep(2500);
+                } catch (InterruptedException ignored) {}
+            } else {
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Verifica disponibilità aggiornamenti...", Toast.LENGTH_SHORT).show());
+            }
 
             JSONObject updateJson = null;
 
-            // 1. Verifica disponibilità aggiornamento da GitHub raw
+            // 1. Verifica disponibilità aggiornamento da GitHub raw con cache-busting (?t=...)
             try {
-                updateJson = fetchJsonFromUrl(GITHUB_VERSION_URL);
+                String githubUrl = GITHUB_VERSION_URL + "?t=" + System.currentTimeMillis();
+                updateJson = fetchJsonFromUrl(githubUrl);
             } catch (Exception ignored) {
                 updateJson = null;
             }
@@ -451,12 +492,17 @@ public class MainActivity extends AppCompatActivity {
             // 2. Se GitHub è irraggiungibile (es. offline) e c'è un server locale, prova dal server locale
             if (updateJson == null && currentServerUrl != null && !currentServerUrl.isEmpty()) {
                 try {
-                    String localUrl = currentServerUrl + (currentServerUrl.endsWith("/") ? "" : "/") + "api/app/version";
+                    String localUrl = currentServerUrl + (currentServerUrl.endsWith("/") ? "" : "/") + "api/app/version?t=" + System.currentTimeMillis();
                     updateJson = fetchJsonFromUrl(localUrl);
                 } catch (Exception ignored) {}
             }
 
-            if (updateJson == null) return;
+            if (updateJson == null) {
+                if (isManual) {
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "⚠️ Impossibile verificare gli aggiornamenti. Verifica la connessione a Internet.", Toast.LENGTH_LONG).show());
+                }
+                return;
+            }
 
             try {
                 int remoteVersionCode = updateJson.optInt("version_code", 0);
@@ -468,20 +514,20 @@ public class MainActivity extends AppCompatActivity {
                     apkUrl = currentServerUrl + apkUrl;
                 }
 
-                long localVersionCode = 0;
-                try {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        localVersionCode = getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode();
-                    } else {
-                        localVersionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
-                    }
-                } catch (Exception ignored) {}
+                long localVersionCode = getLocalVersionCode();
+                String localVersionName = getLocalVersionName();
 
                 if (remoteVersionCode > localVersionCode) {
                     final String finalApkUrl = apkUrl;
                     runOnUiThread(() -> showUpdateDialog(remoteVersionName, releaseNotes, finalApkUrl));
+                } else if (isManual) {
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "✅ Sei già all'ultima versione disponibile (v" + localVersionName + ")", Toast.LENGTH_SHORT).show());
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+                if (isManual) {
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "⚠️ Errore durante la verifica dell'aggiornamento.", Toast.LENGTH_SHORT).show());
+                }
+            }
         });
     }
 
@@ -491,6 +537,8 @@ public class MainActivity extends AppCompatActivity {
         conn.setConnectTimeout(8000);
         conn.setReadTimeout(10000);
         conn.setUseCaches(false);
+        conn.setRequestProperty("Cache-Control", "no-cache");
+        conn.setRequestProperty("User-Agent", "DoveLoAIMessoApp/" + getLocalVersionName());
         conn.setRequestProperty("Accept", "application/json");
 
         if (conn.getResponseCode() == 200) {
@@ -537,6 +585,8 @@ public class MainActivity extends AppCompatActivity {
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setConnectTimeout(15000);
                 conn.setReadTimeout(60000);
+                conn.setUseCaches(false);
+                conn.setRequestProperty("User-Agent", "DoveLoAIMessoApp/" + getLocalVersionName());
                 conn.setInstanceFollowRedirects(true);
                 conn.connect();
 
@@ -734,4 +784,26 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
+    // =========================================================================
+    // NATIVE UPDATER BRIDGE (Verifica Aggiornamenti da JS)
+    // =========================================================================
+
+    public class AndroidUpdater {
+        @JavascriptInterface
+        public void checkNow() {
+            runOnUiThread(() -> checkForUpdates(true));
+        }
+
+        @JavascriptInterface
+        public String getVersionName() {
+            return getLocalVersionName();
+        }
+
+        @JavascriptInterface
+        public long getVersionCode() {
+            return getLocalVersionCode();
+        }
+    }
 }
+

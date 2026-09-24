@@ -37,6 +37,9 @@
           if (data && data.version) {
             document.querySelectorAll('.app-version-badge').forEach(el => {
               el.textContent = 'v' + data.version;
+              el.classList.add('cursor-pointer');
+              el.title = 'Versione ' + data.version + ' (clicca per verificare aggiornamenti)';
+              el.onclick = () => window.checkAppUpdates && window.checkAppUpdates(true);
             });
           }
         })
@@ -82,6 +85,55 @@
     const getAuthHeaders = authHeaders;
     window.getAuthHeaders = authHeaders;
 
+    // --- Sistema Aggiornamenti Over-The-Air (OTA) & Controllo Manuale ---
+    window.checkAppUpdates = async function(isManual = true) {
+      // 1. Se siamo nell'app Android con bridge nativo AndroidUpdater
+      if (window.AndroidUpdater && typeof window.AndroidUpdater.checkNow === 'function') {
+        window.AndroidUpdater.checkNow();
+        return;
+      }
+
+      // 2. Se siamo in un browser desktop o mobile
+      if (isManual && typeof showToast === 'function') {
+        showToast("Verifica disponibilità aggiornamenti in corso...", "info", 2000);
+      }
+
+      try {
+        const res = await fetch('https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/version.json?t=' + Date.now(), { cache: 'no-store' });
+        if (!res.ok) throw new Error("Errore recupero metadati aggiornamento");
+        const remote = await res.json();
+        
+        const localRes = await fetch('/api/version');
+        const localData = await localRes.json();
+        const currentVer = localData.version || "2.6.1";
+
+        if (remote.version_name && remote.version_name !== currentVer) {
+          const notes = remote.release_notes ? ` Note: ${remote.release_notes}` : '';
+          if (typeof showToast === 'function') {
+            showToast(`✨ Nuova versione v${remote.version_name} disponibile!${notes}`, "success", 8000);
+          } else {
+            alert(`✨ Nuova versione v${remote.version_name} disponibile!${notes}`);
+          }
+        } else {
+          if (isManual) {
+            if (typeof showToast === 'function') {
+              showToast(`✅ Sei già all'ultima versione disponibile (v${currentVer})`, "success", 3500);
+            } else {
+              alert(`✅ Sei già all'ultima versione disponibile (v${currentVer})`);
+            }
+          }
+        }
+      } catch (err) {
+        if (isManual) {
+          if (typeof showToast === 'function') {
+            showToast("⚠️ Impossibile verificare gli aggiornamenti al momento.", "warning", 3500);
+          } else {
+            alert("⚠️ Impossibile verificare gli aggiornamenti al momento.");
+          }
+        }
+      }
+    };
+
     // --- Sincronizzazione Versione App Dinamica ---
     async function fetchAppVersion() {
       try {
@@ -91,6 +143,9 @@
           if (data && data.version) {
             document.querySelectorAll('.app-version-badge').forEach(el => {
               el.textContent = 'v' + data.version;
+              el.classList.add('cursor-pointer');
+              el.title = 'Versione ' + data.version + ' (clicca per verificare aggiornamenti)';
+              el.onclick = () => window.checkAppUpdates(true);
             });
           }
         }
