@@ -2604,22 +2604,33 @@
         </div>
       </div>
 
-      <!-- Errore Permessi Fotocamera -->
-      <div id="scannerPermissionError" class="hidden absolute inset-6 bg-white/95 rounded-xs p-6 text-center text-[#222220] flex flex-col items-center justify-center shadow-2xl z-20">
-        <div class="w-12 h-12 rounded-full bg-[#FAECE8] text-[#C84B31] flex items-center justify-center text-xl mb-3">
-          <i class="fa-solid fa-camera-slash"></i>
+      <!-- Errore Permessi / Fallback Fotocamera Nativa -->
+      <div id="scannerPermissionError" class="hidden absolute inset-4 sm:inset-6 bg-white/95 rounded-xs p-5 sm:p-6 text-center text-[#222220] flex flex-col items-center justify-center shadow-2xl z-20">
+        <div class="w-12 h-12 rounded-full bg-[#FAECE8] text-[#C84B31] flex items-center justify-center text-xl mb-2.5">
+          <i class="fa-solid fa-camera"></i>
         </div>
-        <h3 class="font-bold text-sm uppercase font-space mb-1.5">Permesso Fotocamera Richiesto</h3>
-        <p class="text-xs font-mono-code text-[#7A7568] leading-relaxed mb-4">
-          Per inquadrare i documenti con il mirino live è necessario consentire l'accesso alla fotocamera.<br>
-          Se il permesso è stato bloccato, abilitalo nelle Impostazioni dell'app.
+        <h3 class="font-bold text-sm uppercase font-space mb-1">Scatta Foto con Fotocamera</h3>
+        <p class="text-xs font-mono-code text-[#7A7568] leading-relaxed mb-4 max-w-sm">
+          Su rete locale (HTTP), Android protegge l'accesso WebRTC continuo.<br>
+          Puoi scattare direttamente con la <strong>Fotocamera Nativa del tuo Pixel 9</strong>: l'immagine verrà poi raddrizzata e catalogata nello scanner.
         </p>
-        <button 
-          onclick="window.MobileScanner && window.MobileScanner.openScanner()" 
-          class="px-4 py-2 bg-[#3C5A48] text-white rounded-xs text-xs font-bold font-space uppercase shadow-xs active:scale-95 transition"
-        >
-          Riprova Accesso
-        </button>
+        <div class="flex flex-col gap-2 w-full max-w-xs">
+          <button 
+            type="button" 
+            onclick="window.MobileScanner && window.MobileScanner.triggerNativeCamera()" 
+            class="w-full py-2.5 bg-[#C84B31] hover:bg-[#B23E26] text-white rounded-xs text-xs font-bold font-space uppercase shadow-xs active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <i class="fa-solid fa-camera"></i>
+            <span>Apri Fotocamera Pixel 9</span>
+          </button>
+          <button 
+            type="button" 
+            onclick="window.MobileScanner && window.MobileScanner.openScanner()" 
+            class="w-full py-2 border border-[#E3DDD1] bg-white text-[#7A7568] hover:text-[#222220] rounded-xs text-xs font-bold font-space uppercase hover:bg-[#FAF8F2] transition cursor-pointer"
+          >
+            Riprova Mirino Live
+          </button>
+        </div>
       </div>
 
       <!-- Pulsantiera Scatto Meccanico -->

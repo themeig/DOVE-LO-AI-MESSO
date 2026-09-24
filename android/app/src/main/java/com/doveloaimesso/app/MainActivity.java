@@ -13,7 +13,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.View;
+import android.net.http.SslError;
 import android.webkit.PermissionRequest;
+import android.webkit.SslErrorHandler;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -157,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
 
         // User Agent mobile moderno
         String defaultUA = settings.getUserAgentString();
-        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/1.7.6");
+        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/2.5.3");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -170,6 +172,12 @@ public class MainActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
+            }
+
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                // Consenti certificati locali e autofirmati per sviluppo/LAN
+                handler.proceed();
             }
 
             @Override
@@ -218,7 +226,6 @@ public class MainActivity extends AppCompatActivity {
 
                 try {
                     Intent intent = fileChooserParams.createIntent();
-                    intent.addCategory(Intent.CATEGORY_OPENABLE);
                     fileChooserLauncher.launch(intent);
                     return true;
                 } catch (Exception e) {

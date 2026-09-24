@@ -309,35 +309,45 @@
 
     async function handleItemPhotoSelected(event) {
       const file = event.target.files && event.target.files[0];
-      if (!file || !pendingPhotoItemId) return;
-      const itemId = pendingPhotoItemId;
-      pendingPhotoItemId = null;
+      if (!file) return;
 
-      const formData = new FormData();
-      formData.append('file', file);
+      if (pendingPhotoItemId) {
+        const itemId = pendingPhotoItemId;
+        pendingPhotoItemId = null;
 
-      try {
-        const res = await fetch(`/api/items/${itemId}/photo`, {
-          method: 'POST',
-          headers: authHeaders(),
-          body: formData
-        });
-        if (!res.ok) throw new Error('Errore durante il caricamento della foto');
-        const data = await res.json();
+        const formData = new FormData();
+        formData.append('file', file);
 
-        loadDashboard(currentFilter);
+        try {
+          const res = await fetch(`/api/items/${itemId}/photo`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: formData
+          });
+          if (!res.ok) throw new Error('Errore durante il caricamento della foto');
+          const data = await res.json();
 
-        if (data.image_url) {
-          appendAssistantBubble(
-            `📸 **Foto memorizzata!** Ho salvato la foto della posizione per **${data.item_name}**.`,
-            null,
-            null,
-            { item_name: data.item_name, image_url: data.image_url }
-          );
+          loadDashboard(currentFilter);
+
+          if (data.image_url) {
+            appendAssistantBubble(
+              `📸 **Foto memorizzata!** Ho salvato la foto della posizione per **${data.item_name}**.`,
+              null,
+              null,
+              { item_name: data.item_name, image_url: data.image_url }
+            );
+          }
+        } catch (err) {
+          console.error('Errore caricamento foto:', err);
+          alert('Impossibile salvare la foto: ' + err.message);
         }
-      } catch (err) {
-        console.error('Errore caricamento foto:', err);
-        alert('Impossibile salvare la foto: ' + err.message);
+      } else {
+        // Scatto da fotocamera nativa per scanner documentale o chat
+        if (window.MobileScanner && typeof window.MobileScanner.loadExternalImage === 'function') {
+          window.MobileScanner.loadExternalImage(file);
+        } else {
+          processFilesUpload([file]);
+        }
       }
     }
 

@@ -306,9 +306,56 @@
     }
   }
 
-  // --- UI Controller ---
+  // --- UI Controller & Native Camera Fallback ---
+  function triggerNativeCamera() {
+    const itemPhotoInput = document.getElementById('itemPhotoInput');
+    if (itemPhotoInput) {
+      itemPhotoInput.click();
+    } else {
+      const realFileInput = document.getElementById('realFileInput');
+      if (realFileInput) realFileInput.click();
+    }
+  }
+
+  function loadExternalImage(imageFileOrBlob) {
+    if (!imageFileOrBlob) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const img = new Image();
+      img.onload = function () {
+        rawCapturedCanvas = document.createElement('canvas');
+        rawCapturedCanvas.width = img.naturalWidth || img.width;
+        rawCapturedCanvas.height = img.naturalHeight || img.height;
+        const ctx = rawCapturedCanvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        stopCamera();
+
+        // Rileva i 4 angoli del foglio e apri subito la vista ritaglio
+        detectedCorners = detectPaperCorners(rawCapturedCanvas);
+        const modal = document.getElementById('mobileScannerModal');
+        if (modal) {
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+        }
+        setScannerView('crop');
+        renderCropOverlay();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(imageFileOrBlob);
+  }
+
   function openScannerModal(threadId) {
     activeThreadId = threadId || 'general';
+
+    // Se navigator.mediaDevices non è disponibile (es. contesto HTTP locale non sicuro su Android)
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn("navigator.mediaDevices non disponibile in questo contesto (es. HTTP su LAN). Avvio fotocamera nativa.");
+      triggerNativeCamera();
+      return;
+    }
+
     const modal = document.getElementById('mobileScannerModal');
     if (!modal) return;
 
@@ -573,6 +620,8 @@
   window.MobileScanner = {
     openScanner: openScannerModal,
     closeScanner: closeScannerModal,
+    triggerNativeCamera: triggerNativeCamera,
+    loadExternalImage: loadExternalImage,
     captureFrame: captureCurrentFrame,
     applyPerspectiveWarp: applyPerspectiveWarp,
     applyFilter: applyFilter,
