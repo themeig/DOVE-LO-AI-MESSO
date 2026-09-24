@@ -42,7 +42,6 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import android.app.ProgressDialog;
 import android.provider.Settings;
@@ -73,7 +72,6 @@ public class MainActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 1001;
 
     private WebView webView;
-    private SwipeRefreshLayout swipeRefresh;
     private ProgressBar progressBar;
     private LinearLayout errorLayout;
     private EditText etServerUrl;
@@ -97,7 +95,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         webView = findViewById(R.id.webView);
-        swipeRefresh = findViewById(R.id.swipeRefresh);
         progressBar = findViewById(R.id.progressBar);
         errorLayout = findViewById(R.id.errorLayout);
         etServerUrl = findViewById(R.id.etServerUrl);
@@ -151,19 +148,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
-        swipeRefresh.setColorSchemeResources(R.color.primary, R.color.accent);
-        // DISABILITATO DI DEFAULT: Evita che il gesto di scorrimento verso l'alto (trascinamento in basso)
-        // nella chat o nelle liste attivi il pull-to-refresh e ricarichi la pagina dell'app.
-        swipeRefresh.setEnabled(false);
-        swipeRefresh.setOnRefreshListener(() -> {
-            if (webView != null) {
-                webView.clearCache(true);
-                webView.reload();
-            } else {
-                swipeRefresh.setRefreshing(false);
-            }
-        });
-
         btnRetry.setOnClickListener(v -> {
             String url = etServerUrl.getText().toString().trim();
             if (!url.startsWith("http://") && !url.startsWith("https://")) {
@@ -255,7 +239,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(View.GONE);
-                swipeRefresh.setRefreshing(false);
             }
 
             @Override
@@ -268,7 +251,6 @@ public class MainActivity extends AppCompatActivity {
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request.isForMainFrame()) {
                     progressBar.setVisibility(View.GONE);
-                    swipeRefresh.setRefreshing(false);
                     errorLayout.setVisibility(View.VISIBLE);
                     tvErrorDetails.setText("Errore di connessione a: " + currentServerUrl + "\n(" + error.getDescription() + ")");
                 }
@@ -808,10 +790,6 @@ public class MainActivity extends AppCompatActivity {
             return getLocalVersionCode();
         }
 
-        @JavascriptInterface
-        public void setSwipeRefreshEnabled(boolean enabled) {
-            runOnUiThread(() -> swipeRefresh.setEnabled(enabled));
-        }
 
         @JavascriptInterface
         public void reloadApp() {
