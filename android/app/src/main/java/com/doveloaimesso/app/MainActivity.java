@@ -35,17 +35,29 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import android.app.ProgressDialog;
+import android.provider.Settings;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -53,6 +65,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_SERVER_URL = "server_url";
     private static final String DEFAULT_EMULATOR_URL = "http://10.0.2.2:8000";
     private static final String DEFAULT_WIFI_URL = "http://192.168.178.73:8000";
+    private static final String GITHUB_VERSION_URL = "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/version.json";
     private static final int PERMISSION_REQUEST_CODE = 1001;
 
     private WebView webView;
@@ -68,6 +81,7 @@ public class MainActivity extends AppCompatActivity {
     private ActivityResultLauncher<Intent> fileChooserLauncher;
     private Uri mCameraPhotoUri;
     private File mCameraPhotoFile;
+    private File pendingInstallApkFile = null;
     private String currentServerUrl;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -95,6 +109,7 @@ public class MainActivity extends AppCompatActivity {
         checkAndRequestAppPermissions();
 
         loadUrl(currentServerUrl);
+        checkForUpdates();
 
         // Gestione tasto indietro hardware nativo
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -107,6 +122,18 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (pendingInstallApkFile != null && pendingInstallApkFile.exists() && pendingInstallApkFile.length() > 0) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getPackageManager().canRequestPackageInstalls()) {
+                File toInstall = pendingInstallApkFile;
+                pendingInstallApkFile = null;
+                installDownloadedApk(toInstall);
+            }
+        }
     }
 
     private void setupListeners() {
@@ -192,7 +219,7 @@ public class MainActivity extends AppCompatActivity {
 
         // User Agent mobile moderno
         String defaultUA = settings.getUserAgentString();
-        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/2.5.5");
+        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/2.5.6");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -389,6 +416,185 @@ public class MainActivity extends AppCompatActivity {
             if (webView != null) {
                 webView.reload();
             }
+        }
+    }
+
+    // =========================================================================
+    // SISTEMA AGGIORNAMENTI AUTOMATICI OVER-THE-AIR (OTA) DA GITHUB / LAN
+    // =========================================================================
+
+    private void checkForUpdates() {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                // Attendi 2.5 secondi per dare priorità al caricamento iniziale della UI
+                Thread.sleep(2500);
+            } catch (InterruptedException ignored) {}
+
+            JSONObject updateJson = null;
+
+            // 1. Verifica disponibilità aggiornamento da GitHub raw
+            try {
+                updateJson = fetchJsonFromUrl(GITHUB_VERSION_URL);
+            } catch (Exception ignored) {
+                updateJson = null;
+            }
+
+            // 2. Se GitHub è irraggiungibile (es. offline) e c'è un server locale, prova dal server locale
+            if (updateJson == null && currentServerUrl != null && !currentServerUrl.isEmpty()) {
+                try {
+                    String localUrl = currentServerUrl + (currentServerUrl.endsWith("/") ? "" : "/") + "api/app/version";
+                    updateJson = fetchJsonFromUrl(localUrl);
+                } catch (Exception ignored) {}
+            }
+
+            if (updateJson == null) return;
+
+            try {
+                int remoteVersionCode = updateJson.optInt("version_code", 0);
+                String remoteVersionName = updateJson.optString("version_name", "");
+                String apkUrl = updateJson.optString("apk_url", "");
+                String releaseNotes = updateJson.optString("release_notes", "Miglioramenti di stabilità e nuove funzionalità.");
+
+                if (apkUrl.startsWith("/") && currentServerUrl != null) {
+                    apkUrl = currentServerUrl + apkUrl;
+                }
+
+                long localVersionCode = 0;
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        localVersionCode = getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode();
+                    } else {
+                        localVersionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+                    }
+                } catch (Exception ignored) {}
+
+                if (remoteVersionCode > localVersionCode) {
+                    final String finalApkUrl = apkUrl;
+                    runOnUiThread(() -> showUpdateDialog(remoteVersionName, releaseNotes, finalApkUrl));
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
+    private JSONObject fetchJsonFromUrl(String urlString) throws Exception {
+        URL url = new URL(urlString);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setConnectTimeout(8000);
+        conn.setReadTimeout(10000);
+        conn.setUseCaches(false);
+        conn.setRequestProperty("Accept", "application/json");
+
+        if (conn.getResponseCode() == 200) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+                return new JSONObject(sb.toString());
+            }
+        }
+        return null;
+    }
+
+    private void showUpdateDialog(String versionName, String releaseNotes, String apkUrl) {
+        if (isFinishing() || isDestroyed()) return;
+        new AlertDialog.Builder(this)
+                .setTitle("Aggiornamento Disponibile (v" + versionName + ")")
+                .setMessage("È disponibile una nuova versione di Dove lo AI messo:\n\n"
+                        + releaseNotes
+                        + "\n\nVuoi scaricare e installare l'aggiornamento adesso?")
+                .setPositiveButton("Aggiorna Ora", (dialog, which) -> downloadAndInstallApk(apkUrl))
+                .setNegativeButton("Più tardi", null)
+                .setCancelable(true)
+                .show();
+    }
+
+    @SuppressWarnings("deprecation")
+    private void downloadAndInstallApk(String apkUrl) {
+        ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setTitle("Download Aggiornamento");
+        progressDialog.setMessage("Scaricamento del nuovo APK in corso...");
+        progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+        progressDialog.setMax(100);
+        progressDialog.setCancelable(false);
+        progressDialog.show();
+
+        Executors.newSingleThreadExecutor().execute(() -> {
+            File apkFile = new File(getCacheDir(), "DoveLoAIMesso_update.apk");
+            boolean success = false;
+            try {
+                URL url = new URL(apkUrl);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(60000);
+                conn.setInstanceFollowRedirects(true);
+                conn.connect();
+
+                int fileLength = conn.getContentLength();
+                try (InputStream input = conn.getInputStream();
+                     FileOutputStream output = new FileOutputStream(apkFile)) {
+                    byte[] data = new byte[8192];
+                    long total = 0;
+                    int count;
+                    while ((count = input.read(data)) != -1) {
+                        total += count;
+                        if (fileLength > 0) {
+                            int progress = (int) (total * 100 / fileLength);
+                            runOnUiThread(() -> progressDialog.setProgress(progress));
+                        }
+                        output.write(data, 0, count);
+                    }
+                    output.flush();
+                    success = true;
+                }
+            } catch (Exception e) {
+                success = false;
+            }
+
+            final boolean downloaded = success;
+            runOnUiThread(() -> {
+                try {
+                    if (progressDialog.isShowing()) {
+                        progressDialog.dismiss();
+                    }
+                } catch (Exception ignored) {}
+
+                if (downloaded && apkFile.exists() && apkFile.length() > 0) {
+                    installDownloadedApk(apkFile);
+                } else {
+                    Toast.makeText(MainActivity.this, "Errore durante il download dell'APK da GitHub. Riprova più tardi.", Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+    }
+
+    private void installDownloadedApk(File apkFile) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!getPackageManager().canRequestPackageInstalls()) {
+                pendingInstallApkFile = apkFile;
+                Toast.makeText(this, "Autorizza Dove lo AI messo all'installazione dell'aggiornamento", Toast.LENGTH_LONG).show();
+                Intent manageIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + getPackageName()));
+                startActivity(manageIntent);
+                return;
+            }
+        }
+
+        try {
+            Uri apkUri = FileProvider.getUriForFile(
+                    MainActivity.this,
+                    getPackageName() + ".fileprovider",
+                    apkFile
+            );
+
+            Intent installIntent = new Intent(Intent.ACTION_VIEW);
+            installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(installIntent);
+        } catch (Exception e) {
+            Toast.makeText(this, "Errore durante l'apertura dell'installer: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 }

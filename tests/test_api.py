@@ -118,11 +118,11 @@ def test_delete_physical_item():
     assert del_res_again.status_code == 404
 
 def test_chat_delete_confirmation_intent():
-    # Salva un elemento per poi richiederne l'eliminazione
-    client.post("/api/chat", json={"message": "Ho messo la patente nel cassetto dello studio"})
+    # Salva un elemento unico per poi richiederne l'eliminazione
+    client.post("/api/chat", json={"message": "Ho messo l'ombrello verde fluo nel ripostiglio"})
     
     # Chiedi di eliminarlo via chat
-    res = client.post("/api/chat", json={"message": "elimina la patente per favore"})
+    res = client.post("/api/chat", json={"message": "elimina l'ombrello verde fluo per favore"})
     assert res.status_code == 200
     data = res.json()
     assert data["action"] == "REQUEST_DELETE"
@@ -300,5 +300,22 @@ def test_upload_identity_document_has_deadline_and_status_da_pagare():
     assert found["status"] == "da_pagare"
     assert found["due_date"] == "2034-05-18"
     assert found["amount"] is None
+
+def test_mobile_app_version_endpoint():
+    res = client.get("/api/app/version")
+    assert res.status_code == 200
+    data = res.json()
+    assert "version_code" in data
+    assert "version_name" in data
+    assert "apk_url" in data
+    assert data["version_name"] == "2.5.6"
+    assert data["version_code"] == 256
+
+def test_mobile_app_latest_apk_endpoint():
+    res = client.get("/api/app/latest-apk")
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "application/vnd.android.package-archive"
+    assert len(res.content) > 1000000 # > 1 MB
+
 
 

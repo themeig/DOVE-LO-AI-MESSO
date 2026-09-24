@@ -237,3 +237,45 @@ def serve_showcase():
             },
         )
     return HTMLResponse("<h1>Dove lo AI messo — Showcase</h1>")
+
+
+# =========================================================================
+# ENDPOINT AGGIORNAMENTI OTA APPLICAZIONE ANDROID (LOCALE / LAN)
+# =========================================================================
+
+@app.get("/api/app/version")
+def get_mobile_app_version():
+    """Restituisce i metadati di versione per l'auto-updater dell'app Android."""
+    import json
+    from app.version import APP_VERSION
+    version_file = settings.BASE_DIR / "android-release" / "version.json"
+    if version_file.exists():
+        try:
+            return json.loads(version_file.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {
+        "version_code": 256,
+        "version_name": APP_VERSION,
+        "apk_url": "/api/app/latest-apk",
+        "release_notes": "Aggiornamento applicazione"
+    }
+
+
+@app.get("/api/app/latest-apk")
+def download_latest_apk():
+    """Fornisce il download diretto dell'ultimo APK per aggiornamento locale/LAN."""
+    from app.version import APP_VERSION
+    release_apk = settings.BASE_DIR / "android-release" / "app-debug.apk"
+    build_apk = settings.BASE_DIR / "android" / "app" / "build" / "outputs" / "apk" / "debug" / "app-debug.apk"
+
+    target_apk = release_apk if release_apk.exists() else build_apk
+    if not target_apk.exists():
+        raise HTTPException(status_code=404, detail="File APK non ancora compilato sul server.")
+
+    return FileResponse(
+        target_apk,
+        media_type="application/vnd.android.package-archive",
+        filename=f"doveloaimesso-v{APP_VERSION}.apk"
+    )
+

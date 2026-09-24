@@ -21,6 +21,9 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
+    <!-- Permesso per avvio installazione aggiornamenti APK (OTA auto-updater) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!-- Package Visibility (Android 11+) per avvio fotocamera nativa -->
     <queries>
         <intent>
