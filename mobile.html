@@ -4,10 +4,416 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
   <title>Dove lo AI messo — Mobile</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/olivetti.css">
+  <style>
+    /* Safe-area insets per smartphone e WebView APK */
+    body {
+      min-height: 100dvh;
+      height: 100dvh;
+      touch-action: manipulation;
+    }
+    .safe-bottom {
+      padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    }
+    .safe-top {
+      padding-top: max(0.25rem, env(safe-area-inset-top));
+    }
+    /* Mirino scanner con reticolo e angoli */
+    .scanner-reticle {
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+    }
+  </style>
 </head>
-<body class="bg-[#F8F5EE] text-[#222220]">
-  <div id="mobileAppContainer">
-    <p>Caricamento Mobile...</p>
+<body class="flex flex-col bg-[#F8F5EE] text-[#222220] theme-olivetti relative overflow-hidden select-none">
+
+  <!-- Invisible file inputs for real uploads -->
+  <input type="file" id="realFileInput" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv,.tsv,.txt,.json,.zip,.rar,.7z" multiple style="display:none">
+  <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none">
+  <input type="file" id="itemPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleItemPhotoSelected(event)">
+
+  <!-- ================================================================= -->
+  <!-- TOP HEADER MOBILE OLIVETTI                                        -->
+  <!-- ================================================================= -->
+  <header class="h-[56px] safe-top bg-[#F8F5EE] border-b border-[#E3DDD1] px-3 flex items-center justify-between shrink-0 z-30 select-none">
+    <!-- Brand / Logo -->
+    <div class="flex items-center space-x-2">
+      <div class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs font-black shadow-xs">
+        <i class="fa-solid fa-vault"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-1.5">
+          <h1 class="font-bold text-xs uppercase font-space text-[#222220] tracking-tight">Dove lo AI messo</h1>
+          <span class="stamp-oli text-[8px]">MOBILE</span>
+        </div>
+        <p class="text-[8px] font-mono-code text-[#7A7568]">CAVEAU INTELLIGENTE</p>
+      </div>
+    </div>
+
+    <!-- Azioni Top Header -->
+    <div class="flex items-center space-x-2">
+      <!-- Pulsante Toggle Chat / Dashboard -->
+      <button 
+        id="btnHeaderToggleView" 
+        onclick="toggleDashboardView()" 
+        class="px-2.5 py-1.5 border border-[#3C5A48] bg-white text-[#3C5A48] hover:bg-[#3C5A48] hover:text-white rounded-xs text-[11px] font-bold font-space uppercase flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+        title="Passa a Dashboard / Chat"
+      >
+        <i class="fa-solid fa-chart-pie text-xs"></i>
+        <span id="headerToggleLabel">DASHBOARD</span>
+      </button>
+
+      <!-- Passa a Versione Desktop -->
+      <a 
+        href="/?desktop=true" 
+        class="w-8 h-8 rounded-xs border border-[#E3DDD1] bg-white text-[#7A7568] hover:text-[#3C5A48] hover:border-[#3C5A48] flex items-center justify-center text-xs shadow-xs transition" 
+        title="Passa alla versione Desktop per computer"
+      >
+        <i class="fa-solid fa-desktop"></i>
+      </a>
+    </div>
+  </header>
+
+  <!-- ================================================================= -->
+  <!-- VIEWPORT SCHERMATE (CHAT & DASHBOARD SLIDER)                      -->
+  <!-- ================================================================= -->
+  <div id="appScreensViewport" class="flex-1 w-full overflow-hidden relative">
+
+    <!-- =============================================================== -->
+    <!-- 1. VISTA CHAT MOBILE (REGISTRO DATTILOSCRITTO)                  -->
+    <!-- =============================================================== -->
+    <div id="chatView" class="w-full h-full flex flex-col bg-[#F8F5EE] overflow-hidden">
+      
+      <!-- Area Messaggi / Log Dattiloscritto -->
+      <div id="chatMessages" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 relative overscroll-contain">
+        <!-- Nastro dattilografico di benvenuto -->
+        <div class="flex justify-center my-2">
+          <div class="inline-flex items-center gap-2 px-3 py-1 bg-white border border-[#E3DDD1] rounded-xs shadow-xs text-[10px] font-mono-code text-[#7A7568]">
+            <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+            <span>NASTRO OLIVETTI ATTIVO • CAVEAU PRONTO</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating Scroll-to-bottom Button -->
+      <button 
+        id="btnScrollToBottom" 
+        onclick="scrollToBottomChat(true)"
+        class="hidden absolute right-4 bottom-20 z-20 w-9 h-9 rounded-full bg-[#3C5A48] text-white shadow-lg flex items-center justify-center border-2 border-white transition active:scale-95 cursor-pointer"
+        title="Scorri fino all'ultimo messaggio"
+      >
+        <i class="fa-solid fa-arrow-down text-xs"></i>
+        <span id="unreadScrollBadge" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-[#C84B31] rounded-full border border-white"></span>
+      </button>
+
+      <!-- Barra Input Meccanica Mobile (Safe Area Bottom) -->
+      <div class="p-2 sm:p-3 bg-[#F8F5EE] border-t border-[#E3DDD1] safe-bottom shrink-0">
+        <div class="flex items-end gap-1.5 bg-white border border-[#E3DDD1] p-1.5 rounded-xs shadow-xs focus-within:border-[#3C5A48] transition">
+          
+          <!-- Tasto Scanner Fotocamera (Primario per Mobile) -->
+          <button 
+            id="btnOpenScanner" 
+            type="button" 
+            onclick="window.MobileScanner && window.MobileScanner.openScanner()" 
+            title="Scannerizza Documento o Scontrino con la fotocamera"
+            class="w-10 h-10 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-sm shadow-xs active:scale-95 transition cursor-pointer shrink-0"
+          >
+            <i class="fa-solid fa-camera"></i>
+          </button>
+
+          <!-- Tasto Allega File da memoria telefono -->
+          <label 
+            for="realFileInput" 
+            title="Carica PDF o Immagine dal telefono" 
+            class="w-10 h-10 rounded-xs border border-[#E3DDD1] bg-white text-[#7A7568] hover:text-[#3C5A48] hover:border-[#3C5A48] flex items-center justify-center text-sm shadow-xs active:scale-95 transition cursor-pointer shrink-0"
+          >
+            <i class="fa-solid fa-paperclip"></i>
+          </label>
+
+          <!-- Tasto Microfono Dettatura Vocale Whisper -->
+          <button 
+            id="micButton" 
+            type="button" 
+            onclick="toggleAudioRecording()" 
+            title="Registra nota vocale per memorizzare oggetti o fare domande"
+            class="w-10 h-10 rounded-xs border border-[#E3DDD1] bg-white text-[#7A7568] hover:text-[#C84B31] hover:border-[#C84B31] flex items-center justify-center text-sm shadow-xs active:scale-95 transition cursor-pointer shrink-0"
+          >
+            <i class="fa-solid fa-microphone"></i>
+          </button>
+
+          <!-- Textarea Input Dattiloscritto -->
+          <textarea 
+            id="messageInput" 
+            rows="1" 
+            placeholder="Scrivi o scansiona un documento..."
+            class="flex-1 max-h-32 p-2 bg-transparent text-[#222220] placeholder-[#7A7568] text-xs font-mono-code focus:outline-none resize-none leading-relaxed"
+            onkeydown="handleMessageInputKey(event)"
+          ></textarea>
+
+          <!-- Tasto Invio Meccanico -->
+          <button 
+            id="sendBtn" 
+            type="button" 
+            onclick="sendMessage()" 
+            title="Invia messaggio"
+            class="w-10 h-10 rounded-xs bg-[#222220] text-white flex items-center justify-center text-sm shadow-xs active:scale-95 transition cursor-pointer shrink-0"
+          >
+            <i class="fa-solid fa-arrow-turn-down fa-rotate-90"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- 2. VISTA DASHBOARD MOBILE (REGISTRO SCADENZE & CAVEAU)          -->
+    <!-- =============================================================== -->
+    <div id="dashboardView" class="w-full h-full flex flex-col bg-[#F8F5EE] overflow-y-auto hidden p-3 space-y-3.5 safe-bottom">
+      
+      <!-- Top Bar Dashboard Mobile -->
+      <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-2.5">
+        <div>
+          <h2 class="font-bold text-sm font-space uppercase text-[#222220]">Registro Scadenze</h2>
+          <p class="text-[9px] font-mono-code text-[#7A7568]">FALDONI, UTENZE & FISCO</p>
+        </div>
+        <button 
+          onclick="toggleDashboardView()" 
+          class="px-2.5 py-1 border border-[#3C5A48] bg-white text-[#3C5A48] rounded-xs text-[10px] font-bold font-space uppercase"
+        >
+          ← Torna alla Chat
+        </button>
+      </div>
+
+      <!-- Bento-Grid KPI Compatta -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <!-- Totale da Saldare -->
+        <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-xs">
+          <span class="text-[8px] font-mono-code text-[#7A7568] uppercase block font-bold">DA SALDARE</span>
+          <div id="kpiTotalUpcoming" class="text-xl font-bold font-mono-code text-[#C84B31] mt-1">0,00 €</div>
+          <span class="text-[9px] font-mono-code text-[#7A7568] mt-0.5 block" id="kpiPendingCount">0 scadenze</span>
+        </div>
+
+        <!-- Documenti Protocollati -->
+        <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-xs">
+          <span class="text-[8px] font-mono-code text-[#7A7568] uppercase block font-bold">DOCUMENTI</span>
+          <div id="kpiTotalDocuments" class="text-xl font-bold font-mono-code text-[#3C5A48] mt-1">0</div>
+          <span class="text-[9px] font-mono-code text-[#7A7568] mt-0.5 block">file archiviati</span>
+        </div>
+
+        <!-- Oggetti Fisici -->
+        <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-xs">
+          <span class="text-[8px] font-mono-code text-[#7A7568] uppercase block font-bold">OGGETTI FISICI</span>
+          <div id="kpiTotalItems" class="text-xl font-bold font-mono-code text-[#222220] mt-1">0</div>
+          <span class="text-[9px] font-mono-code text-[#7A7568] mt-0.5 block">posizioni memorizzate</span>
+        </div>
+
+        <!-- Google Drive Cloud Sync -->
+        <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-xs">
+          <span class="text-[8px] font-mono-code text-[#7A7568] uppercase block font-bold">DRIVE SYNC</span>
+          <div id="kpiDriveState" class="text-xl font-bold font-mono-code text-[#3C5A48] mt-1">LOCALE</div>
+          <span class="text-[9px] font-mono-code text-[#7A7568] mt-0.5 block" id="kpiDriveSub">Caveau protetto</span>
+        </div>
+      </div>
+
+      <!-- Elenco Scadenze Imminenti -->
+      <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-xs space-y-2">
+        <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-1.5">
+          <span class="text-[10px] font-bold font-space uppercase text-[#222220]">Scadenziario & Rate</span>
+          <span class="stamp-oli text-[8px]" id="deadlineFilterCount">Attivo</span>
+        </div>
+        <div id="dashboardDeadlinesList" class="space-y-2 text-xs font-mono-code">
+          <p class="text-[11px] text-[#7A7568] py-2 text-center">Caricamento scadenziario...</p>
+        </div>
+      </div>
+    </div>
+
   </div>
+
+  <!-- ================================================================= -->
+  <!-- 3. MODALE SCANNER DOCUMENTALE A TUTTO SCHERMO                    -->
+  <!-- ================================================================= -->
+  <div id="mobileScannerModal" class="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between hidden select-none animate-in fade-in duration-200">
+    
+    <!-- Top Bar Scanner -->
+    <div class="h-14 bg-black/70 border-b border-white/10 px-4 flex items-center justify-between text-white shrink-0 safe-top">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-expand text-[#C84B31]"></i>
+        <span class="font-bold text-xs uppercase font-space tracking-wide">Scanner Ottico Olivetti</span>
+      </div>
+      <button 
+        type="button" 
+        onclick="window.MobileScanner && window.MobileScanner.closeScanner()" 
+        class="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition cursor-pointer"
+      >
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+    </div>
+
+    <!-- Vista 1: Mirino Live Fotocamera -->
+    <div id="scannerCameraView" class="flex-1 flex flex-col relative overflow-hidden items-center justify-center">
+      <video id="scannerVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+
+      <!-- Reticolo / Maschera Guida Documento -->
+      <div class="absolute inset-x-8 inset-y-16 pointer-events-none border-2 border-emerald-400/80 rounded-sm scanner-reticle flex flex-col justify-between p-2">
+        <div class="flex justify-between">
+          <span class="w-4 h-4 border-t-2 border-l-2 border-emerald-400"></span>
+          <span class="w-4 h-4 border-t-2 border-r-2 border-emerald-400"></span>
+        </div>
+        <div class="text-center">
+          <span class="px-2.5 py-1 bg-black/60 text-white rounded text-[10px] font-mono-code">Inquadra il foglio</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="w-4 h-4 border-b-2 border-l-2 border-emerald-400"></span>
+          <span class="w-4 h-4 border-b-2 border-r-2 border-emerald-400"></span>
+        </div>
+      </div>
+
+      <!-- Errore Permessi Fotocamera -->
+      <div id="scannerPermissionError" class="hidden absolute inset-6 bg-white/95 rounded-xs p-6 text-center text-[#222220] flex flex-col items-center justify-center shadow-2xl z-20">
+        <div class="w-12 h-12 rounded-full bg-[#FAECE8] text-[#C84B31] flex items-center justify-center text-xl mb-3">
+          <i class="fa-solid fa-camera-slash"></i>
+        </div>
+        <h3 class="font-bold text-sm uppercase font-space mb-1.5">Permesso Fotocamera Richiesto</h3>
+        <p class="text-xs font-mono-code text-[#7A7568] leading-relaxed mb-4">
+          Per inquadrare i documenti con il mirino live è necessario consentire l'accesso alla fotocamera.<br>
+          Se il permesso è stato bloccato, abilitalo nelle Impostazioni dell'app.
+        </p>
+        <button 
+          onclick="window.MobileScanner && window.MobileScanner.openScanner()" 
+          class="px-4 py-2 bg-[#3C5A48] text-white rounded-xs text-xs font-bold font-space uppercase shadow-xs active:scale-95 transition"
+        >
+          Riprova Accesso
+        </button>
+      </div>
+
+      <!-- Pulsantiera Scatto Meccanico -->
+      <div class="absolute bottom-6 inset-x-0 flex items-center justify-center gap-6 safe-bottom">
+        <button 
+          id="btnShutter" 
+          type="button" 
+          onclick="window.MobileScanner && window.MobileScanner.captureFrame()" 
+          class="w-18 h-18 rounded-full border-4 border-white bg-[#C84B31] flex items-center justify-center shadow-2xl active:scale-90 transition cursor-pointer"
+          title="Scatta Foto"
+        >
+          <div class="w-12 h-12 rounded-full bg-white/20 border border-white/50"></div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Vista 2: Regolazione 4 Angoli con Touch -->
+    <div id="scannerCropView" class="hidden flex-1 flex flex-col relative overflow-hidden items-center justify-between p-3 bg-neutral-900">
+      <div class="text-center text-white/90 text-xs font-mono-code pt-1">
+        Trascina i 4 angoli rossi per allineare i bordi del foglio
+      </div>
+      
+      <div class="flex-1 w-full flex items-center justify-center relative my-2 overflow-hidden">
+        <canvas id="scannerCropCanvas" class="max-w-full max-h-full border border-white/20 shadow-2xl touch-none"></canvas>
+      </div>
+
+      <div class="w-full flex items-center justify-between gap-3 safe-bottom pt-2">
+        <button 
+          type="button" 
+          onclick="window.MobileScanner && window.MobileScanner.retake()" 
+          class="flex-1 py-2.5 border border-white/30 text-white rounded-xs text-xs font-space font-bold uppercase transition hover:bg-white/10"
+        >
+          <i class="fa-solid fa-rotate-left mr-1"></i> Rifai Scatto
+        </button>
+        <button 
+          type="button" 
+          onclick="window.MobileScanner && window.MobileScanner.confirmCrop()" 
+          class="flex-1 py-2.5 bg-[#3C5A48] text-white rounded-xs text-xs font-space font-bold uppercase shadow-xs active:scale-95 transition"
+        >
+          Raddrizza <i class="fa-solid fa-arrow-right ml-1"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Vista 3: Selezione Filtri & Invio al Caveau -->
+    <div id="scannerFilterView" class="hidden flex-1 flex flex-col relative overflow-hidden items-center justify-between p-3 bg-neutral-900">
+      <div class="text-center text-white/90 text-xs font-mono-code pt-1">
+        Scegli il filtro di contrasto per il documento
+      </div>
+
+      <div class="flex-1 w-full flex items-center justify-center relative my-2 overflow-hidden">
+        <img id="scannerPreviewImg" class="max-w-full max-h-full object-contain border border-white/20 shadow-2xl bg-white" alt="Anteprima Scansione">
+      </div>
+
+      <!-- Filtri Selector -->
+      <div class="w-full flex items-center justify-center gap-2 my-2">
+        <button 
+          type="button" 
+          data-filter="original" 
+          onclick="window.MobileScanner && window.MobileScanner.setFilter('original')" 
+          class="scanner-filter-btn px-3 py-1.5 rounded-xs border border-white/30 text-xs font-mono-code text-white bg-transparent transition"
+        >
+          Originale
+        </button>
+        <button 
+          type="button" 
+          data-filter="magic_color" 
+          onclick="window.MobileScanner && window.MobileScanner.setFilter('magic_color')" 
+          class="scanner-filter-btn px-3 py-1.5 rounded-xs border border-[#3C5A48] text-xs font-mono-code text-white bg-[#3C5A48] transition"
+        >
+          ✨ Nitido Colore
+        </button>
+        <button 
+          type="button" 
+          data-filter="bw" 
+          onclick="window.MobileScanner && window.MobileScanner.setFilter('bw')" 
+          class="scanner-filter-btn px-3 py-1.5 rounded-xs border border-white/30 text-xs font-mono-code text-white bg-transparent transition"
+        >
+          📄 Bianco & Nero
+        </button>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="w-full flex items-center justify-between gap-3 safe-bottom pt-1">
+        <button 
+          type="button" 
+          onclick="window.MobileScanner && window.MobileScanner.confirmCrop()" 
+          class="w-1/3 py-2.5 border border-white/30 text-white rounded-xs text-xs font-space font-bold uppercase transition hover:bg-white/10"
+        >
+          Angoli
+        </button>
+        <button 
+          id="btnSubmitScan" 
+          type="button" 
+          onclick="window.MobileScanner && window.MobileScanner.uploadCurrentScan()" 
+          class="flex-1 py-2.5 bg-[#C84B31] text-white rounded-xs text-xs font-space font-bold uppercase shadow-md active:scale-95 transition"
+        >
+          <i class="fa-solid fa-stamp mr-1.5"></i> Protocolla nel Caveau
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- JAVASCRIPT BUNDLES -->
+  <script src="/static/js/mobile-scanner.js"></script>
+  <script src="/static/js/app-bundle.js" defer></script>
+
+  <script>
+    // Helper per toggle Chat / Dashboard in testata mobile
+    function toggleDashboardView() {
+      const chat = document.getElementById('chatView');
+      const dash = document.getElementById('dashboardView');
+      const lbl = document.getElementById('headerToggleLabel');
+      if (!chat || !dash) return;
+
+      const isChatVisible = !chat.classList.contains('hidden');
+      if (isChatVisible) {
+        chat.classList.add('hidden');
+        dash.classList.remove('hidden');
+        if (lbl) lbl.textContent = "CHAT";
+        if (typeof window.loadDashboardData === 'function') {
+          window.loadDashboardData();
+        }
+      } else {
+        dash.classList.add('hidden');
+        chat.classList.remove('hidden');
+        if (lbl) lbl.textContent = "DASHBOARD";
+      }
+    }
+  </script>
 </body>
 </html>
