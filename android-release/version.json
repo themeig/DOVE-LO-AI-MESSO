@@ -1,6 +1,6 @@
 {
-  "version_code": 258,
-  "version_name": "2.5.8",
+  "version_code": 259,
+  "version_name": "2.5.9",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "🎙️ Registrazione vocale nativa hardware su Android (bypassa blocchi WebRTC HTTP), fallback registratore vocale e supporto audio m4a/aac."
+  "release_notes": "✨ Rimozione icona emoji dal campo chat (desktop e mobile) per un design dattiloscritto ancora più pulito ed ergonomico."
 }
