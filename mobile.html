@@ -336,30 +336,32 @@
       <!-- Barra Input Stile Olivetti Industrial (Tasti Lettera 22) -->
       <footer class="bg-[#F8F5EE] border-t border-[#E3DDD1] px-3 py-2 flex flex-col shrink-0 select-none relative">
         <div class="flex items-center space-x-2">
-          <!-- Graffetta con Menu Allegati Olivetti -->
+          <!-- Tasto Più (+) con Menu Allegati Olivetti -->
           <div class="relative">
             <button 
               type="button" 
               id="attachmentBtn"
               onclick="toggleAttachmentMenu(event)" 
-              title="Allega file o cartella" 
-              aria-label="Allega file o cartella"
-              class="w-9 h-9 border border-[#3C5A48] bg-white text-[#3C5A48] rounded-xs flex items-center justify-center hover:bg-[#3C5A48] hover:text-white transition cursor-pointer text-sm shadow-xs"
+              title="Aggiungi file, cartella, foto o scansiona" 
+              aria-label="Aggiungi file, cartella, foto o scansiona"
+              class="w-[42px] h-[42px] min-h-[42px] border border-[#3C5A48] bg-white text-[#3C5A48] rounded-xs flex items-center justify-center hover:bg-[#3C5A48] hover:text-white transition cursor-pointer text-base shadow-xs shrink-0"
             >
-              <i class="fa-solid fa-paperclip"></i>
+              <i class="fa-solid fa-plus text-sm"></i>
             </button>
 
-            <!-- Menu Allegati Popover -->
-            <div id="attachmentMenu" class="hidden absolute bottom-12 left-0 bg-white rounded-xs shadow-xl border border-[#E3DDD1] py-2 w-60 z-50 animate-in fade-in zoom-in-95 duration-100 select-none">
+            <!-- Menu Opzioni (+) Popover -->
+            <div id="attachmentMenu" class="hidden absolute bottom-12 left-0 bg-white rounded-xs shadow-xl border border-[#E3DDD1] py-2 w-64 z-50 animate-in fade-in zoom-in-95 duration-100 select-none">
+              <!-- 1. Carica File -->
               <button type="button" onclick="triggerFileInput()" class="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-[#FAF8F2] text-slate-700 text-xs font-semibold transition cursor-pointer">
                 <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-sm shrink-0">
-                  <i class="fa-solid fa-file-lines"></i>
+                  <i class="fa-solid fa-file-arrow-up"></i>
                 </div>
                 <div class="text-left">
-                  <div class="text-[#222220] font-bold font-space">Documenti / File</div>
-                  <div class="text-[10px] text-[#7A7568] font-mono-code font-normal">PDF, Immagini, Word, Excel, ZIP</div>
+                  <div class="text-[#222220] font-bold font-space">Carica File</div>
+                  <div class="text-[10px] text-[#7A7568] font-mono-code font-normal">PDF, immagini, Word, Excel, ZIP</div>
                 </div>
               </button>
+              <!-- 2. Carica Cartella -->
               <button type="button" onclick="triggerFolderInput()" class="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-[#FAF8F2] text-slate-700 text-xs font-semibold transition cursor-pointer">
                 <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#C84B31] flex items-center justify-center text-sm shrink-0">
                   <i class="fa-solid fa-folder-open"></i>
@@ -369,21 +371,37 @@
                   <div class="text-[10px] text-[#7A7568] font-mono-code font-normal">Tutti i file di una directory</div>
                 </div>
               </button>
+              <!-- 3. Foto -->
               <button type="button" onclick="triggerCameraInput()" class="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-[#FAF8F2] text-slate-700 text-xs font-semibold transition cursor-pointer">
-                <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-purple-700 flex items-center justify-center text-sm shrink-0">
+                <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-amber-700 flex items-center justify-center text-sm shrink-0">
                   <i class="fa-solid fa-camera"></i>
                 </div>
                 <div class="text-left">
-                  <div class="text-[#222220] font-bold font-space">Foto Posizione</div>
-                  <div class="text-[10px] text-[#7A7568] font-mono-code font-normal">Scatta o allega foto oggetto</div>
+                  <div class="text-[#222220] font-bold font-space">Foto</div>
+                  <div class="text-[10px] text-[#7A7568] font-mono-code font-normal">Scatta foto o fotocamera nativa</div>
+                </div>
+              </button>
+              <!-- 4. Scannerizza -->
+              <button 
+                id="btnOpenScanner"
+                type="button" 
+                onclick="triggerScanner()" 
+                class="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-[#FAF8F2] text-slate-700 text-xs font-semibold transition cursor-pointer"
+              >
+                <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-sm shrink-0">
+                  <i class="fa-solid fa-crop-simple"></i>
+                </div>
+                <div class="text-left">
+                  <div class="text-[#222220] font-bold font-space">Scannerizza</div>
+                  <div class="text-[10px] text-[#7A7568] font-mono-code font-normal">Scanner con rilevamento 4 bordi</div>
                 </div>
               </button>
             </div>
           </div>
 
-          <!-- Input di Testo Dattiloscritto Olivetti -->
-          <form id="chatForm" onsubmit="handleSend(event)" class="flex-1 flex items-center bg-white rounded-xs px-3 py-1.5 border border-[#3C5A48] min-h-[40px] shadow-xs">
-            <button type="button" aria-label="Scegli emoji" class="text-[#7A7568] hover:text-[#222220] mr-2 text-sm w-7 h-7 flex items-center justify-center cursor-pointer" title="Emoji">
+          <!-- Input di Testo Dattiloscritto Olivetti (Senza fotocamera a destra) -->
+          <form id="chatForm" onsubmit="handleSend(event)" class="flex-1 h-[42px] min-h-[42px] flex items-center bg-white rounded-xs px-3 border border-[#3C5A48] shadow-xs">
+            <button type="button" aria-label="Scegli emoji" class="text-[#7A7568] hover:text-[#222220] mr-2 text-sm w-7 h-7 flex items-center justify-center cursor-pointer shrink-0" title="Emoji">
               <i class="fa-regular fa-face-smile"></i>
             </button>
             <input 
@@ -394,20 +412,10 @@
               autocomplete="off"
               aria-label="Messaggio per l'assistente"
             >
-            <button 
-              id="btnOpenScanner"
-              type="button" 
-              onclick="window.MobileScanner ? window.MobileScanner.openScanner() : triggerCameraInput()" 
-              title="Fotocamera e Scanner Documenti" 
-              aria-label="Fotocamera e Scanner Documenti"
-              class="text-[#7A7568] hover:text-[#3C5A48] ml-2 text-sm cursor-pointer w-7 h-7 flex items-center justify-center"
-            >
-              <i class="fa-solid fa-camera"></i>
-            </button>
           </form>
 
           <!-- Barra di Registrazione Vocale Olivetti -->
-          <div id="voiceRecordingBar" class="hidden flex-1 flex items-center justify-between bg-[#FAF8F2] rounded-xs px-3.5 py-1.5 border border-[#C84B31] min-h-[40px]">
+          <div id="voiceRecordingBar" class="hidden flex-1 h-[42px] min-h-[42px] flex items-center justify-between bg-[#FAF8F2] rounded-xs px-3.5 border border-[#C84B31] shadow-xs">
             <div class="flex items-center gap-2.5 min-w-0">
               <span class="relative flex h-2.5 w-2.5 shrink-0">
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C84B31] opacity-75"></span>
@@ -451,7 +459,7 @@
             </div>
           </div>
 
-          <!-- Microfono Vocale Lettera 22 -->
+          <!-- Microfono Vocale Lettera 22 (Stessa altezza h-[42px] del form) -->
           <button 
             id="micBtn" 
             data-testid="btnVoiceRecord"
@@ -459,31 +467,31 @@
             onclick="startVoiceRecording()" 
             title="Registra vocale" 
             aria-label="Registra messaggio vocale"
-            class="w-9 h-9 border border-[#3C5A48] bg-white text-[#3C5A48] rounded-xs flex items-center justify-center hover:bg-[#3C5A48] hover:text-white transition shadow-xs active:scale-95 cursor-pointer btnVoiceRecord"
+            class="w-[42px] h-[42px] min-h-[42px] border border-[#3C5A48] bg-white text-[#3C5A48] rounded-xs flex items-center justify-center hover:bg-[#3C5A48] hover:text-white transition shadow-xs active:scale-95 cursor-pointer btnVoiceRecord shrink-0"
           >
             <i class="fa-solid fa-microphone text-sm"></i>
           </button>
 
-          <!-- Tasto Invio Terracotta Lettera 22 -->
+          <!-- Tasto Invio Terracotta Lettera 22 (Stessa altezza h-[42px] del form) -->
           <button 
             id="sendBtn" 
             type="button" 
             onclick="handleSend(event)" 
-            title="Invia a ruolo" 
+            title="Invia messaggio" 
             aria-label="Invia messaggio"
-            class="hidden w-9 h-9 bg-[#C84B31] hover:bg-[#B23E26] text-white rounded-xs items-center justify-center shadow-xs active:scale-95 transition cursor-pointer"
+            class="hidden w-[42px] h-[42px] min-h-[42px] bg-[#C84B31] hover:bg-[#B23E26] text-white rounded-xs items-center justify-center shadow-xs active:scale-95 transition cursor-pointer shrink-0"
           >
             <i class="fa-solid fa-arrow-up text-sm"></i>
           </button>
 
-          <!-- Tasto Interrompi Generazione (Stop Button) -->
+          <!-- Tasto Interrompi Generazione (Stop Button) (Stessa altezza h-[42px] del form) -->
           <button 
             id="stopBtn" 
             type="button" 
             onclick="abortGeneration()" 
             title="Interrompi generazione" 
             aria-label="Interrompi elaborazione AI"
-            class="hidden w-9 h-9 bg-[#C84B31] hover:bg-[#B23E26] text-white rounded-xs items-center justify-center shadow-xs active:scale-95 transition cursor-pointer"
+            class="hidden w-[42px] h-[42px] min-h-[42px] bg-[#C84B31] hover:bg-[#B23E26] text-white rounded-xs items-center justify-center shadow-xs active:scale-95 transition cursor-pointer shrink-0"
           >
             <i class="fa-solid fa-stop text-sm"></i>
           </button>

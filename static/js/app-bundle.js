@@ -3261,6 +3261,19 @@
       else if (realFileInput) realFileInput.click();
     }
 
+    function triggerScanner() {
+      if (attachmentMenu) attachmentMenu.classList.add('hidden');
+      if (window.MobileScanner && typeof window.MobileScanner.openScanner === 'function') {
+        window.MobileScanner.openScanner();
+      } else {
+        triggerCameraInput();
+      }
+    }
+    window.triggerScanner = triggerScanner;
+    window.triggerCameraInput = triggerCameraInput;
+    window.triggerFileInput = triggerFileInput;
+    window.triggerFolderInput = triggerFolderInput;
+
     function formatBytes(bytes) {
       if (!bytes || bytes === 0) return '0 B';
       const k = 1024;

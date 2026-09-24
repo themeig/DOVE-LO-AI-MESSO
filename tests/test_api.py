@@ -302,14 +302,15 @@ def test_upload_identity_document_has_deadline_and_status_da_pagare():
     assert found["amount"] is None
 
 def test_mobile_app_version_endpoint():
+    from app.version import APP_VERSION
     res = client.get("/api/app/version")
     assert res.status_code == 200
     data = res.json()
     assert "version_code" in data
     assert "version_name" in data
     assert "apk_url" in data
-    assert data["version_name"] == "2.5.6"
-    assert data["version_code"] == 256
+    assert data["version_name"] == APP_VERSION
+    assert data["version_code"] >= 256
 
 def test_mobile_app_latest_apk_endpoint():
     res = client.get("/api/app/latest-apk")

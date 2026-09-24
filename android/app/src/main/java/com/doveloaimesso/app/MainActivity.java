@@ -219,7 +219,7 @@ public class MainActivity extends AppCompatActivity {
 
         // User Agent mobile moderno
         String defaultUA = settings.getUserAgentString();
-        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/2.5.6");
+        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/2.5.7");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
