@@ -8,7 +8,7 @@
 **"Dove lo AI messo"** è un assistente personale intelligente e caveau crittografico locale progettato per risolvere in modo definitivo il disordine documentale e la dispersione delle scadenze e degli oggetti quotidiani.
 
 A differenza dei tradizionali sistemi di archiviazione complessi o dei cloud pubblici non protetti, **Dove lo AI messo** combina:
-1. **Design Sistemico Olivetti Industrial**: un'interfaccia conversazionale dattiloscritta (ispirata alla Lettera 22 di Nizzoli e alle forme di Sottsass) per azzerare la curva d'apprendimento.
+1. **Design Sistemico ad Alta Precisione Industriale**: un'interfaccia conversazionale e registro protocollo per azzerare la curva d'apprendimento.
 2. **Executive Dashboard moderna**: una console stile SaaS/Fintech (ispirata a Linear, Stripe e Apple) per il controllo visivo di KPI, scadenze fiscali e inventario.
 3. **Privacy-First & Crittografia a Riposo**: cifratura AES-128 / Fernet con PBKDF2 (600.000 iterazioni) e storage locale su SQLite, senza mai esporre i dati in chiaro.
 4. **Motore Agentico Autonomo**: comprensione multimodale (PDF, Word, Excel, CSV, Immagini, ZIP), strumenti autonomi di compressione/decompressione, ricerca fuzzy con stemming italiano e scadenzario deterministico con countdown.
@@ -50,9 +50,9 @@ A differenza dei tradizionali sistemi di archiviazione complessi o dei cloud pub
 
 ## 3. Filosofia del Design: Il Meglio dei Due Mondi
 
-### 3.1. Interfaccia Conversazionale = Design Sistemico Olivetti Industrial
-- **Look & Feel Dattiloscritto**: Sfondo carta calda avorio (`#F8F5EE`), inchiostro grafite (`#222220`), verde salvia Lettera 22 (`#3C5A48`) e rosso terracotta Valentine (`#C84B31`). Schede di protocollo eleganti con timbri di convalida e timbri typewriter.
-- **Barra Input Meccanica**: Tasti di precisione in stile Lettera 22, campo testo monospace, pulsante fotocamera, menu popover allegati (File, Cartelle, Foto Oggetti), registratore vocale reale Whisper e pulsante d'invio terracotta.
+### 3.1. Interfaccia Conversazionale = Design Sistemico ad Alta Precisione
+- **Look & Feel di Registro**: Sfondo carta calda avorio (`#F8F5EE`), inchiostro grafite (`#222220`), verde salvia d'archivio (`#3C5A48`) e rosso terracotta (`#C84B31`). Schede di protocollo eleganti con timbri di convalida e timbri di stato.
+- **Barra Input Meccanica**: Tasti di precisione tattile, campo testo monospace, pulsante fotocamera, menu popover allegati (File, Cartelle, Foto Oggetti), registratore vocale reale Whisper e pulsante d'invio terracotta.
 - **Drag & Drop Universale con Directory Traversal Ricorsivo**: L'utente può trascinare qualsiasi file **o intera cartella** direttamente nell'area chat. Il motore `webkitGetAsEntry` esplora ricorsivamente le sottocartelle su tutti i livelli di profondità, raccogliendo ogni documento e avviando upload batch concorrente (3 worker paralleli) con barra di avanzamento in tempo reale e pulsante di interruzione immediata.
 - **Sistema Notifiche In-App (Zero Alert Nativi)**: Un **Toast System floating** stile Linear/Stripe (successo 🟢, errore 🔴, avviso 🟡) e un **modale di conferma asincrono** in-app sostituiscono completamente gli alert e confirm bloccanti del browser per un'esperienza utente professionale e non invasiva.
 - **Feedback Dinamico & Barra di Avanzamento**: Riconoscimento intelligente dell'azione con indicatore di stato testuale (es. *"Sto creando l'archivio ZIP..."*, *"Scansione cartelle locali in corso..."*) e barra di progressione in tempo reale per upload di cartelle e file multipli.
@@ -168,7 +168,7 @@ Il progetto supporta due modalità di utilizzo chiaramente differenziate:
 | • Storage Locale 100% su proprio PC (Disk) | • Cloud Storage Cifrato Zero-Knowledge     |
 | • Crittografia AES-256 / PBKDF2 locale     | • Multi-Utente & Creazione Gruppi          |
 | • Singolo Dispositivo / Nessun Account     | • Sincronizzazione Real-Time Multi-Device  |
-| • Interfaccia Olivetti + Dashboard Fintech | • Google Vertex AI Enterprise Perimeter    |
+| • Interfaccia Conversazionale + Dashboard Fintech | • Google Vertex AI Enterprise Perimeter    |
 | • Zero costi ricorrenti / Open Source Core | • Notifiche Push / Canali Condivisi        |
 | • Ideale per singoli e privacy maximalist  | • Ideale per Famiglie, Team e Professionisti|
 +--------------------------------------------+--------------------------------------------+
@@ -177,7 +177,7 @@ Il progetto supporta due modalità di utilizzo chiaramente differenziate:
 1. **Edizione Freemium Locale (100% Free & Open Source)**:
    - **Perimetro di Esecuzione**: Completamente autonomo e installabile in locale (FastAPI + SQLite + PyWebView).
    - **Privacy Assoluta**: Tutti i file cifrati risiedono nella cartella `storage/uploads/` del computer dell'utente. Nessun dato lascia la macchina locale senza esplicita richiesta.
-   - **Funzionalità Complete**: Terminale Dattiloscritto Olivetti, Bento Grid Dashboard, ricerca fuzzy con stemming, compressione ZIP e scadenzario deterministico inclusi senza limitazioni.
+   - **Funzionalità Complete**: Terminale Conversazionale Intelligente, Bento Grid Dashboard, ricerca fuzzy con stemming, compressione ZIP e scadenzario deterministico inclusi senza limitazioni.
 
 2. **Edizione Cloud Pro & Spazi di Gruppo (A Pagamento — €9,90 / mese per gruppo)**:
    - **Collaborazione Multi-Utente**: Possibilità di creare spazi e gruppi condivisi (*"Spese Casa"*, *"Famiglia"*, *"Commercialista / Ufficio"*, *"Coinquilini"*).
@@ -197,7 +197,7 @@ Il progetto supporta due modalità di utilizzo chiaramente differenziate:
 
 | Categoria | Funzionalità | Descrizione |
 | :--- | :--- | :--- |
-| **Interfaccia** | **Design Olivetti Industrial** | Terminale dattiloscritto con schede protocollo, timbri e precisione visiva. |
+| **Interfaccia** | **Design ad Alta Precisione** | Terminale conversazionale con schede protocollo, timbri e precisione visiva. |
 | **Interfaccia** | **Executive Dashboard** | Bento Grid con KPI in tempo reale, tabelle filtrate e visualizzazione gruppi. |
 | **Interfaccia** | **Feedback Dinamico** | Scritte di stato contestuali e barra di caricamento/progresso in tempo reale. |
 | **Piani & Storage** | **Freemium Locale (€0)** | 100% Locale, storage su PC, crittografia AES-256, nessun canone. |
