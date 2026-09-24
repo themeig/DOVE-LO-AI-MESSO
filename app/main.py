@@ -225,6 +225,7 @@ def serve_index(request: Request):
 # Showcase & Interactive Pitch Deck endpoints
 @app.get("/showcase")
 @app.get("/demo")
+@app.get("/m/showcase")
 def serve_showcase():
     showcase_file = settings.BASE_DIR / "showcase.html"
     if showcase_file.exists():
@@ -255,7 +256,7 @@ def get_mobile_app_version():
         except Exception:
             pass
     return {
-        "version_code": 263,
+        "version_code": 264,
         "version_name": APP_VERSION,
         "apk_url": "/api/app/latest-apk",
         "release_notes": "Aggiornamento applicazione"

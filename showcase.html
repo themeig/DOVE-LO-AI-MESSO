@@ -117,6 +117,47 @@
     .device-shadow {
       box-shadow: 0 25px 60px -15px rgba(34, 34, 32, 0.15), 0 0 25px rgba(60, 90, 72, 0.08);
     }
+
+    /* ── Mobile menu ── */
+    #mobileMenu {
+      transform: translateX(-100%);
+      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #mobileMenu.open {
+      transform: translateX(0);
+    }
+    #mobileOverlay {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.28s ease;
+    }
+    #mobileOverlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    /* Hamburger lines */
+    .hamburger-line {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: #222220;
+      border-radius: 2px;
+      transition: transform 0.22s ease, opacity 0.22s ease;
+      transform-origin: center;
+    }
+    #hamburgerBtn.is-open .hamburger-line:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+    #hamburgerBtn.is-open .hamburger-line:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    #hamburgerBtn.is-open .hamburger-line:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+    /* Smooth section scroll offset for fixed header */
+    html { scroll-padding-top: 72px; }
+
+    /* Hero badge text clamp on very small screens */
+    @media (max-width: 380px) {
+      .hero-badge-text { display: none; }
+      .hero-badge-dot { margin-right: 0; }
+    }
   </style>
 </head>
 <body class="bg-[#F8F5EE] text-[#222220] font-sans antialiased overflow-x-hidden selection:bg-[#3C5A48] selection:text-white">
@@ -124,7 +165,61 @@
   <!-- ================================================================= -->
   <!-- NAVBAR OLIVETTI INDUSTRIAL                                        -->
   <!-- ================================================================= -->
-  <header class="fixed top-0 left-0 right-0 z-50 bg-[#F8F5EE]/90 backdrop-blur-md border-b border-[#E3DDD1] transition-all duration-200">
+
+  <!-- Mobile Overlay -->
+  <div id="mobileOverlay" class="fixed inset-0 z-40 bg-[#222220]/40 backdrop-blur-sm md:hidden" onclick="closeMobileMenu()"></div>
+
+  <!-- Mobile Drawer Menu -->
+  <div id="mobileMenu" class="fixed top-0 left-0 bottom-0 z-50 w-72 bg-[#F8F5EE] border-r border-[#E3DDD1] flex flex-col md:hidden shadow-2xl">
+    <div class="px-5 py-4 flex items-center justify-between border-b border-[#E3DDD1] bg-[#FAF8F2]">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-xs bg-[#3C5A48] flex items-center justify-center text-white shadow-sm">
+          <i class="fa-solid fa-vault text-sm"></i>
+        </div>
+        <span class="font-display font-bold text-sm tracking-tight text-[#222220]">DOVE LO AI MESSO</span>
+      </div>
+      <button onclick="closeMobileMenu()" aria-label="Chiudi menu" class="w-8 h-8 flex items-center justify-center rounded-xs border border-[#E3DDD1] bg-white text-[#7A7568] hover:text-[#222220] transition">
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+    </div>
+    <div class="typewriter-ribbon"></div>
+    <nav class="flex-1 px-4 py-6 space-y-1 font-mono text-xs font-semibold overflow-y-auto">
+      <a href="#simulator" onclick="closeMobileMenu()" class="flex items-center gap-3 px-3 py-3 rounded-xs text-[#7A7568] hover:text-[#222220] hover:bg-white border border-transparent hover:border-[#E3DDD1] transition">
+        <span class="w-6 h-6 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs flex items-center justify-center text-[#3C5A48] text-[10px] font-bold shrink-0">01</span>
+        SIMULATORE
+      </a>
+      <a href="#features" onclick="closeMobileMenu()" class="flex items-center gap-3 px-3 py-3 rounded-xs text-[#7A7568] hover:text-[#222220] hover:bg-white border border-transparent hover:border-[#E3DDD1] transition">
+        <span class="w-6 h-6 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs flex items-center justify-center text-[#3C5A48] text-[10px] font-bold shrink-0">02</span>
+        MODULI
+      </a>
+      <a href="#pricing" onclick="closeMobileMenu()" class="flex items-center gap-3 px-3 py-3 rounded-xs text-[#7A7568] hover:text-[#222220] hover:bg-white border border-transparent hover:border-[#E3DDD1] transition">
+        <span class="w-6 h-6 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs flex items-center justify-center text-[#3C5A48] text-[10px] font-bold shrink-0">03</span>
+        ARCHIVIO &amp; CLOUD
+      </a>
+      <a href="#architecture" onclick="closeMobileMenu()" class="flex items-center gap-3 px-3 py-3 rounded-xs text-[#7A7568] hover:text-[#222220] hover:bg-white border border-transparent hover:border-[#E3DDD1] transition">
+        <span class="w-6 h-6 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs flex items-center justify-center text-[#3C5A48] text-[10px] font-bold shrink-0">04</span>
+        ARCHITETTURA
+      </a>
+      <a href="/api/whitepaper" target="_blank" onclick="closeMobileMenu()" class="flex items-center gap-3 px-3 py-3 rounded-xs text-[#7A7568] hover:text-[#222220] hover:bg-white border border-transparent hover:border-[#E3DDD1] transition">
+        <span class="w-6 h-6 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs flex items-center justify-center text-[#C84B31] text-xs shrink-0">
+          <i class="fa-regular fa-file-lines"></i>
+        </span>
+        WHITE PAPER
+      </a>
+    </nav>
+    <div class="px-4 py-5 border-t border-[#E3DDD1] space-y-2">
+      <a href="/" class="w-full py-3 rounded-xs bg-[#3C5A48] hover:bg-[#2F4738] text-white text-xs font-mono font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer">
+        <i class="fa-solid fa-terminal text-xs"></i>
+        <span>APRI APPLICAZIONE</span>
+      </a>
+      <button onclick="startPresentationMode(); closeMobileMenu();" class="w-full py-3 rounded-xs bg-white hover:bg-[#FAF8F2] text-[#222220] text-xs font-mono font-semibold border border-[#E3DDD1] transition flex items-center justify-center gap-2 cursor-pointer">
+        <i class="fa-solid fa-desktop text-[#3C5A48] text-xs"></i>
+        <span>PITCH DECK</span>
+      </button>
+    </div>
+  </div>
+
+  <header class="fixed top-0 left-0 right-0 z-40 bg-[#F8F5EE]/90 backdrop-blur-md border-b border-[#E3DDD1] transition-all duration-200">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xs bg-[#3C5A48] flex items-center justify-center text-white shadow-sm border border-[#222220]">
@@ -133,7 +228,7 @@
         <div>
           <span class="font-display font-bold text-base sm:text-lg tracking-tight text-[#222220] flex items-center gap-2">
             DOVE LO AI MESSO
-            <span class="stamp-oli stamp-sage app-version-badge">v1.8.9 AI Vault</span>
+            <span class="stamp-oli stamp-sage app-version-badge hidden sm:inline-flex">v2.6.4 AI Vault</span>
           </span>
         </div>
       </div>
@@ -148,15 +243,25 @@
         </a>
       </nav>
 
-      <div class="flex items-center gap-3">
-        <button onclick="startPresentationMode()" class="px-3.5 py-1.5 rounded-xs bg-[#FAF8F2] hover:bg-white text-[#222220] text-xs font-mono font-semibold border border-[#E3DDD1] transition flex items-center gap-2 shadow-xs cursor-pointer">
+      <div class="flex items-center gap-2 sm:gap-3">
+        <button onclick="startPresentationMode()" class="hidden sm:flex px-3.5 py-1.5 rounded-xs bg-[#FAF8F2] hover:bg-white text-[#222220] text-xs font-mono font-semibold border border-[#E3DDD1] transition items-center gap-2 shadow-xs cursor-pointer">
           <i class="fa-solid fa-desktop text-[#3C5A48]"></i>
-          <span class="hidden sm:inline">Pitch Deck</span>
+          <span class="hidden lg:inline">Pitch Deck</span>
         </button>
-        <a href="/" class="px-4 py-2 rounded-xs bg-[#3C5A48] hover:bg-[#2F4738] text-white text-xs font-mono font-bold transition flex items-center gap-2 shadow-xs cursor-pointer">
+        <a href="/" class="hidden md:flex px-4 py-2 rounded-xs bg-[#3C5A48] hover:bg-[#2F4738] text-white text-xs font-mono font-bold transition items-center gap-2 shadow-xs cursor-pointer">
           <span>APRI APPLICAZIONE</span>
           <i class="fa-solid fa-arrow-right text-[10px]"></i>
         </a>
+        <!-- Mobile Open App button + Hamburger -->
+        <a href="/" class="md:hidden px-3 py-2 rounded-xs bg-[#3C5A48] text-white text-xs font-mono font-bold flex items-center gap-1.5 shadow-xs">
+          <i class="fa-solid fa-terminal text-[11px]"></i>
+          <span>APRI</span>
+        </a>
+        <button id="hamburgerBtn" onclick="toggleMobileMenu()" aria-label="Menu di navigazione" class="md:hidden flex flex-col items-center justify-center gap-[4px] w-10 h-10 rounded-xs border border-[#E3DDD1] bg-white hover:bg-[#FAF8F2] transition cursor-pointer">
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+        </button>
       </div>
     </div>
     <div class="typewriter-ribbon"></div>
@@ -177,7 +282,7 @@
       <!-- Main Title -->
       <h1 class="text-4xl sm:text-6xl lg:text-7xl font-display font-extrabold tracking-tight text-[#222220] max-w-4xl mx-auto leading-[1.08] mb-6">
         Precisione di Ivrea.<br>
-        <span class="text-[#3C5A48] underline decoration-[#C84B31] decoration-wavy decoration-2">Controllo fiscale totale.</span>
+        <span class="text-[#3C5A48]">Controllo fiscale totale.</span>
       </h1>
 
       <!-- Subtitle -->
@@ -318,29 +423,29 @@
               </div>
 
               <!-- KPI Metric Boxes -->
-              <div class="grid grid-cols-3 gap-3 font-mono">
-                <div class="bg-[#FAF8F2] border border-[#E3DDD1] p-3 rounded-xs flex flex-col justify-between">
-                  <div class="text-xl sm:text-2xl font-black text-[#C84B31] font-mono-code leading-none whitespace-nowrap flex items-baseline gap-1">
-                    <span class="text-base font-bold text-[#7A7568] select-none">€</span>
-                    <span>2.514,20</span>
+              <div class="grid grid-cols-3 gap-2 sm:gap-3 font-mono">
+                <div class="bg-[#FAF8F2] border border-[#E3DDD1] p-2.5 sm:p-3 rounded-xs flex flex-col justify-between">
+                  <div class="text-base sm:text-2xl font-black text-[#C84B31] font-mono-code leading-none flex items-baseline gap-0.5 sm:gap-1">
+                    <span class="text-xs sm:text-base font-bold text-[#7A7568] select-none">€</span>
+                    <span class="truncate">2.514,20</span>
                   </div>
                   <div class="mt-2">
-                    <div class="text-[9px] text-[#7A7568] font-bold uppercase tracking-wider">01 / In Scadenza</div>
-                    <div class="text-[9px] text-[#C84B31] font-semibold mt-0.5">2 atti pendenti</div>
-                  </div>
-                </div>
-                <div class="bg-[#FAF8F2] border border-[#E3DDD1] p-3 rounded-xs flex flex-col justify-between">
-                  <div class="text-xl sm:text-2xl font-black text-[#3C5A48] font-mono-code leading-none">28 Atti</div>
-                  <div class="mt-2">
-                    <div class="text-[9px] text-[#7A7568] font-bold uppercase tracking-wider">02 / Cifrati</div>
-                    <div class="text-[9px] text-[#3C5A48] font-semibold mt-0.5">100% AES-256</div>
+                    <div class="text-[8px] sm:text-[9px] text-[#7A7568] font-bold uppercase tracking-wider truncate">01 / In Scadenza</div>
+                    <div class="text-[8px] sm:text-[9px] text-[#C84B31] font-semibold mt-0.5 truncate">2 atti pendenti</div>
                   </div>
                 </div>
-                <div class="bg-[#FAF8F2] border border-[#E3DDD1] p-3 rounded-xs flex flex-col justify-between">
-                  <div class="text-xl sm:text-2xl font-black text-[#222220] font-mono-code leading-none">14 Cespiti</div>
+                <div class="bg-[#FAF8F2] border border-[#E3DDD1] p-2.5 sm:p-3 rounded-xs flex flex-col justify-between">
+                  <div class="text-base sm:text-2xl font-black text-[#3C5A48] font-mono-code leading-none truncate">28 Atti</div>
                   <div class="mt-2">
-                    <div class="text-[9px] text-[#7A7568] font-bold uppercase tracking-wider">03 / Inventario</div>
-                    <div class="text-[9px] text-[#7A7568] font-semibold mt-0.5">Foto e stanze</div>
+                    <div class="text-[8px] sm:text-[9px] text-[#7A7568] font-bold uppercase tracking-wider truncate">02 / Cifrati</div>
+                    <div class="text-[8px] sm:text-[9px] text-[#3C5A48] font-semibold mt-0.5 truncate">100% AES-256</div>
+                  </div>
+                </div>
+                <div class="bg-[#FAF8F2] border border-[#E3DDD1] p-2.5 sm:p-3 rounded-xs flex flex-col justify-between">
+                  <div class="text-base sm:text-2xl font-black text-[#222220] font-mono-code leading-none truncate">14 Cespiti</div>
+                  <div class="mt-2">
+                    <div class="text-[8px] sm:text-[9px] text-[#7A7568] font-bold uppercase tracking-wider truncate">03 / Inventario</div>
+                    <div class="text-[8px] sm:text-[9px] text-[#7A7568] font-semibold mt-0.5 truncate">Foto e stanze</div>
                   </div>
                 </div>
               </div>
@@ -881,7 +986,7 @@
     <div class="typewriter-ribbon"></div>
 
     <!-- Main Slide Content Display -->
-    <div class="flex-1 flex items-center justify-center p-6 sm:p-12 overflow-hidden relative dark-industrial-mesh">
+    <div class="flex-1 flex items-center justify-center p-4 sm:p-12 overflow-y-auto relative dark-industrial-mesh">
       
       <!-- Slide 1: Problem & Solution -->
       <div id="slide1" class="deck-slide max-w-4xl text-center space-y-6">
@@ -1279,6 +1384,58 @@
         exitPresentationMode();
       }
     });
+
+    // --- Mobile Menu Toggle ---
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobileMenu');
+      const overlay = document.getElementById('mobileOverlay');
+      const btn = document.getElementById('hamburgerBtn');
+      const isOpen = menu.classList.contains('open');
+      if (isOpen) {
+        closeMobileMenu();
+      } else {
+        menu.classList.add('open');
+        overlay.classList.add('open');
+        btn.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+
+    function closeMobileMenu() {
+      const menu = document.getElementById('mobileMenu');
+      const overlay = document.getElementById('mobileOverlay');
+      const btn = document.getElementById('hamburgerBtn');
+      menu.classList.remove('open');
+      overlay.classList.remove('open');
+      btn.classList.remove('is-open');
+      document.body.style.overflow = '';
+    }
+
+    // Touch swipe support for Presentation Deck on mobile
+    let touchStartX = 0;
+    let touchEndX = 0;
+    const deckModal = document.getElementById('deckModal');
+    if (deckModal) {
+      deckModal.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      }, { passive: true });
+
+      deckModal.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleDeckSwipe();
+      }, { passive: true });
+    }
+
+    function handleDeckSwipe() {
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > 50) {
+        if (diff < 0) {
+          nextSlide(); // Swipe left -> next slide
+        } else {
+          prevSlide(); // Swipe right -> prev slide
+        }
+      }
+    }
 
     // Init on load
     document.addEventListener('DOMContentLoaded', () => {

@@ -1,6 +1,6 @@
 {
-  "version_code": 263,
-  "version_name": "2.6.3",
+  "version_code": 264,
+  "version_name": "2.6.4",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "🔧 Fix definitivo pull-to-refresh: rimosso completamente SwipeRefreshLayout dall'app. Ora lo scorrimento verso l'alto nella cronologia chat funziona senza aggiornare la pagina."
+  "release_notes": "✨ Nuova versione mobile-first del sito Showcase: menu responsive a scomparsa, swipe touch sulle slide del Pitch Deck e rimozione sottolineatura rossa dal titolo."
 }
