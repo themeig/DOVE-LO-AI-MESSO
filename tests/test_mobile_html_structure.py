@@ -22,15 +22,14 @@ def test_mobile_html_contains_critical_components():
     assert "desktop=true" in html or "prefer_desktop" in html
 
 def test_system_view_and_chat_contain_environment_badge():
-    # Verifica che sia la vista mobile sia la vista desktop abbiano il badge di rilevamento ambiente
+    # Verifica che sia la vista mobile sia la vista desktop abbiano il badge di rilevamento ambiente in Sistema
     for endpoint in ["/", "/m"]:
         res = client.get(endpoint, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}, follow_redirects=True)
         assert res.status_code == 200
         html = res.text
-        # Badge di rilevamento presente nell'header e nel sistema
+        # Badge di rilevamento presente nel sistema
         assert "env-device-badge" in html
         assert "systemEnvBadge" in html
-        assert "headerEnvBadge" in html
         assert "systemMainEnvBadge" in html
         assert "SISTEMA & CONFIGURAZIONE" in html
         assert "syncDeviceEnvironment" in html or "app-bundle.js" in html
