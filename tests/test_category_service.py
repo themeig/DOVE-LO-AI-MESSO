@@ -268,3 +268,35 @@ def test_ai_service_extracts_subfolder():
     assert doc.category == "utenze_bollette"
     assert doc.category_label == "Utenze & Bollette"
     assert doc.subfolder == "2026"
+
+
+def test_oggetti_fisici_prevented_as_document_category():
+    from app.services.category_service import resolve_or_create_category_and_subfolder
+    from app.api.dashboard import classify_document_category
+
+    # 1. Proposta esplicita 'Oggetti Fisici' per immagine -> reindirizzata a Foto & Immagini
+    slug, label, icon, _ = resolve_or_create_category_and_subfolder(
+        proposed_label="Oggetti Fisici",
+        filename="foto_oggetto.jpg",
+        doc_type="foto"
+    )
+    assert slug == "foto_immagini"
+    assert label == "Foto & Immagini"
+    assert icon == "fa-image"
+
+    # 2. Documento con category_label='Oggetti Fisici' in classify_document_category
+    dummy_doc = Document(
+        title="Foto Cuscino",
+        file_path="uploads/cuscino.jpg",
+        file_type="jpg",
+        doc_type="oggetto_fisico",
+        category="oggetti_fisici",
+        category_label="Oggetti Fisici",
+        category_icon="fa-boxes-stacked",
+        summary="Foto di un cuscino rosso sul divano"
+    )
+    c_slug, c_label, c_icon = classify_document_category(dummy_doc)
+    assert c_slug == "foto_immagini"
+    assert c_label == "Foto & Immagini"
+    assert c_icon == "fa-image"
+

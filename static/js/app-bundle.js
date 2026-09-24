@@ -4487,7 +4487,12 @@
 
         const docGroups = {};
         docs.forEach(doc => {
-          const catLabel = doc.category_label || 'Altri Documenti';
+          let catLabel = doc.category_label || 'Altri Documenti';
+          if (catLabel.toLowerCase().includes('oggetti fisic') || catLabel.toLowerCase() === 'oggetti' || catLabel.toLowerCase() === 'oggetto fisico') {
+            const isImg = doc.file_type && ['jpg', 'jpeg', 'png', 'webp', 'image'].includes(doc.file_type.toLowerCase());
+            catLabel = isImg ? 'Foto & Immagini' : 'Altri Documenti Archiviati';
+            doc.category_icon = isImg ? 'fa-image' : 'fa-folder-closed';
+          }
           if (!docGroups[catLabel]) {
             docGroups[catLabel] = {
               icon: doc.category_icon || 'fa-folder-closed',
@@ -4767,7 +4772,7 @@
           <div class="flex items-center justify-between pb-1 border-b border-slate-200/70">
             <div class="flex items-center gap-2">
               <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
-              <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Oggetti & Cespiti per Ambiente / Stanza</h3>
+              <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Oggetti Fisici</h3>
               <span class="text-xs bg-purple-50 text-purple-700 font-bold px-2 py-0.5 rounded-full border border-purple-200/50">${items.length}</span>
             </div>
             <div class="flex items-center gap-2 text-[11px]">

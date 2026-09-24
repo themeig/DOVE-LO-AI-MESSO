@@ -482,7 +482,7 @@ def recategorize_vault_document(
     category_icon: str = "",
     subfolder: Optional[str] = None
 ) -> str:
-    """Modifica o assegna la sezione/categoria tematica e l'eventuale sottocartella (es. '2026', '2025', 'Locazioni') di un documento nel caveau (es. 'Canzoni & Testi Musicali', 'Ricette & Cucina', 'Appunti Universitari', 'Automobili & Manutenzione', 'Utenze & Bollette'). Ispeziona le cartelle esistenti per evitare doppioni."""
+    """Modifica o assegna la sezione/categoria tematica e l'eventuale sottocartella (es. '2026', '2025', 'Locazioni') di un documento nel caveau (es. 'Canzoni & Testi Musicali', 'Ricette & Cucina', 'Appunti Universitari', 'Automobili & Manutenzione', 'Utenze & Bollette'). Ispeziona le cartelle esistenti per evitare doppioni. NOTA: Gli oggetti fisici hanno una sezione separata dell'inventario e non sono categorie di documenti (se un file ritrae un oggetto, va in 'Foto & Immagini')."""
     with _get_db_session() as db:
         doc = None
         if document_id:

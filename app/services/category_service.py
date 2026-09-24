@@ -225,6 +225,8 @@ def get_active_vault_categories(db: Optional[Session] = None) -> List[Dict[str, 
                 if not cat_label:
                     continue
                 clean_lbl = cat_label.strip()
+                if "oggetti fisic" in clean_lbl.lower() or clean_lbl.lower() in ["oggetti", "oggetto", "cespiti"]:
+                    continue
                 tokens = set(normalize_tokens(clean_lbl))
                 # Se è già affine o una variante di una macro-cartella standard di sistema,
                 # non registrarla come categoria custom separata, così i documenti convergeranno
@@ -328,11 +330,32 @@ def resolve_or_create_category_and_subfolder(
 
     # Raccogli contesto per il matching
     p_label = (proposed_label or "").strip()
+    clean_type = (doc_type or "").lower().strip()
+    fn_low = (filename or "").lower()
+    is_img = any(fn_low.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp"]) or clean_type in ["foto", "screenshot", "oggetto_fisico", "foto_oggetto"]
+
+    # Protezione anti-duplicazione: gli oggetti fisici NON sono una categoria di documenti
+    norm_p = p_label.lower()
+    if "oggetti fisic" in norm_p or norm_p in ["oggetti", "oggetto", "oggetto fisico", "oggetti fisici", "cespiti", "inventario cespiti"] or (proposed_slug and proposed_slug.lower() in ["oggetti_fisici", "oggetto_fisico"]):
+        if is_img:
+            p_label = "Foto & Immagini"
+            proposed_slug = "foto_immagini"
+            proposed_icon = "fa-image"
+        else:
+            p_label = "Altri Documenti Archiviati"
+            proposed_slug = "altro"
+            proposed_icon = "fa-folder-closed"
+
+    if clean_type in ["oggetto_fisico", "foto_oggetto"] and ("oggetti" in norm_p or not p_label):
+        if is_img:
+            p_label = "Foto & Immagini"
+            proposed_slug = "foto_immagini"
+            proposed_icon = "fa-image"
+
     p_tokens = set(normalize_tokens(p_label))
     t_tokens = set(normalize_tokens(document_text or ""))
     fn_tokens = set(normalize_tokens(filename or ""))
     combined_tokens = p_tokens.union(fn_tokens)
-    clean_type = (doc_type or "").lower().strip()
 
     best_match: Optional[Dict[str, Any]] = None
     best_score = 0.0
@@ -383,8 +406,8 @@ def resolve_or_create_category_and_subfolder(
             score += 5.0
         elif clean_type in ["archivio_zip", "zip"] and cat_slug == "archivi_zip":
             score += 6.0
-        elif clean_type in ["foto", "screenshot"] and cat_slug == "foto_immagini":
-            score += 4.0
+        elif clean_type in ["foto", "screenshot", "oggetto_fisico", "foto_oggetto"] and cat_slug == "foto_immagini":
+            score += 6.0
 
         if score > best_score:
             best_score = score

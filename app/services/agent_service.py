@@ -281,7 +281,8 @@ TOOLS_DEFINITION = [
             "description": (
                 "Modifica o assegna la sezione/categoria tematica di un documento nel caveau "
                 "(es. 'spostalo in Canzoni', 'crea la sezione Ricette e metti questo file', 'metti la ricevuta in Spese Auto', 'sposta in Utenze & Bollette'). "
-                "Puoi creare qualsiasi nuova sezione a tua discrezione o su richiesta dell'utente."
+                "Puoi creare qualsiasi nuova sezione a tua discrezione o su richiesta dell'utente. "
+                "NOTA: Gli oggetti fisici hanno una sezione separata nell'inventario e non sono categorie di documenti; se un file ritrae un oggetto, catalogalo in 'Foto & Immagini'."
             ),
             "parameters": {
                 "type": "object",
@@ -592,9 +593,13 @@ REGOLE OPERATIVE:
 7. DATA ODIERNA E CONTESTO TEMPORALE:
    - Conosci sempre la data odierna iniettata nel contesto e calcola con precisione giorni rimanenti o ritardi.
 
-8. DISTINZIONE ESSENZIALE LISTA DOCUMENTI VS OGGETTI FISICI:
-   - Se chiede lista documenti: `list_vault_contents(target_type="documents")`.
-   - Se chiede lista oggetti fisici: `list_vault_contents(target_type="physical_items")`.
+8. DISTINZIONE ESSENZIALE DOCUMENTI VS OGGETTI FISICI:
+   - Nel caveau ci sono due sezioni distinte:
+     1) "Documenti Archiviati": file, PDF, foto, ricevute, contratti, testi, ecc., raggruppati per cartelle tematiche.
+     2) "Oggetti Fisici": inventario degli oggetti reali collocati nelle stanze e nei cassetti.
+   - DIVIETO CATEGORIA DOCUMENTI "Oggetti Fisici": Non creare MAI una cartella di documenti chiamata "Oggetti Fisici", "Oggetto" o simili! Un file o foto di un oggetto fisico caricato dall'utente va catalogato nella categoria "Foto & Immagini". Per registrare la collocazione di un oggetto fisico, usa `store_physical_item` o collegalo con `link_document_to_item`.
+   - Se l'utente chiede la lista dei documenti: `list_vault_contents(target_type="documents")`.
+   - Se l'utente chiede la lista degli oggetti fisici: `list_vault_contents(target_type="physical_items")`.
 
 9. QUANDO L'UTENTE CHIEDE DI RINOMINARE UN FILE/FOTO:
    - Chiama `rename_vault_document(new_title=...)`.

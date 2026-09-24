@@ -1,6 +1,6 @@
 {
-  "version_code": 274,
-  "version_name": "2.7.4",
+  "version_code": 275,
+  "version_name": "2.7.5",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ Miglioramento layout Hero: rimosso il banner superiore sopra il titolo principale per una presentazione pulita ed essenziale."
+  "release_notes": "✨ Dashboard pulita: rinominata sezione in 'Oggetti Fisici' (rimossa dicitura cespiti) e isolamento rigoroso per prevenire cartelle documenti omonime."
 }

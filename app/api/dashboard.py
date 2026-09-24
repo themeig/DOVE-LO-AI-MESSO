@@ -16,14 +16,26 @@ def classify_document_category(doc: Document) -> tuple[str, str, str]:
     Restituisce (category_key, category_label, category_icon) per un documento.
     Dà priorità assoluta alla scelta autonoma dell'AI salvata nel campo doc.category_label.
     """
-    # 0. Primato assoluto della scelta autonoma dell'AI o dell'utente
+    # 0. Primato assoluto della scelta autonoma dell'AI o dell'utente (con protezione anti-duplicazione 'Oggetti Fisici')
     if doc.category_label:
+        norm_label = doc.category_label.strip().lower()
+        if "oggetti fisic" in norm_label or norm_label in ["oggetti", "oggetto", "oggetto fisico", "oggetti fisici", "cespiti", "inventario cespiti"]:
+            is_img = (doc.file_type or "").lower() in ["jpg", "jpeg", "png", "webp", "image"] or (doc.doc_type or "").lower() in ["foto", "screenshot", "oggetto_fisico"]
+            if is_img:
+                return "foto_immagini", "Foto & Immagini", "fa-image"
+            return "altro", "Altri Documenti Archiviati", "fa-folder-closed"
         icon = doc.category_icon or "fa-folder-closed"
         slug = doc.category or re.sub(r"[^a-zA-Z0-9]+", "_", doc.category_label.lower()).strip("_")
         return slug, doc.category_label, icon
 
     t = f"{doc.title or ''} {doc.doc_type or ''} {doc.issuer or ''} {doc.summary or ''}".lower()
     clean_type = (doc.doc_type or "").strip().lower()
+
+    if clean_type in ["oggetto_fisico", "foto_oggetto"] or (doc.category or "").lower() in ["oggetti_fisici", "oggetto_fisico"]:
+        is_img = (doc.file_type or "").lower() in ["jpg", "jpeg", "png", "webp", "image"] or clean_type in ["foto", "screenshot", "oggetto_fisico"]
+        if is_img:
+            return "foto_immagini", "Foto & Immagini", "fa-image"
+        return "altro", "Altri Documenti Archiviati", "fa-folder-closed"
 
     # 1. Canzoni, Musica, Poesie e Testi Personali (PRIORITÀ: evita che parole emotive come 'sentimenti', 'ultimo', 'luce', 'acqua' finiscano in bollette)
     is_song_or_art = (
@@ -204,7 +216,7 @@ def get_dashboard(
             fn = Path(doc.file_path).name
             cat = categorize_deadline(doc.due_date) if doc.status == "da_pagare" else None
             doc_cat, doc_cat_label, doc_cat_icon = classify_document_category(doc)
-            if not doc.category_label:
+            if not doc.category_label or doc.category_label != doc_cat_label:
                 doc.category = doc_cat
                 doc.category_label = doc_cat_label
                 doc.category_icon = doc_cat_icon
