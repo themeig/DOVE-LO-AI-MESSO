@@ -38,6 +38,18 @@ def wait_for_server(url: str, timeout: float = 10.0) -> bool:
     return False
 
 
+def get_lan_ip() -> str:
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(('8.8.8.8', 80))
+        return s.getsockname()[0]
+    except Exception:
+        return '127.0.0.1'
+    finally:
+        s.close()
+
+
 def start_desktop_app(host: str = "0.0.0.0", port: int = 8000, debug: bool = False):
     """
     Avvia l'applicazione nativa Desktop Windows ("Dove lo AI messo")
@@ -49,7 +61,13 @@ def start_desktop_app(host: str = "0.0.0.0", port: int = 8000, debug: bool = Fal
         print("[ERRORE] pywebview non installato. Esegui: pip install pywebview")
         sys.exit(1)
 
-    print(f"[*] Avvio server locale Dove lo AI messo su http://{host}:{port}...")
+    lan_ip = get_lan_ip()
+    print("=" * 64)
+    print("  DOVE LO AI MESSO - Server Locale Attivo")
+    print(f"  • Computer Desktop : http://127.0.0.1:{port}")
+    print(f"  • Smartphone / APK : http://{lan_ip}:{port}")
+    print("=" * 64)
+
     server_thread = ServerThread(host=host, port=port)
     server_thread.start()
 

@@ -67,7 +67,7 @@
             android:id="@+id/etServerUrl"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="http://10.0.2.2:8000"
+            android:hint="http://192.168.x.x:8000"
             android:inputType="textUri"
             android:padding="12dp"
             android:background="@android:drawable/editbox_background_normal"
@@ -87,7 +87,7 @@
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Usa IP Wi-Fi (192.168.178.73)"
+            android:text="Suggerisci Sottorete Wi-Fi"
             android:textColor="@color/primary" />
     </LinearLayout>
 

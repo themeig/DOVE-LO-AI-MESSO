@@ -124,11 +124,37 @@ public class MainActivity extends AppCompatActivity {
         });
 
         btnUseWifiIp.setOnClickListener(v -> {
-            etServerUrl.setText(DEFAULT_WIFI_URL);
-            saveServerUrl(DEFAULT_WIFI_URL);
-            errorLayout.setVisibility(View.GONE);
-            loadUrl(DEFAULT_WIFI_URL);
+            String subnet = getSuggestedSubnetUrl();
+            etServerUrl.setText(subnet);
+            if (subnet.contains(":8000")) {
+                int colonIdx = subnet.lastIndexOf(':');
+                etServerUrl.setSelection(colonIdx);
+            } else {
+                etServerUrl.setSelection(subnet.length());
+            }
+            Toast.makeText(this, "Completa l'IP del tuo computer (es. da 'ipconfig' sul PC)", Toast.LENGTH_LONG).show();
         });
+    }
+
+    private String getSuggestedSubnetUrl() {
+        try {
+            java.util.Enumeration<java.net.NetworkInterface> interfaces = java.net.NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                java.net.NetworkInterface iface = interfaces.nextElement();
+                java.util.Enumeration<java.net.InetAddress> addrs = iface.getInetAddresses();
+                while (addrs.hasMoreElements()) {
+                    java.net.InetAddress addr = addrs.nextElement();
+                    if (!addr.isLoopbackAddress() && addr instanceof java.net.Inet4Address) {
+                        String ip = addr.getHostAddress();
+                        if (ip != null && (ip.startsWith("192.168.") || ip.startsWith("10.") || ip.startsWith("172."))) {
+                            int lastDot = ip.lastIndexOf('.');
+                            return "http://" + ip.substring(0, lastDot + 1) + ":8000";
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return "http://192.168.1.:8000";
     }
 
     private void saveServerUrl(String url) {
