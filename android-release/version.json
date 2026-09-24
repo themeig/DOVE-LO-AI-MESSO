@@ -1,6 +1,6 @@
 {
-  "version_code": 273,
-  "version_name": "2.7.3",
+  "version_code": 274,
+  "version_name": "2.7.4",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ Nuova presentazione di prodotto e pitch deck per investitori e famiglie: linguaggio chiaro, inclusione primaria di Google Calendar e ridefinizione sobria della privacy dei dati."
+  "release_notes": "✨ Miglioramento layout Hero: rimosso il banner superiore sopra il titolo principale per una presentazione pulita ed essenziale."
 }
