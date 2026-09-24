@@ -2,9 +2,9 @@ import asyncio
 import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, Response, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
@@ -175,9 +175,41 @@ def get_whitepaper():
         media_type="text/markdown; charset=utf-8"
     )
 
-# Root endpoint serving index.html
+def _is_mobile_user_agent(ua: str) -> bool:
+    if not ua:
+        return False
+    ua_lower = ua.lower()
+    mobile_keywords = [
+        "android", "iphone", "ipod", "ipad", "mobile", "blackberry", "iemobile", "opera mini", "webos"
+    ]
+    return any(k in ua_lower for k in mobile_keywords)
+
+# Endpoint Mobile dedicato
+@app.get("/m")
+def serve_mobile():
+    mobile_file = settings.BASE_DIR / "mobile.html"
+    if mobile_file.exists():
+        return FileResponse(
+            mobile_file,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+    return HTMLResponse("<h1>Dove lo AI messo — Mobile</h1>")
+
+# Root endpoint serving index.html (con redirect a /m per dispositivi mobili)
 @app.get("/")
-def serve_index():
+def serve_index(request: Request):
+    desktop_override = (
+        request.query_params.get("desktop") == "true" or
+        request.cookies.get("prefer_desktop") == "true"
+    )
+    ua = request.headers.get("user-agent", "")
+    if not desktop_override and _is_mobile_user_agent(ua):
+        return RedirectResponse(url="/m", status_code=307)
+
     index_file = settings.BASE_DIR / "index.html"
     if index_file.exists():
         return FileResponse(
