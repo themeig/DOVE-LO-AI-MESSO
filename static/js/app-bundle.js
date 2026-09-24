@@ -43,6 +43,33 @@
         .catch(() => {});
     })();
 
+    // Allinea dinamicamente i badge di rilevamento ambiente (DESKTOP vs MOBILE)
+    function syncDeviceEnvironment() {
+      const isMobilePath = window.location.pathname.startsWith('/m');
+      const isMobileUA = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+      const isMobile = isMobilePath || isMobileUA;
+
+      document.querySelectorAll('.env-device-badge').forEach(el => {
+        if (isMobile) {
+          el.innerHTML = '<i class="fa-solid fa-mobile-screen mr-1 text-[#C84B31]"></i>MOBILE';
+          el.className = 'stamp-oli stamp-terracotta text-[8px] sm:text-[9px] font-mono-code font-bold env-device-badge select-none';
+          el.title = 'Ambiente Rilevato: Smartphone / APK Mobile';
+        } else {
+          el.innerHTML = '<i class="fa-solid fa-desktop mr-1 text-[#3C5A48]"></i>DESKTOP';
+          el.className = 'stamp-oli text-[8px] sm:text-[9px] font-mono-code font-bold env-device-badge select-none';
+          el.title = 'Ambiente Rilevato: Computer / Desktop';
+        }
+      });
+
+      document.querySelectorAll('.env-device-label').forEach(el => {
+        el.textContent = isMobile ? 'MOBILE' : 'DESKTOP';
+      });
+    }
+    syncDeviceEnvironment();
+    window.syncDeviceEnvironment = syncDeviceEnvironment;
+    document.addEventListener('DOMContentLoaded', syncDeviceEnvironment);
+    window.addEventListener('resize', syncDeviceEnvironment);
+
     // --- Helper Autenticazione con Token Cifrato ---
     function authHeaders(extra = {}) {
       const token = sessionStorage.getItem('vault_token');
