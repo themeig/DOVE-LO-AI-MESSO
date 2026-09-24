@@ -787,6 +787,7 @@
       if (fetchMessages) {
         await loadThreadMessages(threadId);
       }
+      scrollToBottom(false);
     }
 
     function updateActiveThreadHeader(thread) {
@@ -864,7 +865,23 @@
             appendAssistantBubble(m.content, docs, conf, itemPhoto, storeItem, proposal, routedModel);
           }
         }
-        scrollBottom();
+
+        // All'apertura del thread, scorri sempre immediatamente fino all'ultimo messaggio
+        scrollToBottom(false);
+        requestAnimationFrame(() => {
+          scrollToBottom(false);
+          setTimeout(() => scrollToBottom(false), 50);
+          setTimeout(() => scrollToBottom(false), 180);
+          setTimeout(() => scrollToBottom(false), 350);
+        });
+
+        // Se ci sono immagini che devono ancora terminare il rendering, mantieni la vista agganciata in fondo al completamento
+        const feedImgs = chatFeed.querySelectorAll('img');
+        feedImgs.forEach(img => {
+          if (!img.complete) {
+            img.addEventListener('load', () => scrollToBottom(false), { once: true });
+          }
+        });
 
         // Se questo thread ha un'attività in background in corso, mostra la barra di avanzamento / typing indicator
         if (activeThreadTasks[threadId]) {
@@ -1020,6 +1037,11 @@
     function showConversation() {
       if (isMobileView) {
         _mobileShowConversation(true);
+        requestAnimationFrame(() => {
+          scrollToBottom(false);
+          setTimeout(() => scrollToBottom(false), 120);
+          setTimeout(() => scrollToBottom(false), 300);
+        });
       }
     }
 

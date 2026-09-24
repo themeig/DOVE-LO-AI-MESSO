@@ -224,7 +224,7 @@ public class MainActivity extends AppCompatActivity {
 
         // User Agent mobile moderno
         String defaultUA = settings.getUserAgentString();
-        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/2.5.9");
+        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/2.6.0");
 
         // Bridge nativo microfono per registrazione vocale hardware senza vincoli WebRTC HTTP
         mNativeVoiceBridge = new NativeVoiceBridge();

@@ -297,19 +297,6 @@
           <!-- I messaggi vengono iniettati dinamicamente -->
         </section>
 
-        <!-- Pulsante Torna in Basso (Scroll to Bottom) Olivetti -->
-        <button 
-          id="scrollToBottomBtn" 
-          type="button" 
-          onclick="scrollToBottom(true)" 
-          title="Torna agli ultimi messaggi" 
-          aria-label="Torna in fondo alla chat"
-          class="hidden absolute bottom-3 right-4 z-30 w-9 h-9 rounded-xs bg-[#FAF8F2] hover:bg-[#3C5A48] text-[#3C5A48] hover:text-white border border-[#3C5A48] shadow-md transition-all duration-200 flex items-center justify-center cursor-pointer active:scale-90 select-none group"
-        >
-          <i class="fa-solid fa-chevron-down text-sm transition-transform group-hover:translate-y-0.5"></i>
-          <span id="scrollUnreadBadge" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#C84B31] border border-white rounded-full"></span>
-        </button>
-
         <!-- Overlay Drag & Drop per file e cartelle -->
         <div id="dragDropOverlay" class="hidden absolute inset-0 bg-[#3C5A48]/95 z-40 flex flex-col items-center justify-center text-white backdrop-blur-xs transition-all p-6 text-center pointer-events-auto select-none">
           <div class="w-16 h-16 rounded-xs bg-white/20 flex items-center justify-center text-3xl mb-3 shadow-lg animate-bounce pointer-events-none">
@@ -318,6 +305,7 @@
           <h3 class="text-base font-bold pointer-events-none font-space uppercase">Rilascia qui i tuoi file o cartelle</h3>
           <p class="text-xs text-[#FAF8F2] max-w-sm mt-1 pointer-events-none font-mono-code">Caricamento automatico di documenti multipli e cartelle nel caveau</p>
         </div>
+      </div>
       <!-- Barra Preview Messaggio Quotato (Olivetti Industrial) -->
       <div id="quotePreviewBar" class="hidden bg-[#F0F2F5] px-3 pt-2 pb-0.5 border-t border-slate-200/80 shrink-0 transition-all select-none">
         <div class="quote-preview-card bg-white/95 rounded-xl p-2.5 flex items-center justify-between gap-3 shadow-xs border-l-4 border-[#075E54]">
@@ -458,42 +446,58 @@
             </div>
           </div>
 
-          <!-- Microfono Vocale Lettera 22 (Stessa altezza h-[42px] del form) -->
-          <button 
-            id="micBtn" 
-            data-testid="btnVoiceRecord"
-            type="button" 
-            onclick="startVoiceRecording()" 
-            title="Registra vocale" 
-            aria-label="Registra messaggio vocale"
-            class="w-[42px] h-[42px] min-h-[42px] border border-[#3C5A48] bg-white text-[#3C5A48] rounded-xs flex items-center justify-center hover:bg-[#3C5A48] hover:text-white transition shadow-xs active:scale-95 cursor-pointer btnVoiceRecord shrink-0"
-          >
-            <i class="fa-solid fa-microphone text-sm"></i>
-          </button>
+          <!-- Gruppo Azioni Destra con Pulsante Torna in Basso (Scroll to Bottom) SOPRA il Microfono -->
+          <div class="relative shrink-0 flex items-center">
+            <!-- Pulsante Torna in Basso (Scroll to Bottom) Olivetti posizionato SOPRA il microfono -->
+            <button 
+              id="scrollToBottomBtn" 
+              type="button" 
+              onclick="scrollToBottom(true)" 
+              title="Torna agli ultimi messaggi" 
+              aria-label="Torna in fondo alla chat"
+              class="hidden absolute -top-12 left-1/2 -translate-x-1/2 z-30 w-9 h-9 rounded-full bg-[#FAF8F2] hover:bg-[#3C5A48] text-[#3C5A48] hover:text-white border border-[#3C5A48] shadow-md transition-all duration-200 flex items-center justify-center cursor-pointer active:scale-90 select-none group"
+            >
+              <i class="fa-solid fa-chevron-down text-sm transition-transform group-hover:translate-y-0.5"></i>
+              <span id="scrollUnreadBadge" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#C84B31] border border-white rounded-full"></span>
+            </button>
 
-          <!-- Tasto Invio Terracotta Lettera 22 (Stessa altezza h-[42px] del form) -->
-          <button 
-            id="sendBtn" 
-            type="button" 
-            onclick="handleSend(event)" 
-            title="Invia messaggio" 
-            aria-label="Invia messaggio"
-            class="hidden w-[42px] h-[42px] min-h-[42px] bg-[#C84B31] hover:bg-[#B23E26] text-white rounded-xs items-center justify-center shadow-xs active:scale-95 transition cursor-pointer shrink-0"
-          >
-            <i class="fa-solid fa-arrow-up text-sm"></i>
-          </button>
+            <!-- Microfono Vocale Lettera 22 (Stessa altezza h-[42px] del form) -->
+            <button 
+              id="micBtn" 
+              data-testid="btnVoiceRecord"
+              type="button" 
+              onclick="startVoiceRecording()" 
+              title="Registra vocale" 
+              aria-label="Registra messaggio vocale"
+              class="w-[42px] h-[42px] min-h-[42px] border border-[#3C5A48] bg-white text-[#3C5A48] rounded-xs flex items-center justify-center hover:bg-[#3C5A48] hover:text-white transition shadow-xs active:scale-95 cursor-pointer btnVoiceRecord shrink-0"
+            >
+              <i class="fa-solid fa-microphone text-sm"></i>
+            </button>
 
-          <!-- Tasto Interrompi Generazione (Stop Button) (Stessa altezza h-[42px] del form) -->
-          <button 
-            id="stopBtn" 
-            type="button" 
-            onclick="abortGeneration()" 
-            title="Interrompi generazione" 
-            aria-label="Interrompi elaborazione AI"
-            class="hidden w-[42px] h-[42px] min-h-[42px] bg-[#C84B31] hover:bg-[#B23E26] text-white rounded-xs items-center justify-center shadow-xs active:scale-95 transition cursor-pointer shrink-0"
-          >
-            <i class="fa-solid fa-stop text-sm"></i>
-          </button>
+            <!-- Tasto Invio Terracotta Lettera 22 (Stessa altezza h-[42px] del form) -->
+            <button 
+              id="sendBtn" 
+              type="button" 
+              onclick="handleSend(event)" 
+              title="Invia messaggio" 
+              aria-label="Invia messaggio"
+              class="hidden w-[42px] h-[42px] min-h-[42px] bg-[#C84B31] hover:bg-[#B23E26] text-white rounded-xs items-center justify-center shadow-xs active:scale-95 transition cursor-pointer shrink-0"
+            >
+              <i class="fa-solid fa-arrow-up text-sm"></i>
+            </button>
+
+            <!-- Tasto Interrompi Generazione (Stop Button) (Stessa altezza h-[42px] del form) -->
+            <button 
+              id="stopBtn" 
+              type="button" 
+              onclick="abortGeneration()" 
+              title="Interrompi generazione" 
+              aria-label="Interrompi elaborazione AI"
+              class="hidden w-[42px] h-[42px] min-h-[42px] bg-[#C84B31] hover:bg-[#B23E26] text-white rounded-xs items-center justify-center shadow-xs active:scale-95 transition cursor-pointer shrink-0"
+            >
+              <i class="fa-solid fa-stop text-sm"></i>
+            </button>
+          </div>
         </div>
       </footer>
     </main>

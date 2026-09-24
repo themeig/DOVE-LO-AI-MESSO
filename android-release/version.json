@@ -1,6 +1,6 @@
 {
-  "version_code": 259,
-  "version_name": "2.5.9",
+  "version_code": 260,
+  "version_name": "2.6.0",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ Rimozione icona emoji dal campo chat (desktop e mobile) per un design dattiloscritto ancora più pulito ed ergonomico."
+  "release_notes": "✨ All'apertura della chat la visualizzazione scorre subito all'ultimo messaggio; pulsante 'Torna in basso' riposizionato sopra il microfono sia su app Android che desktop."
 }
