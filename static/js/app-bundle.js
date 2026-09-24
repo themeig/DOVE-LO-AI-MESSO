@@ -749,15 +749,11 @@
         const cleanPreview = cleanSidebarPreview(rawLastMsg);
         const timeStr = t.last_message_time || '';
 
-        // Badge rotella che gira sull'avatar del thread quando l'assistente sta lavorando
-        const avatarSpinner = activeTask ? `
-          <span class="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-xs ring-1 ring-[#C84B31] z-10" title="${escapeHtml(activeTask.statusText || 'In elaborazione...')}">
-            <i class="fa-solid fa-circle-notch text-[#C84B31] text-[11px] animate-spin"></i>
-          </span>
-        ` : '';
+        // Nessun badge rotella o animazione rossa sull'avatar
+        const avatarSpinner = '';
 
         let previewHtml = '';
-        let rightPillHtml = '';
+        const rightPillHtml = `<span class="text-[10px] text-[#7A7568] shrink-0 font-mono-code">${escapeHtml(timeStr)}</span>`;
 
         if (activeTask) {
           const pctStr = (activeTask.progressPercent !== null && activeTask.progressPercent !== undefined && !isNaN(activeTask.progressPercent))
@@ -765,22 +761,14 @@
             : '';
           const statusDesc = activeTask.statusText || 'Elaborazione in corso...';
           previewHtml = `
-            <p class="text-[11px] text-[#3C5A48] font-semibold truncate leading-tight flex-1 flex items-center gap-1.5 overflow-hidden whitespace-nowrap block" title="${escapeHtml(statusDesc + pctStr)}">
-              <i class="fa-solid fa-circle-notch text-[10px] text-[#C84B31] animate-spin shrink-0"></i>
+            <p class="text-[11px] text-[#3C5A48] font-semibold truncate leading-tight flex-1 overflow-hidden whitespace-nowrap block" title="${escapeHtml(statusDesc + pctStr)}">
               <span class="truncate">${escapeHtml(statusDesc + pctStr)}</span>
             </p>
-          `;
-          rightPillHtml = `
-            <span class="stamp-oli stamp-terracotta text-[8px] flex items-center gap-1 shrink-0 animate-pulse">
-              <span class="w-1.5 h-1.5 rounded-full bg-[#C84B31] animate-ping"></span>
-              <span>AI</span>
-            </span>
           `;
         } else {
           previewHtml = `
             <p class="text-[11px] text-[#7A7568] truncate leading-tight flex-1 overflow-hidden whitespace-nowrap block font-mono-code" title="${escapeHtml(cleanPreview)}">${escapeHtml(cleanPreview)}</p>
           `;
-          rightPillHtml = `<span class="text-[10px] text-[#7A7568] shrink-0 font-mono-code">${escapeHtml(timeStr)}</span>`;
         }
 
         return `
@@ -2273,17 +2261,11 @@
 
       indicator.innerHTML = `
         <div class="typing-indicator">
-          <div class="flex items-center justify-between gap-3 w-full">
-            <div class="flex items-center gap-2.5">
-              <div class="typing-dots shrink-0">
-                <span></span><span></span><span></span>
-              </div>
-              ${statusText ? `<span id="typingStatusText" class="text-xs font-medium text-slate-700 select-none">${escapeHtml(statusText)}</span>` : `<span id="typingStatusText" class="text-xs font-medium text-slate-700 select-none hidden"></span>`}
+          <div class="flex items-center gap-2.5">
+            <div class="typing-dots shrink-0">
+              <span></span><span></span><span></span>
             </div>
-            <button type="button" onclick="abortGeneration()" title="Interrompi operazione" class="text-[11px] font-semibold text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200/80 px-2 py-0.5 rounded-full flex items-center gap-1 transition active:scale-95 cursor-pointer ml-auto select-none shadow-2xs">
-              <i class="fa-solid fa-stop text-[9px]"></i>
-              <span>Interrompi</span>
-            </button>
+            ${statusText ? `<span id="typingStatusText" class="text-xs font-medium text-slate-700 select-none">${escapeHtml(statusText)}</span>` : `<span id="typingStatusText" class="text-xs font-medium text-slate-700 select-none hidden"></span>`}
           </div>
           <div id="typingProgressContainer" class="${showProgress ? '' : 'hidden'} w-48 sm:w-64 pt-1">
             <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">

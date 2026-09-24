@@ -1,6 +1,6 @@
 {
-  "version_code": 275,
-  "version_name": "2.7.5",
+  "version_code": 276,
+  "version_name": "2.7.6",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ Dashboard pulita: rinominata sezione in 'Oggetti Fisici' (rimossa dicitura cespiti) e isolamento rigoroso per prevenire cartelle documenti omonime."
+  "release_notes": "✨ Chat UI pulita ed essenziale: rimossi spinner e badge rossi invasivi durante la generazione delle risposte."
 }
