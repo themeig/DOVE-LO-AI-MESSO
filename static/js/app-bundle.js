@@ -749,8 +749,12 @@
         const cleanPreview = cleanSidebarPreview(rawLastMsg);
         const timeStr = t.last_message_time || '';
 
-        // Nessun badge rotella o animazione rossa sull'avatar
-        const avatarSpinner = '';
+        // Badge rotella che gira sull'avatar del thread quando l'assistente sta lavorando
+        const avatarSpinner = activeTask ? `
+          <span class="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-xs ring-1 ring-[#C84B31] z-10" title="${escapeHtml(activeTask.statusText || 'In elaborazione...')}">
+            <i class="fa-solid fa-circle-notch text-[#C84B31] text-[11px] animate-spin"></i>
+          </span>
+        ` : '';
 
         let previewHtml = '';
         const rightPillHtml = `<span class="text-[10px] text-[#7A7568] shrink-0 font-mono-code">${escapeHtml(timeStr)}</span>`;
@@ -761,7 +765,8 @@
             : '';
           const statusDesc = activeTask.statusText || 'Elaborazione in corso...';
           previewHtml = `
-            <p class="text-[11px] text-[#3C5A48] font-semibold truncate leading-tight flex-1 overflow-hidden whitespace-nowrap block" title="${escapeHtml(statusDesc + pctStr)}">
+            <p class="text-[11px] text-[#3C5A48] font-semibold truncate leading-tight flex-1 flex items-center gap-1.5 overflow-hidden whitespace-nowrap block" title="${escapeHtml(statusDesc + pctStr)}">
+              <i class="fa-solid fa-circle-notch text-[10px] text-[#C84B31] animate-spin shrink-0"></i>
               <span class="truncate">${escapeHtml(statusDesc + pctStr)}</span>
             </p>
           `;
