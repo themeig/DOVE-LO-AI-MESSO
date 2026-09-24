@@ -37,10 +37,15 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -61,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
 
     private ValueCallback<Uri[]> mFilePathCallback;
     private ActivityResultLauncher<Intent> fileChooserLauncher;
+    private Uri mCameraPhotoUri;
+    private File mCameraPhotoFile;
     private String currentServerUrl;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -185,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
 
         // User Agent mobile moderno
         String defaultUA = settings.getUserAgentString();
-        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/2.5.3");
+        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/2.5.5");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -250,9 +257,49 @@ public class MainActivity extends AppCompatActivity {
                 }
                 mFilePathCallback = filePathCallback;
 
+                boolean isCapture = fileChooserParams != null && fileChooserParams.isCaptureEnabled();
+                Intent takePictureIntent = null;
+                mCameraPhotoUri = null;
+                mCameraPhotoFile = null;
+
                 try {
-                    Intent intent = fileChooserParams.createIntent();
-                    fileChooserLauncher.launch(intent);
+                    Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                    File photoFile = createImageFile();
+                    if (photoFile != null) {
+                        mCameraPhotoFile = photoFile;
+                        mCameraPhotoUri = FileProvider.getUriForFile(
+                                MainActivity.this,
+                                getPackageName() + ".fileprovider",
+                                photoFile
+                        );
+                        cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, mCameraPhotoUri);
+                        cameraIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        takePictureIntent = cameraIntent;
+                    }
+                } catch (Exception ex) {
+                    mCameraPhotoUri = null;
+                    mCameraPhotoFile = null;
+                }
+
+                // Se l'HTML ha espressamente richiesto 'capture' (es. pulsante Fotocamera con capture="environment")
+                // apri DIRETTAMENTE l'app Fotocamera nativa senza passare per la gestione file.
+                if (isCapture && takePictureIntent != null) {
+                    try {
+                        fileChooserLauncher.launch(takePictureIntent);
+                        return true;
+                    } catch (Exception ignored) {}
+                }
+
+                // Altrimenti (es. graffetta allegati generici), apri selettore file con opzione fotocamera inclusa
+                try {
+                    Intent contentSelectionIntent = fileChooserParams != null ? fileChooserParams.createIntent() : new Intent(Intent.ACTION_GET_CONTENT);
+                    Intent chooserIntent = new Intent(Intent.ACTION_CHOOSER);
+                    chooserIntent.putExtra(Intent.EXTRA_INTENT, contentSelectionIntent);
+                    chooserIntent.putExtra(Intent.EXTRA_TITLE, "Seleziona file o scatta foto");
+                    if (takePictureIntent != null) {
+                        chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{takePictureIntent});
+                    }
+                    fileChooserLauncher.launch(chooserIntent);
                     return true;
                 } catch (Exception e) {
                     // Fallback a selettore generico
@@ -266,26 +313,56 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private File createImageFile() {
+        try {
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+            File storageDir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES);
+            if (storageDir == null) {
+                storageDir = getCacheDir();
+            }
+            if (!storageDir.exists()) {
+                storageDir.mkdirs();
+            }
+            return File.createTempFile("JPEG_" + timeStamp + "_", ".jpg", storageDir);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private void setupFileChooserLauncher() {
         fileChooserLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (mFilePathCallback == null) return;
                     Uri[] results = null;
-                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                    if (result.getResultCode() == Activity.RESULT_OK) {
                         Intent data = result.getData();
-                        if (data.getData() != null) {
-                            results = new Uri[]{data.getData()};
-                        } else if (data.getClipData() != null) {
-                            int count = data.getClipData().getItemCount();
-                            results = new Uri[count];
-                            for (int i = 0; i < count; i++) {
-                                results[i] = data.getClipData().getItemAt(i).getUri();
+                        if (data != null && (data.getData() != null || data.getClipData() != null)) {
+                            if (data.getData() != null) {
+                                results = new Uri[]{data.getData()};
+                            } else if (data.getClipData() != null) {
+                                int count = data.getClipData().getItemCount();
+                                results = new Uri[count];
+                                for (int i = 0; i < count; i++) {
+                                    results[i] = data.getClipData().getItemAt(i).getUri();
+                                }
                             }
+                        } else if (mCameraPhotoUri != null) {
+                            // Immagine scattata direttamente dalla fotocamera nativa
+                            results = new Uri[]{mCameraPhotoUri};
+                        }
+                    } else {
+                        // Annullato: ripulisci eventuale file temporaneo vuoto
+                        if (mCameraPhotoFile != null && mCameraPhotoFile.exists() && mCameraPhotoFile.length() == 0) {
+                            try {
+                                mCameraPhotoFile.delete();
+                            } catch (Exception ignored) {}
                         }
                     }
                     mFilePathCallback.onReceiveValue(results);
                     mFilePathCallback = null;
+                    mCameraPhotoUri = null;
+                    mCameraPhotoFile = null;
                 }
         );
     }
