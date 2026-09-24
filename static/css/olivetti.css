@@ -27,15 +27,24 @@
     /* ========================================================================= */
     /* OLIVETTI INDUSTRIAL THEME (LETTERA 22 & SOTTSASS) — DEFAULT LOOK & FEEL  */
     /* ========================================================================= */
-    body {
+    html, body {
       margin: 0;
       padding: 0;
       height: 100vh;
       height: 100dvh;
       overflow: hidden;
+      overscroll-behavior-y: none;
+      overscroll-behavior: none;
       background-color: var(--oli-paper);
       color: var(--oli-ink);
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    #chatFeed,
+    #threadsContainer,
+    .custom-scroll {
+      overscroll-behavior-y: contain;
+      -webkit-overflow-scrolling: touch;
     }
 
     .font-mono-code {

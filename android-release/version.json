@@ -1,6 +1,6 @@
 {
-  "version_code": 261,
-  "version_name": "2.6.1",
+  "version_code": 262,
+  "version_name": "2.6.2",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ Sistema aggiornamenti automatico e manuale con bridge nativo AndroidUpdater; verifica istantanea dai badge versione e ripristino in background senza blocchi."
+  "release_notes": "✨ Risolto il problema del pull-to-refresh durante lo scorrimento verso l'alto nella cronologia della chat; scrolling fluido e isolamento overscroll su mobile."
 }

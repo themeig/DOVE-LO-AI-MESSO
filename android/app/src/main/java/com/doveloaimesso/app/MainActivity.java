@@ -152,6 +152,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupListeners() {
         swipeRefresh.setColorSchemeResources(R.color.primary, R.color.accent);
+        // DISABILITATO DI DEFAULT: Evita che il gesto di scorrimento verso l'alto (trascinamento in basso)
+        // nella chat o nelle liste attivi il pull-to-refresh e ricarichi la pagina dell'app.
+        swipeRefresh.setEnabled(false);
         swipeRefresh.setOnRefreshListener(() -> {
             if (webView != null) {
                 webView.clearCache(true);
@@ -803,6 +806,21 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public long getVersionCode() {
             return getLocalVersionCode();
+        }
+
+        @JavascriptInterface
+        public void setSwipeRefreshEnabled(boolean enabled) {
+            runOnUiThread(() -> swipeRefresh.setEnabled(enabled));
+        }
+
+        @JavascriptInterface
+        public void reloadApp() {
+            runOnUiThread(() -> {
+                if (webView != null) {
+                    webView.clearCache(true);
+                    webView.reload();
+                }
+            });
         }
     }
 }
