@@ -31,8 +31,11 @@ Questo documento definisce l'architettura, le convenzioni di design e i vincoli 
 ---
 
 ## 3. Architettura Tecnica
-* **Frontend**: SPA reattiva (HTML5, Tailwind CSS, Vanilla JS) con transizione istantanea tra Chat e Dashboard.
+* **Frontend**:
+  * **Desktop**: `index.html` (SPA reattiva Olivetti Industrial per computer, isolata per garantire massima stabilità e assenza di regressioni).
+  * **Mobile & APK**: `mobile.html` servita su `/m` (con redirect automatico da `/` per smartphone e Android APK), con mirino scanner ottico integrato (`static/js/mobile-scanner.js`: fotocamera live, rilevamento 4 bordi, dewarping prospettico, filtri contrasto/B&W e gestione permessi guidata per fotocamera e microfono).
 * **Backend**: Python 3.12+ (FastAPI):
+  * `GET /m` (servizio dedicato interfaccia mobile)
   * `/chat` (elaborazione messaggi e RAG)
   * `/upload` (estrazione dati da immagini e PDF con Pydantic)
   * `/transcribe` (Whisper)
