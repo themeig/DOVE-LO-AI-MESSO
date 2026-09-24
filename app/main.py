@@ -164,16 +164,42 @@ def get_app_version():
         "description": "Executive AI Vault & Organizzatore Intelligente"
     }
 
-# Endpoint White Paper
+# Endpoint White Paper (HTML Styled con CSS, fallback a raw Markdown)
+@app.get("/whitepaper")
 @app.get("/api/whitepaper")
-def get_whitepaper():
+def get_whitepaper(request: Request):
+    fmt = request.query_params.get("format", "").lower()
+    accept = request.headers.get("accept", "").lower()
+
     wp_file = settings.BASE_DIR / "WHITE_PAPER.md"
-    if not wp_file.exists():
-        raise HTTPException(status_code=404, detail="White Paper non trovato")
-    return Response(
-        content=wp_file.read_text(encoding="utf-8"),
-        media_type="text/markdown; charset=utf-8"
-    )
+    wp_html = settings.BASE_DIR / "whitepaper.html"
+
+    # Se richiesto esplicitamente raw markdown o client CLI (curl con text/markdown puro)
+    if fmt in ("raw", "md", "markdown") or ("text/markdown" in accept and "text/html" not in accept):
+        if not wp_file.exists():
+            raise HTTPException(status_code=404, detail="White Paper non trovato")
+        return Response(
+            content=wp_file.read_text(encoding="utf-8"),
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": 'inline; filename="WHITE_PAPER.md"'}
+        )
+
+    # Navigazione da browser: pagina HTML completa di CSS Tailwind e tipografia
+    if wp_html.exists():
+        return FileResponse(
+            wp_html,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+    elif wp_file.exists():
+        return Response(
+            content=wp_file.read_text(encoding="utf-8"),
+            media_type="text/markdown; charset=utf-8"
+        )
+    raise HTTPException(status_code=404, detail="White Paper non trovato")
 
 def _is_mobile_user_agent(ua: str) -> bool:
     if not ua:
@@ -256,7 +282,7 @@ def get_mobile_app_version():
         except Exception:
             pass
     return {
-        "version_code": 271,
+        "version_code": 272,
         "version_name": APP_VERSION,
         "apk_url": "/api/app/latest-apk",
         "release_notes": "Aggiornamento applicazione"

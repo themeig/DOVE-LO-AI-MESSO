@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="it" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>White Paper Tecnico — Dove lo AI messo (AI Financial & Document Vault)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Space Grotesk, JetBrains Mono, Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', 'sans-serif'],
+            display: ['"Space Grotesk"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            vault: {
+              paper: '#F8F5EE',
+              ink: '#222220',
+              sage: '#3C5A48',
+              sagedark: '#2F4738',
+              terracotta: '#C84B31',
+              line: '#E3DDD1',
+              cream: '#FAF8F2',
+              card: '#FFFFFF',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --vault-paper: #F8F5EE;
+      --vault-ink: #222220;
+      --vault-sage: #3C5A48;
+      --vault-line: #E3DDD1;
+      --vault-cream: #FAF8F2;
+    }
+
+    body {
+      background-color: #F8F5EE;
+      color: #222220;
+    }
+
+    /* Industrial stamps */
+    .stamp-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 8px;
+      border: 1px solid var(--vault-line);
+      background-color: var(--vault-cream);
+      color: var(--vault-ink);
+      border-radius: 2px;
+    }
+    .stamp-sage {
+      border-color: var(--vault-sage);
+      color: var(--vault-sage);
+      background: rgba(60, 90, 72, 0.08);
+    }
+    .stamp-solid-sage {
+      background: var(--vault-sage);
+      color: #FFFFFF;
+      border-color: var(--vault-sage);
+    }
+    .stamp-terracotta {
+      border-color: #C84B31;
+      color: #C84B31;
+      background: rgba(200, 75, 49, 0.08);
+    }
+
+    /* Typewriter ribbon divider */
+    .typewriter-ribbon {
+      height: 3px;
+      background: linear-gradient(180deg, #C84B31 50%, #222220 50%);
+      width: 100%;
+    }
+
+    .paper-card {
+      background: #FFFFFF;
+      border: 1px solid var(--vault-line);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 4px 14px rgba(34, 34, 32, 0.02);
+    }
+
+    /* Table styling */
+    .wp-table {
+      width: 100%;
+      text-align: left;
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+    }
+    .wp-table th {
+      background: #FAF8F2;
+      color: #222220;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      padding: 10px 14px;
+      border-bottom: 2px solid var(--vault-line);
+      font-size: 0.75rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .wp-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #EFECE3;
+      vertical-align: top;
+    }
+    .wp-table tr:hover td {
+      background-color: #FAF8F2;
+    }
+
+    /* Code & pre blocks */
+    pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      line-height: 1.5;
+    }
+
+    /* Scroll offset for sticky header */
+    html {
+      scroll-padding-top: 80px;
+    }
+
+    /* Mobile drawer navigation */
+    #wpMobileToc {
+      transform: translateX(-100%);
+      transition: transform 0.25s ease-in-out;
+    }
+    #wpMobileToc.open {
+      transform: translateX(0);
+    }
+
+    @media print {
+      header, #wpSidebar, #wpMobileToc, #wpPrintBtn, #wpDownloadBtn, #wpBackBtn {
+        display: none !important;
+      }
+      body {
+        background: #FFFFFF !important;
+        color: #000000 !important;
+      }
+      .paper-card {
+        box-shadow: none !important;
+        border: 1px solid #CCCCCC !important;
+      }
+      #wpMainContent {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col font-sans selection:bg-[#3C5A48] selection:text-white">
+
+  <!-- ================================================================= -->
+  <!-- TOP HEADER / ACTION BAR                                           -->
+  <!-- ================================================================= -->
+  <header class="fixed top-0 left-0 right-0 z-40 bg-[#F8F5EE]/95 backdrop-blur-md border-b border-[#E3DDD1]">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center gap-3">
+        <!-- Mobile TOC Trigger -->
+        <button onclick="toggleMobileToc()" class="lg:hidden w-9 h-9 rounded-xs border border-[#E3DDD1] bg-white hover:bg-[#FAF8F2] flex items-center justify-center text-[#222220] transition cursor-pointer" title="Indice dei Contenuti">
+          <i class="fa-solid fa-list-ul text-sm"></i>
+        </button>
+
+        <div class="w-9 h-9 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center font-bold shadow-xs">
+          <i class="fa-solid fa-vault text-sm"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-display font-bold text-sm sm:text-base tracking-tight text-[#222220]">
+              DOVE LO AI MESSO
+            </span>
+            <span class="stamp-badge stamp-sage hidden sm:inline-flex">White Paper 2026</span>
+          </div>
+          <p class="text-[10px] text-[#7A7568] font-mono hidden md:block">
+            Architettura, Sicurezza Crittografica, Motore Multimodale &amp; Strumenti Agentici
+          </p>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2 sm:gap-3 font-mono text-xs font-semibold">
+        <!-- Back to showcase -->
+        <a href="/showcase" id="wpBackBtn" class="px-3 py-1.5 rounded-xs bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] transition flex items-center gap-1.5 shadow-2xs cursor-pointer">
+          <i class="fa-solid fa-arrow-left text-[#3C5A48]"></i>
+          <span class="hidden sm:inline">Showcase</span>
+        </a>
+
+        <!-- Download raw markdown -->
+        <a href="/api/whitepaper?format=raw" download="WHITE_PAPER.md" id="wpDownloadBtn" class="px-3 py-1.5 rounded-xs bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] transition flex items-center gap-1.5 shadow-2xs cursor-pointer" title="Scarica sorgente Markdown originale">
+          <i class="fa-regular fa-file-code text-[#C84B31]"></i>
+          <span class="hidden sm:inline">Scarica .MD</span>
+        </a>
+
+        <!-- Print / PDF -->
+        <button onclick="window.print()" id="wpPrintBtn" class="px-3 py-1.5 rounded-xs bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] transition flex items-center gap-1.5 shadow-2xs cursor-pointer" title="Stampa o salva come PDF">
+          <i class="fa-solid fa-print text-[#7A7568]"></i>
+          <span class="hidden sm:inline">Stampa / PDF</span>
+        </button>
+
+        <!-- Open App -->
+        <a href="/" class="px-3.5 py-1.5 rounded-xs bg-[#3C5A48] hover:bg-[#2F4738] text-white transition flex items-center gap-1.5 shadow-xs cursor-pointer">
+          <i class="fa-solid fa-terminal text-[11px]"></i>
+          <span>Apri App</span>
+        </a>
+      </div>
+    </div>
+    <div class="typewriter-ribbon"></div>
+  </header>
+
+  <!-- ================================================================= -->
+  <!-- MOBILE TOC DRAWER                                                 -->
+  <!-- ================================================================= -->
+  <div id="wpMobileOverlay" onclick="toggleMobileToc()" class="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs hidden lg:hidden"></div>
+  <aside id="wpMobileToc" class="fixed top-0 left-0 bottom-0 z-50 w-72 bg-[#F8F5EE] border-r border-[#E3DDD1] flex flex-col lg:hidden shadow-2xl">
+    <div class="p-4 border-b border-[#E3DDD1] flex items-center justify-between bg-[#FAF8F2]">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-book-open text-[#3C5A48] text-sm"></i>
+        <span class="font-display font-bold text-sm">Indice dei Contenuti</span>
+      </div>
+      <button onclick="toggleMobileToc()" class="w-8 h-8 rounded-xs border border-[#E3DDD1] bg-white flex items-center justify-center text-[#7A7568]">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="p-3 border-b border-[#E3DDD1]">
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-[#7A7568] text-xs"></i>
+        <input type="text" id="wpMobileSearch" oninput="filterTocLinks(this.value)" placeholder="Filtra capitoli..." class="w-full pl-7 pr-2.5 py-1.5 rounded-xs bg-white border border-[#E3DDD1] text-xs font-mono outline-none focus:border-[#3C5A48]">
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-3 space-y-1 font-mono text-xs" id="wpMobileNavLinks">
+      <a href="#sec-1" onclick="toggleMobileToc()" class="block px-2.5 py-2 rounded-xs text-[#222220] hover:bg-white hover:text-[#3C5A48] border border-transparent hover:border-[#E3DDD1]">01. Executive Summary &amp; Visione</a>
+      <a href="#sec-2" onclick="toggleMobileToc()" class="block px-2.5 py-2 rounded-xs text-[#222220] hover:bg-white hover:text-[#3C5A48] border border-transparent hover:border-[#E3DDD1]">02. Architettura del Sistema</a>
+      <a href="#sec-3" onclick="toggleMobileToc()" class="block px-2.5 py-2 rounded-xs text-[#222220] hover:bg-white hover:text-[#3C5A48] border border-transparent hover:border-[#E3DDD1]">03. Filosofia del Design Sistemico</a>
+      <a href="#sec-4" onclick="toggleMobileToc()" class="block px-2.5 py-2 rounded-xs text-[#222220] hover:bg-white hover:text-[#3C5A48] border border-transparent hover:border-[#E3DDD1]">04. Sicurezza &amp; Crittografia a Riposo</a>
+      <a href="#sec-5" onclick="toggleMobileToc()" class="block px-2.5 py-2 rounded-xs text-[#222220] hover:bg-white hover:text-[#3C5A48] border border-transparent hover:border-[#E3DDD1]">05. Supporto Formati &amp; Multimodalità</a>
+      <a href="#sec-6" onclick="toggleMobileToc()" class="block px-2.5 py-2 rounded-xs text-[#222220] hover:bg-white hover:text-[#3C5A48] border border-transparent hover:border-[#E3DDD1]">06. Strumenti Agentici &amp; MCP Tools</a>
+      <a href="#sec-7" onclick="toggleMobileToc()" class="block px-2.5 py-2 rounded-xs text-[#222220] hover:bg-white hover:text-[#3C5A48] border border-transparent hover:border-[#E3DDD1]">07. Modelli di Distribuzione &amp; Piani</a>
+      <a href="#sec-8" onclick="toggleMobileToc()" class="block px-2.5 py-2 rounded-xs text-[#222220] hover:bg-white hover:text-[#3C5A48] border border-transparent hover:border-[#E3DDD1]">08. Tabella di Sintesi Funzionalità</a>
+    </nav>
+  </aside>
+
+  <!-- ================================================================= -->
+  <!-- MAIN LAYOUT                                                       -->
+  <!-- ================================================================= -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- DESKTOP STICKY SIDEBAR (3 cols) -->
+    <aside id="wpSidebar" class="hidden lg:block lg:col-span-3 sticky top-24 space-y-4 font-mono text-xs">
+      <div class="paper-card rounded-xs p-4 border border-[#E3DDD1] bg-white space-y-3">
+        
+        <div class="flex items-center justify-between pb-2 border-b border-[#E3DDD1]">
+          <span class="font-bold text-[#222220] uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-compass text-[#3C5A48]"></i> Indice
+          </span>
+          <span class="stamp-badge text-[9px]">8 Capitoli</span>
+        </div>
+
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-[#7A7568] text-[10px]"></i>
+          <input type="text" id="wpDesktopSearch" oninput="filterTocLinks(this.value)" placeholder="Cerca capitolo..." class="w-full pl-7 pr-2.5 py-1.5 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-xs outline-none focus:border-[#3C5A48] focus:bg-white transition">
+        </div>
+
+        <nav class="space-y-1 pt-1" id="wpDesktopNavLinks">
+          <a href="#sec-1" class="toc-link block px-2.5 py-1.5 rounded-xs text-[#7A7568] hover:text-[#222220] hover:bg-[#FAF8F2] transition border-l-2 border-transparent">
+            01. Executive Summary
+          </a>
+          <a href="#sec-2" class="toc-link block px-2.5 py-1.5 rounded-xs text-[#7A7568] hover:text-[#222220] hover:bg-[#FAF8F2] transition border-l-2 border-transparent">
+            02. Architettura del Sistema
+          </a>
+          <a href="#sec-3" class="toc-link block px-2.5 py-1.5 rounded-xs text-[#7A7568] hover:text-[#222220] hover:bg-[#FAF8F2] transition border-l-2 border-transparent">
+            03. Filosofia del Design
+          </a>
+          <a href="#sec-4" class="toc-link block px-2.5 py-1.5 rounded-xs text-[#7A7568] hover:text-[#222220] hover:bg-[#FAF8F2] transition border-l-2 border-transparent">
+            04. Sicurezza &amp; Crittografia
+          </a>
+          <a href="#sec-5" class="toc-link block px-2.5 py-1.5 rounded-xs text-[#7A7568] hover:text-[#222220] hover:bg-[#FAF8F2] transition border-l-2 border-transparent">
+            05. Supporto Formati
+          </a>
+          <a href="#sec-6" class="toc-link block px-2.5 py-1.5 rounded-xs text-[#7A7568] hover:text-[#222220] hover:bg-[#FAF8F2] transition border-l-2 border-transparent">
+            06. Strumenti Agentici
+          </a>
+          <a href="#sec-7" class="toc-link block px-2.5 py-1.5 rounded-xs text-[#7A7568] hover:text-[#222220] hover:bg-[#FAF8F2] transition border-l-2 border-transparent">
+            07. Distribuzione &amp; Piani
+          </a>
+          <a href="#sec-8" class="toc-link block px-2.5 py-1.5 rounded-xs text-[#7A7568] hover:text-[#222220] hover:bg-[#FAF8F2] transition border-l-2 border-transparent">
+            08. Tabella di Sintesi
+          </a>
+        </nav>
+
+      </div>
+
+      <!-- Document Metadata Card -->
+      <div class="paper-card rounded-xs p-4 border border-[#E3DDD1] bg-[#FAF8F2] space-y-2 text-[11px] text-[#7A7568]">
+        <div class="font-bold text-[#222220] flex items-center gap-1.5">
+          <i class="fa-regular fa-file-lines text-[#3C5A48]"></i> Specifiche Documento
+        </div>
+        <div class="space-y-1 pt-1 border-t border-[#E3DDD1]">
+          <div class="flex justify-between">
+            <span>Versione:</span>
+            <span class="font-bold text-[#222220]">2.0 (2026)</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Classificazione:</span>
+            <span class="stamp-badge stamp-sage text-[9px]">Pubblico</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Standard:</span>
+            <span class="text-[#222220]">AES-256 / GDPR</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Licenza Core:</span>
+            <span class="text-[#222220]">Open Source</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN ARTICLE CONTENT (9 cols) -->
+    <main id="wpMainContent" class="lg:col-span-9 space-y-12">
+      
+      <!-- HERO COVER OF WHITE PAPER -->
+      <div class="paper-card rounded-xs p-6 sm:p-10 border border-[#E3DDD1] bg-white relative overflow-hidden">
+        <div class="inline-flex items-center gap-2 mb-4">
+          <span class="stamp-badge stamp-solid-sage">DOCUMENTO TECNICO UFFICIALE</span>
+          <span class="stamp-badge text-[#7A7568]">REV. 2026.09</span>
+        </div>
+        
+        <h1 class="text-3xl sm:text-5xl font-display font-extrabold text-[#222220] tracking-tight leading-[1.15]">
+          DOVE LO AI MESSO
+        </h1>
+        <p class="text-base sm:text-xl font-display text-[#3C5A48] mt-2 font-semibold">
+          Architettura, Sicurezza Crittografica, Motore Agentico e Interfaccia Duale per la Gestione Intelligente dei Documenti e delle Scadenze
+        </p>
+
+        <p class="text-xs sm:text-sm text-[#7A7568] mt-4 leading-relaxed font-sans max-w-3xl">
+          Questo documento definisce in modo formale l'architettura tecnica, il modello crittografico a conoscenza zero, le pipeline di elaborazione multimodale e le specifiche degli strumenti agentici integrati nel sistema <strong>"Dove lo AI messo"</strong>.
+        </p>
+
+        <div class="flex flex-wrap items-center gap-3 pt-6 border-t border-[#E3DDD1] mt-6 font-mono text-xs">
+          <span class="stamp-badge"><i class="fa-solid fa-shield-halved text-[#3C5A48]"></i> Zero-Knowledge Locale</span>
+          <span class="stamp-badge"><i class="fa-brands fa-google text-[#3C5A48]"></i> Google Vertex AI Perimeter</span>
+          <span class="stamp-badge"><i class="fa-solid fa-lock text-[#C84B31]"></i> PBKDF2 600.000 iterazioni</span>
+          <span class="stamp-badge"><i class="fa-solid fa-code text-[#222220]"></i> FastAPI + SQLite WAL</span>
+        </div>
+      </div>
+
+      <!-- ============================================================= -->
+      <!-- SEZIONE 1: EXECUTIVE SUMMARY                                  -->
+      <!-- ============================================================= -->
+      <section id="sec-1" class="paper-card rounded-xs p-6 sm:p-8 border border-[#E3DDD1] bg-white space-y-5">
+        <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
+          <h2 class="text-xl sm:text-2xl font-display font-bold text-[#222220] flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs font-mono">01</span>
+            Executive Summary &amp; Visione di Progetto
+          </h2>
+          <span class="stamp-badge text-[9px]">CAPITOLO 1</span>
+        </div>
+
+        <p class="text-sm leading-relaxed text-[#222220]">
+          <strong>"Dove lo AI messo"</strong> è un assistente personale intelligente e caveau crittografico locale progettato per risolvere in modo definitivo il disordine documentale e la dispersione delle scadenze e degli oggetti quotidiani.
+        </p>
+
+        <p class="text-sm leading-relaxed text-[#7A7568]">
+          A differenza dei tradizionali sistemi di archiviazione complessi o dei cloud pubblici non protetti, <strong>Dove lo AI messo</strong> combina quattro pilastri fondamentali:
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+          <div class="p-4 rounded-xs border border-[#E3DDD1] bg-[#FAF8F2] space-y-1.5">
+            <div class="font-display font-bold text-sm text-[#222220] flex items-center gap-2">
+              <i class="fa-solid fa-keyboard text-[#3C5A48]"></i>
+              <span>1. Design Sistemico ad Alta Precisione</span>
+            </div>
+            <p class="text-xs text-[#7A7568] leading-relaxed">
+              Un'interfaccia conversazionale e registro protocollo per azzerare la curva d'apprendimento: chat fluida, acquisizione multimodale istantanea, schede protocollo con timbri ufficiali.
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xs border border-[#E3DDD1] bg-[#FAF8F2] space-y-1.5">
+            <div class="font-display font-bold text-sm text-[#222220] flex items-center gap-2">
+              <i class="fa-solid fa-chart-pie text-[#3C5A48]"></i>
+              <span>2. Executive Dashboard Moderna</span>
+            </div>
+            <p class="text-xs text-[#7A7568] leading-relaxed">
+              Una console moderna in stile SaaS/Fintech per il controllo visivo centralizzato di indicatori KPI, scadenze fiscali, stato dei pagamenti e inventario oggetti.
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xs border border-[#E3DDD1] bg-[#FAF8F2] space-y-1.5">
+            <div class="font-display font-bold text-sm text-[#222220] flex items-center gap-2">
+              <i class="fa-solid fa-shield-halved text-[#C84B31]"></i>
+              <span>3. Privacy-First &amp; Crittografia a Riposo</span>
+            </div>
+            <p class="text-xs text-[#7A7568] leading-relaxed">
+              Cifratura AES-128 / Fernet con derivazione chiave PBKDF2 (600.000 iterazioni) e storage locale SQLite: nessun dato o file risiede mai in chiaro sul disco.
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xs border border-[#E3DDD1] bg-[#FAF8F2] space-y-1.5">
+            <div class="font-display font-bold text-sm text-[#222220] flex items-center gap-2">
+              <i class="fa-solid fa-brain text-[#3C5A48]"></i>
+              <span>4. Motore Agentico Autonomo</span>
+            </div>
+            <p class="text-xs text-[#7A7568] leading-relaxed">
+              Comprensione multimodale (PDF, Word, Excel, CSV, Foto, ZIP), compressione/decompressione autonoma, ricerca fuzzy con stemming italiano e scadenzario deterministico.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================= -->
+      <!-- SEZIONE 2: ARCHITETTURA DEL SISTEMA                           -->
+      <!-- ============================================================= -->
+      <section id="sec-2" class="paper-card rounded-xs p-6 sm:p-8 border border-[#E3DDD1] bg-white space-y-5">
+        <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
+          <h2 class="text-xl sm:text-2xl font-display font-bold text-[#222220] flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs font-mono">02</span>
+            Architettura del Sistema
+          </h2>
+          <span class="stamp-badge text-[9px]">CAPITOLO 2</span>
+        </div>
+
+        <p class="text-sm leading-relaxed text-[#7A7568]">
+          L'applicazione adotta una separazione a livelli rigorosa tra interfaccia utente, routing agentico, servizi di dominio crittografico e persistenza trasparente su disco:
+        </p>
+
+        <!-- Diagramma Architetturale -->
+        <div class="bg-[#181816] text-[#FAF8F2] p-5 rounded-xs font-mono text-xs overflow-x-auto border border-[#E3DDD1]">
+          <pre class="leading-relaxed">
+┌────────────────────────────────────────────────────────────────────────┐
+│                  FRONTEND SPA (HTML5 / Tailwind CSS)                   │
+│   ├─ 💬 Terminale Conversazionale ad Alta Precisione                   │
+│   ├─ 📊 Executive Bento Dashboard (SaaS &amp; Fintech Control)             │
+│   └─ 📱 Mobile Web App con Scanner Ottico Dewarping                    │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ HTTP / REST API (CORS, Token Auth)
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                   BACKEND FASTAPI (Python 3.12+)                       │
+│   ├─ /api/chat (Agentic Router, Intent Classifier, Guardrails)         │
+│   ├─ /api/documents (Upload Singolo, Batch Concorrente, Cifratura)     │
+│   ├─ /api/dashboard (Bento Aggregates, KPI, Filtri Italiani)           │
+│   ├─ /api/folders (Local Folder Watcher &amp; OS Explorer Bridge)           │
+│   ├─ /api/drive (Google Drive Cloud Sync OAuth 2.0)                    │
+│   └─ /mcp (Model Context Protocol Server — 20 Autonomous Tools)        │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ In-Memory Pipeline (RAM Only)
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                      CORE SERVICES &amp; AGENT ENGINE                      │
+│   ├─ 🧠 Agent Service (Autonomous Decision Loop &amp; Tool Calling)       │
+│   ├─ 🔍 Search Engine (Italian Stemming, Synonyms, Levenshtein Fuzzy)  │
+│   ├─ 🗄️ Office &amp; Batch Engine (openpyxl Formulas, Docx, CSV, ZIP)       │
+│   ├─ ⚡ Multimodal AI Gateway (Google Vertex AI / OpenRouter Fallback)  │
+│   └─ 🛡️ Crypto Service (AES-128 Fernet + PBKDF2 600k iterations)       │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ Crittografia Trasparente
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                       SECURE STORAGE LAYER                             │
+│   ├─ 🗃️ SQLite Locale WAL (TypeDecorator Encrypted Columns)             │
+│   └─ 🔒 Storage Uploads (File binari cifrati a blocchi su disco)       │
+└────────────────────────────────────────────────────────────────────────┘</pre>
+        </div>
+      </section>
+
+      <!-- ============================================================= -->
+      <!-- SEZIONE 3: FILOSOFIA DEL DESIGN SISTEMICO                    -->
+      <!-- ============================================================= -->
+      <section id="sec-3" class="paper-card rounded-xs p-6 sm:p-8 border border-[#E3DDD1] bg-white space-y-5">
+        <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
+          <h2 class="text-xl sm:text-2xl font-display font-bold text-[#222220] flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs font-mono">03</span>
+            Filosofia del Design: Il Meglio dei Due Mondi
+          </h2>
+          <span class="stamp-badge text-[9px]">CAPITOLO 3</span>
+        </div>
+
+        <div class="space-y-4">
+          <h3 class="font-display font-bold text-base text-[#222220]">
+            3.1. Interfaccia Conversazionale = Design Sistemico ad Alta Precisione
+          </h3>
+          <ul class="space-y-2 text-xs sm:text-sm text-[#7A7568] list-disc list-inside leading-relaxed">
+            <li><strong class="text-[#222220]">Look &amp; Feel di Registro Contabile</strong>: Sfondo carta calda avorio (<code class="bg-[#FAF8F2] px-1 py-0.5 border border-[#E3DDD1] font-mono text-xs">#F8F5EE</code>), inchiostro grafite (<code class="bg-[#FAF8F2] px-1 py-0.5 border border-[#E3DDD1] font-mono text-xs">#222220</code>), verde salvia d'archivio (<code class="bg-[#FAF8F2] px-1 py-0.5 border border-[#E3DDD1] font-mono text-xs">#3C5A48</code>) e rosso terracotta (<code class="bg-[#FAF8F2] px-1 py-0.5 border border-[#E3DDD1] font-mono text-xs">#C84B31</code>). Schede protocollo squadrate con timbri di convalida ufficiali.</li>
+            <li><strong class="text-[#222220]">Barra Input Tattile</strong>: Tasti di precisione sagomati, campo testo monospace, pulsante fotocamera/scanner, menu a comparsa per file, cartelle e oggetti, registratore vocale nativo Whisper e pulsante d'invio sagomato.</li>
+            <li><strong class="text-[#222220]">Directory Traversal Ricorsivo Universale</strong>: Trascina qualsiasi file o un'intera cartella nidificata: il motore <code class="font-mono text-xs">webkitGetAsEntry</code> esplora ricorsivamente tutti i livelli, estrae i documenti e avvia l'upload concorrente (3 worker paralleli) con streaming di progresso.</li>
+            <li><strong class="text-[#222220]">Toast System In-App (Zero Alert Nativi)</strong>: Notifiche floating stile Linear/Stripe e modale di conferma asincrono in-app sostituiscono completamente gli alert bloccanti del browser.</li>
+          </ul>
+
+          <h3 class="font-display font-bold text-base text-[#222220] pt-4">
+            3.2. Executive Dashboard = Stile SaaS Moderno (Bento Grid)
+          </h3>
+          <ul class="space-y-2 text-xs sm:text-sm text-[#7A7568] list-disc list-inside leading-relaxed">
+            <li><strong class="text-[#222220]">Bento Grid di Indicatori KPI</strong>: Superficie moderna con contatori live per totale importi in scadenza (€), scadenze urgenti pendenti, documenti cifrati nel caveau e cespiti catalogati.</li>
+            <li><strong class="text-[#222220]">Tab Segmentate con Badge Reattivi</strong>: Filtri istantanei (<em>Tutti, Da Pagare, Quietanzati, Oggetti</em>) con conteggi numerici in tempo reale aggiornati atomicamente.</li>
+            <li><strong class="text-[#222220]">Drag &amp; Drop Diretto</strong>: Area di rilascio dedicata per caricare e cifrare file direttamente dall'Esplora File di Windows senza passare dalla chat.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ============================================================= -->
+      <!-- SEZIONE 4: SICUREZZA CRITTOGRAFICA & GOOGLE VERTEX AI         -->
+      <!-- ============================================================= -->
+      <section id="sec-4" class="paper-card rounded-xs p-6 sm:p-8 border border-[#E3DDD1] bg-white space-y-5">
+        <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
+          <h2 class="text-xl sm:text-2xl font-display font-bold text-[#222220] flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs font-mono">04</span>
+            Sicurezza &amp; Crittografia a Livello Militare
+          </h2>
+          <span class="stamp-badge text-[9px]">CAPITOLO 4</span>
+        </div>
+
+        <p class="text-sm leading-relaxed text-[#7A7568]">
+          La sicurezza di <strong>Dove lo AI messo</strong> è basata sul principio di <strong>Zero-Knowledge Locale</strong>: nessun dato riservato o documento risiede mai in chiaro sul disco del dispositivo.
+        </p>
+
+        <!-- Tabella Crittografia -->
+        <div class="overflow-x-auto border border-[#E3DDD1] rounded-xs">
+          <table class="wp-table">
+            <thead>
+              <tr>
+                <th>Componente</th>
+                <th>Algoritmo / Meccanismo</th>
+                <th>Descrizione Tecnica</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="font-bold text-[#222220]">Crittografia Dati</td>
+                <td><span class="stamp-badge font-mono text-[10px]">AES-128 / Fernet</span></td>
+                <td class="text-[#7A7568]">Crittografia a blocchi CBC con HMAC-SHA256 per autenticità. Testi e file vengono cifrati prima della scrittura su disco.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Derivazione Chiave</td>
+                <td><span class="stamp-badge stamp-sage font-mono text-[10px]">PBKDF2-HMAC-SHA256</span></td>
+                <td class="text-[#7A7568]"><strong>600.000 iterazioni</strong> con salt crittografico casuale a 16 byte. La chiave esiste unicamente nella memoria volatile RAM.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Protezione Database</td>
+                <td><span class="stamp-badge font-mono text-[10px]">SQLAlchemy TypeDecorator</span></td>
+                <td class="text-[#7A7568]">Le colonne riservate (<code class="font-mono text-xs">title</code>, <code class="font-mono text-xs">issuer</code>, <code class="font-mono text-xs">summary</code>, <code class="font-mono text-xs">content</code>, <code class="font-mono text-xs">location</code>) sono cifrate a riposo su SQLite.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Storage Binari</td>
+                <td><span class="stamp-badge stamp-terracotta font-mono text-[10px]">AES File Encryption</span></td>
+                <td class="text-[#7A7568]">I documenti PDF, Word, Excel e le fotografie in <code class="font-mono text-xs">storage/uploads/</code> sono blob cifrati a livello di byte.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Session Lifecycle</td>
+                <td><span class="stamp-badge font-mono text-[10px]">Token Entropici (32 Byte)</span></td>
+                <td class="text-[#7A7568]">Nessuna password memorizzata su cookie o local storage. Blocco immediato sessione con azzeramento chiavi RAM.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Box Google Vertex AI -->
+        <div class="p-5 rounded-xs border-2 border-[#3C5A48]/30 bg-[#FAF8F2] space-y-3 mt-4">
+          <div class="flex items-center justify-between">
+            <h4 class="font-display font-bold text-sm text-[#222220] flex items-center gap-2">
+              <i class="fa-brands fa-google text-[#3C5A48] text-base"></i>
+              Google Vertex AI Enterprise Security &amp; Data Governance Perimeter
+            </h4>
+            <span class="stamp-badge stamp-solid-sage text-[9px]">Zero Data Retention</span>
+          </div>
+          <p class="text-xs text-[#7A7568] leading-relaxed">
+            Per le elaborazioni che richiedono modelli linguistici e di visione multimodale avanzati, il sistema integra l'infrastruttura <strong>Google Vertex AI Enterprise</strong>, garantendo:
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-[#222220] pt-1">
+            <div class="p-2.5 bg-white border border-[#E3DDD1] rounded-xs">
+              <strong class="text-[#3C5A48]">1. Zero Training Policy:</strong> I documenti finanziari, fiscali e sanitari dell'utente non vengono <em>mai</em> utilizzati per l'addestramento dei modelli.
+            </div>
+            <div class="p-2.5 bg-white border border-[#E3DDD1] rounded-xs">
+              <strong class="text-[#3C5A48]">2. Crittografia TLS 1.3:</strong> Tutti i canali verso gli endpoint di inferenza sono incapsulati con chiavi gestite e perimetro VPC dedicato.
+            </div>
+            <div class="p-2.5 bg-white border border-[#E3DDD1] rounded-xs">
+              <strong class="text-[#3C5A48]">3. Conformità GDPR &amp; ISO:</strong> Piena conformità al Regolamento UE 2016/679, ISO 27001 e standard perimetrali bancari.
+            </div>
+            <div class="p-2.5 bg-white border border-[#E3DDD1] rounded-xs">
+              <strong class="text-[#3C5A48]">4. SLA 99.9% Enterprise:</strong> Elevata affidabilità con fallback deterministico offline in caso di assenza di rete.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================= -->
+      <!-- SEZIONE 5: FORMATI & PIPELINE MULTIMODALE                    -->
+      <!-- ============================================================= -->
+      <section id="sec-5" class="paper-card rounded-xs p-6 sm:p-8 border border-[#E3DDD1] bg-white space-y-5">
+        <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
+          <h2 class="text-xl sm:text-2xl font-display font-bold text-[#222220] flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs font-mono">05</span>
+            Supporto Formati &amp; Pipeline di Estrazione Multimodale
+          </h2>
+          <span class="stamp-badge text-[9px]">CAPITOLO 5</span>
+        </div>
+
+        <p class="text-sm leading-relaxed text-[#7A7568]">
+          Il sistema supporta nativamente qualsiasi documento o file dell'utente con pipeline di decodifica dedicate:
+        </p>
+
+        <div class="overflow-x-auto border border-[#E3DDD1] rounded-xs">
+          <table class="wp-table">
+            <thead>
+              <tr>
+                <th>Formato</th>
+                <th>Estensioni</th>
+                <th>Motore di Parsing</th>
+                <th>Dati Estratti</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="font-bold text-[#222220]">Documenti PDF</td>
+                <td><code class="font-mono text-xs">.pdf</code></td>
+                <td><span class="font-mono text-xs">pypdf + LLM Vision</span></td>
+                <td class="text-[#7A7568]">Titolo, Emittente, Importo, Data Scadenza, Categoria, Riassunto semantico.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Documenti Word</td>
+                <td><code class="font-mono text-xs">.docx, .doc</code></td>
+                <td><span class="font-mono text-xs">python-docx</span></td>
+                <td class="text-[#7A7568]">Testo strutturato, titoli di sezione, tabelle e clausole contrattuali.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Fogli di Calcolo</td>
+                <td><code class="font-mono text-xs">.xlsx, .xls</code></td>
+                <td><span class="font-mono text-xs text-[#3C5A48] font-bold">openpyxl (data_only=True)</span></td>
+                <td class="text-[#7A7568]">Valori reali calcolati delle formule, coordinate celle reali, totali di spesa. Zero allucinazioni.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Dati Tabellari</td>
+                <td><code class="font-mono text-xs">.csv, .tsv</code></td>
+                <td><span class="font-mono text-xs">Auto-Decoder multi-charset</span></td>
+                <td class="text-[#7A7568]">Rilevamento automatico delimitatori (<code class="font-mono">, ; \t</code>), righe contabili e totali.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Immagini &amp; Foto</td>
+                <td><code class="font-mono text-xs">.jpg, .png, .webp</code></td>
+                <td><span class="font-mono text-xs">Multimodal Vision AI</span></td>
+                <td class="text-[#7A7568]">OCR scontrini, bollette fotografate, riconoscimento oggetti personali e stanze.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Archivi ZIP</td>
+                <td><code class="font-mono text-xs">.zip, .rar, .7z</code></td>
+                <td><span class="font-mono text-xs">zipfile Batch Engine</span></td>
+                <td class="text-[#7A7568]">Decompressione ultra-rapida (100 file/s), indicizzazione e catalogazione atomica.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============================================================= -->
+      <!-- SEZIONE 6: STRUMENTI AGENTICI & MCP TOOLS                     -->
+      <!-- ============================================================= -->
+      <section id="sec-6" class="paper-card rounded-xs p-6 sm:p-8 border border-[#E3DDD1] bg-white space-y-5">
+        <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
+          <h2 class="text-xl sm:text-2xl font-display font-bold text-[#222220] flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs font-mono">06</span>
+            Strumenti Agentici &amp; Server MCP a 20 Tool
+          </h2>
+          <span class="stamp-badge text-[9px]">CAPITOLO 6</span>
+        </div>
+
+        <p class="text-sm leading-relaxed text-[#7A7568]">
+          L'assistente opera attraverso un ciclo di decisione agentico ed espone un server <strong>Model Context Protocol (MCP)</strong> completo con 20 strumenti invocabili da client ed agenti esterni:
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div class="p-3.5 rounded-xs border border-[#E3DDD1] bg-[#FAF8F2] space-y-1">
+            <div class="font-mono font-bold text-[#3C5A48] flex items-center gap-1.5">
+              <i class="fa-solid fa-file-zipper"></i> create_zip_archive &amp; unzip_vault_archive
+            </div>
+            <p class="text-[#7A7568] leading-relaxed">Compressione e decompressione on-demand di documenti o intere categorie tematiche con generazione indice automatico.</p>
+          </div>
+
+          <div class="p-3.5 rounded-xs border border-[#E3DDD1] bg-[#FAF8F2] space-y-1">
+            <div class="font-mono font-bold text-[#3C5A48] flex items-center gap-1.5">
+              <i class="fa-solid fa-magnifying-glass"></i> Fuzzy Search &amp; Stemming Italiano
+            </div>
+            <p class="text-[#7A7568] leading-relaxed">Mappatura automatica singolari/plurali, sinonimi concettuali (luce/enel/gas/f24) e tolleranza ai refusi (Levenshtein &le; 2).</p>
+          </div>
+
+          <div class="p-3.5 rounded-xs border border-[#E3DDD1] bg-[#FAF8F2] space-y-1">
+            <div class="font-mono font-bold text-[#3C5A48] flex items-center gap-1.5">
+              <i class="fa-solid fa-clock"></i> Scadenzario Deterministico &amp; Countdown
+            </div>
+            <p class="text-[#7A7568] leading-relaxed">Calcolo esatto dei giorni rimanenti e badge di urgenza dinamica per evitare qualsiasi sanzione fiscale.</p>
+          </div>
+
+          <div class="p-3.5 rounded-xs border border-[#E3DDD1] bg-[#FAF8F2] space-y-1">
+            <div class="font-mono font-bold text-[#3C5A48] flex items-center gap-1.5">
+              <i class="fa-solid fa-folder-tree"></i> Folder Watcher &amp; Proposte Proattive
+            </div>
+            <p class="text-[#7A7568] leading-relaxed">Scansione in background delle cartelle del PC (Download, Documenti) con proposta di archiviazione con un singolo click.</p>
+          </div>
+
+          <div class="p-3.5 rounded-xs border border-[#E3DDD1] bg-[#FAF8F2] space-y-1">
+            <div class="font-mono font-bold text-[#3C5A48] flex items-center gap-1.5">
+              <i class="fa-brands fa-google-drive"></i> Google Drive Cloud Sync Bidirezionale
+            </div>
+            <p class="text-[#7A7568] leading-relaxed">Tassonomia automatica per anno e categoria con link rapido <code class="font-mono">[Drive ↗]</code> nelle schede documento.</p>
+          </div>
+
+          <div class="p-3.5 rounded-xs border border-[#E3DDD1] bg-[#FAF8F2] space-y-1">
+            <div class="font-mono font-bold text-[#3C5A48] flex items-center gap-1.5">
+              <i class="fa-solid fa-boxes-stacked"></i> Catalogazione Oggetti &amp; Foto Collocazione
+            </div>
+            <p class="text-[#7A7568] leading-relaxed">Mappatura gerarchica di oggetti fisici personali (stanza, mobile, cassetto) con visualizzazione fotografica.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================= -->
+      <!-- SEZIONE 7: MODELLI DI DISTRIBUZIONE & PIANI                   -->
+      <!-- ============================================================= -->
+      <section id="sec-7" class="paper-card rounded-xs p-6 sm:p-8 border border-[#E3DDD1] bg-white space-y-5">
+        <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
+          <h2 class="text-xl sm:text-2xl font-display font-bold text-[#222220] flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs font-mono">07</span>
+            Modelli di Distribuzione &amp; Piani di Esecuzione
+          </h2>
+          <span class="stamp-badge text-[9px]">CAPITOLO 7</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+          
+          <!-- Freemium Locale -->
+          <div class="p-6 rounded-xs border border-[#E3DDD1] bg-[#FAF8F2] flex flex-col justify-between space-y-4">
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <span class="stamp-badge stamp-sage font-bold">100% Locale &amp; Offline</span>
+                <span class="font-mono text-xs font-bold text-[#3C5A48]">€0 / per sempre</span>
+              </div>
+              <h3 class="font-display font-bold text-lg text-[#222220]">Edizione Freemium Locale</h3>
+              <p class="text-xs text-[#7A7568] mt-1 leading-relaxed">
+                Progettata per singoli, sviluppatori e utenti che esigono sovranità assoluta dei dati senza abbonamenti.
+              </p>
+              <ul class="space-y-2 text-xs text-[#222220] pt-4">
+                <li class="flex items-center gap-2"><i class="fa-solid fa-check text-[#3C5A48]"></i> Storage locale 100% su proprio PC (Disk)</li>
+                <li class="flex items-center gap-2"><i class="fa-solid fa-check text-[#3C5A48]"></i> Crittografia AES-256 / PBKDF2 locale</li>
+                <li class="flex items-center gap-2"><i class="fa-solid fa-check text-[#3C5A48]"></i> Singolo dispositivo, nessun account cloud obbligatorio</li>
+                <li class="flex items-center gap-2"><i class="fa-solid fa-check text-[#3C5A48]"></i> Estrazione multimodale completa e Bento Dashboard</li>
+                <li class="flex items-center gap-2"><i class="fa-solid fa-check text-[#3C5A48]"></i> Open Source Core senza limiti di tempo</li>
+              </ul>
+            </div>
+            <div class="pt-4 border-t border-[#E3DDD1]">
+              <a href="/" class="w-full py-2.5 rounded-xs bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] font-mono font-bold text-xs flex items-center justify-center gap-2 transition">
+                <i class="fa-solid fa-laptop text-[#3C5A48]"></i> Usa in Locale Ora
+              </a>
+            </div>
+          </div>
+
+          <!-- Cloud Pro & Gruppi -->
+          <div class="p-6 rounded-xs border-2 border-[#3C5A48] bg-white flex flex-col justify-between space-y-4 shadow-sm">
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <span class="stamp-badge stamp-solid-sage font-bold">Collaborativo &amp; Cloud</span>
+                <span class="font-mono text-xs font-bold text-[#3C5A48]">€9,90 / mese</span>
+              </div>
+              <h3 class="font-display font-bold text-lg text-[#222220]">Edizione Cloud Pro &amp; Gruppi</h3>
+              <p class="text-xs text-[#7A7568] mt-1 leading-relaxed">
+                Progettata per famiglie, coinquilini, studi commerciali e PMI con scadenze condivise e multi-device.
+              </p>
+              <ul class="space-y-2 text-xs text-[#222220] pt-4">
+                <li class="flex items-center gap-2"><i class="fa-solid fa-check text-[#3C5A48]"></i> Creazione Gruppi condivisi (Famiglia, Studio, Spese Casa)</li>
+                <li class="flex items-center gap-2"><i class="fa-solid fa-check text-[#3C5A48]"></i> Cloud Storage Cifrato Zero-Knowledge multi-device</li>
+                <li class="flex items-center gap-2"><i class="fa-solid fa-check text-[#3C5A48]"></i> Google Vertex AI Enterprise con zero data retention</li>
+                <li class="flex items-center gap-2"><i class="fa-solid fa-check text-[#3C5A48]"></i> Notifiche push di gruppo per scadenze fiscali F24</li>
+                <li class="flex items-center gap-2"><i class="fa-solid fa-check text-[#3C5A48]"></i> Permessi granulari (Admin, Membro, Sola Lettura)</li>
+              </ul>
+            </div>
+            <div class="pt-4 border-t border-[#E3DDD1]">
+              <a href="/showcase#pricing" class="w-full py-2.5 rounded-xs bg-[#3C5A48] hover:bg-[#2F4738] text-white font-mono font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition">
+                <i class="fa-solid fa-users"></i> Configura Spazio di Gruppo
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============================================================= -->
+      <!-- SEZIONE 8: TABELLA DI SINTESI                                 -->
+      <!-- ============================================================= -->
+      <section id="sec-8" class="paper-card rounded-xs p-6 sm:p-8 border border-[#E3DDD1] bg-white space-y-5">
+        <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
+          <h2 class="text-xl sm:text-2xl font-display font-bold text-[#222220] flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs font-mono">08</span>
+            Tabella di Sintesi delle Funzionalità
+          </h2>
+          <span class="stamp-badge text-[9px]">CAPITOLO 8</span>
+        </div>
+
+        <div class="overflow-x-auto border border-[#E3DDD1] rounded-xs">
+          <table class="wp-table">
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Funzionalità</th>
+                <th>Descrizione Tecnica</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="font-bold text-[#222220]">Interfaccia</td>
+                <td class="font-bold text-[#3C5A48]">Design ad Alta Precisione</td>
+                <td class="text-[#7A7568]">Terminale conversazionale con schede protocollo, timbri e rigore visivo.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Interfaccia</td>
+                <td class="font-bold text-[#3C5A48]">Executive Dashboard</td>
+                <td class="text-[#7A7568]">Bento Grid con KPI in tempo reale, tabelle filtrate e visualizzazione gruppi.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Piani &amp; Storage</td>
+                <td>Freemium Locale (€0)</td>
+                <td class="text-[#7A7568]">100% Locale, storage su PC, crittografia AES-256, nessun canone ricorrente.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Piani &amp; Storage</td>
+                <td>Cloud Pro &amp; Gruppi (€9,90/m)</td>
+                <td class="text-[#7A7568]">Spazi condivisi (Famiglie, PMI), Cloud Storage cifrato multi-device.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Sicurezza &amp; AI</td>
+                <td class="font-bold text-[#3C5A48]">Google Vertex AI</td>
+                <td class="text-[#7A7568]">Perimetro Enterprise con zero-training retention, conformità GDPR e ISO 27001.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Sicurezza</td>
+                <td>AES-128 / Fernet + PBKDF2</td>
+                <td class="text-[#7A7568]">Crittografia a riposo su database e file system con 600.000 iterazioni.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Documenti</td>
+                <td>Office Word, Excel &amp; PDF</td>
+                <td class="text-[#7A7568]">Parsing completo di <code class="font-mono text-xs">.docx</code>, <code class="font-mono text-xs">.xlsx</code> (formule reali) e <code class="font-mono text-xs">.pdf</code>.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Documenti</td>
+                <td>Batch &amp; Directory Traversal</td>
+                <td class="text-[#7A7568]">Caricamento ed elaborazione simultanea di file multipli o intere cartelle ad albero.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">OS &amp; File System</td>
+                <td>Folder Watcher Proattivo</td>
+                <td class="text-[#7A7568]">Monitoraggio directory PC (Download/Desktop), rilevamento buste paga e proposta in chat.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Cloud Sync</td>
+                <td>Google Drive OAuth 2.0</td>
+                <td class="text-[#7A7568]">Sincronizzazione tassonomica automatica cartelle con tasto rapido <code class="font-mono">[Drive ↗]</code>.</td>
+              </tr>
+              <tr>
+                <td class="font-bold text-[#222220]">Agenti Autonomi</td>
+                <td>Server MCP (20 Tool)</td>
+                <td class="text-[#7A7568]">Interfaccia standard Model Context Protocol per agenti Claude Desktop, Cursor e AGY.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pt-6 border-t border-[#E3DDD1] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-[#7A7568]">
+          <div>
+            <em>Documento convalidato per il progetto "Dove lo AI messo".</em><br>
+            <span>Versione 2.0 (2026) • Team di Sviluppo</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="window.scrollTo({ top: 0, behavior: 'smooth' })" class="px-3 py-1.5 rounded-xs bg-[#FAF8F2] hover:bg-white text-[#222220] border border-[#E3DDD1] transition flex items-center gap-1 cursor-pointer">
+              <i class="fa-solid fa-arrow-up text-xs text-[#3C5A48]"></i> Inizio Pagina
+            </button>
+            <a href="/showcase" class="px-3.5 py-1.5 rounded-xs bg-[#3C5A48] hover:bg-[#2F4738] text-white transition flex items-center gap-1 cursor-pointer shadow-xs font-bold">
+              <span>Showcase</span> <i class="fa-solid fa-arrow-right text-xs"></i>
+            </a>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- JAVASCRIPT: NAVIGATION, SEARCH & TOC HIGHLIGHT                    -->
+  <!-- ================================================================= -->
+  <script>
+    function toggleMobileToc() {
+      const drawer = document.getElementById('wpMobileToc');
+      const overlay = document.getElementById('wpMobileOverlay');
+      const isOpen = drawer.classList.contains('open');
+      if (isOpen) {
+        drawer.classList.remove('open');
+        overlay.classList.add('hidden');
+      } else {
+        drawer.classList.add('open');
+        overlay.classList.remove('hidden');
+      }
+    }
+
+    function filterTocLinks(query) {
+      const q = query.toLowerCase().trim();
+      const desktopLinks = document.querySelectorAll('#wpDesktopNavLinks a');
+      const mobileLinks = document.querySelectorAll('#wpMobileNavLinks a');
+      
+      const filter = (links) => {
+        links.forEach(a => {
+          const match = a.textContent.toLowerCase().includes(q);
+          a.style.display = match ? 'block' : 'none';
+        });
+      };
+      filter(desktopLinks);
+      filter(mobileLinks);
+    }
+
+    // Active Section Highlight on Scroll
+    window.addEventListener('DOMContentLoaded', () => {
+      const sections = document.querySelectorAll('main > section[id]');
+      const navLinks = document.querySelectorAll('#wpDesktopNavLinks a');
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const id = entry.target.getAttribute('id');
+            navLinks.forEach(link => {
+              if (link.getAttribute('href') === '#' + id) {
+                link.classList.add('border-[#3C5A48]', 'text-[#3C5A48]', 'bg-[#FAF8F2]', 'font-bold');
+                link.classList.remove('border-transparent', 'text-[#7A7568]');
+              } else {
+                link.classList.remove('border-[#3C5A48]', 'text-[#3C5A48]', 'bg-[#FAF8F2]', 'font-bold');
+                link.classList.add('border-transparent', 'text-[#7A7568]');
+              }
+            });
+          }
+        });
+      }, {
+        rootMargin: '-20% 0px -70% 0px'
+      });
+
+      sections.forEach(sec => observer.observe(sec));
+    });
+  </script>
+</body>
+</html>

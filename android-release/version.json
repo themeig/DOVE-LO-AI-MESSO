@@ -1,6 +1,6 @@
 {
-  "version_code": 271,
-  "version_name": "2.7.1",
+  "version_code": 272,
+  "version_name": "2.7.2",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ Versione 2.7.1: Rimozione completa riferimenti storici da showcase e white paper, Pitch Deck YC/Sequoia responsive con scroll safe, gesture swipe ottimizzate e scorciatoie da tastiera."
+  "release_notes": "✨ Nuova visualizzazione White Paper: pagina HTML dedicata con styling completo Tailwind CSS, indice navigabile, supporto stampa PDF e download Markdown."
 }
