@@ -3723,7 +3723,7 @@
       dashboardDragDropOverlay.addEventListener('drop', handleDashDrop);
     }
 
-    // --- Registratore Vocale Reale & Elaborazione Multimodale AI ---
+    // --- Registratore Vocale Reale (Nativo Android APK, Web Audio & Fallback) ---
     let voiceMediaStream = null;
     let voiceMediaRecorder = null;
     let voiceSpeechRecognition = null;
@@ -3731,10 +3731,75 @@
     let voiceAudioChunks = [];
     let voiceTimerInterval = null;
     let voiceRecordStartTime = null;
+    let isNativeVoiceActive = false;
+
+    function showVoiceRecordingUI() {
+      const chatForm = document.getElementById('chatForm');
+      const voiceBar = document.getElementById('voiceRecordingBar');
+      const micBtn = document.getElementById('micBtn');
+      const sendBtn = document.getElementById('sendBtn');
+      const timerEl = document.getElementById('voiceRecordingTimer');
+
+      if (chatForm) chatForm.classList.add('hidden');
+      if (micBtn) micBtn.classList.add('hidden');
+      if (sendBtn) sendBtn.classList.add('hidden');
+      if (voiceBar) voiceBar.classList.remove('hidden');
+      if (timerEl) timerEl.textContent = '0:00';
+
+      clearInterval(voiceTimerInterval);
+      voiceTimerInterval = setInterval(() => {
+        const elapsedSec = Math.floor((Date.now() - voiceRecordStartTime) / 1000);
+        if (timerEl) timerEl.textContent = formatDurationSeconds(elapsedSec);
+      }, 500);
+    }
+
+    function hideVoiceRecordingUI() {
+      clearInterval(voiceTimerInterval);
+      voiceTimerInterval = null;
+
+      const chatForm = document.getElementById('chatForm');
+      const voiceBar = document.getElementById('voiceRecordingBar');
+      const micBtn = document.getElementById('micBtn');
+      const inputEl = document.getElementById('messageInput');
+
+      if (voiceBar) voiceBar.classList.add('hidden');
+      if (chatForm) chatForm.classList.remove('hidden');
+      if (micBtn) micBtn.classList.remove('hidden');
+
+      if (inputEl && inputEl.value.trim().length > 0) {
+        const sendBtn = document.getElementById('sendBtn');
+        if (sendBtn) sendBtn.classList.remove('hidden');
+        if (micBtn) micBtn.classList.add('hidden');
+      }
+    }
 
     async function startVoiceRecording() {
+      // 1. Canale Nativo Android APK (hardware mic diretto, bypassa restrizioni WebRTC su LAN HTTP)
+      if (window.AndroidNativeVoice && typeof window.AndroidNativeVoice.isSupported === 'function' && window.AndroidNativeVoice.isSupported()) {
+        try {
+          const started = window.AndroidNativeVoice.startRecording();
+          if (started) {
+            isNativeVoiceActive = true;
+            voiceLiveTranscription = '';
+            voiceRecordStartTime = Date.now();
+            showVoiceRecordingUI();
+            return;
+          }
+        } catch (e) {
+          console.warn("Errore avvio registrazione nativa Android:", e);
+        }
+      }
+
+      // 2. Controllo disponibilità microfono WebRTC nel browser
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        showToast("⚠️ Il microfono non è supportato dal tuo browser.", "error");
+        // Fallback per browser mobile su HTTP (es. Chrome su Pixel 9 che non espone getUserMedia su HTTP non cifrato)
+        const voiceFileInput = document.getElementById('voiceAudioInput');
+        if (voiceFileInput) {
+          showToast("🎙️ Avvio registratore vocale del telefono...", "info", 3000);
+          voiceFileInput.click();
+          return;
+        }
+        showToast("⚠️ Il microfono via browser richiede HTTPS o l'app Android 'Dove lo AI messo'.", "error", 5000);
         return;
       }
 
@@ -3796,36 +3861,30 @@
 
       voiceMediaRecorder.start(250);
       voiceRecordStartTime = Date.now();
-
-      // UI: mostra la barra di registrazione
-      const chatForm = document.getElementById('chatForm');
-      const voiceBar = document.getElementById('voiceRecordingBar');
-      const micBtn = document.getElementById('micBtn');
-      const sendBtn = document.getElementById('sendBtn');
-      const timerEl = document.getElementById('voiceRecordingTimer');
-
-      if (chatForm) chatForm.classList.add('hidden');
-      if (micBtn) micBtn.classList.add('hidden');
-      if (sendBtn) sendBtn.classList.add('hidden');
-      if (voiceBar) voiceBar.classList.remove('hidden');
-      if (timerEl) timerEl.textContent = '0:00';
-
-      clearInterval(voiceTimerInterval);
-      voiceTimerInterval = setInterval(() => {
-        const elapsedSec = Math.floor((Date.now() - voiceRecordStartTime) / 1000);
-        if (timerEl) timerEl.textContent = formatDurationSeconds(elapsedSec);
-      }, 500);
+      showVoiceRecordingUI();
     }
 
     function cancelVoiceRecording() {
+      if (isNativeVoiceActive) {
+        isNativeVoiceActive = false;
+        if (window.AndroidNativeVoice && typeof window.AndroidNativeVoice.cancelRecording === 'function') {
+          try { window.AndroidNativeVoice.cancelRecording(); } catch (e) {}
+        }
+      }
       cleanupVoiceRecording();
       voiceAudioChunks = [];
       showToast("Registrazione vocale annullata", "info");
     }
 
     function cleanupVoiceRecording() {
-      clearInterval(voiceTimerInterval);
-      voiceTimerInterval = null;
+      if (isNativeVoiceActive) {
+        isNativeVoiceActive = false;
+        if (window.AndroidNativeVoice && typeof window.AndroidNativeVoice.cancelRecording === 'function') {
+          try { window.AndroidNativeVoice.cancelRecording(); } catch (e) {}
+        }
+      }
+
+      hideVoiceRecordingUI();
 
       if (voiceSpeechRecognition) {
         try { voiceSpeechRecognition.stop(); } catch (e) {}
@@ -3841,96 +3900,9 @@
         voiceMediaStream.getTracks().forEach(t => t.stop());
         voiceMediaStream = null;
       }
-
-      const chatForm = document.getElementById('chatForm');
-      const voiceBar = document.getElementById('voiceRecordingBar');
-      const micBtn = document.getElementById('micBtn');
-      const inputEl = document.getElementById('messageInput');
-
-      if (voiceBar) voiceBar.classList.add('hidden');
-      if (chatForm) chatForm.classList.remove('hidden');
-      if (micBtn) micBtn.classList.remove('hidden');
-
-      if (inputEl && inputEl.value.trim().length > 0) {
-        const sendBtn = document.getElementById('sendBtn');
-        if (sendBtn) sendBtn.classList.remove('hidden');
-        if (micBtn) micBtn.classList.add('hidden');
-      }
     }
 
-    async function stopAndSendVoiceRecording() {
-      if (!voiceMediaRecorder || voiceMediaRecorder.state === 'inactive') {
-        cleanupVoiceRecording();
-        return;
-      }
-
-      const durationSec = Math.max(1, Math.round((Date.now() - voiceRecordStartTime) / 1000));
-
-      if (voiceSpeechRecognition) {
-        try { voiceSpeechRecognition.stop(); } catch (e) {}
-        voiceSpeechRecognition = null;
-      }
-
-      const stopPromise = new Promise(resolve => {
-        voiceMediaRecorder.onstop = resolve;
-      });
-
-      voiceMediaRecorder.stop();
-      if (voiceMediaStream) {
-        voiceMediaStream.getTracks().forEach(t => t.stop());
-        voiceMediaStream = null;
-      }
-      clearInterval(voiceTimerInterval);
-
-      // Ripristina l'interfaccia chat standard
-      const chatForm = document.getElementById('chatForm');
-      const voiceBar = document.getElementById('voiceRecordingBar');
-      const micBtn = document.getElementById('micBtn');
-      if (voiceBar) voiceBar.classList.add('hidden');
-      if (chatForm) chatForm.classList.remove('hidden');
-      if (micBtn) micBtn.classList.remove('hidden');
-
-      await stopPromise;
-
-      const rawBlob = new Blob(voiceAudioChunks, { type: voiceMediaRecorder.mimeType || 'audio/webm' });
-      voiceAudioChunks = [];
-
-      if (rawBlob.size === 0) {
-        showToast("⚠️ Nessun audio rilevato nel microfono", "warning");
-        return;
-      }
-
-      const targetThreadId = currentThreadId;
-      const quotedToSend = currentQuotedMessage;
-      cancelQuoteReply();
-
-      // Converti raw audio in WAV PCM 16-bit 16kHz compatibile al 100% con speech_recognition e Gemini
-      let wavBlob = rawBlob;
-      let base64Audio = '';
-      try {
-        const arrayBuffer = await rawBlob.arrayBuffer();
-        const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
-        if (AudioCtxClass) {
-          const ctx = new AudioCtxClass();
-          const decodedBuffer = await ctx.decodeAudioData(arrayBuffer);
-          wavBlob = audioBufferToWav(decodedBuffer, 16000);
-          base64Audio = await blobToBase64(wavBlob);
-          await ctx.close();
-        } else {
-          base64Audio = await blobToBase64(rawBlob);
-        }
-      } catch (convErr) {
-        console.warn("Conversione in WAV fallback su raw blob:", convErr);
-        wavBlob = rawBlob;
-        base64Audio = await blobToBase64(rawBlob);
-      }
-
-      const localAudioUrl = URL.createObjectURL(wavBlob);
-
-      // Mostra all'istante la bolla vocale con player nella chat (con testo trascritto se già disponibile)
-      const userVoiceBubbleEl = appendUserAudioBubble(localAudioUrl, durationSec, quotedToSend, voiceLiveTranscription || null);
-
-      // Feedback assistente
+    async function sendVoiceAudioToAssistant(base64Audio, audioFormat, durationSec, transcriptionText, targetThreadId, quotedToSend, userVoiceBubbleEl) {
       setGenerationActive(true, "L'assistente sta ascoltando il tuo messaggio vocale...", null, targetThreadId);
       const taskSignal = activeThreadTasks[targetThreadId]?.abortController?.signal;
 
@@ -3939,9 +3911,9 @@
           method: 'POST',
           headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
-            message: voiceLiveTranscription || "",
+            message: transcriptionText || "",
             audio_base64: base64Audio,
-            audio_format: "wav",
+            audio_format: audioFormat || "wav",
             audio_duration: durationSec,
             thread_id: targetThreadId,
             quoted_message: quotedToSend ? { sender: quotedToSend.senderName, text: quotedToSend.text } : null
@@ -3953,7 +3925,6 @@
         if (!res.ok) throw new Error('Errore nella risposta del server');
         const data = await res.json();
 
-        // Se il server ha trascritto l'audio e la bolla non mostrava ancora il testo, mostralo adesso!
         if (data.transcription && userVoiceBubbleEl) {
           const slot = userVoiceBubbleEl.querySelector('.voice-transcription-slot');
           if (slot && !slot.innerHTML.trim()) {
@@ -4000,6 +3971,147 @@
         }
       }
     }
+
+    async function stopAndSendVoiceRecording() {
+      if (isNativeVoiceActive) {
+        isNativeVoiceActive = false;
+        hideVoiceRecordingUI();
+        if (window.AndroidNativeVoice && typeof window.AndroidNativeVoice.stopRecording === 'function') {
+          window.AndroidNativeVoice.stopRecording();
+        }
+        return;
+      }
+
+      if (!voiceMediaRecorder || voiceMediaRecorder.state === 'inactive') {
+        cleanupVoiceRecording();
+        return;
+      }
+
+      const durationSec = Math.max(1, Math.round((Date.now() - voiceRecordStartTime) / 1000));
+
+      if (voiceSpeechRecognition) {
+        try { voiceSpeechRecognition.stop(); } catch (e) {}
+        voiceSpeechRecognition = null;
+      }
+
+      const stopPromise = new Promise(resolve => {
+        voiceMediaRecorder.onstop = resolve;
+      });
+
+      voiceMediaRecorder.stop();
+      if (voiceMediaStream) {
+        voiceMediaStream.getTracks().forEach(t => t.stop());
+        voiceMediaStream = null;
+      }
+      clearInterval(voiceTimerInterval);
+      hideVoiceRecordingUI();
+
+      await stopPromise;
+
+      const rawBlob = new Blob(voiceAudioChunks, { type: voiceMediaRecorder.mimeType || 'audio/webm' });
+      voiceAudioChunks = [];
+
+      if (rawBlob.size === 0) {
+        showToast("⚠️ Nessun audio rilevato nel microfono", "warning");
+        return;
+      }
+
+      const targetThreadId = currentThreadId;
+      const quotedToSend = currentQuotedMessage;
+      cancelQuoteReply();
+
+      // Converti raw audio in WAV PCM 16-bit 16kHz compatibile al 100% con speech_recognition e Gemini
+      let wavBlob = rawBlob;
+      let base64Audio = '';
+      try {
+        const arrayBuffer = await rawBlob.arrayBuffer();
+        const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtxClass) {
+          const ctx = new AudioCtxClass();
+          const decodedBuffer = await ctx.decodeAudioData(arrayBuffer);
+          wavBlob = audioBufferToWav(decodedBuffer, 16000);
+          base64Audio = await blobToBase64(wavBlob);
+          await ctx.close();
+        } else {
+          base64Audio = await blobToBase64(rawBlob);
+        }
+      } catch (convErr) {
+        console.warn("Conversione in WAV fallback su raw blob:", convErr);
+        wavBlob = rawBlob;
+        base64Audio = await blobToBase64(rawBlob);
+      }
+
+      const localAudioUrl = URL.createObjectURL(wavBlob);
+
+      // Mostra all'istante la bolla vocale con player nella chat (con testo trascritto se già disponibile)
+      const userVoiceBubbleEl = appendUserAudioBubble(localAudioUrl, durationSec, quotedToSend, voiceLiveTranscription || null);
+      await sendVoiceAudioToAssistant(base64Audio, "wav", durationSec, voiceLiveTranscription || "", targetThreadId, quotedToSend, userVoiceBubbleEl);
+    }
+
+    window.onNativeVoiceRecorded = async function(base64Audio, durationSec, format) {
+      const cleanFmt = format || 'm4a';
+      const mimeType = cleanFmt === 'm4a' ? 'audio/mp4' : (cleanFmt === 'wav' ? 'audio/wav' : 'audio/webm');
+      let localAudioUrl = '';
+      try {
+        const byteCharacters = atob(base64Audio);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const audioBlob = new Blob([byteArray], { type: mimeType });
+        localAudioUrl = URL.createObjectURL(audioBlob);
+      } catch (e) {
+        localAudioUrl = `data:${mimeType};base64,${base64Audio}`;
+      }
+
+      const targetThreadId = currentThreadId;
+      const quotedToSend = currentQuotedMessage;
+      cancelQuoteReply();
+
+      const userVoiceBubbleEl = appendUserAudioBubble(localAudioUrl, durationSec, quotedToSend, null);
+      await sendVoiceAudioToAssistant(base64Audio, cleanFmt, durationSec, "", targetThreadId, quotedToSend, userVoiceBubbleEl);
+    };
+
+    window.onNativeVoiceError = function(errMsg) {
+      hideVoiceRecordingUI();
+      showToast("⚠️ " + (errMsg || "Errore nella registrazione vocale nativa."), "error");
+    };
+
+    window.handleVoiceAudioFileSelected = async function(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      event.target.value = '';
+
+      const ext = file.name.split('.').pop().toLowerCase() || 'm4a';
+      const cleanFmt = (ext === 'mp3' || ext === 'wav' || ext === 'm4a' || ext === 'ogg' || ext === 'aac') ? ext : 'm4a';
+      const localAudioUrl = URL.createObjectURL(file);
+      const targetThreadId = currentThreadId;
+      const quotedToSend = currentQuotedMessage;
+      cancelQuoteReply();
+
+      let durationSec = 1;
+      try {
+        const tempAudio = new Audio(localAudioUrl);
+        await new Promise((resolve) => {
+          tempAudio.onloadedmetadata = () => {
+            durationSec = Math.round(tempAudio.duration) || 1;
+            resolve();
+          };
+          tempAudio.onerror = () => resolve();
+          setTimeout(resolve, 800);
+        });
+      } catch (e) {}
+
+      const base64Audio = await blobToBase64(file);
+      const userVoiceBubbleEl = appendUserAudioBubble(localAudioUrl, durationSec, quotedToSend, null);
+      await sendVoiceAudioToAssistant(base64Audio, cleanFmt, durationSec, "", targetThreadId, quotedToSend, userVoiceBubbleEl);
+    };
+
+    window.startVoiceRecording = startVoiceRecording;
+    window.stopAndSendVoiceRecording = stopAndSendVoiceRecording;
+    window.cancelVoiceRecording = cancelVoiceRecording;
+    window.handleVoiceAudioFileSelected = handleVoiceAudioFileSelected;
 
     function blobToBase64(blob) {
       return new Promise((resolve, reject) => {

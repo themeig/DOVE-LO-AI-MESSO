@@ -1,6 +1,6 @@
 {
-  "version_code": 257,
-  "version_name": "2.5.7",
+  "version_code": 258,
+  "version_name": "2.5.8",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ Nuova barra input: tasto Più (+) multifunzione (File, Cartella, Foto, Scanner) e allineamento perfetto altezze."
+  "release_notes": "🎙️ Registrazione vocale nativa hardware su Android (bypassa blocchi WebRTC HTTP), fallback registratore vocale e supporto audio m4a/aac."
 }

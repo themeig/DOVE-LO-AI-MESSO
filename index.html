@@ -21,6 +21,8 @@
   <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none">
   <!-- Invisible input per foto/fotocamera per la posizione degli oggetti -->
   <input type="file" id="itemPhotoInput" accept="image/*" capture="environment" style="display:none" onchange="handleItemPhotoSelected(event)">
+  <!-- Invisible input per registrazione vocale da telefono (fallback browser HTTP per registratore vocale nativo) -->
+  <input type="file" id="voiceAudioInput" accept="audio/*" capture="microphone" style="display:none" onchange="handleVoiceAudioFileSelected(event)">
 
   <!-- ================================================================= -->
   <!-- VIEWPORT SCHERMATE APPLICATIVE (SLIDE CONTAINER ORIZZONTALE)      -->

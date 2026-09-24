@@ -8,12 +8,15 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.util.Base64;
 import android.view.View;
 import android.net.http.SslError;
+import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.SslErrorHandler;
 import android.webkit.ValueCallback;
@@ -47,6 +50,7 @@ import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -83,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
     private File mCameraPhotoFile;
     private File pendingInstallApkFile = null;
     private String currentServerUrl;
+    private NativeVoiceBridge mNativeVoiceBridge;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -219,7 +224,11 @@ public class MainActivity extends AppCompatActivity {
 
         // User Agent mobile moderno
         String defaultUA = settings.getUserAgentString();
-        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/2.5.7");
+        settings.setUserAgentString(defaultUA + " DoveLoAIMessoApp/2.5.8");
+
+        // Bridge nativo microfono per registrazione vocale hardware senza vincoli WebRTC HTTP
+        mNativeVoiceBridge = new NativeVoiceBridge();
+        webView.addJavascriptInterface(mNativeVoiceBridge, "AndroidNativeVoice");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -595,6 +604,134 @@ public class MainActivity extends AppCompatActivity {
             startActivity(installIntent);
         } catch (Exception e) {
             Toast.makeText(this, "Errore durante l'apertura dell'installer: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (mNativeVoiceBridge != null) {
+            mNativeVoiceBridge.cancelRecording();
+        }
+    }
+
+    // =========================================================================
+    // NATIVE VOICE BRIDGE (Cattura Microfono Hardware per WebView)
+    // =========================================================================
+
+    public class NativeVoiceBridge {
+        private MediaRecorder mMediaRecorder = null;
+        private File mCurrentVoiceFile = null;
+        private long mRecordStartTime = 0;
+        private boolean mIsRecording = false;
+
+        @JavascriptInterface
+        public boolean isSupported() {
+            return true;
+        }
+
+        @JavascriptInterface
+        public boolean startRecording() {
+            if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                runOnUiThread(() -> ActivityCompat.requestPermissions(
+                        MainActivity.this,
+                        new String[]{Manifest.permission.RECORD_AUDIO},
+                        PERMISSION_REQUEST_CODE
+                ));
+                return false;
+            }
+
+            try {
+                cleanupRecorder();
+                mCurrentVoiceFile = new File(getCacheDir(), "voice_rec_" + System.currentTimeMillis() + ".m4a");
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    mMediaRecorder = new MediaRecorder(MainActivity.this);
+                } else {
+                    mMediaRecorder = new MediaRecorder();
+                }
+                mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+                mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+                mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+                mMediaRecorder.setAudioSamplingRate(44100);
+                mMediaRecorder.setAudioEncodingBitRate(96000);
+                mMediaRecorder.setOutputFile(mCurrentVoiceFile.getAbsolutePath());
+                mMediaRecorder.prepare();
+                mMediaRecorder.start();
+                mRecordStartTime = System.currentTimeMillis();
+                mIsRecording = true;
+                return true;
+            } catch (Exception e) {
+                cleanupRecorder();
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public void stopRecording() {
+            if (!mIsRecording || mMediaRecorder == null) {
+                cleanupRecorder();
+                return;
+            }
+
+            long durationSec = Math.max(1, (System.currentTimeMillis() - mRecordStartTime) / 1000);
+            try {
+                mMediaRecorder.stop();
+            } catch (Exception ignored) {}
+            cleanupRecorder();
+
+            if (mCurrentVoiceFile != null && mCurrentVoiceFile.exists() && mCurrentVoiceFile.length() > 0) {
+                Executors.newSingleThreadExecutor().execute(() -> {
+                    try {
+                        byte[] bytes = new byte[(int) mCurrentVoiceFile.length()];
+                        try (FileInputStream fis = new FileInputStream(mCurrentVoiceFile)) {
+                            int totalRead = 0;
+                            int read;
+                            while (totalRead < bytes.length && (read = fis.read(bytes, totalRead, bytes.length - totalRead)) != -1) {
+                                totalRead += read;
+                            }
+                        }
+                        String base64Audio = Base64.encodeToString(bytes, Base64.NO_WRAP);
+
+                        runOnUiThread(() -> {
+                            String js = String.format(Locale.US,
+                                    "if (typeof window.onNativeVoiceRecorded === 'function') { window.onNativeVoiceRecorded('%s', %d, '%s'); }",
+                                    base64Audio, durationSec, "m4a"
+                            );
+                            webView.evaluateJavascript(js, null);
+                        });
+                    } catch (Exception e) {
+                        runOnUiThread(() -> {
+                            String js = "if (typeof window.onNativeVoiceError === 'function') { window.onNativeVoiceError('Errore durante la lettura del file audio registrato.'); }";
+                            webView.evaluateJavascript(js, null);
+                        });
+                    } finally {
+                        if (mCurrentVoiceFile != null) {
+                            mCurrentVoiceFile.delete();
+                            mCurrentVoiceFile = null;
+                        }
+                    }
+                });
+            }
+        }
+
+        @JavascriptInterface
+        public void cancelRecording() {
+            cleanupRecorder();
+            if (mCurrentVoiceFile != null) {
+                mCurrentVoiceFile.delete();
+                mCurrentVoiceFile = null;
+            }
+        }
+
+        private void cleanupRecorder() {
+            mIsRecording = false;
+            if (mMediaRecorder != null) {
+                try {
+                    mMediaRecorder.reset();
+                    mMediaRecorder.release();
+                } catch (Exception ignored) {}
+                mMediaRecorder = null;
+            }
         }
     }
 }
