@@ -439,7 +439,14 @@ public class MainActivity extends AppCompatActivity {
                 String mimeType = "application/pdf";
                 String fileExt = "pdf";
 
-                if (result.getPdf() != null && result.getPdf().getUri() != null) {
+                // Se la scansione è di una singola pagina ed è disponibile l'immagine JPEG diretta ad alta risoluzione,
+                // preferisci inviare direttamente l'immagine JPEG nativa (lettura visiva ottimale e massima nitidezza per l'AI).
+                // Se sono 2 o più pagine, o se non ci sono pagine estratte ma c'è il PDF, usa il PDF multipagina.
+                if (result.getPages() != null && result.getPages().size() == 1 && result.getPages().get(0).getImageUri() != null) {
+                    targetUri = result.getPages().get(0).getImageUri();
+                    mimeType = "image/jpeg";
+                    fileExt = "jpg";
+                } else if (result.getPdf() != null && result.getPdf().getUri() != null) {
                     targetUri = result.getPdf().getUri();
                     mimeType = "application/pdf";
                     fileExt = "pdf";

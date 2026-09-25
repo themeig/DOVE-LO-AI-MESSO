@@ -203,3 +203,49 @@ def test_mcp_server_tool_read_vault_document_content(db_session: Session, tmp_pa
     assert "=== CONTENUTO DOCUMENTO: 'Consuntivo Budget' ===" in mcp_tool_res
     assert "Hardware" in mcp_tool_res
     assert "3200" in mcp_tool_res
+
+
+def test_read_vault_document_content_scanned_pdf(db_session: Session, tmp_path):
+    """Verifica che la lettura di un documento scansionato senza testo vettoriale inietti metadati ed estrazione AI."""
+    dummy_pdf_path = save_uploaded_file(b"%PDF-1.4 scanned dummy", "scansione_test.pdf", target_dir=tmp_path)
+
+    doc = Document(
+        title="Certificato Medico Dott. Rago",
+        file_path=dummy_pdf_path,
+        file_type="pdf",
+        doc_type="certificato",
+        issuer="RAGO Dott. CIRO",
+        amount=None,
+        due_date=None,
+        summary="Certificato medico del dottor Ciro Rago con prescrizione per tachipirina e riposo.",
+        category="sanita_spese_mediche",
+        category_label="Sanità & Spese Mediche",
+        thread_id="general"
+    )
+    db_session.add(doc)
+    db_session.commit()
+    db_session.refresh(doc)
+
+    agent = AgenticChatService()
+    res = agent.execute_tool("read_vault_document_content", {"document_id": doc.id}, db=db_session, thread_id="general")
+    assert res["success"] is True
+    assert "Certificato Medico Dott. Rago" in res["content_text"]
+    assert "RAGO Dott. CIRO" in res["content_text"]
+    assert "tachipirina" in res["content_text"]
+    assert "Sanità & Spese Mediche" in res["content_text"]
+
+
+def test_inspect_document_content_scanned_pdf():
+    """Verifica che inspect_document_content rilevi un PDF scansionato con immagine incorporata."""
+    from PIL import Image
+
+    img = Image.new("RGB", (100, 100), color="blue")
+    pdf_buf = io.BytesIO()
+    img.save(pdf_buf, format="PDF")
+    pdf_bytes = pdf_buf.getvalue()
+
+    res = inspect_document_content(pdf_bytes, "pdf", "scanned_receipt.pdf")
+    assert res["success"] is True
+    assert "scansione fotografica/grafica" in res["content_text"]
+
+

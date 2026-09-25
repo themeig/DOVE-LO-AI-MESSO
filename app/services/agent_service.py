@@ -2206,9 +2206,89 @@ class AgenticChatService:
                 )
                 result["document_id"] = doc.id
                 result["document_title"] = doc.title
+
+                if not result.get("success"):
+                    if doc.summary:
+                        meta_parts = []
+                        if doc.title:
+                            meta_parts.append(f"**Titolo Documento**: {doc.title}")
+                        if doc.doc_type:
+                            meta_parts.append(f"**Tipo Documento**: {doc.doc_type}")
+                        if doc.issuer:
+                            meta_parts.append(f"**Emittente / Mittente**: {doc.issuer}")
+                        if doc.amount is not None:
+                            meta_parts.append(f"**Importo**: €{doc.amount:.2f}")
+                        if doc.due_date:
+                            meta_parts.append(f"**Scadenza**: {doc.due_date.isoformat()}")
+                        if doc.summary:
+                            meta_parts.append(f"**Contenuto ed Estrazione AI**:\n{doc.summary}")
+                        if doc.category_label:
+                            meta_parts.append(f"**Sezione**: {doc.category_label}")
+
+                        return {
+                            "success": True,
+                            "filename": Path(doc.file_path).name if doc.file_path else doc.title,
+                            "file_type": doc.file_type or "pdf",
+                            "content_text": "### Scheda Informativa ed Analisi Ottica AI del Documento:\n" + "\n".join(meta_parts),
+                            "summary": doc.summary,
+                            "document_id": doc.id,
+                            "document_title": doc.title
+                        }
+                    return result
+
+                text_val = (result.get("content_text") or "").strip()
+                if not text_val or text_val.startswith("_Nessun testo") or "scansione fotografica" in text_val:
+                    meta_parts = []
+                    if doc.title:
+                        meta_parts.append(f"**Titolo Documento**: {doc.title}")
+                    if doc.doc_type:
+                        meta_parts.append(f"**Tipo Documento**: {doc.doc_type}")
+                    if doc.issuer:
+                        meta_parts.append(f"**Emittente / Mittente**: {doc.issuer}")
+                    if doc.amount is not None:
+                        meta_parts.append(f"**Importo**: €{doc.amount:.2f}")
+                    if doc.due_date:
+                        meta_parts.append(f"**Scadenza**: {doc.due_date.isoformat()}")
+                    if doc.summary:
+                        meta_parts.append(f"**Contenuto ed Estrazione AI**:\n{doc.summary}")
+                    if doc.category_label:
+                        meta_parts.append(f"**Sezione**: {doc.category_label}")
+
+                    if meta_parts:
+                        prefix = f"{text_val}\n\n" if text_val and not text_val.startswith("_Nessun testo") else ""
+                        result["content_text"] = (
+                            prefix +
+                            "### Scheda Informativa ed Analisi Ottica AI del Documento:\n" +
+                            "\n".join(meta_parts)
+                        )
                 return result
             except Exception as e:
                 logger.error(f"Errore lettura contenuto documento {doc.id}: {e}", exc_info=True)
+                if doc and doc.summary:
+                    meta_parts = []
+                    if doc.title:
+                        meta_parts.append(f"**Titolo Documento**: {doc.title}")
+                    if doc.doc_type:
+                        meta_parts.append(f"**Tipo Documento**: {doc.doc_type}")
+                    if doc.issuer:
+                        meta_parts.append(f"**Emittente / Mittente**: {doc.issuer}")
+                    if doc.amount is not None:
+                        meta_parts.append(f"**Importo**: €{doc.amount:.2f}")
+                    if doc.due_date:
+                        meta_parts.append(f"**Scadenza**: {doc.due_date.isoformat()}")
+                    if doc.summary:
+                        meta_parts.append(f"**Contenuto ed Estrazione AI**:\n{doc.summary}")
+                    if doc.category_label:
+                        meta_parts.append(f"**Sezione**: {doc.category_label}")
+                    return {
+                        "success": True,
+                        "filename": Path(doc.file_path).name if doc.file_path else doc.title,
+                        "file_type": doc.file_type or "pdf",
+                        "content_text": "### Scheda Informativa ed Analisi Ottica AI del Documento:\n" + "\n".join(meta_parts),
+                        "summary": doc.summary,
+                        "document_id": doc.id,
+                        "document_title": doc.title
+                    }
                 return {
                     "success": False,
                     "error": str(e),

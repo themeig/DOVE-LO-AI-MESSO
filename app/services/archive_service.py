@@ -578,9 +578,22 @@ def inspect_document_content(
                     if p_num <= 5:
                         page_blocks.append(f"### Pagina {p_num} di {total_pages}:\n" + "\n".join(lines[:60]))
 
-            content_text = "\n\n".join(page_blocks) if page_blocks else (
-                f"_Nessuna riga corrispondente a '{query}' trovata nel PDF._" if q_clean else "_Nessun testo estratto dal PDF._"
-            )
+            if not page_blocks and not q_clean:
+                has_scanned_img = False
+                try:
+                    for p in reader.pages[:5]:
+                        if hasattr(p, "images") and len(p.images) > 0:
+                            has_scanned_img = True
+                            break
+                except Exception:
+                    pass
+
+                if has_scanned_img:
+                    content_text = f"Documento PDF '{filename}': scansione fotografica/grafica di {total_pages} pagine (immagine ad alta risoluzione senza testo digitale)."
+                else:
+                    content_text = "_Nessun testo estratto dal PDF._"
+            else:
+                content_text = "\n\n".join(page_blocks) if page_blocks else f"_Nessuna riga corrispondente a '{query}' trovata nel PDF._"
             return {
                 "success": True,
                 "filename": filename,

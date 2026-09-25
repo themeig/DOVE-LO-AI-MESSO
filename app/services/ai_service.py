@@ -373,19 +373,26 @@ class OpenRouterAIService:
                 doc.subfolder = subfolder
                 return doc
 
-            # 1. GESTIONE DOCUMENTI PDF (Estrazione del testo reale delle pagine)
+            # 1. GESTIONE DOCUMENTI PDF (Estrazione del testo reale delle pagine o scansioni visive)
             if is_pdf:
                 pdf_text = ""
+                scanned_images = []
                 try:
                     reader = pypdf.PdfReader(io.BytesIO(file_bytes))
                     for p in reader.pages[:15]:
                         page_str = p.extract_text()
                         if page_str:
                             pdf_text += page_str + "\n"
+                        # Ispeziona immagini incorporate nelle pagine per gestire PDF scansionati
+                        if len(scanned_images) < 3 and p.images:
+                            for img in p.images:
+                                scanned_images.append(img.data)
+                                if len(scanned_images) >= 3:
+                                    break
                 except Exception as p_err:
                     logger.warning(f"Errore lettura pypdf: {p_err}")
 
-                if pdf_text.strip():
+                if len(pdf_text.strip()) >= 30:
                     pdf_prompt = f"""Sei l'assistente 'Dove lo AI messo'. Analizza questo testo estratto dal documento PDF caricato dall'utente:
 ---
 {pdf_text[:3500]}
@@ -426,8 +433,13 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                     resp_text = self._call_openrouter(messages, max_tokens=4096, model_override=self.primary_model, temperature=0.1)
                     parsed = _extract_json_object(resp_text)
                     return _finalize(ExtractedDocument(**parsed))
+                elif scanned_images:
+                    # PDF SCANSIONATO GRAFICO (es. da scanner Google ML Kit o fotocopiatrice multifunzione)
+                    logger.info(f"Rilevato PDF scansionato con {len(scanned_images)} immagini ({filename}). Elaborazione con AI multimodale.")
+                    file_bytes = scanned_images[0]
+                    # Continua l'elaborazione passando l'immagine estratta alla sezione 4 (GESTIONE IMMAGINI)
                 else:
-                    # PDF senza layer di testo estratto (scansione grafica, libro o PDF protetto/test)
+                    # PDF senza layer di testo e senza immagini estraibili
                     return MockAIService().extract_document(file_bytes, mime_type, filename)
 
             # 2. GESTIONE DOCUMENTI OFFICE & FOGLI DI CALCOLO (.docx, .doc, .xlsx, .xls, .xlsm, .csv, .txt, .json)
