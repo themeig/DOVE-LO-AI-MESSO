@@ -3327,8 +3327,11 @@
 
     function triggerScanner() {
       if (attachmentMenu) attachmentMenu.classList.add('hidden');
-      if (window.MobileScanner && typeof window.MobileScanner.openScanner === 'function') {
-        window.MobileScanner.openScanner();
+      const targetThread = currentThreadId || 'general';
+      if (window.AndroidDocumentScanner && typeof window.AndroidDocumentScanner.launchScanner === 'function') {
+        window.AndroidDocumentScanner.launchScanner(targetThread);
+      } else if (window.MobileScanner && typeof window.MobileScanner.openScanner === 'function') {
+        window.MobileScanner.openScanner(targetThread);
       } else {
         triggerCameraInput();
       }
@@ -3581,6 +3584,54 @@
         folderInput.value = '';
       });
     }
+
+    // =========================================================================
+    // NATIVE DOCUMENT SCANNER HANDLERS (Google Drive Document Scanner)
+    // =========================================================================
+    window.onNativeScanReady = async function(filename, mimeType, fileSize, threadId) {
+      try {
+        if (!window.AndroidDocumentScanner) return;
+        const totalChunks = window.AndroidDocumentScanner.getTotalChunks ? window.AndroidDocumentScanner.getTotalChunks() : 0;
+        const byteArrays = [];
+        for (let i = 0; i < totalChunks; i++) {
+          const chunkB64 = window.AndroidDocumentScanner.getChunk(i);
+          if (!chunkB64) continue;
+          const byteChars = atob(chunkB64);
+          const chunkBytes = new Uint8Array(byteChars.length);
+          for (let j = 0; j < byteChars.length; j++) {
+            chunkBytes[j] = byteChars.charCodeAt(j);
+          }
+          byteArrays.push(chunkBytes);
+        }
+        if (window.AndroidDocumentScanner.clearLastScan) {
+          window.AndroidDocumentScanner.clearLastScan();
+        }
+
+        const cleanMime = mimeType || (filename.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+        const blob = new Blob(byteArrays, { type: cleanMime });
+        const cleanName = filename || (`scansione_${Date.now()}.${cleanMime === 'application/pdf' ? 'pdf' : 'jpg'}`);
+        const file = new File([blob], cleanName, { type: cleanMime });
+
+        if (threadId && typeof switchThread === 'function' && threadId !== currentThreadId) {
+          switchThread(threadId);
+        }
+
+        showToast("📄 Acquisizione scansione Google completata!", "success");
+        await processFilesUpload([file]);
+      } catch (err) {
+        console.error("Errore onNativeScanReady:", err);
+        showToast("⚠️ Impossibile caricare il documento scansionato.", "error");
+      }
+    };
+
+    window.onNativeScanError = function(errMsg) {
+      console.warn("Native scanner error:", errMsg);
+      showToast("⚠️ " + (errMsg || "Errore durante la scansione del documento."), "error");
+    };
+
+    window.onNativeScanCancelled = function() {
+      // Scansione annullata dall'utente
+    };
 
     // --- Helper Ricorsivo Drag & Drop (Supporto File e Cartelle con Directory Traversal) ---
     async function traverseFileEntry(entry) {

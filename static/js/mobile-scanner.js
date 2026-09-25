@@ -116,14 +116,49 @@
     ];
   }
 
+  // --- Advanced Document Edge & Perspective Detection ---
+  function computeOtsuThreshold(grayData, total) {
+    const hist = new Uint32Array(256);
+    for (let i = 0; i < total; i++) {
+      hist[grayData[i]]++;
+    }
+    let sum = 0;
+    for (let i = 0; i < 256; i++) sum += i * hist[i];
+
+    let sumB = 0;
+    let wB = 0;
+    let varMax = 0;
+    let threshold = 120;
+
+    for (let t = 0; t < 256; t++) {
+      wB += hist[t];
+      if (wB === 0) continue;
+      const wF = total - wB;
+      if (wF === 0) break;
+
+      sumB += t * hist[t];
+      const mB = sumB / wB;
+      const mF = (sum - sumB) / wF;
+      const varBetween = wB * wF * (mB - mF) * (mB - mF);
+
+      if (varBetween > varMax) {
+        varMax = varBetween;
+        threshold = t;
+      }
+    }
+    return threshold;
+  }
+
   function detectPaperCorners(canvas) {
     const w = canvas.width;
     const h = canvas.height;
-    // Fast analysis on downsampled canvas
+    // Analysis on downsampled canvas for ultra-fast processing (<15ms)
     const sampleCanvas = document.createElement('canvas');
-    const scale = Math.min(1.0, 480 / Math.max(w, h));
+    const scale = Math.min(1.0, 400 / Math.max(w, h));
     const sw = Math.floor(w * scale);
     const sh = Math.floor(h * scale);
+    if (sw < 20 || sh < 20) return defaultCorners(w, h);
+
     sampleCanvas.width = sw;
     sampleCanvas.height = sh;
     const sctx = sampleCanvas.getContext('2d');
@@ -132,38 +167,111 @@
     try {
       const imgData = sctx.getImageData(0, 0, sw, sh);
       const data = imgData.data;
+      const totalPixels = sw * sh;
 
-      // Calculate center of mass of brighter document area
-      let minX = sw, maxX = 0, minY = sh, maxY = 0;
-      let sumX = 0, sumY = 0, count = 0;
-      for (let y = 0; y < sh; y += 4) {
-        for (let x = 0; x < sw; x += 4) {
-          const idx = (y * sw + x) * 4;
-          const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
-          if (lum > 110) {
-            sumX += x;
-            sumY += y;
-            count++;
-            if (x < minX) minX = x;
-            if (x > maxX) maxX = x;
-            if (y < minY) minY = y;
-            if (y > maxY) maxY = y;
+      // 1. Convert to grayscale
+      const gray = new Uint8Array(totalPixels);
+      for (let i = 0; i < totalPixels; i++) {
+        const idx = i * 4;
+        gray[i] = Math.round(0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2]);
+      }
+
+      // 2. Compute Otsu's adaptive threshold
+      const otsuThresh = computeOtsuThreshold(gray, totalPixels);
+
+      // 3. Compute Sobel Edge Gradient Magnitude
+      const edgeMag = new Uint8Array(totalPixels);
+      const candidatePoints = [];
+      const borderMarginX = Math.max(3, Math.floor(sw * 0.03));
+      const borderMarginY = Math.max(3, Math.floor(sh * 0.03));
+
+      for (let y = 1; y < sh - 1; y++) {
+        const rowOffset = y * sw;
+        for (let x = 1; x < sw - 1; x++) {
+          // Skip extreme outer frame border to avoid camera bezel noise
+          if (x < borderMarginX || x >= sw - borderMarginX || y < borderMarginY || y >= sh - borderMarginY) {
+            continue;
+          }
+
+          // Sobel kernels
+          const p00 = gray[(y - 1) * sw + (x - 1)];
+          const p01 = gray[(y - 1) * sw + x];
+          const p02 = gray[(y - 1) * sw + (x + 1)];
+          const p10 = gray[rowOffset + (x - 1)];
+          const p12 = gray[rowOffset + (x + 1)];
+          const p20 = gray[(y + 1) * sw + (x - 1)];
+          const p21 = gray[(y + 1) * sw + x];
+          const p22 = gray[(y + 1) * sw + (x + 1)];
+
+          const gx = (p02 + 2 * p12 + p22) - (p00 + 2 * p10 + p20);
+          const gy = (p20 + 2 * p21 + p22) - (p00 + 2 * p01 + p02);
+          const mag = Math.min(255, Math.abs(gx) + Math.abs(gy));
+          edgeMag[rowOffset + x] = mag;
+
+          const isPaperLuminance = gray[rowOffset + x] >= (otsuThresh * 0.85);
+          const isEdge = mag > 45;
+
+          // Candidate document contour point
+          if (isPaperLuminance || isEdge) {
+            candidatePoints.push({ x: x, y: y, score: isPaperLuminance ? (mag + 30) : mag });
           }
         }
       }
 
-      // If document area detected with good bounds
-      if (count > (sw * sh * 0.15) && (maxX - minX) > sw * 0.4 && (maxY - minY) > sh * 0.4) {
-        const invScale = 1.0 / scale;
-        return [
-          { x: Math.max(0, minX * invScale), y: Math.max(0, minY * invScale) },
-          { x: Math.min(w, maxX * invScale), y: Math.max(0, minY * invScale) },
-          { x: Math.min(w, maxX * invScale), y: Math.min(h, maxY * invScale) },
-          { x: Math.max(0, minX * invScale), y: Math.min(h, maxY * invScale) }
-        ];
+      if (candidatePoints.length > totalPixels * 0.10) {
+        // 4. Find the 4 extremal corner points
+        let minSum = Infinity, maxSum = -Infinity;
+        let minDiff = Infinity, maxDiff = -Infinity;
+        let pTopLeft = null, pTopRight = null, pBottomRight = null, pBottomLeft = null;
+
+        for (let i = 0; i < candidatePoints.length; i++) {
+          const pt = candidatePoints[i];
+          const sum = pt.x + pt.y;
+          const diff = pt.x - pt.y;
+
+          if (sum < minSum) {
+            minSum = sum;
+            pTopLeft = pt;
+          }
+          if (diff > maxDiff) {
+            maxDiff = diff;
+            pTopRight = pt;
+          }
+          if (sum > maxSum) {
+            maxSum = sum;
+            pBottomRight = pt;
+          }
+          if (diff < minDiff) {
+            minDiff = diff;
+            pBottomLeft = pt;
+          }
+        }
+
+        if (pTopLeft && pTopRight && pBottomRight && pBottomLeft) {
+          // 5. Geometric validation: shoelace area and convexity
+          const pts = [pTopLeft, pTopRight, pBottomRight, pBottomLeft];
+          let area = 0;
+          for (let i = 0; i < 4; i++) {
+            const j = (i + 1) % 4;
+            area += pts[i].x * pts[j].y - pts[j].x * pts[i].y;
+          }
+          area = Math.abs(area) / 2.0;
+
+          const frameArea = sw * sh;
+          // If valid area (between 15% and 94% of frame)
+          if (area >= frameArea * 0.15 && area <= frameArea * 0.94) {
+            const invScale = 1.0 / scale;
+            return [
+              { x: Math.max(0, Math.min(w, pTopLeft.x * invScale)), y: Math.max(0, Math.min(h, pTopLeft.y * invScale)) },
+              { x: Math.max(0, Math.min(w, pTopRight.x * invScale)), y: Math.max(0, Math.min(h, pTopRight.y * invScale)) },
+              { x: Math.max(0, Math.min(w, pBottomRight.x * invScale)), y: Math.max(0, Math.min(h, pBottomRight.y * invScale)) },
+              { x: Math.max(0, Math.min(w, pBottomLeft.x * invScale)), y: Math.max(0, Math.min(h, pBottomLeft.y * invScale)) }
+            ];
+          }
+        }
       }
     } catch (e) {
-      console.warn("Edge detection fallback:", e);
+      console.warn("Document auto-boundary detection fallback:", e);
     }
     return defaultCorners(w, h);
   }
@@ -348,6 +456,12 @@
 
   function openScannerModal(threadId) {
     activeThreadId = threadId || 'general';
+
+    // Se l'app è in esecuzione su Android APK con Google ML Kit Document Scanner nativo
+    if (window.AndroidDocumentScanner && typeof window.AndroidDocumentScanner.launchScanner === 'function') {
+      window.AndroidDocumentScanner.launchScanner(activeThreadId);
+      return;
+    }
 
     // Se navigator.mediaDevices non è disponibile (es. contesto HTTP locale non sicuro su Android)
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {

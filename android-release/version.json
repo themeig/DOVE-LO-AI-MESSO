@@ -1,6 +1,6 @@
 {
-  "version_code": 277,
-  "version_name": "2.7.7",
+  "version_code": 280,
+  "version_name": "2.8.0",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ Ripristinata la rotellina rotante sull'avatar del canale durante l'elaborazione dell'assistente."
+  "release_notes": "📸 Scanner documenti intelligente potenziato: integrazione Google ML Kit Document Scanner nativo (rilevamento bordi automatico a 4 angoli, scatto automatico, dewarping prospettico e multi-pagina) e algoritmo potenziato nel browser web."
 }

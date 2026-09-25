@@ -35,6 +35,7 @@ import android.widget.Toast;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.IntentSenderRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -42,6 +43,11 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanner;
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions;
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning;
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult;
 
 import android.app.ProgressDialog;
 import android.provider.Settings;
@@ -81,6 +87,9 @@ public class MainActivity extends AppCompatActivity {
 
     private ValueCallback<Uri[]> mFilePathCallback;
     private ActivityResultLauncher<Intent> fileChooserLauncher;
+    private ActivityResultLauncher<IntentSenderRequest> documentScannerLauncher;
+    private AndroidDocumentScannerBridge mDocumentScannerBridge;
+    private String mCurrentScanningThreadId = "general";
     private Uri mCameraPhotoUri;
     private File mCameraPhotoFile;
     private File pendingInstallApkFile = null;
@@ -107,6 +116,7 @@ public class MainActivity extends AppCompatActivity {
         etServerUrl.setText(currentServerUrl);
 
         setupFileChooserLauncher();
+        setupDocumentScannerLauncher();
         setupWebView();
         setupListeners();
         checkAndRequestAppPermissions();
@@ -225,6 +235,10 @@ public class MainActivity extends AppCompatActivity {
         // Bridge nativo microfono per registrazione vocale hardware senza vincoli WebRTC HTTP
         mNativeVoiceBridge = new NativeVoiceBridge();
         webView.addJavascriptInterface(mNativeVoiceBridge, "AndroidNativeVoice");
+
+        // Bridge nativo scanner documenti ML Kit (Google Drive Document Scanner)
+        mDocumentScannerBridge = new AndroidDocumentScannerBridge();
+        webView.addJavascriptInterface(mDocumentScannerBridge, "AndroidDocumentScanner");
 
         // Bridge nativo per verifica aggiornamenti manuale da JavaScript
         webView.addJavascriptInterface(new AndroidUpdater(), "AndroidUpdater");
@@ -398,6 +412,109 @@ public class MainActivity extends AppCompatActivity {
                     mCameraPhotoFile = null;
                 }
         );
+    }
+
+    private void setupDocumentScannerLauncher() {
+        documentScannerLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartIntentSenderForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                        GmsDocumentScanningResult scanningResult = GmsDocumentScanningResult.fromActivityResultIntent(result.getData());
+                        if (scanningResult != null) {
+                            processDocumentScannerResult(scanningResult);
+                        } else {
+                            notifyScannerCancelled();
+                        }
+                    } else {
+                        notifyScannerCancelled();
+                    }
+                }
+        );
+    }
+
+    private void processDocumentScannerResult(GmsDocumentScanningResult result) {
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                Uri targetUri = null;
+                String mimeType = "application/pdf";
+                String fileExt = "pdf";
+
+                if (result.getPdf() != null && result.getPdf().getUri() != null) {
+                    targetUri = result.getPdf().getUri();
+                    mimeType = "application/pdf";
+                    fileExt = "pdf";
+                } else if (result.getPages() != null && !result.getPages().isEmpty()) {
+                    targetUri = result.getPages().get(0).getImageUri();
+                    mimeType = "image/jpeg";
+                    fileExt = "jpg";
+                }
+
+                if (targetUri == null) {
+                    notifyScannerCancelled();
+                    return;
+                }
+
+                String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+                String filename = "scansione_" + timeStamp + "." + fileExt;
+                File cachedFile = new File(getCacheDir(), filename);
+
+                try (InputStream in = getContentResolver().openInputStream(targetUri);
+                     FileOutputStream out = new FileOutputStream(cachedFile)) {
+                    if (in == null) {
+                        notifyScannerError("Impossibile aprire il file scansionato.");
+                        return;
+                    }
+                    byte[] buffer = new byte[8192];
+                    int len;
+                    while ((len = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, len);
+                    }
+                    out.flush();
+                }
+
+                byte[] fileBytes = new byte[(int) cachedFile.length()];
+                try (FileInputStream fis = new FileInputStream(cachedFile)) {
+                    int totalRead = 0;
+                    int read;
+                    while (totalRead < fileBytes.length && (read = fis.read(fileBytes, totalRead, fileBytes.length - totalRead)) != -1) {
+                        totalRead += read;
+                    }
+                }
+
+                if (mDocumentScannerBridge != null) {
+                    mDocumentScannerBridge.setLastScannedDocument(filename, mimeType, fileBytes, mCurrentScanningThreadId);
+                }
+
+                final String finalFilename = filename;
+                final String finalMimeType = mimeType;
+                final int finalFileSize = fileBytes.length;
+                final String finalThreadId = mCurrentScanningThreadId;
+
+                runOnUiThread(() -> {
+                    String js = String.format(Locale.US,
+                            "if (typeof window.onNativeScanReady === 'function') { window.onNativeScanReady('%s', '%s', %d, '%s'); }",
+                            finalFilename, finalMimeType, finalFileSize, finalThreadId
+                    );
+                    webView.evaluateJavascript(js, null);
+                });
+
+            } catch (Exception e) {
+                notifyScannerError(e.getMessage() != null ? e.getMessage() : "Errore elaborazione documento scansionato");
+            }
+        });
+    }
+
+    private void notifyScannerCancelled() {
+        runOnUiThread(() -> {
+            webView.evaluateJavascript("if (typeof window.onNativeScanCancelled === 'function') { window.onNativeScanCancelled(); }", null);
+        });
+    }
+
+    private void notifyScannerError(String errorMsg) {
+        runOnUiThread(() -> {
+            String safeMsg = (errorMsg != null ? errorMsg : "Errore sconosciuto").replace("'", "\\'");
+            webView.evaluateJavascript("if (typeof window.onNativeScanError === 'function') { window.onNativeScanError('" + safeMsg + "'); }", null);
+        });
     }
 
     private void checkAndRequestAppPermissions() {
@@ -799,6 +916,89 @@ public class MainActivity extends AppCompatActivity {
                     webView.reload();
                 }
             });
+        }
+    }
+
+    // =========================================================================
+    // NATIVE DOCUMENT SCANNER BRIDGE (ML Kit Google Drive Document Scanner)
+    // =========================================================================
+
+    public class AndroidDocumentScannerBridge {
+        private String mLastFilename = null;
+        private String mLastMimeType = null;
+        private byte[] mLastBytes = null;
+        private String mLastThreadId = "general";
+        private static final int CHUNK_SIZE = 256 * 1024; // 256KB chunks per il passaggio ultra-veloce a JS
+
+        public synchronized void setLastScannedDocument(String filename, String mimeType, byte[] bytes, String threadId) {
+            this.mLastFilename = filename;
+            this.mLastMimeType = mimeType;
+            this.mLastBytes = bytes;
+            this.mLastThreadId = threadId;
+        }
+
+        @JavascriptInterface
+        public boolean isAvailable() {
+            return true;
+        }
+
+        @JavascriptInterface
+        public void launchScanner(String threadId) {
+            mCurrentScanningThreadId = (threadId != null && !threadId.trim().isEmpty()) ? threadId.trim() : "general";
+            runOnUiThread(() -> {
+                try {
+                    GmsDocumentScannerOptions options = new GmsDocumentScannerOptions.Builder()
+                            .setGalleryImportAllowed(true)
+                            .setPageLimit(25)
+                            .setResultFormats(
+                                    GmsDocumentScannerOptions.RESULT_FORMAT_JPEG,
+                                    GmsDocumentScannerOptions.RESULT_FORMAT_PDF
+                            )
+                            .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
+                            .build();
+
+                    GmsDocumentScanner scanner = GmsDocumentScanning.getClient(options);
+                    scanner.getStartScanIntent(MainActivity.this)
+                            .addOnSuccessListener(intentSender -> {
+                                try {
+                                    IntentSenderRequest request = new IntentSenderRequest.Builder(intentSender).build();
+                                    documentScannerLauncher.launch(request);
+                                } catch (Exception e) {
+                                    notifyScannerError(e.getMessage());
+                                }
+                            })
+                            .addOnFailureListener(e -> {
+                                notifyScannerError("Impossibile avviare Google Scanner: " + e.getMessage());
+                            });
+                } catch (Exception e) {
+                    notifyScannerError("Errore avvio scanner: " + e.getMessage());
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public int getTotalChunks() {
+            if (mLastBytes == null) return 0;
+            return (int) Math.ceil((double) mLastBytes.length / CHUNK_SIZE);
+        }
+
+        @JavascriptInterface
+        public String getChunk(int chunkIndex) {
+            if (mLastBytes == null) return "";
+            int start = chunkIndex * CHUNK_SIZE;
+            if (start >= mLastBytes.length) return "";
+            int end = Math.min(start + CHUNK_SIZE, mLastBytes.length);
+            int length = end - start;
+            byte[] chunk = new byte[length];
+            System.arraycopy(mLastBytes, start, chunk, 0, length);
+            return Base64.encodeToString(chunk, Base64.NO_WRAP);
+        }
+
+        @JavascriptInterface
+        public void clearLastScan() {
+            mLastBytes = null;
+            mLastFilename = null;
+            mLastMimeType = null;
         }
     }
 }
