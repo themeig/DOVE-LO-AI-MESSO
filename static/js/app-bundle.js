@@ -3320,9 +3320,14 @@
 
     function triggerCameraInput() {
       if (attachmentMenu) attachmentMenu.classList.add('hidden');
-      const itemPhotoInput = document.getElementById('itemPhotoInput');
-      if (itemPhotoInput) itemPhotoInput.click();
-      else if (realFileInput) realFileInput.click();
+      const isMobileNative = window.AndroidNativeVoice || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobileNative) {
+        const itemPhotoInput = document.getElementById('itemPhotoInput');
+        if (itemPhotoInput) itemPhotoInput.click();
+        else if (realFileInput) realFileInput.click();
+      } else {
+        openWebcamCaptureModal();
+      }
     }
 
     function triggerScanner() {
@@ -3632,6 +3637,223 @@
     window.onNativeScanCancelled = function() {
       // Scansione annullata dall'utente
     };
+
+    // =========================================================================
+    // MODALE WEBCAM / VIDEOCAMERA DESKTOP (Scatto Foto Live)
+    // =========================================================================
+    let webcamStream = null;
+    let currentCameraDeviceId = null;
+    let availableVideoDevices = [];
+
+    async function openWebcamCaptureModal() {
+      if (attachmentMenu) attachmentMenu.classList.add('hidden');
+
+      const modal = document.getElementById('webcamModal');
+      if (!modal) {
+        // Fallback se il modal non è presente nel DOM
+        const itemPhotoInput = document.getElementById('itemPhotoInput');
+        if (itemPhotoInput) itemPhotoInput.click();
+        else if (realFileInput) realFileInput.click();
+        return;
+      }
+
+      const errorBox = document.getElementById('webcamErrorBox');
+      if (errorBox) errorBox.classList.add('hidden');
+      const video = document.getElementById('webcamVideo');
+      const canvas = document.getElementById('webcamCanvas');
+      const liveControls = document.getElementById('webcamLiveControls');
+      const previewControls = document.getElementById('webcamPreviewControls');
+      const crosshair = document.getElementById('webcamCrosshair');
+      const statusText = document.getElementById('webcamStatusText');
+
+      if (video) video.classList.remove('hidden');
+      if (canvas) canvas.classList.add('hidden');
+      if (liveControls) liveControls.classList.remove('hidden');
+      if (previewControls) previewControls.classList.add('hidden');
+      if (crosshair) crosshair.classList.remove('hidden');
+      if (statusText) statusText.textContent = 'Inquadra e premi "Scatta Foto"';
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      await startWebcamStream();
+    }
+
+    async function startWebcamStream(deviceId = null) {
+      stopWebcamStream();
+
+      const video = document.getElementById('webcamVideo');
+      const errorBox = document.getElementById('webcamErrorBox');
+      const errorMsg = document.getElementById('webcamErrorMessage');
+      const btnSwitch = document.getElementById('btnSwitchWebcam');
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        if (errorBox) errorBox.classList.remove('hidden');
+        if (errorMsg) errorMsg.textContent = 'Il tuo browser non supporta l\'accesso diretto alla videocamera.';
+        return;
+      }
+
+      try {
+        const constraints = {
+          video: deviceId 
+            ? { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+            : { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false
+        };
+
+        webcamStream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (video) {
+          video.srcObject = webcamStream;
+          await video.play();
+        }
+
+        // Elenca dispositivi video per attivare/disattivare il tasto switch camera
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          availableVideoDevices = devices.filter(d => d.kind === 'videoinput');
+          if (btnSwitch) {
+            btnSwitch.classList.toggle('hidden', availableVideoDevices.length < 2);
+          }
+        } catch (_) {}
+
+      } catch (err) {
+        console.warn("Errore accesso videocamera:", err);
+        if (errorBox) errorBox.classList.remove('hidden');
+        if (errorMsg) {
+          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            errorMsg.textContent = 'Accesso alla videocamera negato dal browser. Consenti l\'accesso nei permessi della pagina o seleziona un file.';
+          } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+            errorMsg.textContent = 'Nessuna videocamera o webcam rilevata sul dispositivo.';
+          } else {
+            errorMsg.textContent = 'Impossibile avviare la videocamera: ' + (err.message || 'Errore dispositivo');
+          }
+        }
+      }
+    }
+
+    async function switchWebcamDevice() {
+      if (availableVideoDevices.length < 2) return;
+      const currentIdx = availableVideoDevices.findIndex(d => d.deviceId === currentCameraDeviceId);
+      const nextIdx = (currentIdx + 1) % availableVideoDevices.length;
+      currentCameraDeviceId = availableVideoDevices[nextIdx].deviceId;
+      await startWebcamStream(currentCameraDeviceId);
+    }
+
+    function captureWebcamPhoto() {
+      const video = document.getElementById('webcamVideo');
+      const canvas = document.getElementById('webcamCanvas');
+      const liveControls = document.getElementById('webcamLiveControls');
+      const previewControls = document.getElementById('webcamPreviewControls');
+      const crosshair = document.getElementById('webcamCrosshair');
+      const statusText = document.getElementById('webcamStatusText');
+
+      if (!video || !canvas || !video.videoWidth) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      video.classList.add('hidden');
+      canvas.classList.remove('hidden');
+      if (crosshair) crosshair.classList.add('hidden');
+      if (liveControls) liveControls.classList.add('hidden');
+      if (previewControls) previewControls.classList.remove('hidden');
+      if (statusText) statusText.textContent = 'Foto scattata! Conferma o rifai lo scatto.';
+    }
+
+    function retakeWebcamPhoto() {
+      const video = document.getElementById('webcamVideo');
+      const canvas = document.getElementById('webcamCanvas');
+      const liveControls = document.getElementById('webcamLiveControls');
+      const previewControls = document.getElementById('webcamPreviewControls');
+      const crosshair = document.getElementById('webcamCrosshair');
+      const statusText = document.getElementById('webcamStatusText');
+
+      if (canvas) canvas.classList.add('hidden');
+      if (video) video.classList.remove('hidden');
+      if (crosshair) crosshair.classList.remove('hidden');
+      if (liveControls) liveControls.classList.remove('hidden');
+      if (previewControls) previewControls.classList.add('hidden');
+      if (statusText) statusText.textContent = 'Inquadra e premi "Scatta Foto"';
+    }
+
+    function useCapturedWebcamPhoto() {
+      const canvas = document.getElementById('webcamCanvas');
+      if (!canvas) return;
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const filename = `foto_${Date.now()}.jpg`;
+        const file = new File([blob], filename, { type: 'image/jpeg' });
+
+        closeWebcamModal();
+
+        if (pendingPhotoItemId) {
+          const itemId = pendingPhotoItemId;
+          pendingPhotoItemId = null;
+          const formData = new FormData();
+          formData.append('file', file);
+          try {
+            const res = await fetch(`/api/items/${itemId}/photo`, {
+              method: 'POST',
+              headers: authHeaders(),
+              body: formData
+            });
+            if (!res.ok) throw new Error('Errore durante il caricamento della foto');
+            const data = await res.json();
+            loadDashboard(currentFilter);
+            if (data.image_url) {
+              appendAssistantBubble(
+                `📸 **Foto memorizzata!** Ho salvato la foto della posizione per **${data.item_name}**.`,
+                null,
+                null,
+                { item_name: data.item_name, image_url: data.image_url }
+              );
+            }
+          } catch (err) {
+            showToast('Impossibile salvare la foto: ' + err.message, 'error');
+          }
+        } else {
+          await processFilesUpload([file]);
+        }
+      }, 'image/jpeg', 0.92);
+    }
+
+    function stopWebcamStream() {
+      if (webcamStream) {
+        webcamStream.getTracks().forEach(track => track.stop());
+        webcamStream = null;
+      }
+      const video = document.getElementById('webcamVideo');
+      if (video) video.srcObject = null;
+    }
+
+    function closeWebcamModal() {
+      stopWebcamStream();
+      const modal = document.getElementById('webcamModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function fallbackToFilePicker() {
+      closeWebcamModal();
+      const itemPhotoInput = document.getElementById('itemPhotoInput');
+      if (itemPhotoInput) itemPhotoInput.click();
+      else if (realFileInput) realFileInput.click();
+    }
+
+    window.openWebcamCaptureModal = openWebcamCaptureModal;
+    window.startWebcamStream = startWebcamStream;
+    window.switchWebcamDevice = switchWebcamDevice;
+    window.captureWebcamPhoto = captureWebcamPhoto;
+    window.retakeWebcamPhoto = retakeWebcamPhoto;
+    window.useCapturedWebcamPhoto = useCapturedWebcamPhoto;
+    window.stopWebcamStream = stopWebcamStream;
+    window.closeWebcamModal = closeWebcamModal;
+    window.fallbackToFilePicker = fallbackToFilePicker;
 
     // --- Helper Ricorsivo Drag & Drop (Supporto File e Cartelle con Directory Traversal) ---
     async function traverseFileEntry(entry) {

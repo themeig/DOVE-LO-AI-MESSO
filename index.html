@@ -373,29 +373,14 @@
                   <div class="text-[10px] text-[#7A7568] font-mono-code font-normal">Tutti i file di una directory</div>
                 </div>
               </button>
-              <!-- 3. Foto -->
-              <button type="button" onclick="triggerCameraInput()" class="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-[#FAF8F2] text-slate-700 text-xs font-semibold transition cursor-pointer">
+              <!-- 3. Foto (Videocamera / Webcam) -->
+              <button type="button" onclick="openWebcamCaptureModal()" class="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-[#FAF8F2] text-slate-700 text-xs font-semibold transition cursor-pointer">
                 <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-amber-700 flex items-center justify-center text-sm shrink-0">
                   <i class="fa-solid fa-camera"></i>
                 </div>
                 <div class="text-left">
                   <div class="text-[#222220] font-bold font-space">Foto</div>
-                  <div class="text-[10px] text-[#7A7568] font-mono-code font-normal">Scatta foto o fotocamera nativa</div>
-                </div>
-              </button>
-              <!-- 4. Scannerizza -->
-              <button 
-                id="btnOpenScanner"
-                type="button" 
-                onclick="triggerScanner()" 
-                class="w-full px-3.5 py-2.5 flex items-center gap-3 hover:bg-[#FAF8F2] text-slate-700 text-xs font-semibold transition cursor-pointer"
-              >
-                <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-sm shrink-0">
-                  <i class="fa-solid fa-crop-simple"></i>
-                </div>
-                <div class="text-left">
-                  <div class="text-[#222220] font-bold font-space">Scannerizza</div>
-                  <div class="text-[10px] text-[#7A7568] font-mono-code font-normal">Scanner con rilevamento 4 bordi</div>
+                  <div class="text-[10px] text-[#7A7568] font-mono-code font-normal">Apri videocamera e scatta foto</div>
                 </div>
               </button>
             </div>
@@ -2592,173 +2577,92 @@
     </div>
   </div>
   <!-- ================================================================= -->
-  <!-- MODALE SCANNER DOCUMENTALE A TUTTO SCHERMO                        -->
+  <!-- MODALE ACQUISIZIONE FOTO DA VIDEOCAMERA / WEBCAM                  -->
   <!-- ================================================================= -->
-  <div id="mobileScannerModal" class="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between hidden select-none animate-in fade-in duration-200">
-    
-    <!-- Top Bar Scanner -->
-    <div class="h-14 bg-black/70 border-b border-white/10 px-4 flex items-center justify-between text-white shrink-0 safe-top">
-      <div class="flex items-center gap-2">
-        <i class="fa-solid fa-expand text-[#C84B31]"></i>
-        <span class="font-bold text-xs uppercase font-space tracking-wide">Scanner Ottico Olivetti</span>
-      </div>
-      <button 
-        type="button" 
-        onclick="window.MobileScanner && window.MobileScanner.closeScanner()" 
-        class="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition cursor-pointer"
-      >
-        <i class="fa-solid fa-xmark text-sm"></i>
-      </button>
-    </div>
-
-    <!-- Vista 1: Mirino Live Fotocamera -->
-    <div id="scannerCameraView" class="flex-1 flex flex-col relative overflow-hidden items-center justify-center">
-      <video id="scannerVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
-
-      <!-- Reticolo / Maschera Guida Documento -->
-      <div class="absolute inset-x-8 inset-y-16 pointer-events-none border-2 border-emerald-400/80 rounded-sm scanner-reticle flex flex-col justify-between p-2">
-        <div class="flex justify-between">
-          <span class="w-4 h-4 border-t-2 border-l-2 border-emerald-400"></span>
-          <span class="w-4 h-4 border-t-2 border-r-2 border-emerald-400"></span>
-        </div>
-        <div class="text-center">
-          <span class="px-2.5 py-1 bg-black/60 text-white rounded text-[10px] font-mono-code">Inquadra il foglio</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="w-4 h-4 border-b-2 border-l-2 border-emerald-400"></span>
-          <span class="w-4 h-4 border-b-2 border-r-2 border-emerald-400"></span>
-        </div>
-      </div>
-
-      <!-- Errore Permessi / Fallback Fotocamera Nativa -->
-      <div id="scannerPermissionError" class="hidden absolute inset-4 sm:inset-6 bg-white/95 rounded-xs p-5 sm:p-6 text-center text-[#222220] flex flex-col items-center justify-center shadow-2xl z-20">
-        <div class="w-12 h-12 rounded-full bg-[#FAECE8] text-[#C84B31] flex items-center justify-center text-xl mb-2.5">
-          <i class="fa-solid fa-camera"></i>
-        </div>
-        <h3 class="font-bold text-sm uppercase font-space mb-1">Scatta Foto con Fotocamera</h3>
-        <p class="text-xs font-mono-code text-[#7A7568] leading-relaxed mb-4 max-w-sm">
-          Su rete locale (HTTP), Android protegge l'accesso WebRTC continuo.<br>
-          Puoi scattare direttamente con la <strong>Fotocamera Nativa del tuo Pixel 9</strong>: l'immagine verrà poi raddrizzata e catalogata nello scanner.
-        </p>
-        <div class="flex flex-col gap-2 w-full max-w-xs">
-          <button 
-            type="button" 
-            onclick="window.MobileScanner && window.MobileScanner.triggerNativeCamera()" 
-            class="w-full py-2.5 bg-[#C84B31] hover:bg-[#B23E26] text-white rounded-xs text-xs font-bold font-space uppercase shadow-xs active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
-          >
+  <div id="webcamModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3 sm:p-6 backdrop-blur-xs select-none animate-in fade-in duration-150">
+    <div class="bg-[#F8F5EE] border-2 border-[#3C5A48] rounded-xs shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col">
+      <!-- Header della Modale Webcam -->
+      <div class="h-12 bg-[#FAF8F2] border-b border-[#E3DDD1] px-4 flex items-center justify-between text-[#222220]">
+        <div class="flex items-center gap-2.5">
+          <div class="w-6 h-6 rounded-xs bg-[#EBF1ED] border border-[#3C5A48] text-[#3C5A48] flex items-center justify-center text-xs">
             <i class="fa-solid fa-camera"></i>
-            <span>Apri Fotocamera Pixel 9</span>
+          </div>
+          <span class="font-bold text-xs uppercase font-space tracking-wide text-[#222220]">Videocamera</span>
+          <span id="webcamLiveBadge" class="stamp-oli text-[9px] text-emerald-700 bg-emerald-50 border-emerald-300 py-0.5 px-1.5 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> LIVE
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btnSwitchWebcam" type="button" onclick="switchWebcamDevice()" class="hidden text-[#7A7568] hover:text-[#222220] p-1.5 text-xs font-mono-code transition cursor-pointer" title="Cambia videocamera">
+            <i class="fa-solid fa-camera-rotate"></i>
           </button>
-          <button 
-            type="button" 
-            onclick="window.MobileScanner && window.MobileScanner.openScanner()" 
-            class="w-full py-2 border border-[#E3DDD1] bg-white text-[#7A7568] hover:text-[#222220] rounded-xs text-xs font-bold font-space uppercase hover:bg-[#FAF8F2] transition cursor-pointer"
-          >
-            Riprova Mirino Live
+          <button type="button" onclick="closeWebcamModal()" class="text-[#7A7568] hover:text-[#222220] p-1.5 cursor-pointer">
+            <i class="fa-solid fa-xmark text-sm"></i>
           </button>
         </div>
       </div>
 
-      <!-- Pulsantiera Scatto Meccanico -->
-      <div class="absolute bottom-6 inset-x-0 flex items-center justify-center gap-6 safe-bottom">
-        <button 
-          id="btnShutter" 
-          type="button" 
-          onclick="window.MobileScanner && window.MobileScanner.captureFrame()" 
-          class="w-18 h-18 rounded-full border-4 border-white bg-[#C84B31] flex items-center justify-center shadow-2xl active:scale-90 transition cursor-pointer"
-          title="Scatta Foto"
-        >
-          <div class="w-12 h-12 rounded-full bg-white/20 border border-white/50"></div>
-        </button>
+      <!-- Area Video Live & Anteprima Scatto -->
+      <div class="relative bg-black flex items-center justify-center min-h-[320px] max-h-[65vh] overflow-hidden aspect-video">
+        <video id="webcamVideo" autoplay playsinline muted class="w-full h-full object-contain"></video>
+        <canvas id="webcamCanvas" class="hidden w-full h-full object-contain"></canvas>
+
+        <!-- Mirino sottile stile Olivetti -->
+        <div id="webcamCrosshair" class="absolute inset-8 pointer-events-none border border-white/20 rounded-xs flex flex-col justify-between p-2">
+          <div class="flex justify-between">
+            <span class="w-3 h-3 border-t-2 border-l-2 border-[#C84B31]"></span>
+            <span class="w-3 h-3 border-t-2 border-r-2 border-[#C84B31]"></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="w-3 h-3 border-b-2 border-l-2 border-[#C84B31]"></span>
+            <span class="w-3 h-3 border-b-2 border-r-2 border-[#C84B31]"></span>
+          </div>
+        </div>
+
+        <!-- Box Errore Permessi o Videocamera Non Trovata -->
+        <div id="webcamErrorBox" class="hidden absolute inset-4 bg-white/95 rounded-xs p-6 text-center text-[#222220] flex flex-col items-center justify-center shadow-xl z-10">
+          <div class="w-12 h-12 rounded-full bg-[#FAECE8] text-[#C84B31] flex items-center justify-center text-xl mb-3">
+            <i class="fa-solid fa-video-slash"></i>
+          </div>
+          <h4 class="font-bold text-sm uppercase font-space mb-1 text-[#222220]">Videocamera non disponibile</h4>
+          <p id="webcamErrorMessage" class="text-xs font-mono-code text-[#7A7568] leading-relaxed mb-4 max-w-sm">
+            Impossibile accedere alla videocamera. Verifica che sia collegata e che i permessi del browser siano concessi.
+          </p>
+          <button type="button" onclick="fallbackToFilePicker()" class="px-4 py-2 bg-[#3C5A48] hover:bg-[#2F4738] text-white rounded-xs text-xs font-bold font-space uppercase shadow-xs transition cursor-pointer">
+            <i class="fa-solid fa-folder-open mr-1.5"></i> Scegli da Esplora File
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra di Controllo Inferiore -->
+      <div class="h-16 bg-[#FAF8F2] border-t border-[#E3DDD1] px-4 flex items-center justify-between">
+        <div class="text-[11px] font-mono-code text-[#7A7568]">
+          <span id="webcamStatusText">Inquadra e premi "Scatta Foto"</span>
+        </div>
+
+        <!-- Pulsanti Modalità Live -->
+        <div id="webcamLiveControls" class="flex items-center gap-3">
+          <button type="button" onclick="closeWebcamModal()" class="px-3 py-1.5 border border-[#E3DDD1] text-[#7A7568] hover:text-[#222220] rounded-xs text-xs font-bold font-space uppercase hover:bg-white transition cursor-pointer">
+            Annulla
+          </button>
+          <button id="btnWebcamCapture" type="button" onclick="captureWebcamPhoto()" class="px-4 py-2 bg-[#C84B31] hover:bg-[#B23E26] text-white rounded-xs text-xs font-bold font-space uppercase shadow-xs active:scale-95 transition cursor-pointer flex items-center gap-1.5">
+            <i class="fa-solid fa-camera"></i>
+            <span>Scatta Foto</span>
+          </button>
+        </div>
+
+        <!-- Pulsanti Modalità Anteprima Scatto -->
+        <div id="webcamPreviewControls" class="hidden flex items-center gap-3">
+          <button type="button" onclick="retakeWebcamPhoto()" class="px-3 py-1.5 border border-[#E3DDD1] text-[#7A7568] hover:text-[#222220] rounded-xs text-xs font-bold font-space uppercase hover:bg-white transition cursor-pointer flex items-center gap-1">
+            <i class="fa-solid fa-rotate-left text-xs"></i> Rifai
+          </button>
+          <button id="btnWebcamUsePhoto" type="button" onclick="useCapturedWebcamPhoto()" class="px-4 py-2 bg-[#3C5A48] hover:bg-[#2F4738] text-white rounded-xs text-xs font-bold font-space uppercase shadow-xs active:scale-95 transition cursor-pointer flex items-center gap-1.5">
+            <i class="fa-solid fa-check"></i>
+            <span>Usa Foto</span>
+          </button>
+        </div>
       </div>
     </div>
-
-    <!-- Vista 2: Regolazione 4 Angoli con Touch -->
-    <div id="scannerCropView" class="hidden flex-1 flex flex-col relative overflow-hidden items-center justify-between p-3 bg-neutral-900">
-      <div class="text-center text-white/90 text-xs font-mono-code pt-1">
-        Trascina i 4 angoli rossi per allineare i bordi del foglio
-      </div>
-      
-      <div class="flex-1 w-full flex items-center justify-center relative my-2 overflow-hidden">
-        <canvas id="scannerCropCanvas" class="max-w-full max-h-full border border-white/20 shadow-2xl touch-none"></canvas>
-      </div>
-
-      <div class="w-full flex items-center justify-between gap-3 safe-bottom pt-2">
-        <button 
-          type="button" 
-          onclick="window.MobileScanner && window.MobileScanner.retake()" 
-          class="flex-1 py-2.5 border border-white/30 text-white rounded-xs text-xs font-space font-bold uppercase transition hover:bg-white/10"
-        >
-          <i class="fa-solid fa-rotate-left mr-1"></i> Rifai Scatto
-        </button>
-        <button 
-          type="button" 
-          onclick="window.MobileScanner && window.MobileScanner.confirmCrop()" 
-          class="flex-1 py-2.5 bg-[#3C5A48] text-white rounded-xs text-xs font-space font-bold uppercase shadow-xs active:scale-95 transition"
-        >
-          Raddrizza <i class="fa-solid fa-arrow-right ml-1"></i>
-        </button>
-      </div>
-    </div>
-
-    <!-- Vista 3: Selezione Filtri & Invio al Caveau -->
-    <div id="scannerFilterView" class="hidden flex-1 flex flex-col relative overflow-hidden items-center justify-between p-3 bg-neutral-900">
-      <div class="text-center text-white/90 text-xs font-mono-code pt-1">
-        Scegli il filtro di contrasto per il documento
-      </div>
-
-      <div class="flex-1 w-full flex items-center justify-center relative my-2 overflow-hidden">
-        <img id="scannerPreviewImg" class="max-w-full max-h-full object-contain border border-white/20 shadow-2xl bg-white" alt="Anteprima Scansione">
-      </div>
-
-      <!-- Filtri Selector -->
-      <div class="w-full flex items-center justify-center gap-2 my-2">
-        <button 
-          type="button" 
-          data-filter="original" 
-          onclick="window.MobileScanner && window.MobileScanner.setFilter('original')" 
-          class="scanner-filter-btn px-3 py-1.5 rounded-xs border border-white/30 text-xs font-mono-code text-white bg-transparent transition"
-        >
-          Originale
-        </button>
-        <button 
-          type="button" 
-          data-filter="magic_color" 
-          onclick="window.MobileScanner && window.MobileScanner.setFilter('magic_color')" 
-          class="scanner-filter-btn px-3 py-1.5 rounded-xs border border-[#3C5A48] text-xs font-mono-code text-white bg-[#3C5A48] transition"
-        >
-          ✨ Nitido Colore
-        </button>
-        <button 
-          type="button" 
-          data-filter="bw" 
-          onclick="window.MobileScanner && window.MobileScanner.setFilter('bw')" 
-          class="scanner-filter-btn px-3 py-1.5 rounded-xs border border-white/30 text-xs font-mono-code text-white bg-transparent transition"
-        >
-          📄 Bianco & Nero
-        </button>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="w-full flex items-center justify-between gap-3 safe-bottom pt-1">
-        <button 
-          type="button" 
-          onclick="window.MobileScanner && window.MobileScanner.confirmCrop()" 
-          class="w-1/3 py-2.5 border border-white/30 text-white rounded-xs text-xs font-space font-bold uppercase transition hover:bg-white/10"
-        >
-          Angoli
-        </button>
-        <button 
-          id="btnSubmitScan" 
-          type="button" 
-          onclick="window.MobileScanner && window.MobileScanner.uploadCurrentScan()" 
-          class="flex-1 py-2.5 bg-[#C84B31] text-white rounded-xs text-xs font-space font-bold uppercase shadow-md active:scale-95 transition"
-        >
-          <i class="fa-solid fa-stamp mr-1.5"></i> Protocolla nel Caveau
-        </button>
-      </div>
-    </div>
-
   </div>
 </body>
 </html>
