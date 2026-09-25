@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -108,4 +109,5 @@ def handle_chat_message(
     db.add(asst_msg)
     db.commit()
 
+    chat_response.created_at = datetime.now(timezone.utc).isoformat()
     return chat_response

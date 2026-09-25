@@ -386,11 +386,16 @@
           loadDashboard(currentFilter);
 
           if (data.image_url) {
+            ensureTodayDateDivider();
             appendAssistantBubble(
               `📸 **Foto memorizzata!** Ho salvato la foto della posizione per **${data.item_name}**.`,
               null,
               null,
-              { item_name: data.item_name, image_url: data.image_url }
+              { item_name: data.item_name, image_url: data.image_url },
+              null,
+              null,
+              null,
+              getTime()
             );
           }
         } catch (err) {
@@ -707,6 +712,37 @@
       return clean || 'Nessun messaggio';
     }
 
+    function getTime() {
+      const d = new Date();
+      return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }
+
+    function formatSidebarTime(t) {
+      if (!t) return '';
+      const iso = t.last_message_iso || t.created_at;
+      if (iso) {
+        const d = new Date(iso);
+        if (!isNaN(d.getTime())) {
+          const now = new Date();
+          const targetDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const diffTime = today.getTime() - targetDay.getTime();
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+          if (diffDays <= 0) {
+            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+          } else if (diffDays === 1) {
+            return 'Ieri';
+          } else if (diffDays > 1 && diffDays < 7) {
+            const day = d.toLocaleDateString('it-IT', { weekday: 'short' });
+            return day.charAt(0).toUpperCase() + day.slice(1);
+          } else {
+            return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          }
+        }
+      }
+      return t.last_message_time || '';
+    }
+
     function renderThreadsList() {
       const container = document.getElementById('threadsContainer');
       const searchVal = (document.getElementById('threadsSearchInput')?.value || '').toLowerCase().trim();
@@ -748,7 +784,7 @@
         const activeTask = activeThreadTasks[t.id];
         const rawLastMsg = t.last_message || t.description || 'Nessun messaggio';
         const cleanPreview = cleanSidebarPreview(rawLastMsg);
-        const timeStr = t.last_message_time || '';
+        const timeStr = formatSidebarTime(t);
 
         // Badge rotella che gira sull'avatar del thread quando l'assistente sta lavorando
         const avatarSpinner = activeTask ? `
@@ -874,6 +910,117 @@
       }
     }
 
+    // Estrae e normalizza la data di un messaggio come oggetto Date valido nel fuso orario locale
+    function parseMessageDate(m) {
+      if (!m) return new Date();
+      if (m.created_at) {
+        const d = new Date(m.created_at);
+        if (!isNaN(d.getTime())) return d;
+      }
+      if (m.date) {
+        const d = new Date(m.date + 'T00:00:00');
+        if (!isNaN(d.getTime())) return d;
+      }
+      if (m.timestamp && typeof m.timestamp === 'string' && m.timestamp.length > 5) {
+        const d = new Date(m.timestamp);
+        if (!isNaN(d.getTime())) return d;
+      }
+      return new Date();
+    }
+
+    // Formatta l'orario di invio reale del messaggio (HH:MM) nel fuso orario locale del client
+    function formatMessageTime(m) {
+      if (!m) return getTime();
+      if (typeof m === 'string') {
+        const trimmed = m.trim();
+        if (/^\d{1,2}:\d{2}$/.test(trimmed)) return trimmed.padStart(5, '0');
+        const d = new Date(trimmed);
+        if (!isNaN(d.getTime())) {
+          return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+        return trimmed;
+      }
+      if (m.created_at) {
+        const d = new Date(m.created_at);
+        if (!isNaN(d.getTime())) {
+          return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+      }
+      if (m.timestamp && typeof m.timestamp === 'string') {
+        const trimmed = m.timestamp.trim();
+        if (/^\d{1,2}:\d{2}$/.test(trimmed)) return trimmed.padStart(5, '0');
+        const d = new Date(trimmed);
+        if (!isNaN(d.getTime())) {
+          return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+      }
+      return getTime();
+    }
+
+    // Formatta l'etichetta del divisore di data nello stile WhatsApp (OGGI, IERI, giorno della settimana o data completa)
+    function formatWhatsAppDateLabel(dateObj) {
+      if (!dateObj || isNaN(dateObj.getTime())) return 'OGGI';
+      const now = new Date();
+      const targetDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const diffTime = today.getTime() - targetDay.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 0) {
+        return 'OGGI';
+      } else if (diffDays === 1) {
+        return 'IERI';
+      } else if (diffDays > 1 && diffDays < 7) {
+        const dayName = targetDay.toLocaleDateString('it-IT', { weekday: 'long' });
+        return dayName.toUpperCase();
+      } else {
+        return targetDay.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+      }
+    }
+
+    // Inserisce il separatore di data stile WhatsApp nel flusso della chat (evita duplicati consecutivi)
+    function appendDateDivider(dateObj, dateKey = null) {
+      if (!chatFeed) return;
+      const d = dateObj || new Date();
+      const key = dateKey || `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      
+      if (chatFeed.querySelector(`[data-chat-date="${key}"]`)) return;
+
+      const label = formatWhatsAppDateLabel(d);
+      const divider = document.createElement('div');
+      divider.className = 'chat-date-divider-wrapper flex justify-center my-3 select-none';
+      divider.setAttribute('data-chat-date', key);
+
+      const isOli = getActiveTheme() === 'olivetti';
+      if (isOli) {
+        divider.innerHTML = `
+          <span class="chat-date-divider stamp-oli text-[9px] font-mono-code font-bold tracking-wider px-3 py-1 bg-[#FAF8F2] border border-[#D8D2C4] text-[#7A7568] shadow-2xs rounded-xs flex items-center gap-1.5">
+            <i class="fa-regular fa-calendar text-[9px] opacity-75"></i>
+            <span>${escapeHtml(label)}</span>
+          </span>
+        `;
+      } else {
+        divider.innerHTML = `
+          <span class="chat-date-divider px-3 py-1 bg-white border border-slate-200/80 rounded-lg shadow-2xs text-[11px] font-medium text-[#54656f] flex items-center gap-1.5">
+            <i class="fa-regular fa-calendar text-[10px] text-slate-400"></i>
+            <span>${escapeHtml(label)}</span>
+          </span>
+        `;
+      }
+
+      chatFeed.appendChild(divider);
+    }
+
+    // Assicura che prima di un nuovo messaggio di oggi sia visibile il badge "OGGI"
+    function ensureTodayDateDivider() {
+      if (!chatFeed) return;
+      const today = new Date();
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      if (!chatFeed.querySelector(`[data-chat-date="${todayKey}"]`)) {
+        appendDateDivider(today, todayKey);
+      }
+    }
+
     async function loadThreadMessages(threadId) {
       chatFeed.innerHTML = `
         <div class="flex justify-center my-4">
@@ -889,19 +1036,32 @@
         if (threadId !== currentThreadId) return; // Se l'utente ha cambiato chat nel frattempo, non sovrascrivere
         const msgs = data.messages || [];
 
-        const dateStr = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
-        chatFeed.innerHTML = `
-          <div class="text-center my-2 select-none">
-            <span class="stamp-oli text-[8px] text-[#7A7568] border-[#D8D2C4]">REGISTRO SESSIONE • ${dateStr}</span>
-          </div>
-        `;
+        chatFeed.innerHTML = '';
+
+        if (msgs.length === 0) {
+          const today = new Date();
+          const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+          appendDateDivider(today, todayKey);
+        }
+
+        let lastDateKey = null;
 
         for (const m of msgs) {
+          const mDate = parseMessageDate(m);
+          const dateKey = `${mDate.getFullYear()}-${String(mDate.getMonth() + 1).padStart(2, '0')}-${String(mDate.getDate()).padStart(2, '0')}`;
+          
+          if (dateKey !== lastDateKey) {
+            appendDateDivider(mDate, dateKey);
+            lastDateKey = dateKey;
+          }
+
+          const timeStr = formatMessageTime(m);
+
           if (m.sender === 'user') {
             const quoted = m.metadata && m.metadata.quoted_message ? m.metadata.quoted_message : null;
             if (m.message_type === 'audio' && m.metadata && m.metadata.audio_url) {
               const trText = m.metadata.transcription || (m.content && m.content.startsWith('🎤 ') ? m.content.slice(2).trim() : null);
-              appendUserAudioBubble(m.metadata.audio_url, m.metadata.duration || 0, quoted, trText);
+              appendUserAudioBubble(m.metadata.audio_url, m.metadata.duration || 0, quoted, trText, timeStr);
             } else if (m.message_type === 'document' || (m.metadata && (m.metadata.file_url || m.metadata.document_id || m.metadata.documents)) || (m.content && m.content.startsWith('Caricato file:'))) {
               const firstDoc = (m.metadata && m.metadata.documents && m.metadata.documents[0]) || null;
               const fileName = (m.metadata && m.metadata.file_name) || (firstDoc && firstDoc.title) || (m.content ? m.content.replace(/^Caricato file:\s*/i, '').trim() : 'Documento');
@@ -912,9 +1072,9 @@
               const isImg = fType.startsWith('image') || /\.(jpe?g|png|webp|gif|bmp)$/i.test(fileName) || /\.(jpe?g|png|webp|gif|bmp)$/i.test(fileUrl || '');
               const isPdf = fType.includes('pdf') || /\.pdf$/i.test(fileName) || /\.pdf$/i.test(fileUrl || '');
               const docId = (firstDoc && (firstDoc.id || firstDoc.document_id)) || (m.metadata ? m.metadata.document_id : null);
-              appendUserFileBubble(fileName, fileSize, fileUrl, isImg, isPdf, downloadUrl, docId);
+              appendUserFileBubble(fileName, fileSize, fileUrl, isImg, isPdf, downloadUrl, docId, timeStr);
             } else {
-              appendUserBubble(m.content, quoted);
+              appendUserBubble(m.content, quoted, timeStr);
             }
           } else {
             let docs = m.metadata && m.metadata.documents ? m.metadata.documents : null;
@@ -933,7 +1093,7 @@
             const storeItem = m.metadata && m.metadata.store_item ? m.metadata.store_item : null;
             const proposal = (m.metadata && m.metadata.proposal) || (m.metadata && m.metadata.action === 'SENSITIVE_FILE_PROPOSAL' ? m.metadata.proposal : null);
             const routedModel = (m.metadata && m.metadata.routed_model) || null;
-            appendAssistantBubble(m.content, docs, conf, itemPhoto, storeItem, proposal, routedModel);
+            appendAssistantBubble(m.content, docs, conf, itemPhoto, storeItem, proposal, routedModel, timeStr);
           }
         }
 
@@ -2142,7 +2302,8 @@
       syncInputControlsForCurrentThread();
       if (targetId === currentThreadId) {
         hideTypingIndicator();
-        appendAssistantBubble("⏹️ *Generazione/elaborazione interrotta dall'utente.*");
+        ensureTodayDateDivider();
+        appendAssistantBubble("⏹️ *Generazione/elaborazione interrotta dall'utente.*", null, null, null, null, null, null, getTime());
       }
       renderThreadsList();
     }
@@ -2411,10 +2572,11 @@
       if (bar) bar.classList.add('hidden');
     }
 
-    function appendUserBubble(text, quoted = null) {
+    function appendUserBubble(text, quoted = null, timeStr = null) {
       const userBubble = document.createElement('div');
       userBubble.className = 'flex flex-col items-end';
       const isOli = getActiveTheme() === 'olivetti';
+      const actualTime = (timeStr && typeof timeStr === 'string' && timeStr.trim()) ? timeStr.trim() : getTime();
 
       let quoteHtml = '';
       if (quoted && quoted.text) {
@@ -2445,7 +2607,7 @@
       }
 
       userBubble.innerHTML = `
-        <span class="text-[9px] font-mono-code text-[#7A7568] mb-1 user-bubble-stamp">UTENTE • ${getTime()}</span>
+        <span class="text-[9px] font-mono-code text-[#7A7568] mb-1 user-bubble-stamp" title="Inviato alle ${actualTime}">UTENTE • ${actualTime}</span>
         <div class="wa-bubble-out p-2.5 max-w-[85%] text-sm text-gray-800 leading-snug relative group/msg select-text">
           ${quoteHtml}
           <div class="message-body selectable-text break-words">
@@ -2458,7 +2620,7 @@
             <button type="button" onclick="copyMessageText(this)" class="copy-msg-btn hover:text-slate-900 text-slate-500 text-[11px] p-0.5 rounded transition cursor-pointer" title="Copia testo">
               <i class="fa-regular fa-copy"></i>
             </button>
-            <span class="text-[10px] text-gray-500 font-mono-code">${getTime()}</span>
+            <span class="text-[10px] text-gray-500 font-mono-code" title="Inviato alle ${actualTime}">${actualTime}</span>
             <i class="fa-solid fa-check-double text-[11px] text-[#53bdeb] wa-ticks-icon"></i>
           </div>
         </div>
@@ -2551,10 +2713,11 @@
       }
     }
 
-    function appendUserAudioBubble(audioUrl, duration = 0, quoted = null, transcription = null) {
+    function appendUserAudioBubble(audioUrl, duration = 0, quoted = null, transcription = null, timeStr = null) {
       const userBubble = document.createElement('div');
       userBubble.className = 'flex flex-col items-end user-voice-bubble-wrapper';
       const isOli = getActiveTheme() === 'olivetti';
+      const actualTime = (timeStr && typeof timeStr === 'string' && timeStr.trim()) ? timeStr.trim() : getTime();
 
       let quoteHtml = '';
       if (quoted && quoted.text) {
@@ -2613,7 +2776,7 @@
       const safeQuoteArg = escapeHtml(quoteArg).replace(/'/g, "\\'");
 
       userBubble.innerHTML = `
-        <span class="text-[9px] font-mono-code text-[#7A7568] mb-1 user-bubble-stamp">UTENTE • ${getTime()}</span>
+        <span class="text-[9px] font-mono-code text-[#7A7568] mb-1 user-bubble-stamp" title="Inviato alle ${actualTime}">UTENTE • ${actualTime}</span>
         <div class="wa-bubble-out p-2.5 max-w-[85%] sm:max-w-[70%] text-sm text-gray-800 leading-snug relative group/msg select-text">
           ${quoteHtml}
           
@@ -2648,7 +2811,7 @@
             <button type="button" onclick="replyToMessage(this, 'user', '${safeQuoteArg}')" class="copy-msg-btn hover:text-[#075E54] text-slate-500 text-[11px] p-0.5 rounded transition cursor-pointer" title="Rispondi / Quota">
               <i class="fa-solid fa-reply"></i>
             </button>
-            <span class="text-[10px] text-gray-500 font-mono-code">${getTime()}</span>
+            <span class="text-[10px] text-gray-500 font-mono-code" title="Inviato alle ${actualTime}">${actualTime}</span>
             <i class="fa-solid fa-check-double text-[11px] text-[#53bdeb] wa-ticks-icon"></i>
           </div>
         </div>
@@ -2658,10 +2821,11 @@
       return userBubble;
     }
 
-    function appendUserFileBubble(fileName, fileSize, previewUrl = null, isImage = false, isPdf = false, downloadUrl = null, docId = null) {
+    function appendUserFileBubble(fileName, fileSize, previewUrl = null, isImage = false, isPdf = false, downloadUrl = null, docId = null, timeStr = null) {
       const userBubble = document.createElement('div');
       userBubble.className = 'flex flex-col items-end';
       const isOli = getActiveTheme() === 'olivetti';
+      const actualTime = (timeStr && typeof timeStr === 'string' && timeStr.trim()) ? timeStr.trim() : getTime();
 
       const dlUrl = downloadUrl || previewUrl || '#';
       const lowerName = (fileName || '').toLowerCase();
@@ -2794,7 +2958,7 @@
       }
 
       userBubble.innerHTML = `
-        <span class="text-[9px] font-mono-code text-[#7A7568] mb-1 user-bubble-stamp">UTENTE • ${getTime()}</span>
+        <span class="text-[9px] font-mono-code text-[#7A7568] mb-1 user-bubble-stamp" title="Inviato alle ${actualTime}">UTENTE • ${actualTime}</span>
         <div class="wa-bubble-out p-2 max-w-[85%] text-sm text-gray-800 select-text group/msg">
           ${previewContent}
           <div class="flex justify-end items-center gap-1.5 mt-0.5 select-none">
@@ -2804,7 +2968,7 @@
             <button type="button" onclick="copyTextToClipboard('${escapeHtml(fileName).replace(/'/g, "\\'")}', this)" class="copy-msg-btn hover:text-slate-900 text-slate-500 text-[11px] p-0.5 rounded transition cursor-pointer" title="Copia nome file">
               <i class="fa-regular fa-copy"></i>
             </button>
-            <span class="text-[10px] text-gray-500 font-mono-code">${getTime()}</span>
+            <span class="text-[10px] text-gray-500 font-mono-code" title="Inviato alle ${actualTime}">${actualTime}</span>
             <i class="fa-solid fa-check-double text-[11px] text-[#53bdeb] wa-ticks-icon"></i>
           </div>
         </div>
@@ -2834,9 +2998,10 @@
       }
     }
 
-    function appendAssistantBubble(text, documents = null, confirmation = null, itemPhoto = null, storeItem = null, proposal = null, routedModel = null) {
+    function appendAssistantBubble(text, documents = null, confirmation = null, itemPhoto = null, storeItem = null, proposal = null, routedModel = null, timeStr = null) {
       const aiBubble = document.createElement('div');
       aiBubble.className = 'flex flex-col items-start max-w-[90%]';
+      const actualTime = (timeStr && typeof timeStr === 'string' && timeStr.trim()) ? timeStr.trim() : getTime();
       const formattedHtml = formatMessageText(text || '');
 
       let photoHtml = '';
@@ -3114,7 +3279,7 @@
       }
 
       aiBubble.innerHTML = `
-        <span class="text-[9px] font-mono-code text-[#3C5A48] font-bold mb-1 ai-bubble-stamp">ASSISTENTE • ${getTime()}</span>
+        <span class="text-[9px] font-mono-code text-[#3C5A48] font-bold mb-1 ai-bubble-stamp" title="Inviato alle ${actualTime}">ASSISTENTE • ${actualTime}</span>
         <div class="wa-bubble-in p-2.5 text-sm text-gray-800 leading-snug max-w-full relative group/msg select-text">
           <div class="flex items-start justify-between gap-2">
             <div class="message-body selectable-text min-w-0 flex-1 break-words">
@@ -3146,7 +3311,7 @@
               }
               return '';
             })()}
-            <span class="text-[10px] text-gray-400 font-mono-code">${getTime()}</span>
+            <span class="text-[10px] text-gray-400 font-mono-code" title="Inviato alle ${actualTime}">${actualTime}</span>
           </div>
         </div>
       `;
@@ -3240,7 +3405,8 @@
       const quotedToSend = currentQuotedMessage;
       cancelQuoteReply(); // Chiudi subito la barra preview della citazione
 
-      appendUserBubble(text, quotedToSend);
+      ensureTodayDateDivider();
+      appendUserBubble(text, quotedToSend, getTime());
       input.value = '';
       input.dispatchEvent(new Event('input'));
       scrollBottom();
@@ -3305,14 +3471,17 @@
         if (th) {
           th.last_message = data.reply ? cleanSidebarPreview(data.reply) : text;
           th.last_message_time = getTime();
+          th.last_message_iso = (data && data.created_at) ? data.created_at : new Date().toISOString();
           th.message_count = (th.message_count || 0) + 2;
           renderThreadsList();
         }
 
         // Se l'utente è ancora su questa chat, inietta subito la bolla di risposta
         if (currentThreadId === targetThreadId) {
+          ensureTodayDateDivider();
           const routedModel = data.routed_model || (data.data && data.data.routed_model) || null;
-          appendAssistantBubble(data.reply, data.documents, data.confirmation, itemPhoto, storeItem, proposal, routedModel);
+          const asstTime = (data && data.created_at) ? formatMessageTime(data.created_at) : getTime();
+          appendAssistantBubble(data.reply, data.documents, data.confirmation, itemPhoto, storeItem, proposal, routedModel, asstTime);
           scrollBottom();
         } else {
           // L'utente si trova in un'altra chat: mostra toast non invasivo
@@ -3328,7 +3497,8 @@
         setGenerationActive(false, "", null, targetThreadId);
         console.error('Errore /api/chat:', err);
         if (currentThreadId === targetThreadId) {
-          appendAssistantBubble("⚠️ Errore di connessione: impossibile contattare il server.");
+          ensureTodayDateDivider();
+          appendAssistantBubble("⚠️ Errore di connessione: impossibile contattare il server.", null, null, null, null, null, null, getTime());
         } else {
           const th = threadsCache.find(t => t.id === targetThreadId);
           showToast(`⚠️ Errore risposta in "${th?.name || targetThreadId}"`, 'error', 4000);
@@ -3451,7 +3621,8 @@
         const blobUrl = URL.createObjectURL(file);
 
         if (currentThreadId === targetThreadId) {
-          appendUserFileBubble(file.name, file.size, blobUrl, isImage, isPdf, blobUrl);
+          ensureTodayDateDivider();
+          appendUserFileBubble(file.name, file.size, blobUrl, isImage, isPdf, blobUrl, null, getTime());
         }
         setGenerationActive(true, `Analisi intelligente di ${file.name}...`, null, targetThreadId);
         const taskSignal = activeThreadTasks[targetThreadId]?.abortController?.signal;
@@ -3488,12 +3659,14 @@
           if (th) {
             th.last_message = data.chat_reply ? cleanSidebarPreview(data.chat_reply) : `Caricato ${file.name}`;
             th.last_message_time = getTime();
+            th.last_message_iso = new Date().toISOString();
             th.message_count = (th.message_count || 0) + 2;
             renderThreadsList();
           }
 
           if (currentThreadId === targetThreadId) {
-            appendAssistantBubble(data.chat_reply || "📄 Documento salvato e catalogato!", [docItem], null, null, null, null, data.routed_model || 'google/gemini-2.5-flash-lite');
+            ensureTodayDateDivider();
+            appendAssistantBubble(data.chat_reply || "📄 Documento salvato e catalogato!", [docItem], null, null, null, null, data.routed_model || 'google/gemini-2.5-flash-lite', getTime());
             scrollBottom();
           } else {
             const targetName = th ? th.name : 'altra chat';
@@ -3508,7 +3681,8 @@
           setGenerationActive(false, "", null, targetThreadId);
           console.error('Errore /api/documents/upload:', err);
           if (currentThreadId === targetThreadId) {
-            appendAssistantBubble("⚠️ Errore durante il caricamento del documento.");
+            ensureTodayDateDivider();
+            appendAssistantBubble("⚠️ Errore durante il caricamento del documento.", null, null, null, null, null, null, getTime());
           } else {
             const th = threadsCache.find(t => t.id === targetThreadId);
             showToast(`⚠️ Errore caricamento in "${th?.name || targetThreadId}"`, 'error', 4000);
@@ -3520,7 +3694,8 @@
         const totalSize = validFiles.reduce((acc, f) => acc + (f.size || 0), 0);
         const userSummaryText = `📁 Caricamento di ${totalCount} file... (${formatBytes(totalSize)})`;
         if (currentThreadId === targetThreadId) {
-          appendUserBubble(userSummaryText);
+          ensureTodayDateDivider();
+          appendUserBubble(userSummaryText, null, getTime());
         }
 
         setGenerationActive(true, `Avvio elaborazione di ${totalCount} file...`, 0, targetThreadId);
@@ -3607,6 +3782,7 @@
           if (th) {
             th.last_message = `${uploadedDocs.length} file elaborati`;
             th.last_message_time = getTime();
+            th.last_message_iso = new Date().toISOString();
             th.message_count = (th.message_count || 0) + uploadedDocs.length * 2;
             renderThreadsList();
           }
@@ -3617,10 +3793,11 @@
           }
 
           if (currentThreadId === targetThreadId) {
+            ensureTodayDateDivider();
             if (uploadedDocs.length > 0) {
-              appendAssistantBubble(replyText, uploadedDocs, null, null, null, null, 'google/gemini-2.5-flash-lite');
+              appendAssistantBubble(replyText, uploadedDocs, null, null, null, null, 'google/gemini-2.5-flash-lite', getTime());
             } else {
-              appendAssistantBubble("⚠️ Nessun file è stato elaborato con successo. Verifica i formati o la connessione.");
+              appendAssistantBubble("⚠️ Nessun file è stato elaborato con successo. Verifica i formati o la connessione.", null, null, null, null, null, null, getTime());
             }
             scrollBottom();
           } else {
@@ -3636,7 +3813,8 @@
           setGenerationActive(false, "", null, targetThreadId);
           console.error('Errore durante il caricamento batch:', err);
           if (currentThreadId === targetThreadId) {
-            appendAssistantBubble("⚠️ Errore imprevisto durante il caricamento multiplo dei documenti.");
+            ensureTodayDateDivider();
+            appendAssistantBubble("⚠️ Errore imprevisto durante il caricamento multiplo dei documenti.", null, null, null, null, null, null, getTime());
           } else {
             const th = threadsCache.find(t => t.id === targetThreadId);
             showToast(`⚠️ Errore caricamento multiplo in "${th?.name || targetThreadId}"`, 'error', 4000);
@@ -4028,11 +4206,16 @@
             const data = await res.json();
             loadDashboard(currentFilter);
             if (data.image_url) {
+              ensureTodayDateDivider();
               appendAssistantBubble(
                 `📸 **Foto memorizzata!** Ho salvato la foto della posizione per **${data.item_name}**.`,
                 null,
                 null,
-                { item_name: data.item_name, image_url: data.image_url }
+                { item_name: data.item_name, image_url: data.image_url },
+                null,
+                null,
+                null,
+                getTime()
               );
             }
           } catch (err) {
@@ -4510,12 +4693,22 @@
           }
         }
 
+        const asstTime = (data && data.created_at) ? formatMessageTime(data.created_at) : getTime();
+        const th = threadsCache.find(t => t.id === targetThreadId);
+        if (th) {
+          th.last_message = data.reply ? cleanSidebarPreview(data.reply) : "Messaggio vocale";
+          th.last_message_time = getTime();
+          th.last_message_iso = (data && data.created_at) ? data.created_at : new Date().toISOString();
+          th.message_count = (th.message_count || 0) + 2;
+          renderThreadsList();
+        }
+
         if (currentThreadId === targetThreadId) {
+          ensureTodayDateDivider();
           const routedModel = data.routed_model || (data.data && data.data.routed_model) || null;
-          appendAssistantBubble(data.reply, data.documents, data.confirmation, itemPhoto, storeItem, null, routedModel);
+          appendAssistantBubble(data.reply, data.documents, data.confirmation, itemPhoto, storeItem, null, routedModel, asstTime);
           scrollBottom();
         } else {
-          const th = threadsCache.find(t => t.id === targetThreadId);
           showToast(`💬 Nuova risposta in "${th?.name || targetThreadId}"`, 'info', 4000);
         }
         loadDashboard(currentFilter);
@@ -4527,7 +4720,8 @@
         setGenerationActive(false, "", null, targetThreadId);
         console.error('Errore /api/chat vocale:', err);
         if (currentThreadId === targetThreadId) {
-          appendAssistantBubble("⚠️ Errore durante l'ascolto o l'elaborazione del messaggio vocale.");
+          ensureTodayDateDivider();
+          appendAssistantBubble("⚠️ Errore durante l'ascolto o l'elaborazione del messaggio vocale.", null, null, null, null, null, null, getTime());
           scrollBottom();
         }
       }
@@ -4605,7 +4799,8 @@
       const localAudioUrl = URL.createObjectURL(wavBlob);
 
       // Mostra all'istante la bolla vocale con player nella chat (con testo trascritto se già disponibile)
-      const userVoiceBubbleEl = appendUserAudioBubble(localAudioUrl, durationSec, quotedToSend, voiceLiveTranscription || null);
+      ensureTodayDateDivider();
+      const userVoiceBubbleEl = appendUserAudioBubble(localAudioUrl, durationSec, quotedToSend, voiceLiveTranscription || null, getTime());
       await sendVoiceAudioToAssistant(base64Audio, "wav", durationSec, voiceLiveTranscription || "", targetThreadId, quotedToSend, userVoiceBubbleEl);
     }
 
@@ -4630,7 +4825,8 @@
       const quotedToSend = currentQuotedMessage;
       cancelQuoteReply();
 
-      const userVoiceBubbleEl = appendUserAudioBubble(localAudioUrl, durationSec, quotedToSend, null);
+      ensureTodayDateDivider();
+      const userVoiceBubbleEl = appendUserAudioBubble(localAudioUrl, durationSec, quotedToSend, null, getTime());
       await sendVoiceAudioToAssistant(base64Audio, cleanFmt, durationSec, "", targetThreadId, quotedToSend, userVoiceBubbleEl);
     };
 
@@ -4665,7 +4861,8 @@
       } catch (e) {}
 
       const base64Audio = await blobToBase64(file);
-      const userVoiceBubbleEl = appendUserAudioBubble(localAudioUrl, durationSec, quotedToSend, null);
+      ensureTodayDateDivider();
+      const userVoiceBubbleEl = appendUserAudioBubble(localAudioUrl, durationSec, quotedToSend, null, getTime());
       await sendVoiceAudioToAssistant(base64Audio, cleanFmt, durationSec, "", targetThreadId, quotedToSend, userVoiceBubbleEl);
     };
 
@@ -7078,7 +7275,8 @@
                   status: prop.status || 'pending'
                 };
                 const bubbleText = `🛡️ **Rilevato nuovo file sensibile** in \`${escapeHtml(prop.folder_name || 'cartella monitorata')}\`:\n\n📄 **${escapeHtml(prop.file_name)}**\n_${escapeHtml(prop.sensitivity_reason || 'Documento rilevato')}_\n\nVuoi che lo protegga salvandolo cifrato nel Caveau e lo indicizzi nello scadenzario?`;
-                appendAssistantBubble(bubbleText, null, null, null, null, proposalData);
+                ensureTodayDateDivider();
+                appendAssistantBubble(bubbleText, null, null, null, null, proposalData, null, getTime());
                 scrollBottom();
               }
             }

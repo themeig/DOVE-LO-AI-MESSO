@@ -50,6 +50,7 @@ class ChatThreadResponse(BaseModel):
     created_at: Optional[str] = None
     last_message: Optional[str] = None
     last_message_time: Optional[str] = None
+    last_message_iso: Optional[str] = None
     message_count: int = 0
     unread_count: int = 0
 
@@ -64,6 +65,7 @@ class ChatResponse(BaseModel):
     confirmation: Optional[dict] = None
     routed_model: Optional[str] = None
     transcription: Optional[str] = None
+    created_at: Optional[str] = None
 
 
 class DocumentStatusUpdate(BaseModel):

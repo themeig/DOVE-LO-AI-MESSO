@@ -43,6 +43,13 @@ def list_threads(db: Session = Depends(get_db)):
             except Exception:
                 members_list = [t.members]
 
+        last_iso = None
+        last_time_str = ""
+        if last_msg and last_msg.timestamp:
+            last_utc = last_msg.timestamp.replace(tzinfo=timezone.utc) if last_msg.timestamp.tzinfo is None else last_msg.timestamp
+            last_iso = last_utc.isoformat()
+            last_time_str = last_msg.timestamp.strftime("%H:%M")
+
         result.append(
             ChatThreadResponse(
                 id=t.id,
@@ -54,7 +61,8 @@ def list_threads(db: Session = Depends(get_db)):
                 members=members_list,
                 created_at=t.created_at.isoformat() if t.created_at else None,
                 last_message=last_msg.content if last_msg else (t.description or "Inizia a scrivere..."),
-                last_message_time=last_msg.timestamp.strftime("%H:%M") if last_msg and last_msg.timestamp else "",
+                last_message_time=last_time_str,
+                last_message_iso=last_iso,
                 message_count=msg_count,
                 unread_count=0
             )
@@ -203,12 +211,23 @@ def get_thread_messages(thread_id: str, db: Session = Depends(get_db)):
                     meta.setdefault("file_type", first_d.file_type)
                     meta.setdefault("file_name", first_d.title)
 
+        iso_str = None
+        time_str = ""
+        date_str = ""
+        if m.timestamp:
+            utc_dt = m.timestamp.replace(tzinfo=timezone.utc) if m.timestamp.tzinfo is None else m.timestamp
+            iso_str = utc_dt.isoformat()
+            time_str = m.timestamp.strftime("%H:%M")
+            date_str = m.timestamp.strftime("%Y-%m-%d")
+
         items.append({
             "id": m.id,
             "sender": m.sender,
             "message_type": m.message_type,
             "content": m.content,
-            "timestamp": m.timestamp.strftime("%H:%M") if m.timestamp else "",
+            "timestamp": time_str,
+            "created_at": iso_str,
+            "date": date_str,
             "metadata": meta
         })
     return {"thread_id": thread_id, "name": thread.name, "messages": items}
