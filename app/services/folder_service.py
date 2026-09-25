@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.models.database import Document, WatchedFolder, PendingFileProposal, ChatMessage
 from app.models.schemas import FolderScanResult
 from app.services.ai_service import get_ai_service
+from app.services.document_service import determine_document_status
 
 logger = logging.getLogger(__name__)
 
@@ -247,8 +248,7 @@ def scan_local_folder(
                     clean_stem = file_path.stem.replace("_", " ").replace("-", " ").strip()
                     title = f"Foto {clean_stem}" if ext in ["jpg", "jpeg", "png", "webp"] else (clean_stem or file_path.name)
 
-            has_deadline = bool(due_date_obj) or getattr(extracted, "is_payable", False) or ((extracted.amount is not None) and (extracted.doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"]))
-            doc_status = "da_pagare" if has_deadline else "archiviato"
+            doc_status = determine_document_status(extracted, due_date_obj)
 
             doc = Document(
                 thread_id=thread_id,
@@ -659,8 +659,7 @@ def approve_file_proposal(proposal_id: int, db: Session) -> Tuple[bool, str, Opt
         vault_path = save_uploaded_file(file_bytes, proposal.file_name)
 
         ext = src.suffix.lstrip(".").lower()
-        has_deadline = bool(proposal.due_date) or ((proposal.amount is not None) and (proposal.doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"]))
-        doc_status = "da_pagare" if has_deadline else "archiviato"
+        doc_status = determine_document_status(proposal, proposal.due_date)
 
         title = f"{proposal.doc_type.capitalize()} {proposal.issuer}".strip() if proposal.issuer else proposal.file_name
 

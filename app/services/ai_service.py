@@ -93,6 +93,9 @@ class MockAIService:
     def _raw_extract_document(self, file_bytes: bytes, mime_type: str, filename: str = "") -> ExtractedDocument:
         fn = filename.lower()
         clean_name = Path(filename).stem.replace("_", " ").replace("-", " ").strip().title()
+        from app.services.document_service import QUIETANZA_REGEX
+        is_already_paid = bool(QUIETANZA_REGEX.search(fn)) or any(k in fn for k in ["pagat", "saldat", "quietanz"])
+
         if "tolc" in fn or "certificate" in fn or "certificat" in fn:
             return ExtractedDocument(
                 title="Certificato Test TOLC-E CISIA",
@@ -100,6 +103,9 @@ class MockAIService:
                 issuer="CISIA / Università degli Studi di Milano",
                 amount=None,
                 due_date=None,
+                is_payable=False,
+                is_paid=None,
+                payment_status="non_richiesto",
                 summary="Certificato ufficiale esiti del test TOLC-E svolto da Riccardo Maggi. Punteggio totale: 22.5.",
                 tags=["tolc", "università", "esame", "cisia"],
                 suggest_rename=False,
@@ -109,14 +115,16 @@ class MockAIService:
             )
         if "f24" in fn or "tribut" in fn:
             return ExtractedDocument(
-                title="Modello F24 Versamento IVA",
+                title="Modello F24 Versamento IVA" if not is_already_paid else "Modello F24 Quietanzato",
                 doc_type="f24",
                 issuer="Agenzia delle Entrate",
                 amount=2450.00,
                 due_date="2026-09-16",
-                is_payable=True,
-                summary="Modello F24 versamento IVA trimestrale.",
-                tags=["f24", "fisco", "iva"],
+                is_payable=not is_already_paid,
+                is_paid=is_already_paid,
+                payment_status="quietanzato" if is_already_paid else "da_pagare",
+                summary="Modello F24 versamento IVA con attestazione di avvenuto pagamento (PAGATO)." if is_already_paid else "Modello F24 versamento IVA trimestrale.",
+                tags=["f24", "fisco", "iva", "pagato"] if is_already_paid else ["f24", "fisco", "iva"],
                 suggest_rename=False,
                 category="fisco_tributi",
                 category_label="Fisco, Tributi & F24",
@@ -130,6 +138,8 @@ class MockAIService:
                 amount=None,
                 due_date="2034-05-18",
                 is_payable=True,
+                is_paid=None,
+                payment_status="non_richiesto",
                 summary="Documento di riconoscimento in corso di validità con data di scadenza.",
                 tags=["identità", "documento", "personale", "scadenza"],
                 suggest_rename=False,
@@ -144,6 +154,9 @@ class MockAIService:
                 issuer=None,
                 amount=None,
                 due_date=None,
+                is_payable=False,
+                is_paid=None,
+                payment_status="non_richiesto",
                 summary=f"Testo o brano musicale '{filename}' archiviato nel caveau.",
                 tags=["musica", "testo", "canzone", "personale"],
                 suggest_rename=False,
@@ -153,17 +166,37 @@ class MockAIService:
             )
         if any(k in fn for k in ["bollett", "enel", "utenza", "facture"]) or (("luce" in fn or "gas" in fn or "acqua" in fn) and any(w in fn for w in ["bollett", "fattur", "enel", "servizio", "utenz", "bimestre"])):
             return ExtractedDocument(
-                title="Bolletta Enel Energia",
+                title="Bolletta Enel Energia (Saldata)" if is_already_paid else "Bolletta Enel Energia",
                 doc_type="bolletta",
                 issuer="Enel Energia",
                 amount=64.20,
                 due_date="2026-10-28",
-                summary="Bolletta Enel Luce bimestre agosto-settembre.",
-                tags=["luce", "energia", "utenze"],
+                is_payable=not is_already_paid,
+                is_paid=is_already_paid,
+                payment_status="quietanzato" if is_already_paid else "da_pagare",
+                summary="Bolletta Enel Luce saldata con timbro PAGATO." if is_already_paid else "Bolletta Enel Luce bimestre agosto-settembre.",
+                tags=["luce", "energia", "utenze", "pagato"] if is_already_paid else ["luce", "energia", "utenze"],
                 suggest_rename=False,
                 category="utenze_bollette",
                 category_label="Utenze & Bollette",
                 category_icon="fa-bolt"
+            )
+        if any(k in fn for k in ["fattur", "parcell", "spesa"]) or is_already_paid:
+            return ExtractedDocument(
+                title=f"Fattura {clean_name}" + (" (Pagata)" if is_already_paid else ""),
+                doc_type="fattura" if not is_already_paid else "ricevuta",
+                issuer="Studio Professionale",
+                amount=120.00,
+                due_date="2026-10-15",
+                is_payable=not is_already_paid,
+                is_paid=is_already_paid,
+                payment_status="quietanzato" if is_already_paid else "da_pagare",
+                summary=f"Fattura/ricevuta {'con avvenuto pagamento registrato (PAGATO).' if is_already_paid else 'in scadenza.'}",
+                tags=["fattura", "spese"] + (["pagato"] if is_already_paid else []),
+                suggest_rename=False,
+                category="ricevute_spese",
+                category_label="Fatture, Spese & Ricevute",
+                category_icon="fa-receipt"
             )
         # Supporto Word (.docx, .doc)
         if any(fn.endswith(ext) for ext in [".docx", ".doc"]):
@@ -426,7 +459,15 @@ Identifica con la massima precisione:
 3. 'issuer': nome ente, università, azienda, fornitore o ministero (oppure null)
 4. 'due_date': se il documento presenta una data di scadenza, termine di pagamento o fine validità (es. bollette, fatture, F24, ma anche carte d'identità, patenti, passaporti, contratti di affitto, polizze assicurative, abbonamenti, tessere sanitarie), estrai la data nel formato YYYY-MM-DD. ATTENZIONE: estrai ESCLUSIVAMENTE la data di scadenza ('valido fino al', 'scade il', 'data di scadenza', 'termine'); NON confondere la data di rilascio, stipula o emissione con la scadenza! Se non c'è alcuna scadenza o termine, imposta rigorosamente due_date=null.
 5. 'amount': se è presente un importo monetario da pagare o saldare, estrailo come numero decimale (es. 64.20). Se il documento NON richiede un pagamento in denaro (es. carta d'identità, patente, certificato o contratto senza importo pendente), imposta rigorosamente amount=null.
-6. 'is_payable': true se il documento ha una scadenza attiva o richiede un'azione di pagamento/rinnovo da monitorare nello scadenzario; false altrimenti.
+6. 'is_paid' & 'payment_status' & 'is_payable':
+   VERIFICA ACCURATAMENTE SE IL DOCUMENTO RIPORTA TIMBRO, DICITURA O QUIETANZA DI PAGAMENTO:
+   Cerca con estrema attenzione parole come 'PAGATO', 'SALDATO', 'QUIETANZATO', 'PAGATA', 'SALDATA', 'quietanza di pagamento', 'bonifico eseguito', 'ricevuta di versamento', 'addebito su c/c eseguito'.
+   - Se il documento riporta timbro o attestazione di avvenuto pagamento:
+     imposta "is_paid": true, "payment_status": "quietanzato", "is_payable": false (il debito è estinto, non va aperto un debito da pagare).
+   - Se è una bolletta, fattura, F24 o tributo ancora aperto da pagare:
+     imposta "is_paid": false, "payment_status": "da_pagare", "is_payable": true.
+   - Per documenti personali, carte d'identità, patenti, certificati o contratti senza importo monetario pendente:
+     imposta "is_paid": null, "payment_status": "non_richiesto", "is_payable": false.
 7. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano che riassume tutti i dettagli (punteggi, codici, esiti, intestatario, date).
 8. 'suggest_rename': false (i documenti formali hanno già un titolo chiaro).
 9. 'category_label': consulta PRIMA queste cartelle generali di sistema: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Fatture, Spese & Ricevute', 'Contratti, Polizze & Assicurazioni', 'Documenti Personali & Identità', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Archivi Compressi & ZIP', 'Foto, Immagini & Ricordi'. Se il file è inerente a una di esse, USA QUELLA CARTELLA per evitare doppioni! Crea una nuova sezione tematica SOLO se il file non ha alcuna pertinenza con quelle sopra.
@@ -442,6 +483,8 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
   "amount": null oppure numero decimale,
   "due_date": null oppure "YYYY-MM-DD",
   "is_payable": true oppure false,
+  "is_paid": true oppure false oppure null,
+  "payment_status": "da_pagare" | "quietanzato" | "non_richiesto",
   "summary": "riassunto dettagliato in 2-3 frasi in italiano",
   "tags": ["tag1", "tag2", "tag3"],
   "suggest_rename": false,
@@ -467,7 +510,15 @@ Esamina attentamente TUTTE le pagine visive fornite per comprendere ed estrarre 
 3. 'issuer': nome ente, università, azienda, fornitore o ministero emittente (oppure null se non rilevabile).
 4. 'due_date': se è presente una data di scadenza, fine validità, termine pagamento o rinnovo in una qualsiasi delle pagine (es. bollette, fatture, F24, patenti, carte identità, polizze, contratti), estrai la data nel formato YYYY-MM-DD. NON confondere la data di rilascio, stipula o emissione con la scadenza! Se non c'è scadenza o termine, imposta rigorosamente due_date=null.
 5. 'amount': se è presente un importo monetario da pagare o saldare (es. totale bolletta, saldo F24, totale fattura, importo scontrino), estrailo come numero decimale (es. 64.20). Se il documento NON richiede un pagamento pendente, imposta rigorosamente amount=null.
-6. 'is_payable': true se ha una scadenza attiva o richiede un'azione di pagamento/rinnovo; false altrimenti.
+6. 'is_paid' & 'payment_status' & 'is_payable':
+   VERIFICA ACCURATAMENTE SE IL DOCUMENTO RIPORTA TIMBRO, DICITURA O QUIETANZA DI PAGAMENTO:
+   Cerca con estrema attenzione parole o timbri come 'PAGATO', 'SALDATO', 'QUIETANZATO', 'PAGATA', 'SALDATA', 'quietanza di pagamento', 'bonifico eseguito', 'ricevuta di versamento', 'addebito su c/c eseguito'.
+   - Se il documento riporta timbro o attestazione di avvenuto pagamento:
+     imposta "is_paid": true, "payment_status": "quietanzato", "is_payable": false (il debito è estinto, non va aperto un debito da pagare).
+   - Se è una bolletta, fattura, F24 o tributo ancora aperto da pagare:
+     imposta "is_paid": false, "payment_status": "da_pagare", "is_payable": true.
+   - Per documenti personali, carte d'identità, patenti, certificati o contratti senza importo monetario pendente:
+     imposta "is_paid": null, "payment_status": "non_richiesto", "is_payable": false.
 7. 'summary': spiegazione dettagliata, ricca e completa di 2-3 frasi in italiano che riassume tutte le pagine, nominativi, intestatari, importi, codici fiscali o dettagli essenziali rilevati nelle varie pagine.
 8. 'suggest_rename': false (è un documento formale o scansionato).
 9. 'category_label': consulta PRIMA queste cartelle generali di sistema per evitare doppioni: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Fatture, Spese & Ricevute', 'Contratti, Polizze & Assicurazioni', 'Documenti Personali & Identità', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Archivi Compressi & ZIP', 'Foto, Immagini & Ricordi'. Se il file è inerente a una di esse, USA QUELLA CARTELLA!
@@ -483,6 +534,8 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido:
   "amount": null oppure numero decimale,
   "due_date": null oppure "YYYY-MM-DD",
   "is_payable": true oppure false,
+  "is_paid": true oppure false oppure null,
+  "payment_status": "da_pagare" | "quietanzato" | "non_richiesto",
   "summary": "riassunto completo in 2-3 frasi in italiano con tutti i dati delle pagine",
   "tags": ["tag1", "tag2"],
   "suggest_rename": false,
@@ -530,7 +583,15 @@ Identifica con la massima precisione:
 3. 'issuer': nome ente, azienda, autore, artista o controparte (oppure null)
 4. 'due_date': se contiene una data di scadenza, fine validità, termine o rinnovo (es. termine contratto, scadenza polizza, termine pagamento fattura/canone, foglio scadenze), estraila in formato YYYY-MM-DD. NON confondere la data di stipula con la scadenza! Se non c'è una scadenza o termine, imposta null.
 5. 'amount': se è presente un importo monetario da saldare o pagare, estrailo come numero decimale (es. 1500.00), altrimenti null.
-6. 'is_payable': true se ha una scadenza attiva o richiede pagamento/rinnovo da monitorare nello scadenzario; false altrimenti.
+6. 'is_paid' & 'payment_status' & 'is_payable':
+   VERIFICA ACCURATAMENTE SE IL FILE O FOGLIO RIPORTA STATO DI PAGAMENTO, QUIETANZA O SALDO:
+   Cerca parole come 'PAGATO', 'SALDATO', 'QUIETANZATO', 'PAGATA', 'SALDATA', 'bonifico eseguito', 'ricevuta', 'quietanza'.
+   - Se il documento/foglio indica che la spesa o fattura è già stata pagata/saldata:
+     imposta "is_paid": true, "payment_status": "quietanzato", "is_payable": false (il debito è estinto).
+   - Se è una spesa, fattura o canone da pagare con scadenza aperta:
+     imposta "is_paid": false, "payment_status": "da_pagare", "is_payable": true.
+   - Per contratti, note, testi musicali o file senza scadenze monetarie pendenti:
+     imposta "is_paid": null, "payment_status": "non_richiesto", "is_payable": false.
 7. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano con i punti chiave, autore, argomenti, intestatari o dati più importanti.
 8. 'suggest_rename': false.
 9. 'category_label': consulta PRIMA queste cartelle generali di sistema: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Fatture, Spese & Ricevute', 'Contratti, Polizze & Assicurazioni', 'Documenti Personali & Identità', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Archivi Compressi & ZIP', 'Foto, Immagini & Ricordi'. Se il file è inerente a una di esse (es. testo canzone/poesia -> 'Canzoni, Musica & Testi Personali', scontrino/ricevuta -> 'Fatture, Spese & Ricevute'), USA QUELLA CARTELLA per evitare doppioni! Crea una nuova sezione tematica SOLO se il file non ha alcuna pertinenza con quelle sopra.
@@ -546,6 +607,8 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
   "amount": null oppure numero decimale,
   "due_date": null oppure "YYYY-MM-DD",
   "is_payable": true oppure false,
+  "is_paid": true oppure false oppure null,
+  "payment_status": "da_pagare" | "quietanzato" | "non_richiesto",
   "summary": "riassunto dettagliato in 2-3 frasi in italiano",
   "tags": ["tag1", "tag2", "tag3"],
   "suggest_rename": false,
@@ -601,7 +664,15 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                 "3. 'issuer': se riconosci un ente, azienda, marchio o ministero visibile (es. 'Enel', 'Fanatec', 'Apple', 'Ministero Interno', 'INPS'), indicalo; altrimenti imposta null.\n"
                 "4. 'due_date': se l'immagine mostra un documento con una data di scadenza o fine validità (es. scadenza carta d'identità, patente, passaporto, bolletta, revisione auto, contratti, polizze), estrai la data nel formato YYYY-MM-DD. NON confondere la data di rilascio con la scadenza! Se non c'è una data di scadenza, imposta null.\n"
                 "5. 'amount': se è visibile un importo monetario da pagare o saldare, estrailo come numero decimale (es. 45.50); per documenti di identità, patenti, passaporti, foto o oggetti personali, imposta rigorosamente amount=null.\n"
-                "6. 'is_payable': true se il documento ha una scadenza attiva o richiede pagamento/rinnovo da monitorare nello scadenzario; false altrimenti.\n"
+                "6. 'is_paid' & 'payment_status' & 'is_payable':\n"
+                "   VERIFICA ACCURATAMENTE SE NELL'IMMAGINE O DOCUMENTO È PRESENTE UN TIMBRO, SCRITTA O QUIETANZA DI PAGAMENTO:\n"
+                "   Cerca con estrema attenzione timbri (anche rossi, blu o circolari), watermark o scritte come 'PAGATO', 'SALDATO', 'QUIETANZATO', 'PAGATA', 'SALDATA', ricevuta di bonifico o quietanza.\n"
+                "   - Se è visibile il timbro 'PAGATO', dicitura di avvenuto pagamento o ricevuta di quietanza:\n"
+                "     imposta 'is_paid': true, 'payment_status': 'quietanzato', 'is_payable': false (il pagamento è già stato effettuato, non va aperta una scadenza da pagare).\n"
+                "   - Se è una bolletta, fattura, F24 o avviso ancora da pagare:\n"
+                "     imposta 'is_paid': false, 'payment_status': 'da_pagare', 'is_payable': true.\n"
+                "   - Per documenti di identità, patenti, passaporti, foto o oggetti senza transazione monetaria:\n"
+                "     imposta 'is_paid': null, 'payment_status': 'non_richiesto', 'is_payable': false.\n"
                 "7. 'summary': descrizione ricca ed accurata in 1-2 frasi in italiano di ciò che si vede visivamente nell'immagine (colori, forme, dettagli, marchi o testi visibili).\n"
                 "8. 'suggest_rename': imposta true se si tratta della foto di un oggetto fisico, componente, dispositivo, screenshot o allegato non formale per cui è opportuno chiedere all'utente se desidera assegnargli un nome specifico o dove lo ripone. Imposta false per bollette, F24 e documenti d'identità con mittente certo.\n"
                 "9. 'category_label': consulta PRIMA queste macro-cartelle generali di sistema per evitare doppioni: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Documenti Personali & Identità', 'Fatture, Spese & Ricevute', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Foto, Immagini & Ricordi', 'Archivi Compressi & ZIP'. Se il file è inerente a una di esse, USA QUELLA CARTELLA! Altrimenti crea una nuova sezione specifica. REGOLA TASSATIVA: NON usare MAI 'Oggetti Fisici' o 'Oggetto Fisico' come 'category_label' o 'category'! Se l'immagine ritrae un oggetto o un ambiente, assegna SEMPRE 'Foto & Immagini' (slug 'foto_immagini', icona 'fa-image'). Gli oggetti fisici appartengono all'inventario separato del caveau e non creano cartelle di documenti.\n"
@@ -616,6 +687,8 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                 '  "amount": null oppure numero decimale,\n'
                 '  "due_date": null oppure "YYYY-MM-DD",\n'
                 '  "is_payable": true oppure false,\n'
+                '  "is_paid": true oppure false oppure null,\n'
+                '  "payment_status": "da_pagare" | "quietanzato" | "non_richiesto",\n'
                 '  "summary": "descrizione accurata in italiano di cosa si vede",\n'
                 '  "tags": ["tag1", "tag2"],\n'
                 '  "suggest_rename": true,\n'

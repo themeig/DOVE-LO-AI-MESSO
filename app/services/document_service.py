@@ -1,3 +1,4 @@
+import re
 import uuid
 from pathlib import Path
 from typing import Optional
@@ -77,3 +78,60 @@ def migrate_unencrypted_files(target_dir: Optional[Path] = None):
                     item.write_bytes(enc)
                 except Exception as e:
                     print(f"Errore migrazione crittografica file {item}: {e}")
+
+
+QUIETANZA_REGEX = re.compile(
+    r'(?:^|[\W_])(pagat[oa]|saldat[oa]|quietanzat[oa]|bonifico\s+eseguito|ricevuta\s+(?:di\s+)?versamento|addebito\s+(?:diretto\s+)?(?:su\s+c/c\s+)?eseguito|ricevuta\s+pagamento|pagamento\s+effettuato|importo\s+corrisposto)(?:[\W_]|$)',
+    re.IGNORECASE
+)
+
+
+def determine_document_status(extracted, due_date_obj=None) -> str:
+    """
+    Determina in modo intelligente e affidabile lo stato iniziale del documento nel caveau:
+    - 'quietanzato': documento con timbro, dicitura o evidenza di pagamento già avvenuto.
+    - 'da_pagare': documento con scadenza pendente, tributo, bolletta o fattura ancora da saldare.
+    - 'archiviato': documento personale, contratto, nota, foto o file senza scadenze monetarie aperte.
+    """
+    if extracted is None:
+        return "da_pagare" if bool(due_date_obj) else "archiviato"
+
+    # 1. Indicazione esplicita dal modello di visione / estrazione
+    if getattr(extracted, "is_paid", None) is True:
+        return "quietanzato"
+    if getattr(extracted, "payment_status", None) == "quietanzato":
+        return "quietanzato"
+
+    # 2. Rete di sicurezza euristica: analisi testuale su summary, titolo e tag
+    summary_text = getattr(extracted, "summary", "") or ""
+    title_text = getattr(extracted, "title", "") or ""
+    tags_list = getattr(extracted, "tags", []) or []
+    tags_text = " ".join(tags_list) if isinstance(tags_list, list) else str(tags_list)
+    combined_text = f"{summary_text} {title_text} {tags_text}".lower()
+
+    if QUIETANZA_REGEX.search(combined_text):
+        return "quietanzato"
+
+    # 3. Ricevute, scontrini o quietanze formali
+    doc_type = (getattr(extracted, "doc_type", "") or "").lower()
+    if doc_type in ["ricevuta", "scontrino"]:
+        # Una ricevuta o uno scontrino d'acquisto attesta una transazione già conclusa
+        if getattr(extracted, "is_payable", None) is not True:
+            return "quietanzato"
+
+    # 4. Scadenza o obbligo di pagamento aperto
+    is_payable = getattr(extracted, "is_payable", None)
+    if is_payable is False:
+        # Il modello ha compreso espressamente che non è dovuta alcuna somma o il debito è estinto
+        if bool(due_date_obj) or getattr(extracted, "amount", None) is not None:
+            return "quietanzato"
+        return "archiviato"
+
+    has_deadline = bool(due_date_obj) or (is_payable is True) or (
+        (getattr(extracted, "amount", None) is not None) and (doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"])
+    )
+    if has_deadline:
+        return "da_pagare"
+
+    return "archiviato"
+

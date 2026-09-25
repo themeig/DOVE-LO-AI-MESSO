@@ -8,6 +8,8 @@ class ExtractedDocument(BaseModel):
     amount: Optional[float] = Field(default=None, description="Importo in euro")
     due_date: Optional[str] = Field(default=None, description="Data scadenza YYYY-MM-DD")
     is_payable: Optional[bool] = Field(default=None, description="True se il documento ha una scadenza attiva o richiede pagamento/rinnovo")
+    is_paid: Optional[bool] = Field(default=None, description="True se il documento riporta timbro, scritta o quietanza di avvenuto pagamento (es. 'PAGATO', 'SALDATO', addebito su c/c)")
+    payment_status: Optional[Literal["da_pagare", "quietanzato", "non_richiesto"]] = Field(default=None, description="Stato del pagamento desunto dal documento")
     summary: str = Field(default="", description="Spiegazione semplice del documento")
     tags: List[str] = Field(default_factory=list)
     suggest_rename: bool = Field(default=False, description="True se è utile chiedere all'utente se vuole dare un nome personalizzato")

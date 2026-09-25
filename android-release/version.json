@@ -1,6 +1,6 @@
 {
-  "version_code": 286,
-  "version_name": "2.8.6",
+  "version_code": 287,
+  "version_name": "2.8.7",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "📂 Organizzazione Google Drive per Chat: i documenti caricati vengono ora archiviati su Google Drive in sottocartelle dedicate e pulite per ciascuna chat (es. DoveLoAIMesso / Famiglia / ..., DoveLoAIMesso / Lavoro & Studio / ..., DoveLoAIMesso / Generale / ...)."
+  "release_notes": "✅ Riconoscimento Intelligente Documenti Quietanzati: rilevamento automatico di timbri 'PAGATO', diciture 'SALDATO' e quietanze di bonifico/versamento. I documenti già saldati vengono protocollati direttamente con stato 'quietanzato' evitando scadenze aperte non necessarie."
 }

@@ -12,7 +12,7 @@ from app.config import get_settings
 from app.models.database import get_db, Document, ChatMessage, GoogleDriveCredential, get_app_setting, ChatThread
 from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDeleteResponse, UnzipVaultRequest
 from app.services.ai_service import get_ai_service
-from app.services.document_service import save_uploaded_file, read_decrypted_file
+from app.services.document_service import save_uploaded_file, read_decrypted_file, determine_document_status
 from app.services.drive_service import get_drive_service, resolve_drive_folder_path, sanitize_drive_folder_name
 
 logger = logging.getLogger(__name__)
@@ -53,9 +53,8 @@ def _process_and_save_single_doc(
             clean_stem = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
             title = f"Foto {clean_stem}" if file_ext in ["jpg", "jpeg", "png", "webp"] else (clean_stem or filename)
 
-    # 5. Save Document in DB (autonomia e discrezione semantica del modello per qualsiasi atto che scade)
-    has_deadline = bool(due_date_obj) or getattr(extracted, "is_payable", False) or ((extracted.amount is not None) and (extracted.doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"]))
-    doc_status = "da_pagare" if has_deadline else "archiviato"
+    # 5. Save Document in DB (autonomia semantica e gestione quietanze/pagamenti)
+    doc_status = determine_document_status(extracted, due_date_obj)
 
     drive_file_id = None
     drive_web_url = None
@@ -129,15 +128,20 @@ async def upload_document(
     db.commit()
     db.refresh(doc)
 
-    has_active_deadline = (doc.status == "da_pagare") or (doc.due_date is not None)
     is_zip = doc.file_type == "zip" or doc.doc_type == "archivio_zip" or filename.lower().endswith(".zip")
-    if has_active_deadline:
+    if doc.status == "quietanzato":
+        amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
+        chat_reply = f"📄 Ho registrato e archiviato il documento come già saldato/quietanzato: **{doc.title}**{amount_str}.\n💡 {doc.summary}"
+    elif doc.status == "da_pagare":
         amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
         due_str = f" con scadenza {doc.due_date.strftime('%d/%m/%Y')}" if doc.due_date else ""
         if doc.amount is not None:
             chat_reply = f"📄 Ho registrato la spesa/scadenza da saldare: {doc.title}{amount_str}{due_str}."
         else:
             chat_reply = f"📄 Ho registrato il documento con scadenza attiva: {doc.title}{due_str}."
+    elif doc.due_date is not None:
+        due_str = f" con scadenza promemoria {doc.due_date.strftime('%d/%m/%Y')}"
+        chat_reply = f"📄 Ho registrato e archiviato il documento: **{doc.title}**{due_str}.\n💡 {doc.summary}"
     elif is_zip:
         chat_reply = (
             f"📦 Ho archiviato l'archivio compresso: **{doc.title}**.\n"
@@ -260,19 +264,27 @@ async def upload_documents_batch(
         saved_docs = db.query(Document).filter(Document.id.in_(doc_ids)).all()
 
     total_count = len(saved_docs)
-    payable_docs = [d for d in saved_docs if d.status == "da_pagare" or d.due_date is not None]
+    payable_docs = [d for d in saved_docs if d.status == "da_pagare"]
+    quietanzati_docs = [d for d in saved_docs if d.status == "quietanzato"]
     total_payable_amount = sum(d.amount for d in payable_docs if d.amount is not None)
+    total_quietanzati_amount = sum(d.amount for d in quietanzati_docs if d.amount is not None)
 
     # Costruzione della risposta aggregata dell'assistente
     if total_count == 1:
         doc = saved_docs[0]
-        if payable_docs:
+        if doc.status == "quietanzato":
+            amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
+            chat_reply = f"📄 Ho registrato e archiviato il documento come già saldato/quietanzato: **{doc.title}**{amount_str}.\n💡 {doc.summary}"
+        elif doc.status == "da_pagare":
             amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
             due_str = f" con scadenza {doc.due_date.strftime('%d/%m/%Y')}" if doc.due_date else ""
             if doc.amount is not None:
                 chat_reply = f"📄 Ho registrato la spesa/scadenza da saldare: {doc.title}{amount_str}{due_str}."
             else:
                 chat_reply = f"📄 Ho registrato il documento con scadenza attiva: {doc.title}{due_str}."
+        elif doc.due_date is not None:
+            due_str = f" con scadenza promemoria {doc.due_date.strftime('%d/%m/%Y')}"
+            chat_reply = f"📄 Ho registrato e archiviato il documento: **{doc.title}**{due_str}.\n💡 {doc.summary}"
         else:
             chat_reply = f"📸 Ho analizzato e archiviato il file: **{doc.title}**.\n💡 {doc.summary}"
     else:
@@ -280,9 +292,13 @@ async def upload_documents_batch(
         for d in saved_docs:
             icon = "📄" if d.file_type == "pdf" else "📸"
             extra = ""
-            if d.amount is not None:
+            if d.status == "quietanzato":
+                extra_amt = f" — **{d.amount:.2f} €**" if d.amount is not None else ""
+                extra = f"{extra_amt} (✅ Già Pagato / Quietanzato)"
+            elif d.amount is not None:
                 due_info = f", scad. {d.due_date.strftime('%d/%m/%Y')}" if d.due_date else ""
-                extra = f" — **{d.amount:.2f} €**{due_info}"
+                status_str = " (Da pagare)" if d.status == "da_pagare" else ""
+                extra = f" — **{d.amount:.2f} €**{due_info}{status_str}"
             elif d.due_date:
                 extra = f" — *scad. {d.due_date.strftime('%d/%m/%Y')}*"
             lines.append(f"- {icon} **{d.title}** ({d.doc_type}){extra}")
@@ -290,9 +306,12 @@ async def upload_documents_batch(
         summary_parts = [f"📁 Ho caricato e analizzato con successo **{total_count} documenti** nel caveau!"]
         if payable_docs:
             if total_payable_amount > 0:
-                summary_parts.append(f"💳 **{len(payable_docs)} pagamenti/scadenze registrati** per un totale di **{total_payable_amount:.2f} €**.")
+                summary_parts.append(f"💳 **{len(payable_docs)} pagamenti/scadenze da saldare** per un totale di **{total_payable_amount:.2f} €**.")
             else:
                 summary_parts.append(f"⏰ **{len(payable_docs)} scadenze attive registrate** nel tuo scadenzario.")
+        if quietanzati_docs:
+            amt_info = f" per complessivi **{total_quietanzati_amount:.2f} €**" if total_quietanzati_amount > 0 else ""
+            summary_parts.append(f"✅ **{len(quietanzati_docs)} documenti già saldati/quietanzati**{amt_info} archiviati a memoria storica.")
         summary_parts.append("\n**Documenti archiviati:**\n" + "\n".join(lines))
         summary_parts.append("\nPuoi visualizzarli o scaricarli singolarmente dalle schede qui sotto! ⬇️")
         chat_reply = "\n\n".join(summary_parts)

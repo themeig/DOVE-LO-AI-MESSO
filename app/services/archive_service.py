@@ -19,7 +19,7 @@ import xlrd
 
 from app.models.database import Document
 from app.models.schemas import ExtractedDocument
-from app.services.document_service import save_uploaded_file, read_decrypted_file
+from app.services.document_service import save_uploaded_file, read_decrypted_file, determine_document_status, QUIETANZA_REGEX
 from app.services.ai_service import get_ai_service
 
 logger = logging.getLogger(__name__)
@@ -1186,6 +1186,14 @@ def fast_extract_document_metadata(file_bytes: bytes, filename: str, mime_type: 
     amount = None
     due_date = None
     tags = []
+    is_paid = None
+    payment_status = None
+    is_payable = None
+
+    if QUIETANZA_REGEX.search(combo):
+        is_paid = True
+        payment_status = "quietanzato"
+        is_payable = False
 
     # Classificazione per tipo ed emittente
     # 0. Canzoni, musica, poesie e testi personali (PRIORITÀ)
@@ -1406,6 +1414,9 @@ def fast_extract_document_metadata(file_bytes: bytes, filename: str, mime_type: 
         issuer=issuer,
         amount=amount,
         due_date=due_date,
+        is_payable=is_payable,
+        is_paid=is_paid,
+        payment_status=payment_status,
         summary=summary,
         tags=tags or ["archivio", "documento"],
         suggest_rename=False,
@@ -1536,8 +1547,7 @@ def unzip_document_to_vault(
                     clean_stem = Path(inner_filename).stem.replace("_", " ").strip()
                     title = clean_stem.capitalize()
 
-                has_deadline = bool(due_date_obj) or getattr(extracted, "is_payable", False) or ((extracted.amount is not None) and (extracted.doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"]))
-                doc_status = "da_pagare" if has_deadline else "archiviato"
+                doc_status = determine_document_status(extracted, due_date_obj)
 
                 # Sincronizzazione automatica con Google Drive se attivo (e non solo locale)
                 drive_file_id = None

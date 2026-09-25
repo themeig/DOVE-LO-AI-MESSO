@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.models.database import get_db, Document, PhysicalItem, WatchedFolder
-from app.services.document_service import read_decrypted_file
+from app.services.document_service import read_decrypted_file, determine_document_status
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/export", tags=["export"])
@@ -308,8 +308,7 @@ async def import_vault_zip(
                         clean_stem = Path(inner_filename).stem.replace("_", " ").strip()
                         title = clean_stem.capitalize()
 
-                    has_deadline = bool(due_date_obj) or getattr(extracted, "is_payable", False) or ((extracted.amount is not None) and (extracted.doc_type in ["bolletta", "f24", "fattura", "tributo", "avviso"]))
-                    doc_status = "da_pagare" if has_deadline else "archiviato"
+                    doc_status = determine_document_status(extracted, due_date_obj)
 
                     new_doc = Document(
                         thread_id="general",
