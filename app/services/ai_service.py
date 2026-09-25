@@ -243,6 +243,22 @@ class MockAIService:
                 category_icon="fa-file-zipper"
             )
 
+        # Supporto Scansioni
+        if "scansion" in fn:
+            return ExtractedDocument(
+                title=f"Documento Scansionato {clean_name}",
+                doc_type="generico",
+                issuer="Ente / Mittente",
+                amount=None,
+                due_date=None,
+                summary=f"Documento scansionato '{filename}' acquisito ed elaborato nel caveau.",
+                tags=["scansione", "documento"],
+                suggest_rename=False,
+                category="documenti_testo",
+                category_label="Documenti Personali & Note",
+                category_icon="fa-file-lines"
+            )
+
         # Per foto, screenshot o altri allegati non fiscali
         is_screen = any(k in fn for k in [".png", "screen", "cattura", "screenshot"])
         clean_name = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
@@ -373,29 +389,35 @@ class OpenRouterAIService:
                 doc.subfolder = subfolder
                 return doc
 
-            # 1. GESTIONE DOCUMENTI PDF (Estrazione del testo reale delle pagine o scansioni visive)
+            # 1. GESTIONE DOCUMENTI PDF (Estrazione del testo reale delle pagine o scansioni visive multipagina)
             if is_pdf:
                 pdf_text = ""
                 scanned_images = []
                 try:
                     reader = pypdf.PdfReader(io.BytesIO(file_bytes))
-                    for p in reader.pages[:15]:
+                    for i, p in enumerate(reader.pages[:20]):
                         page_str = p.extract_text()
-                        if page_str:
-                            pdf_text += page_str + "\n"
+                        if page_str and page_str.strip():
+                            pdf_text += f"\n--- PAGINA {i+1} ---\n" + page_str.strip() + "\n"
                         # Ispeziona immagini incorporate nelle pagine per gestire PDF scansionati
-                        if len(scanned_images) < 3 and p.images:
-                            for img in p.images:
-                                scanned_images.append(img.data)
-                                if len(scanned_images) >= 3:
-                                    break
+                        if len(scanned_images) < 8:
+                            try:
+                                page_imgs = []
+                                for img in p.images:
+                                    if img.data and len(img.data) > 1024:
+                                        page_imgs.append((len(img.data), img.data))
+                                if page_imgs:
+                                    page_imgs.sort(key=lambda x: x[0], reverse=True)
+                                    scanned_images.append(page_imgs[0][1])
+                            except Exception as p_img_err:
+                                logger.warning(f"Errore estrazione immagine pagina PDF {i+1}: {p_img_err}")
                 except Exception as p_err:
                     logger.warning(f"Errore lettura pypdf: {p_err}")
 
                 if len(pdf_text.strip()) >= 30:
                     pdf_prompt = f"""Sei l'assistente 'Dove lo AI messo'. Analizza questo testo estratto dal documento PDF caricato dall'utente:
 ---
-{pdf_text[:3500]}
+{pdf_text[:12000]}
 ---
 
 Identifica con la massima precisione:
@@ -434,10 +456,55 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
                     parsed = _extract_json_object(resp_text)
                     return _finalize(ExtractedDocument(**parsed))
                 elif scanned_images:
-                    # PDF SCANSIONATO GRAFICO (es. da scanner Google ML Kit o fotocopiatrice multifunzione)
-                    logger.info(f"Rilevato PDF scansionato con {len(scanned_images)} immagini ({filename}). Elaborazione con AI multimodale.")
-                    file_bytes = scanned_images[0]
-                    # Continua l'elaborazione passando l'immagine estratta alla sezione 4 (GESTIONE IMMAGINI)
+                    # PDF SCANSIONATO GRAFICO MULTIPAGINA (es. da Google ML Kit Scanner o fotocopiatrice multifunzione)
+                    logger.info(f"Rilevato PDF scansionato con {len(scanned_images)} pagine/immagini ({filename}). Elaborazione con AI multimodale integrale.")
+                    multi_prompt = f"""Sei l'assistente 'Dove lo AI messo'. Analizza questo documento PDF scansionato composto da {len(scanned_images)} pagine (allegati visivi in ordine cronologico di pagina).
+Nome file originale: '{filename}'.
+
+Esamina attentamente TUTTE le pagine visive fornite per comprendere ed estrarre i dati completi del documento:
+1. 'title': un titolo descrittivo, chiaro, elegante e sintetico (es. 'Bolletta Enel Energia', 'Modello F24 Versamento Tributi', 'Contratto di Locazione Commerciale', 'Fattura Professionale', 'Certificato Medico').
+2. 'doc_type': tipo documento formale ('bolletta', 'f24', 'contratto', 'fattura', 'ricevuta', 'documento_identita', 'patente', 'polizza', 'certificato', 'generico'). NON classificarlo MAI come 'foto' o 'screenshot' se è un documento o modulo scansionato!
+3. 'issuer': nome ente, università, azienda, fornitore o ministero emittente (oppure null se non rilevabile).
+4. 'due_date': se è presente una data di scadenza, fine validità, termine pagamento o rinnovo in una qualsiasi delle pagine (es. bollette, fatture, F24, patenti, carte identità, polizze, contratti), estrai la data nel formato YYYY-MM-DD. NON confondere la data di rilascio, stipula o emissione con la scadenza! Se non c'è scadenza o termine, imposta rigorosamente due_date=null.
+5. 'amount': se è presente un importo monetario da pagare o saldare (es. totale bolletta, saldo F24, totale fattura, importo scontrino), estrailo come numero decimale (es. 64.20). Se il documento NON richiede un pagamento pendente, imposta rigorosamente amount=null.
+6. 'is_payable': true se ha una scadenza attiva o richiede un'azione di pagamento/rinnovo; false altrimenti.
+7. 'summary': spiegazione dettagliata, ricca e completa di 2-3 frasi in italiano che riassume tutte le pagine, nominativi, intestatari, importi, codici fiscali o dettagli essenziali rilevati nelle varie pagine.
+8. 'suggest_rename': false (è un documento formale o scansionato).
+9. 'category_label': consulta PRIMA queste cartelle generali di sistema per evitare doppioni: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Fatture, Spese & Ricevute', 'Contratti, Polizze & Assicurazioni', 'Documenti Personali & Identità', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Archivi Compressi & ZIP', 'Foto, Immagini & Ricordi'. Se il file è inerente a una di esse, USA QUELLA CARTELLA!
+10. 'category': slug normalizzato in minuscolo con underscore (es. 'utenze_bollette', 'fisco_tributi', 'documenti_identita', 'contratti_polizze').
+11. 'category_icon': l'icona FontAwesome 6 più appropriata.
+12. 'subfolder': estrai l'anno a 4 cifre se presente una scadenza o competenza, oppure un sotto-tema; altrimenti null.
+
+Rispondi ESCLUSIVAMENTE in formato JSON valido:
+{{
+  "title": "titolo chiaro ed elegante",
+  "doc_type": "bolletta" | "f24" | "contratto" | "ricevuta" | "fattura" | "documento_identita" | "polizza" | "generico",
+  "issuer": "nome ente o fornitore" o null,
+  "amount": null oppure numero decimale,
+  "due_date": null oppure "YYYY-MM-DD",
+  "is_payable": true oppure false,
+  "summary": "riassunto completo in 2-3 frasi in italiano con tutti i dati delle pagine",
+  "tags": ["tag1", "tag2"],
+  "suggest_rename": false,
+  "category": "slug_sezione",
+  "category_label": "Titolo Sezione",
+  "category_icon": "fa-icon",
+  "subfolder": "2026" oppure null
+}}
+"""
+                    content_parts = [{"type": "text", "text": multi_prompt}]
+                    for img_b in scanned_images[:8]:
+                        opt_b, opt_m = optimize_image_for_vision(img_b)
+                        b64_str = base64.b64encode(opt_b).decode("utf-8")
+                        content_parts.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{opt_m};base64,{b64_str}"}
+                        })
+
+                    messages = [{"role": "user", "content": content_parts}]
+                    resp_text = self._call_openrouter(messages, max_tokens=4096, model_override=self.primary_model, temperature=0.1)
+                    parsed = _extract_json_object(resp_text)
+                    return _finalize(ExtractedDocument(**parsed))
                 else:
                     # PDF senza layer di testo e senza immagini estraibili
                     return MockAIService().extract_document(file_bytes, mime_type, filename)

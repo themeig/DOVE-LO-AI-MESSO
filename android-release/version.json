@@ -1,6 +1,6 @@
 {
-  "version_code": 283,
-  "version_name": "2.8.3",
+  "version_code": 284,
+  "version_name": "2.8.4",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "📄 Persistenza totale widget documenti e anteprima file con tasto 'Vedi': i widget non scompaiono più alla riapertura della chat e i documenti/foto mostrano sempre il tasto 'Vedi' per visualizzarli a schermo intero."
+  "release_notes": "📑 Scansioni Multiple & Comprensione Multimodale Multipagina: quando scansioni più pagine con lo scanner di Google Drive/ML Kit puoi scegliere se archiviarle come documenti separati (per più scontrini/fatture) o come documento unico multipagina (PDF), analizzato dall'AI multimodale su tutte le pagine."
 }

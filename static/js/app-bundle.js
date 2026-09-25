@@ -3662,7 +3662,162 @@
     // =========================================================================
     // NATIVE DOCUMENT SCANNER HANDLERS (Google Drive Document Scanner)
     // =========================================================================
+    let _multiScanPendingCount = 0;
+    let _multiScanPendingPdf = false;
+    let _multiScanTargetThreadId = 'general';
+
+    function readScannedPageFile(pageIndex) {
+      if (!window.AndroidDocumentScanner) return null;
+      const totalChunks = window.AndroidDocumentScanner.getPageTotalChunks ? window.AndroidDocumentScanner.getPageTotalChunks(pageIndex) : (pageIndex === 0 ? window.AndroidDocumentScanner.getTotalChunks() : 0);
+      const filename = (window.AndroidDocumentScanner.getPageFilename && window.AndroidDocumentScanner.getPageFilename(pageIndex)) || `scansione_doc${pageIndex + 1}_${Date.now()}.jpg`;
+      const mimeType = (window.AndroidDocumentScanner.getPageMimeType && window.AndroidDocumentScanner.getPageMimeType(pageIndex)) || 'image/jpeg';
+      const byteArrays = [];
+      for (let i = 0; i < totalChunks; i++) {
+        const chunkB64 = window.AndroidDocumentScanner.getPageChunk ? window.AndroidDocumentScanner.getPageChunk(pageIndex, i) : (pageIndex === 0 ? window.AndroidDocumentScanner.getChunk(i) : "");
+        if (!chunkB64) continue;
+        const byteChars = atob(chunkB64);
+        const chunkBytes = new Uint8Array(byteChars.length);
+        for (let j = 0; j < byteChars.length; j++) {
+          chunkBytes[j] = byteChars.charCodeAt(j);
+        }
+        byteArrays.push(chunkBytes);
+      }
+      if (byteArrays.length === 0) return null;
+      const blob = new Blob(byteArrays, { type: mimeType });
+      return new File([blob], filename, { type: mimeType });
+    }
+
+    function readScannedPdfFile() {
+      if (!window.AndroidDocumentScanner) return null;
+      const totalChunks = window.AndroidDocumentScanner.getPdfTotalChunks ? window.AndroidDocumentScanner.getPdfTotalChunks() : window.AndroidDocumentScanner.getTotalChunks();
+      const filename = (window.AndroidDocumentScanner.getPdfFilename && window.AndroidDocumentScanner.getPdfFilename()) || `scansione_completa_${Date.now()}.pdf`;
+      const byteArrays = [];
+      for (let i = 0; i < totalChunks; i++) {
+        const chunkB64 = window.AndroidDocumentScanner.getPdfChunk ? window.AndroidDocumentScanner.getPdfChunk(i) : window.AndroidDocumentScanner.getChunk(i);
+        if (!chunkB64) continue;
+        const byteChars = atob(chunkB64);
+        const chunkBytes = new Uint8Array(byteChars.length);
+        for (let j = 0; j < byteChars.length; j++) {
+          chunkBytes[j] = byteChars.charCodeAt(j);
+        }
+        byteArrays.push(chunkBytes);
+      }
+      if (byteArrays.length === 0) return null;
+      const blob = new Blob(byteArrays, { type: 'application/pdf' });
+      return new File([blob], filename, { type: 'application/pdf' });
+    }
+
+    window.onNativeScanResult = async function(pageCount, hasPdf, threadId) {
+      try {
+        if (!window.AndroidDocumentScanner) return;
+        _multiScanTargetThreadId = threadId || currentThreadId || 'general';
+        if (threadId && typeof switchThread === 'function' && threadId !== currentThreadId) {
+          switchThread(threadId);
+        }
+
+        // Se è stata scansionata solo 1 singola pagina: carica direttamente in modo trasparente
+        if (pageCount <= 1) {
+          const file = readScannedPageFile(0) || (hasPdf ? readScannedPdfFile() : null);
+          if (file) {
+            if (window.AndroidDocumentScanner.clearLastScan) window.AndroidDocumentScanner.clearLastScan();
+            showToast("📄 Acquisizione scansione Google completata!", "success");
+            await processFilesUpload([file]);
+          }
+          return;
+        }
+
+        // Se sono state scansionate 2 o più pagine/documenti: apri la modale di scelta Olivetti
+        openMultiScanChoiceModal(pageCount, hasPdf, _multiScanTargetThreadId);
+      } catch (err) {
+        console.error("Errore onNativeScanResult:", err);
+        showToast("⚠️ Impossibile elaborare i documenti scansionati.", "error");
+      }
+    };
+
+    function openMultiScanChoiceModal(pageCount, hasPdf, threadId) {
+      _multiScanPendingCount = pageCount;
+      _multiScanPendingPdf = hasPdf;
+      _multiScanTargetThreadId = threadId || currentThreadId || 'general';
+
+      const modal = document.getElementById('multiScanChoiceModal');
+      const titleEl = document.getElementById('multiScanModalTitle');
+      const descEl = document.getElementById('multiScanModalDesc');
+      const badgeEl = document.getElementById('multiScanSeparateBadge');
+      const pdfBtn = document.getElementById('btnMultiScanPdf');
+
+      if (titleEl) titleEl.textContent = `Acquisiti ${pageCount} Documenti`;
+      if (descEl) descEl.textContent = `Lo scanner di Google ha acquisito con successo ${pageCount} pagine. Come desideri archiviarle nel caveau per l'analisi dell'assistente?`;
+      if (badgeEl) badgeEl.textContent = `${pageCount} FILE`;
+      if (pdfBtn) {
+        if (hasPdf) pdfBtn.classList.remove('hidden');
+        else pdfBtn.classList.add('hidden');
+      }
+
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeMultiScanChoiceModal() {
+      const modal = document.getElementById('multiScanChoiceModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function cancelMultiScanChoice() {
+      closeMultiScanChoiceModal();
+      if (window.AndroidDocumentScanner && window.AndroidDocumentScanner.clearLastScan) {
+        window.AndroidDocumentScanner.clearLastScan();
+      }
+      showToast("Scansione annullata.", "info");
+    }
+
+    async function submitMultiScanChoice(mode) {
+      closeMultiScanChoiceModal();
+      try {
+        if (!window.AndroidDocumentScanner) return;
+
+        if (mode === 'pdf' && _multiScanPendingPdf) {
+          showToast(`📄 Creazione e analisi documento multipagina in corso...`, 'info', 3000);
+          const pdfFile = readScannedPdfFile();
+          if (window.AndroidDocumentScanner.clearLastScan) window.AndroidDocumentScanner.clearLastScan();
+          if (pdfFile) {
+            await processFilesUpload([pdfFile]);
+          }
+        } else {
+          // Modalità 'separate': carica ogni documento come file separato per massima comprensione e categorizzazione
+          showToast(`📁 Acquisizione di ${_multiScanPendingCount} documenti separati...`, 'info', 3000);
+          const filesArray = [];
+          for (let i = 0; i < _multiScanPendingCount; i++) {
+            const f = readScannedPageFile(i);
+            if (f) filesArray.push(f);
+          }
+          if (window.AndroidDocumentScanner.clearLastScan) window.AndroidDocumentScanner.clearLastScan();
+          if (filesArray.length > 0) {
+            await processFilesUpload(filesArray);
+          }
+        }
+      } catch (err) {
+        console.error("Errore submitMultiScanChoice:", err);
+        showToast("⚠️ Errore caricamento scansioni.", "error");
+      }
+    }
+
+    window.openMultiScanChoiceModal = openMultiScanChoiceModal;
+    window.closeMultiScanChoiceModal = closeMultiScanChoiceModal;
+    window.cancelMultiScanChoice = cancelMultiScanChoice;
+    window.submitMultiScanChoice = submitMultiScanChoice;
+
     window.onNativeScanReady = async function(filename, mimeType, fileSize, threadId) {
+      if (window.AndroidDocumentScanner && typeof window.AndroidDocumentScanner.getPageCount === 'function') {
+        const count = window.AndroidDocumentScanner.getPageCount();
+        const hasPdf = window.AndroidDocumentScanner.hasPdf ? window.AndroidDocumentScanner.hasPdf() : false;
+        await window.onNativeScanResult(count, hasPdf, threadId);
+        return;
+      }
       try {
         if (!window.AndroidDocumentScanner) return;
         const totalChunks = window.AndroidDocumentScanner.getTotalChunks ? window.AndroidDocumentScanner.getTotalChunks() : 0;

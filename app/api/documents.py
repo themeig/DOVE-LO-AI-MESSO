@@ -135,15 +135,18 @@ async def upload_document(
             f"⚡ *Vuoi che lo scompatti per te per analizzare e registrare singolarmente ogni documento? Clicca su **'Estrai'** qui sotto oppure dimmi 'scompatta lo zip'!*"
         )
     else:
-        should_ask_rename = doc.doc_type in ["foto", "foto_oggetto", "oggetto_fisico", "screenshot", "generico"]
+        is_scan = "scansion" in filename.lower()
+        should_ask_rename = doc.doc_type in ["foto", "foto_oggetto", "oggetto_fisico", "screenshot"] and not is_scan
         if should_ask_rename:
             chat_reply = (
                 f"📸 Ho analizzato e salvato il file nel caveau come: **{doc.title}**.\n"
                 f"💡 {doc.summary}\n\n"
                 f"*Desideri dargli un nome specifico o dirmi dove lo conservi?* (es. 'Chiamalo Base Volante' oppure 'Mettilo nello studio')"
             )
+        elif is_scan:
+            chat_reply = f"📄 Ho analizzato e protocollato il documento: **{doc.title}**.\n💡 {doc.summary}"
         else:
-            chat_reply = f"📸 Ho analizzato e archiviato il file: {doc.title}.\n💡 {doc.summary}"
+            chat_reply = f"📸 Ho analizzato e archiviato il file: **{doc.title}**.\n💡 {doc.summary}"
 
     active_model = get_app_setting(db, "ai_model", default=get_settings().OPENROUTER_MODEL) or "auto"
     routed_model = "google/gemini-2.5-flash-lite" if active_model == "auto" else active_model

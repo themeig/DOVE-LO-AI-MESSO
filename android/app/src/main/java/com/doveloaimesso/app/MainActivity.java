@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.net.http.SslError;
 import android.webkit.JavascriptInterface;
@@ -76,6 +77,18 @@ public class MainActivity extends AppCompatActivity {
     private static final String DEFAULT_WIFI_URL = "http://192.168.178.73:8000";
     private static final String GITHUB_VERSION_URL = "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/version.json";
     private static final int PERMISSION_REQUEST_CODE = 1001;
+    private static final String TAG = "MainActivity";
+
+    public static class ScannedFileItem {
+        public final String filename;
+        public final String mimeType;
+        public final byte[] bytes;
+        public ScannedFileItem(String filename, String mimeType, byte[] bytes) {
+            this.filename = filename;
+            this.mimeType = mimeType;
+            this.bytes = bytes;
+        }
+    }
 
     private WebView webView;
     private ProgressBar progressBar;
@@ -432,75 +445,98 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
+    private byte[] readFileBytesFromUri(Uri uri, String tempFilename) {
+        try {
+            File cachedFile = new File(getCacheDir(), tempFilename);
+            try (InputStream in = getContentResolver().openInputStream(uri);
+                 FileOutputStream out = new FileOutputStream(cachedFile)) {
+                if (in == null) return null;
+                byte[] buffer = new byte[8192];
+                int len;
+                while ((len = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, len);
+                }
+                out.flush();
+            }
+            byte[] fileBytes = new byte[(int) cachedFile.length()];
+            try (FileInputStream fis = new FileInputStream(cachedFile)) {
+                int totalRead = 0;
+                int read;
+                while (totalRead < fileBytes.length && (read = fis.read(fileBytes, totalRead, fileBytes.length - totalRead)) != -1) {
+                    totalRead += read;
+                }
+            }
+            return fileBytes;
+        } catch (Exception e) {
+            Log.e(TAG, "Errore lettura file da Uri: " + uri, e);
+            return null;
+        }
+    }
+
     private void processDocumentScannerResult(GmsDocumentScanningResult result) {
         Executors.newSingleThreadExecutor().execute(() -> {
             try {
-                Uri targetUri = null;
-                String mimeType = "application/pdf";
-                String fileExt = "pdf";
+                List<GmsDocumentScanningResult.Page> pages = result.getPages();
+                int pageCount = (pages != null) ? pages.size() : 0;
+                GmsDocumentScanningResult.Pdf pdf = result.getPdf();
 
-                // Se la scansione è di una singola pagina ed è disponibile l'immagine JPEG diretta ad alta risoluzione,
-                // preferisci inviare direttamente l'immagine JPEG nativa (lettura visiva ottimale e massima nitidezza per l'AI).
-                // Se sono 2 o più pagine, o se non ci sono pagine estratte ma c'è il PDF, usa il PDF multipagina.
-                if (result.getPages() != null && result.getPages().size() == 1 && result.getPages().get(0).getImageUri() != null) {
-                    targetUri = result.getPages().get(0).getImageUri();
-                    mimeType = "image/jpeg";
-                    fileExt = "jpg";
-                } else if (result.getPdf() != null && result.getPdf().getUri() != null) {
-                    targetUri = result.getPdf().getUri();
-                    mimeType = "application/pdf";
-                    fileExt = "pdf";
-                } else if (result.getPages() != null && !result.getPages().isEmpty()) {
-                    targetUri = result.getPages().get(0).getImageUri();
-                    mimeType = "image/jpeg";
-                    fileExt = "jpg";
-                }
-
-                if (targetUri == null) {
+                if (pageCount == 0 && (pdf == null || pdf.getUri() == null)) {
                     notifyScannerCancelled();
                     return;
                 }
 
                 String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
-                String filename = "scansione_" + timeStamp + "." + fileExt;
-                File cachedFile = new File(getCacheDir(), filename);
+                List<ScannedFileItem> scannedPages = new ArrayList<>();
 
-                try (InputStream in = getContentResolver().openInputStream(targetUri);
-                     FileOutputStream out = new FileOutputStream(cachedFile)) {
-                    if (in == null) {
-                        notifyScannerError("Impossibile aprire il file scansionato.");
-                        return;
+                // Leggi ciascuna pagina scansionata in alta risoluzione
+                if (pages != null) {
+                    for (int i = 0; i < pages.size(); i++) {
+                        Uri pageUri = pages.get(i).getImageUri();
+                        if (pageUri != null) {
+                            String pageFilename = (pageCount == 1)
+                                    ? "scansione_" + timeStamp + ".jpg"
+                                    : "scansione_doc" + (i + 1) + "_" + timeStamp + ".jpg";
+                            byte[] pageBytes = readFileBytesFromUri(pageUri, pageFilename);
+                            if (pageBytes != null && pageBytes.length > 0) {
+                                scannedPages.add(new ScannedFileItem(pageFilename, "image/jpeg", pageBytes));
+                            }
+                        }
                     }
-                    byte[] buffer = new byte[8192];
-                    int len;
-                    while ((len = in.read(buffer)) != -1) {
-                        out.write(buffer, 0, len);
-                    }
-                    out.flush();
                 }
 
-                byte[] fileBytes = new byte[(int) cachedFile.length()];
-                try (FileInputStream fis = new FileInputStream(cachedFile)) {
-                    int totalRead = 0;
-                    int read;
-                    while (totalRead < fileBytes.length && (read = fis.read(fileBytes, totalRead, fileBytes.length - totalRead)) != -1) {
-                        totalRead += read;
+                // Leggi il PDF multipagina se disponibile
+                ScannedFileItem compiledPdf = null;
+                if (pdf != null && pdf.getUri() != null) {
+                    String pdfFilename = "scansione_completa_" + timeStamp + ".pdf";
+                    byte[] pdfBytes = readFileBytesFromUri(pdf.getUri(), pdfFilename);
+                    if (pdfBytes != null && pdfBytes.length > 0) {
+                        compiledPdf = new ScannedFileItem(pdfFilename, "application/pdf", pdfBytes);
                     }
+                }
+
+                if (scannedPages.isEmpty() && compiledPdf == null) {
+                    notifyScannerError("Nessun dato scansionato recuperabile.");
+                    return;
                 }
 
                 if (mDocumentScannerBridge != null) {
-                    mDocumentScannerBridge.setLastScannedDocument(filename, mimeType, fileBytes, mCurrentScanningThreadId);
+                    mDocumentScannerBridge.setScannedResult(scannedPages, compiledPdf, mCurrentScanningThreadId);
                 }
 
-                final String finalFilename = filename;
-                final String finalMimeType = mimeType;
-                final int finalFileSize = fileBytes.length;
+                final int finalPageCount = scannedPages.size();
+                final boolean hasPdf = (compiledPdf != null);
                 final String finalThreadId = mCurrentScanningThreadId;
+                final ScannedFileItem defaultItem = (!scannedPages.isEmpty()) ? scannedPages.get(0) : compiledPdf;
 
                 runOnUiThread(() -> {
                     String js = String.format(Locale.US,
-                            "if (typeof window.onNativeScanReady === 'function') { window.onNativeScanReady('%s', '%s', %d, '%s'); }",
-                            finalFilename, finalMimeType, finalFileSize, finalThreadId
+                            "if (typeof window.onNativeScanResult === 'function') { " +
+                            "  window.onNativeScanResult(%d, %b, '%s'); " +
+                            "} else if (typeof window.onNativeScanReady === 'function') { " +
+                            "  window.onNativeScanReady('%s', '%s', %d, '%s'); " +
+                            "}",
+                            finalPageCount, hasPdf, finalThreadId,
+                            defaultItem.filename, defaultItem.mimeType, defaultItem.bytes.length, finalThreadId
                     );
                     webView.evaluateJavascript(js, null);
                 });
@@ -931,17 +967,27 @@ public class MainActivity extends AppCompatActivity {
     // =========================================================================
 
     public class AndroidDocumentScannerBridge {
-        private String mLastFilename = null;
-        private String mLastMimeType = null;
-        private byte[] mLastBytes = null;
+        private final List<ScannedFileItem> mScannedPages = new ArrayList<>();
+        private ScannedFileItem mCompiledPdf = null;
         private String mLastThreadId = "general";
         private static final int CHUNK_SIZE = 256 * 1024; // 256KB chunks per il passaggio ultra-veloce a JS
 
+        public synchronized void setScannedResult(List<ScannedFileItem> pages, ScannedFileItem compiledPdf, String threadId) {
+            mScannedPages.clear();
+            if (pages != null) {
+                mScannedPages.addAll(pages);
+            }
+            mCompiledPdf = compiledPdf;
+            mLastThreadId = threadId;
+        }
+
         public synchronized void setLastScannedDocument(String filename, String mimeType, byte[] bytes, String threadId) {
-            this.mLastFilename = filename;
-            this.mLastMimeType = mimeType;
-            this.mLastBytes = bytes;
-            this.mLastThreadId = threadId;
+            mScannedPages.clear();
+            if (bytes != null) {
+                mScannedPages.add(new ScannedFileItem(filename, mimeType, bytes));
+            }
+            mCompiledPdf = null;
+            mLastThreadId = threadId;
         }
 
         @JavascriptInterface
@@ -984,28 +1030,103 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @JavascriptInterface
-        public int getTotalChunks() {
-            if (mLastBytes == null) return 0;
-            return (int) Math.ceil((double) mLastBytes.length / CHUNK_SIZE);
+        public synchronized int getPageCount() {
+            return mScannedPages.size();
         }
 
         @JavascriptInterface
-        public String getChunk(int chunkIndex) {
-            if (mLastBytes == null) return "";
+        public synchronized boolean hasPdf() {
+            return mCompiledPdf != null && mCompiledPdf.bytes != null && mCompiledPdf.bytes.length > 0;
+        }
+
+        @JavascriptInterface
+        public synchronized String getPageFilename(int index) {
+            if (index >= 0 && index < mScannedPages.size()) {
+                return mScannedPages.get(index).filename;
+            }
+            return "";
+        }
+
+        @JavascriptInterface
+        public synchronized String getPageMimeType(int index) {
+            if (index >= 0 && index < mScannedPages.size()) {
+                return mScannedPages.get(index).mimeType;
+            }
+            return "image/jpeg";
+        }
+
+        @JavascriptInterface
+        public synchronized int getPageTotalChunks(int index) {
+            if (index < 0 || index >= mScannedPages.size()) return 0;
+            byte[] bytes = mScannedPages.get(index).bytes;
+            if (bytes == null) return 0;
+            return (int) Math.ceil((double) bytes.length / CHUNK_SIZE);
+        }
+
+        @JavascriptInterface
+        public synchronized String getPageChunk(int index, int chunkIndex) {
+            if (index < 0 || index >= mScannedPages.size()) return "";
+            byte[] bytes = mScannedPages.get(index).bytes;
+            if (bytes == null) return "";
             int start = chunkIndex * CHUNK_SIZE;
-            if (start >= mLastBytes.length) return "";
-            int end = Math.min(start + CHUNK_SIZE, mLastBytes.length);
+            if (start >= bytes.length) return "";
+            int end = Math.min(start + CHUNK_SIZE, bytes.length);
             int length = end - start;
             byte[] chunk = new byte[length];
-            System.arraycopy(mLastBytes, start, chunk, 0, length);
+            System.arraycopy(bytes, start, chunk, 0, length);
             return Base64.encodeToString(chunk, Base64.NO_WRAP);
         }
 
         @JavascriptInterface
-        public void clearLastScan() {
-            mLastBytes = null;
-            mLastFilename = null;
-            mLastMimeType = null;
+        public synchronized String getPdfFilename() {
+            return (mCompiledPdf != null) ? mCompiledPdf.filename : "";
+        }
+
+        @JavascriptInterface
+        public synchronized int getPdfTotalChunks() {
+            if (mCompiledPdf == null || mCompiledPdf.bytes == null) return 0;
+            return (int) Math.ceil((double) mCompiledPdf.bytes.length / CHUNK_SIZE);
+        }
+
+        @JavascriptInterface
+        public synchronized String getPdfChunk(int chunkIndex) {
+            if (mCompiledPdf == null || mCompiledPdf.bytes == null) return "";
+            byte[] bytes = mCompiledPdf.bytes;
+            int start = chunkIndex * CHUNK_SIZE;
+            if (start >= bytes.length) return "";
+            int end = Math.min(start + CHUNK_SIZE, bytes.length);
+            int length = end - start;
+            byte[] chunk = new byte[length];
+            System.arraycopy(bytes, start, chunk, 0, length);
+            return Base64.encodeToString(chunk, Base64.NO_WRAP);
+        }
+
+        @JavascriptInterface
+        public synchronized int getTotalChunks() {
+            if (!mScannedPages.isEmpty()) {
+                return getPageTotalChunks(0);
+            }
+            if (mCompiledPdf != null) {
+                return getPdfTotalChunks();
+            }
+            return 0;
+        }
+
+        @JavascriptInterface
+        public synchronized String getChunk(int chunkIndex) {
+            if (!mScannedPages.isEmpty()) {
+                return getPageChunk(0, chunkIndex);
+            }
+            if (mCompiledPdf != null) {
+                return getPdfChunk(chunkIndex);
+            }
+            return "";
+        }
+
+        @JavascriptInterface
+        public synchronized void clearLastScan() {
+            mScannedPages.clear();
+            mCompiledPdf = null;
         }
     }
 }

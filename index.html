@@ -2664,5 +2664,68 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal Scelta Scansione Multipla (Olivetti Style) -->
+  <div id="multiScanChoiceModal" class="hidden fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-xs select-none animate-in fade-in duration-150">
+    <div class="bg-[#FAF8F2] border border-[#D8D2C4] w-full max-w-md rounded-xs p-5 shadow-2xl relative font-sans text-[#222220]">
+      <div class="flex items-center justify-between pb-3 border-b border-[#E3DDD1] mb-4">
+        <div class="flex items-center gap-2">
+          <span class="stamp-oli stamp-solid-sage text-[9px] px-2 py-0.5">SCANSIONE MULTIPLA</span>
+          <h3 id="multiScanModalTitle" class="font-space font-bold text-base text-[#222220]">Documenti Acquisiti</h3>
+        </div>
+        <button type="button" onclick="cancelMultiScanChoice()" class="text-[#7A7568] hover:text-[#222220] p-1 cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <p id="multiScanModalDesc" class="text-xs text-[#555] mb-4 leading-relaxed font-sans">
+        Lo scanner di Google ha acquisito più pagine. Come desideri archiviarle nel caveau per l'analisi dell'assistente?
+      </p>
+
+      <div class="space-y-3">
+        <!-- Opzione 1: File Separati -->
+        <button type="button" onclick="submitMultiScanChoice('separate')" class="w-full text-left p-3.5 bg-white hover:bg-[#F3EFE6] border border-[#D8D2C4] hover:border-[#3C5A48] rounded-xs transition shadow-xs group cursor-pointer">
+          <div class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-xs bg-[#EBF1ED] text-[#3C5A48] group-hover:bg-[#3C5A48] group-hover:text-white flex items-center justify-center shrink-0 mt-0.5 transition">
+              <i class="fa-solid fa-layer-group text-base"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between">
+                <span class="font-space font-bold text-sm text-[#222220]">Documenti Separati</span>
+                <span id="multiScanSeparateBadge" class="stamp-oli text-[8px] bg-[#EBF1ED] text-[#3C5A48]">N FILE</span>
+              </div>
+              <p class="text-[11px] text-[#7A7568] mt-1 leading-snug">
+                Consigliato per scontrini, fatture o ricevute diverse. L'AI estrarrà e catalogherà ciascun documento con la propria scheda e scadenza.
+              </p>
+            </div>
+          </div>
+        </button>
+
+        <!-- Opzione 2: Documento Unico Multipagina (PDF) -->
+        <button type="button" id="btnMultiScanPdf" onclick="submitMultiScanChoice('pdf')" class="w-full text-left p-3.5 bg-white hover:bg-[#F3EFE6] border border-[#D8D2C4] hover:border-[#C84B31] rounded-xs transition shadow-xs group cursor-pointer">
+          <div class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-xs bg-[#FAECE8] text-[#C84B31] group-hover:bg-[#C84B31] group-hover:text-white flex items-center justify-center shrink-0 mt-0.5 transition">
+              <i class="fa-solid fa-file-pdf text-base"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between">
+                <span class="font-space font-bold text-sm text-[#222220]">Documento Unico Multipagina</span>
+                <span class="stamp-oli stamp-terracotta text-[8px]">1 PDF</span>
+              </div>
+              <p class="text-[11px] text-[#7A7568] mt-1 leading-snug">
+                Consigliato per un unico documento di più pagine (es. contratto, F24 o polizza). L'AI analizzerà tutte le pagine insieme in un unico file protetto.
+              </p>
+            </div>
+          </div>
+        </button>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-[#E3DDD1] flex justify-end">
+        <button type="button" onclick="cancelMultiScanChoice()" class="text-xs text-[#7A7568] hover:text-[#222220] font-mono-code px-3 py-1.5 cursor-pointer">
+          Annulla acquisizione
+        </button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
