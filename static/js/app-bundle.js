@@ -12,6 +12,7 @@
     const realFileInput = document.getElementById('realFileInput');
 
     let currentThreadId = 'general';
+    window.currentThreadId = 'general';
     let threadsCache = [];
     const activeThreadTasks = {}; // Task in background per thread: { [threadId]: { abortController, statusText, progressPercent, startedAt } }
     let activeThreadFilter = 'all'; // 'all', 'group', 'thematic'
@@ -822,6 +823,7 @@
 
     async function switchThread(threadId, fetchMessages = true) {
       currentThreadId = threadId;
+      window.currentThreadId = threadId;
       if (typeof cancelQuoteReply === 'function') cancelQuoteReply();
       deadlineBannerDismissed = false;
       const thread = threadsCache.find(t => t.id === threadId);
@@ -900,11 +902,32 @@
             if (m.message_type === 'audio' && m.metadata && m.metadata.audio_url) {
               const trText = m.metadata.transcription || (m.content && m.content.startsWith('🎤 ') ? m.content.slice(2).trim() : null);
               appendUserAudioBubble(m.metadata.audio_url, m.metadata.duration || 0, quoted, trText);
+            } else if (m.message_type === 'document' || (m.metadata && (m.metadata.file_url || m.metadata.document_id || m.metadata.documents)) || (m.content && m.content.startsWith('Caricato file:'))) {
+              const firstDoc = (m.metadata && m.metadata.documents && m.metadata.documents[0]) || null;
+              const fileName = (m.metadata && m.metadata.file_name) || (firstDoc && firstDoc.title) || (m.content ? m.content.replace(/^Caricato file:\s*/i, '').trim() : 'Documento');
+              const fileUrl = (m.metadata && m.metadata.file_url) || (firstDoc && firstDoc.file_url) || (m.metadata && m.metadata.document_id ? `/uploads/doc_${m.metadata.document_id}` : null);
+              const downloadUrl = (m.metadata && m.metadata.download_url) || (firstDoc && firstDoc.download_url) || fileUrl;
+              const fileSize = (m.metadata && m.metadata.file_size) || 0;
+              const fType = ((m.metadata && m.metadata.file_type) || (firstDoc && firstDoc.file_type) || '').toLowerCase();
+              const isImg = fType.startsWith('image') || /\.(jpe?g|png|webp|gif|bmp)$/i.test(fileName) || /\.(jpe?g|png|webp|gif|bmp)$/i.test(fileUrl || '');
+              const isPdf = fType.includes('pdf') || /\.pdf$/i.test(fileName) || /\.pdf$/i.test(fileUrl || '');
+              const docId = (firstDoc && (firstDoc.id || firstDoc.document_id)) || (m.metadata ? m.metadata.document_id : null);
+              appendUserFileBubble(fileName, fileSize, fileUrl, isImg, isPdf, downloadUrl, docId);
             } else {
               appendUserBubble(m.content, quoted);
             }
           } else {
-            const docs = m.metadata && m.metadata.documents ? m.metadata.documents : null;
+            let docs = m.metadata && m.metadata.documents ? m.metadata.documents : null;
+            if (!docs && m.metadata && m.metadata.document_id) {
+              docs = [{
+                id: m.metadata.document_id,
+                document_id: m.metadata.document_id,
+                title: (m.content && m.content.match(/\*\*(.*?)\*\*/)?.[1]) || 'Documento',
+                file_url: `/api/documents/${m.metadata.document_id}/file`,
+                download_url: `/api/documents/${m.metadata.document_id}/download`,
+                file_type: 'application/pdf'
+              }];
+            }
             const conf = m.metadata && m.metadata.confirmation ? m.metadata.confirmation : null;
             const itemPhoto = m.metadata && m.metadata.item_photo ? m.metadata.item_photo : null;
             const storeItem = m.metadata && m.metadata.store_item ? m.metadata.store_item : null;
@@ -951,6 +974,8 @@
         `;
       }
     }
+    window.loadThreadMessages = loadThreadMessages;
+    window.loadChatHistory = () => loadThreadMessages(currentThreadId);
 
     // --- Sistema Responsivo Mobile/Desktop ---
 
@@ -2633,11 +2658,12 @@
       return userBubble;
     }
 
-    function appendUserFileBubble(fileName, fileSize, previewUrl = null, isImage = false, isPdf = false) {
+    function appendUserFileBubble(fileName, fileSize, previewUrl = null, isImage = false, isPdf = false, downloadUrl = null, docId = null) {
       const userBubble = document.createElement('div');
       userBubble.className = 'flex flex-col items-end';
       const isOli = getActiveTheme() === 'olivetti';
 
+      const dlUrl = downloadUrl || previewUrl || '#';
       const lowerName = (fileName || '').toLowerCase();
       const isOffice = lowerName.endsWith('.docx') || lowerName.endsWith('.doc') || lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls') || lowerName.endsWith('.csv') || lowerName.endsWith('.tsv');
       const isZip = lowerName.endsWith('.zip') || lowerName.endsWith('.rar') || lowerName.endsWith('.7z') || lowerName.endsWith('.tar') || lowerName.endsWith('.gz');
@@ -2645,16 +2671,63 @@
       let previewContent = '';
       if (isImage && previewUrl) {
         previewContent = `
-          <div class="cursor-pointer group mb-1" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', 'image')">
-            <div class="relative overflow-hidden ${isOli ? 'rounded-xs' : 'rounded-lg'} bg-black/5 max-h-48 flex items-center justify-center">
-              <img src="${previewUrl}" class="w-full h-auto object-cover max-h-48 ${isOli ? 'rounded-xs' : 'rounded-lg'} group-hover:scale-105 transition duration-200" alt="Anteprima">
-              <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
-                <i class="fa-solid fa-magnifying-glass-plus text-xl drop-shadow"></i>
+          <div class="cursor-pointer group mb-1" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', 'image', '${dlUrl}', ${docId || 'null'})">
+            <div class="relative overflow-hidden ${isOli ? 'rounded-xs' : 'rounded-lg'} bg-black/5 max-h-52 flex items-center justify-center border border-[#E3DDD1]">
+              <img src="${previewUrl}" class="w-full h-auto object-cover max-h-52 ${isOli ? 'rounded-xs' : 'rounded-lg'} group-hover:scale-[1.02] transition duration-200" alt="Anteprima">
+              <div class="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white gap-1.5 text-xs font-semibold backdrop-blur-2xs">
+                <i class="fa-solid fa-magnifying-glass-plus text-lg drop-shadow"></i> Ingrandisci Foto
+              </div>
+              <div class="absolute top-1.5 left-1.5 pointer-events-none">
+                <span class="stamp-oli stamp-solid-sage text-[8px]"><i class="fa-solid fa-camera text-[8px]"></i> FOTO / SCANSIONE</span>
               </div>
             </div>
-            <div class="flex items-center justify-between px-1 pt-1 text-[11px] text-gray-700 font-medium">
-              <span class="truncate max-w-[170px] ${isOli ? 'font-mono-code' : ''}">${escapeHtml(fileName)}</span>
-              <span class="text-gray-500 font-mono-code">${formatFileSize(fileSize)}</span>
+            <div class="flex items-center justify-between px-1 pt-1.5 gap-2 border-t border-[#E3DDD1] mt-1.5">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="truncate max-w-[140px] text-[11px] font-bold font-mono-code text-[#222220]">${escapeHtml(fileName)}</span>
+                <span class="text-[10px] text-gray-500 font-mono-code shrink-0">${formatFileSize(fileSize)}</span>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation()">
+                <button type="button" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', 'image', '${dlUrl}', ${docId || 'null'})" class="bg-[#3C5A48] hover:bg-[#2F4738] text-white text-[10px] font-bold px-2.5 py-1 rounded-xs transition active:scale-95 flex items-center gap-1 font-space cursor-pointer shadow-xs" title="Visualizza anteprima">
+                  <i class="fa-regular fa-eye text-xs"></i> <span>Vedi</span>
+                </button>
+                ${dlUrl && dlUrl !== '#' ? `
+                <a href="${dlUrl}" download="${escapeHtml(fileName)}" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] border border-[#3C5A48] text-[10px] font-bold px-2 py-1 rounded-xs transition active:scale-95 flex items-center gap-1 font-space shadow-xs" title="Scarica file">
+                  <i class="fa-solid fa-download text-xs text-[#3C5A48]"></i>
+                </a>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (isPdf && previewUrl) {
+        const boxClass = isOli 
+          ? 'bg-[#FAF8F2] p-2.5 rounded-xs flex items-center justify-between gap-3 mb-1 border border-[#E3DDD1]' 
+          : 'bg-[#d4f2c5] p-2.5 rounded-lg flex items-center justify-between gap-3 mb-1 border border-emerald-200/70';
+        const iconBoxClass = isOli 
+          ? 'w-8 h-8 rounded-xs bg-[#FAECE8] text-[#C84B31] flex items-center justify-center shrink-0 shadow-xs border border-[#E3DDD1]' 
+          : 'w-9 h-9 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0 shadow-2xs';
+
+        previewContent = `
+          <div class="${boxClass} cursor-pointer group/pdf" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', 'application/pdf', '${dlUrl}', ${docId || 'null'})">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="${iconBoxClass}">
+                <i class="fa-solid fa-file-pdf text-lg"></i>
+              </div>
+              <div class="text-xs min-w-0">
+                <p class="font-bold text-[#222220] truncate max-w-[140px] ${isOli ? 'font-space' : ''}">${escapeHtml(fileName)}</p>
+                <div class="flex items-center gap-1 mt-0.5">
+                  <span class="stamp-oli stamp-terracotta text-[8px]">PDF</span>
+                  <span class="text-[10px] text-[#7A7568] font-mono-code">${formatFileSize(fileSize)}</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation()">
+              <button type="button" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', 'application/pdf', '${dlUrl}', ${docId || 'null'})" class="bg-[#3C5A48] hover:bg-[#2F4738] text-white text-[10px] font-bold px-2.5 py-1 rounded-xs transition active:scale-95 flex items-center gap-1 font-space cursor-pointer shadow-xs" title="Visualizza documento PDF">
+                <i class="fa-regular fa-eye text-xs"></i> <span>Vedi</span>
+              </button>
+              ${dlUrl && dlUrl !== '#' ? `
+              <a href="${dlUrl}" download="${escapeHtml(fileName)}" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] border border-[#3C5A48] text-[10px] font-bold px-2 py-1 rounded-xs transition active:scale-95 flex items-center gap-1 font-space shadow-xs" title="Scarica file">
+                <i class="fa-solid fa-download text-xs text-[#3C5A48]"></i>
+              </a>` : ''}
             </div>
           </div>
         `;
@@ -2663,11 +2736,7 @@
         let bgStyle = isOli ? 'bg-[#FAF8F2] text-[#3C5A48]' : 'bg-slate-100 text-slate-600';
         let badgeText = 'FILE';
 
-        if (isPdf) {
-          iconHtml = `<i class="fa-solid fa-file-pdf text-lg ${isOli ? 'text-[#C84B31]' : 'text-red-600'}"></i>`;
-          bgStyle = isOli ? 'bg-[#FAECE8] text-[#C84B31]' : 'bg-red-100 text-red-600';
-          badgeText = 'PDF';
-        } else if (lowerName.endsWith('.docx') || lowerName.endsWith('.doc')) {
+        if (lowerName.endsWith('.docx') || lowerName.endsWith('.doc')) {
           iconHtml = `<i class="fa-solid fa-file-word text-lg ${isOli ? 'text-[#3C5A48]' : 'text-blue-600'}"></i>`;
           bgStyle = isOli ? 'bg-[#EBF1ED] text-[#3C5A48]' : 'bg-blue-100 text-blue-600';
           badgeText = 'WORD';
@@ -2687,15 +2756,9 @@
         const iconBoxClass = isOli 
           ? `w-8 h-8 rounded-xs ${bgStyle} flex items-center justify-center shrink-0 shadow-xs border border-[#E3DDD1]` 
           : `w-9 h-9 rounded-lg ${bgStyle} flex items-center justify-center shrink-0 shadow-2xs`;
-        const vediBtn = isOli 
-          ? `<button type="button" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', 'application/pdf', '${previewUrl}')" class="bg-[#3C5A48] hover:bg-[#2F4738] text-white text-[10px] font-bold px-2 py-1 rounded-xs transition active:scale-95 flex items-center gap-1 font-space cursor-pointer"><i class="fa-regular fa-eye text-xs"></i> Vedi</button>` 
-          : `<button type="button" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', 'application/pdf', '${previewUrl}')" class="bg-white/95 hover:bg-white text-emerald-800 text-xs font-semibold px-2 py-1 rounded-md shadow-2xs border border-emerald-300 transition active:scale-95 flex items-center gap-1"><i class="fa-regular fa-eye text-xs"></i> Vedi</button>`;
-        const dlBtn = isOli 
-          ? `<a href="${previewUrl}" download="${escapeHtml(fileName)}" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] border border-[#3C5A48] text-[10px] font-bold px-2 py-1 rounded-xs transition active:scale-95 flex items-center gap-1 font-space" title="Scarica file"><i class="fa-solid fa-download text-xs text-[#3C5A48]"></i></a>` 
-          : `<a href="${previewUrl}" download="${escapeHtml(fileName)}" class="bg-white/95 hover:bg-white text-emerald-800 text-xs font-semibold px-2 py-1 rounded-md shadow-2xs border border-emerald-300 transition active:scale-95 flex items-center gap-1" title="Scarica file"><i class="fa-solid fa-download text-xs text-emerald-700"></i></a>`;
 
         previewContent = `
-          <div class="${boxClass}">
+          <div class="${boxClass} cursor-pointer group/doc" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', '${badgeText.toLowerCase()}', '${dlUrl}', ${docId || 'null'})">
             <div class="flex items-center gap-2.5 min-w-0">
               <div class="${iconBoxClass}">
                 ${iconHtml}
@@ -2705,9 +2768,14 @@
                 <p class="text-[10px] text-[#7A7568] font-mono-code">${formatFileSize(fileSize)} • ${badgeText}</p>
               </div>
             </div>
-            <div class="flex items-center gap-1.5 shrink-0">
-              ${isPdf ? vediBtn : ''}
-              ${dlBtn}
+            <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation()">
+              <button type="button" onclick="openMediaModal('${previewUrl}', '${escapeHtml(fileName).replace(/'/g, "\\'")}', '${badgeText.toLowerCase()}', '${dlUrl}', ${docId || 'null'})" class="bg-[#3C5A48] hover:bg-[#2F4738] text-white text-[10px] font-bold px-2.5 py-1 rounded-xs transition active:scale-95 flex items-center gap-1 font-space cursor-pointer shadow-xs" title="Visualizza documento">
+                <i class="fa-regular fa-eye text-xs"></i> <span>Vedi</span>
+              </button>
+              ${dlUrl && dlUrl !== '#' ? `
+              <a href="${dlUrl}" download="${escapeHtml(fileName)}" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] border border-[#3C5A48] text-[10px] font-bold px-2 py-1 rounded-xs transition active:scale-95 flex items-center gap-1 font-space shadow-xs" title="Scarica file">
+                <i class="fa-solid fa-download text-xs text-[#3C5A48]"></i>
+              </a>` : ''}
             </div>
           </div>
         `;
@@ -3377,12 +3445,13 @@
       if (validFiles.length === 1) {
         // Upload singolo
         const file = validFiles[0];
-        const isImage = file.type.startsWith('image/');
-        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        const fileNameLower = (file.name || '').toLowerCase();
+        const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(fileNameLower);
+        const isPdf = file.type === 'application/pdf' || fileNameLower.endsWith('.pdf');
         const blobUrl = URL.createObjectURL(file);
 
         if (currentThreadId === targetThreadId) {
-          appendUserFileBubble(file.name, file.size, blobUrl, isImage, isPdf);
+          appendUserFileBubble(file.name, file.size, blobUrl, isImage, isPdf, blobUrl);
         }
         setGenerationActive(true, `Analisi intelligente di ${file.name}...`, null, targetThreadId);
         const taskSignal = activeThreadTasks[targetThreadId]?.abortController?.signal;
@@ -4615,6 +4684,8 @@
         console.error("Errore loadDashboard:", err);
       }
     }
+    window.loadDashboard = loadDashboard;
+    window.loadDashboardData = loadDashboard;
 
     // --- Modalità Vista Dashboard (Raggruppata per Categoria o Tabellare) ---
     let dashboardViewMode = 'grouped';

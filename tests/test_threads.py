@@ -87,3 +87,41 @@ def test_delete_thread():
     # Delete temporary thread -> should succeed with 200
     del_res = client.delete(f"/api/threads/{temp_id}")
     assert del_res.status_code == 200
+
+def test_thread_messages_document_widgets_persistence():
+    # Create a dedicated thread
+    t_res = client.post("/api/threads", json={"name": "Test Widget Persistence", "thread_type": "thematic"})
+    assert t_res.status_code == 201
+    tid = t_res.json()["id"]
+
+    fake_pdf = io.BytesIO(b"%PDF-1.4 persistence test")
+    upload_res = client.post(
+        "/api/documents/upload",
+        files={"file": ("fattura_persistente.pdf", fake_pdf, "application/pdf")},
+        data={"thread_id": tid}
+    )
+    assert upload_res.status_code == 201
+    doc_id = upload_res.json()["document_id"]
+
+    # Fetch thread messages
+    msgs_res = client.get(f"/api/threads/{tid}/messages")
+    assert msgs_res.status_code == 200
+    msgs = msgs_res.json()["messages"]
+
+    # Find the user upload message and assistant response
+    user_msg = next((m for m in msgs if m["sender"] == "user" and m["message_type"] == "document"), None)
+    asst_msg = next((m for m in msgs if m["sender"] == "assistant" and m.get("metadata", {}).get("documents")), None)
+
+    assert user_msg is not None, "User document upload message must exist"
+    assert user_msg["metadata"].get("documents"), "User message metadata must contain documents"
+    assert user_msg["metadata"].get("file_url"), "User message metadata must have file_url for preview"
+    assert user_msg["metadata"].get("download_url"), "User message metadata must have download_url"
+
+    assert asst_msg is not None, "Assistant message with document widget must exist"
+    docs = asst_msg["metadata"]["documents"]
+    assert len(docs) > 0
+    assert docs[0]["id"] == doc_id
+    assert docs[0]["title"]
+    assert docs[0]["file_url"]
+    assert docs[0]["download_url"]
+

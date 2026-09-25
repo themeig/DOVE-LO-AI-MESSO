@@ -1,6 +1,6 @@
 {
-  "version_code": 282,
-  "version_name": "2.8.2",
+  "version_code": 283,
+  "version_name": "2.8.3",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "🔍 AI Vision per scansioni: supporto completo per documenti scansionati da mobile (PDF e immagini), estrazione ottica multimodale dei contenuti e comprensione istantanea in chat."
+  "release_notes": "📄 Persistenza totale widget documenti e anteprima file con tasto 'Vedi': i widget non scompaiono più alla riapertura della chat e i documenti/foto mostrano sempre il tasto 'Vedi' per visualizzarli a schermo intero."
 }

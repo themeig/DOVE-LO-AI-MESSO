@@ -710,10 +710,14 @@
         if (typeof window.showToast === 'function') {
           window.showToast("📄 Documento scansionato e protocollato!", "success");
         }
-        if (typeof window.loadChatHistory === 'function') {
+        if (typeof window.loadThreadMessages === 'function') {
+          window.loadThreadMessages(activeThreadId || window.currentThreadId || 'general');
+        } else if (typeof window.loadChatHistory === 'function') {
           window.loadChatHistory();
         }
-        if (typeof window.loadDashboardData === 'function') {
+        if (typeof window.loadDashboard === 'function') {
+          window.loadDashboard();
+        } else if (typeof window.loadDashboardData === 'function') {
           window.loadDashboardData();
         }
       } catch (err) {

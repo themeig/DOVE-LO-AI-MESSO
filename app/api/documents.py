@@ -148,19 +148,52 @@ async def upload_document(
     active_model = get_app_setting(db, "ai_model", default=get_settings().OPENROUTER_MODEL) or "auto"
     routed_model = "google/gemini-2.5-flash-lite" if active_model == "auto" else active_model
 
+    fn = Path(doc.file_path).name
+    doc_info = {
+        "id": doc.id,
+        "document_id": doc.id,
+        "title": doc.title,
+        "issuer": doc.issuer,
+        "amount": doc.amount,
+        "due_date": doc.due_date.isoformat() if doc.due_date else None,
+        "status": doc.status,
+        "file_url": f"/uploads/{fn}",
+        "download_url": f"/api/documents/{doc.id}/download",
+        "file_type": doc.file_type,
+        "summary": doc.summary,
+        "drive_file_id": doc.drive_file_id,
+        "drive_web_url": doc.drive_web_url,
+        "category": doc.category,
+        "category_label": doc.category_label,
+        "category_icon": doc.category_icon,
+        "subfolder": doc.subfolder
+    }
+
     user_msg = ChatMessage(
         thread_id=thread_id,
         sender="user",
         message_type="document",
         content=f"Caricato file: {filename}",
-        metadata_json=f'{{"document_id": {doc.id}}}'
+        metadata_json=json.dumps({
+            "document_id": doc.id,
+            "file_name": filename,
+            "file_url": f"/uploads/{fn}",
+            "download_url": f"/api/documents/{doc.id}/download",
+            "file_type": doc.file_type,
+            "file_size": len(contents),
+            "documents": [doc_info]
+        })
     )
     asst_msg = ChatMessage(
         thread_id=thread_id,
         sender="assistant",
         message_type="document",
         content=chat_reply,
-        metadata_json=json.dumps({"document_id": doc.id, "routed_model": routed_model})
+        metadata_json=json.dumps({
+            "document_id": doc.id,
+            "documents": [doc_info],
+            "routed_model": routed_model
+        })
     )
     db.add(user_msg)
     db.add(asst_msg)
@@ -257,24 +290,6 @@ async def upload_documents_batch(
     user_names_str = ", ".join(file_names[:4]) + (f" e altri {total_count - 4} file" if total_count > 4 else "")
     doc_ids = [d.id for d in saved_docs]
 
-    user_msg = ChatMessage(
-        thread_id=thread_id,
-        sender="user",
-        message_type="document",
-        content=f"Caricati {total_count} file: {user_names_str}",
-        metadata_json=f'{{"document_ids": {doc_ids}}}'
-    )
-    asst_msg = ChatMessage(
-        thread_id=thread_id,
-        sender="assistant",
-        message_type="document",
-        content=chat_reply,
-        metadata_json=json.dumps({"document_ids": doc_ids, "routed_model": routed_model})
-    )
-    db.add(user_msg)
-    db.add(asst_msg)
-    db.commit()
-
     docs_output = []
     for d in saved_docs:
         fn = Path(d.file_path).name
@@ -291,8 +306,37 @@ async def upload_documents_batch(
             "file_type": d.file_type,
             "summary": d.summary,
             "drive_file_id": d.drive_file_id,
-            "drive_web_url": d.drive_web_url
+            "drive_web_url": d.drive_web_url,
+            "category": d.category,
+            "category_label": d.category_label,
+            "category_icon": d.category_icon,
+            "subfolder": d.subfolder
         })
+
+    user_msg = ChatMessage(
+        thread_id=thread_id,
+        sender="user",
+        message_type="document",
+        content=f"Caricati {total_count} file: {user_names_str}",
+        metadata_json=json.dumps({
+            "document_ids": doc_ids,
+            "documents": docs_output
+        })
+    )
+    asst_msg = ChatMessage(
+        thread_id=thread_id,
+        sender="assistant",
+        message_type="document",
+        content=chat_reply,
+        metadata_json=json.dumps({
+            "document_ids": doc_ids,
+            "documents": docs_output,
+            "routed_model": routed_model
+        })
+    )
+    db.add(user_msg)
+    db.add(asst_msg)
+    db.commit()
 
     return {
         "success": True,
@@ -407,7 +451,32 @@ def _handle_unzip_vault_document(
     )
 
     extracted_ids = [d.id for d in extracted_docs]
-    meta_json = json.dumps({"document_ids": extracted_ids, "unzipped_from_id": target_doc.id})
+    docs_payload = [
+        {
+            "id": d.id,
+            "document_id": d.id,
+            "title": d.title,
+            "doc_type": d.doc_type,
+            "category": d.category,
+            "category_label": d.category_label,
+            "category_icon": d.category_icon,
+            "subfolder": d.subfolder,
+            "issuer": d.issuer,
+            "amount": d.amount,
+            "due_date": d.due_date.isoformat() if d.due_date else None,
+            "status": d.status,
+            "summary": d.summary,
+            "file_url": f"/uploads/{Path(d.file_path).name}" if d.file_path else None,
+            "download_url": f"/api/documents/{d.id}/download",
+            "file_type": d.file_type
+        }
+        for d in extracted_docs
+    ]
+    meta_json = json.dumps({
+        "document_ids": extracted_ids,
+        "documents": docs_payload,
+        "unzipped_from_id": target_doc.id
+    })
 
     asst_msg = ChatMessage(
         thread_id=effective_thread,

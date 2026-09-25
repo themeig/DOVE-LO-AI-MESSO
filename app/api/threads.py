@@ -1,6 +1,7 @@
 import json
 import re
 import uuid
+from pathlib import Path
 from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -150,6 +151,58 @@ def get_thread_messages(thread_id: str, db: Session = Depends(get_db)):
                 meta = json.loads(m.metadata_json)
             except Exception:
                 meta = {}
+
+        # Risolvi e arricchisci automaticamente i documenti per garantire che
+        # i widget delle schede documento persistano SEMPRE alla riapertura della chat
+        doc_id = meta.get("document_id")
+        doc_ids = meta.get("document_ids")
+        resolved_ids = []
+        if isinstance(doc_ids, list):
+            for did in doc_ids:
+                try:
+                    resolved_ids.append(int(did))
+                except (ValueError, TypeError):
+                    pass
+        elif doc_id is not None:
+            try:
+                resolved_ids.append(int(doc_id))
+            except (ValueError, TypeError):
+                pass
+
+        if resolved_ids and not meta.get("documents"):
+            found_docs = db.query(Document).filter(Document.id.in_(resolved_ids)).all()
+            if found_docs:
+                docs_payload = []
+                for d in found_docs:
+                    fn = Path(d.file_path).name if d.file_path else ""
+                    docs_payload.append({
+                        "id": d.id,
+                        "document_id": d.id,
+                        "title": d.title,
+                        "issuer": d.issuer,
+                        "amount": d.amount,
+                        "due_date": d.due_date.isoformat() if d.due_date else None,
+                        "status": d.status,
+                        "file_url": f"/uploads/{fn}" if fn else None,
+                        "download_url": f"/api/documents/{d.id}/download",
+                        "file_type": d.file_type,
+                        "summary": d.summary,
+                        "drive_file_id": d.drive_file_id,
+                        "drive_web_url": d.drive_web_url,
+                        "category": d.category,
+                        "category_label": d.category_label,
+                        "category_icon": d.category_icon,
+                        "subfolder": d.subfolder
+                    })
+                meta["documents"] = docs_payload
+                if m.sender == "user":
+                    first_d = found_docs[0]
+                    first_fn = Path(first_d.file_path).name if first_d.file_path else ""
+                    meta.setdefault("file_url", f"/uploads/{first_fn}")
+                    meta.setdefault("download_url", f"/api/documents/{first_d.id}/download")
+                    meta.setdefault("file_type", first_d.file_type)
+                    meta.setdefault("file_name", first_d.title)
+
         items.append({
             "id": m.id,
             "sender": m.sender,
