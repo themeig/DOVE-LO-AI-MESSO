@@ -21,7 +21,7 @@ from app.models.database import (
 )
 from app.models.schemas import ChatResponse
 from app.services.ai_service import get_ai_service, MockAIService
-from app.services.drive_service import resolve_drive_folder_path
+from app.services.drive_service import resolve_drive_folder_path, sanitize_drive_folder_name
 from app.services.search_service import (
     search_vault_documents,
     search_vault_items,
@@ -2065,8 +2065,12 @@ class AgenticChatService:
             files_list = []
             folders_overview = {}
             for d in drive_docs:
-                folder_parts = resolve_drive_folder_path(d.doc_type, d.due_date)
-                folder_str = " / ".join(folder_parts)
+                if getattr(d, "drive_folder_path", None):
+                    folder_str = d.drive_folder_path
+                    folder_parts = folder_str.split(" / ")
+                else:
+                    folder_parts = resolve_drive_folder_path(d.doc_type, d.due_date)
+                    folder_str = " / ".join(folder_parts)
                 fn = Path(d.file_path).name if d.file_path else ""
                 doc_title = (d.title or "").strip() or fn or f"Documento #{d.id}"
                 folders_overview.setdefault(folder_str, []).append(doc_title)
@@ -2388,11 +2392,15 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             vault_summary.append(f"- Account Google associato: {drive_cred.user_email or 'Account collegato'}")
             vault_summary.append(f"- Modalità archiviazione: {drive_cred.storage_mode} ({mode_desc})")
             vault_summary.append(f"- File totali archiviati su Google Drive per questo canale: {len(drive_docs)}")
-            vault_summary.append(f"- Regola cartelle Drive: 'DoveLoAIMesso / <Anno> / <Categoria> / <File>' (o 'DoveLoAIMesso / <Categoria> / <File>' senza scadenza)")
+            vault_summary.append(f"- Regola cartelle Drive: 'DoveLoAIMesso / <NomeChat> / <Categoria> / <Anno o Sottocartella> / <File>' (file organizzati e separati per ciascuna chat)")
             if drive_docs:
                 vault_summary.append("  File attualmente presenti su Google Drive:")
                 for dd in drive_docs[:15]:
-                    f_path = " / ".join(resolve_drive_folder_path(dd.doc_type, dd.due_date))
+                    if getattr(dd, "drive_folder_path", None):
+                        f_path = dd.drive_folder_path
+                    else:
+                        f_parts = resolve_drive_folder_path(dd.doc_type, dd.due_date)
+                        f_path = " / ".join(f_parts)
                     dd_title = (dd.title or "").strip() or (Path(dd.file_path).name if dd.file_path else "") or f"Documento #{dd.id}"
                     vault_summary.append(f"  * 📁 {f_path} -> 📄 {dd_title} [Drive Web URL: {dd.drive_web_url or dd.drive_file_id}]")
         else:

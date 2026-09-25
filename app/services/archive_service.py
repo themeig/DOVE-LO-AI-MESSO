@@ -1542,15 +1542,24 @@ def unzip_document_to_vault(
                 # Sincronizzazione automatica con Google Drive se attivo (e non solo locale)
                 drive_file_id = None
                 drive_web_url = None
+                drive_folder_str = None
                 if active_cred and getattr(active_cred, "storage_mode", "dual") != "local_only":
                     try:
-                        from app.services.drive_service import get_drive_service, resolve_drive_folder_path
+                        from app.services.drive_service import get_drive_service, resolve_drive_folder_path, sanitize_drive_folder_name
+                        from app.models.database import ChatThread
+
+                        chat_folder = "Generale"
+                        if thread_id and thread_id not in ("general", "all"):
+                            th = db.query(ChatThread).filter(ChatThread.id == thread_id).first()
+                            chat_folder = sanitize_drive_folder_name(th.name if th else thread_id, thread_id=thread_id)
+
                         drive_service = get_drive_service()
                         folder_path = resolve_drive_folder_path(
                             extracted.doc_type,
                             due_date_obj,
                             category_label=extracted.category_label,
-                            subfolder=extracted.subfolder
+                            subfolder=extracted.subfolder,
+                            chat_folder=chat_folder,
                         )
                         drive_res = drive_service.upload_file(
                             file_bytes=raw_inner_bytes,
@@ -1561,8 +1570,10 @@ def unzip_document_to_vault(
                         )
                         drive_file_id = drive_res.get("file_id")
                         drive_web_url = drive_res.get("web_view_link")
+                        drive_folder_str = " / ".join(folder_path) if drive_file_id else None
                     except Exception as drive_err:
                         logger.warning(f"Errore upload Drive per '{inner_filename}': {drive_err}")
+                        drive_folder_str = None
 
                 new_doc = Document(
                     thread_id=thread_id,
@@ -1581,6 +1592,7 @@ def unzip_document_to_vault(
                     subfolder=extracted.subfolder,
                     drive_file_id=drive_file_id,
                     drive_web_url=drive_web_url,
+                    drive_folder_path=drive_folder_str,
                     created_at=datetime.now(timezone.utc)
                 )
                 db.add(new_doc)

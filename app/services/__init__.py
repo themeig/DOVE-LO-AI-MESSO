@@ -5,6 +5,7 @@ from app.services.drive_service import (
     RealGoogleDriveService,
     get_drive_service,
     resolve_drive_folder_path,
+    sanitize_drive_folder_name,
 )
 
 from app.services.category_service import (
@@ -24,6 +25,7 @@ __all__ = [
     "RealGoogleDriveService",
     "get_drive_service",
     "resolve_drive_folder_path",
+    "sanitize_drive_folder_name",
     "DEFAULT_GENERAL_CATEGORIES",
     "resolve_or_create_category_and_subfolder",
     "extract_subfolder",

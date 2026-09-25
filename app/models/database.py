@@ -106,6 +106,7 @@ class Document(Base):
     category_label = Column(EncryptedString(255), nullable=True)
     category_icon = Column(String(50), nullable=True)
     subfolder = Column(EncryptedString(255), nullable=True)
+    drive_folder_path = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
@@ -285,6 +286,9 @@ def init_db(engine=None):
                 conn.commit()
             if "subfolder" not in cols:
                 conn.execute(text("ALTER TABLE documents ADD COLUMN subfolder VARCHAR(255)"))
+                conn.commit()
+            if "drive_folder_path" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN drive_folder_path VARCHAR(500)"))
                 conn.commit()
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_documents_category ON documents(category)"))
             conn.commit()

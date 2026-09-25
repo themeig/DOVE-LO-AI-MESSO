@@ -23,10 +23,11 @@ from app.models.database import (
     PhysicalItem,
     WatchedFolder,
     GoogleDriveCredential,
+    ChatThread,
 )
 from app.services.search_service import search_vault_documents, search_vault_items
 from app.services.agent_service import get_current_date_info, categorize_deadline
-from app.services.drive_service import resolve_drive_folder_path
+from app.services.drive_service import resolve_drive_folder_path, sanitize_drive_folder_name
 from app.version import APP_VERSION
 
 AGENT_ROLE_AND_INSTRUCTIONS = """Sei l'assistente AI esecutivo e intelligente di 'Dove lo AI messo', un caveau digitale crittografato e inventario fisico per famiglie e professionisti italiani.
@@ -664,8 +665,11 @@ def get_google_drive_status(query: str = "") -> str:
         if drive_docs:
             lines.append("\nElenco file su Google Drive:")
             for d in drive_docs[:8]:
-                folder_parts = resolve_drive_folder_path(d.doc_type, d.due_date)
-                folder_str = " / ".join(folder_parts)
+                if getattr(d, "drive_folder_path", None):
+                    folder_str = d.drive_folder_path
+                else:
+                    folder_parts = resolve_drive_folder_path(d.doc_type, d.due_date)
+                    folder_str = " / ".join(folder_parts)
                 drive_url = d.drive_web_url or "Disponibile su Drive"
                 lines.append(f"- **{d.title}** in '{folder_str}' | Link: {drive_url}")
         return "\n".join(lines)

@@ -8,7 +8,53 @@ from datetime import date
 from typing import Protocol, Optional
 import httpx
 
+import re
+
 logger = logging.getLogger(__name__)
+
+
+def sanitize_drive_folder_name(name: Optional[str], thread_id: Optional[str] = None) -> str:
+    """
+    Pulisce il nome della cartella per Google Drive:
+    - Rimuove emoji, caratteri grafici speciali e simboli non adatti a percorsi cartelle.
+    - Mappa 'general', 'all' o 'Dove lo AI messo' su 'Generale'.
+    - Normalizza gli spazi multipli.
+    - Garantisce una stringa valida e leggibile.
+    """
+    if thread_id in ("general", "all") or not name:
+        return "Generale"
+
+    clean_raw = str(name).strip()
+    if clean_raw.lower() in ("dove lo ai messo", "generale", "general", "default", "tutti", "tutto"):
+        return "Generale"
+
+    # Rimuovi emoji e simboli grafici Unicode
+    emoji_pattern = re.compile(
+        "["
+        "\U00010000-\U0010ffff"  # Supplemental symbols, emoji
+        "\u2600-\u26ff"          # Miscellaneous Symbols
+        "\u2700-\u27bf"          # Dingbats
+        "\u2300-\u23ff"          # Miscellaneous Technical
+        "\u2b50-\u2b55"
+        "\u200d"                 # Zero-width joiner
+        "\ufe0f"                 # Variation selector
+        "]+",
+        flags=re.UNICODE
+    )
+    clean_text = emoji_pattern.sub("", clean_raw)
+
+    # Rimuovi caratteri vietati nei percorsi di cartella Drive / filesystem: / \ : * ? " < > |
+    clean_text = re.sub(r'[/\\:*?"<>|]', ' ', clean_text)
+    # Riduci spazi multipli
+    clean_text = re.sub(r'\s+', ' ', clean_text).strip(" .-")
+
+    if not clean_text:
+        if thread_id:
+            tid_clean = re.sub(r'[^a-zA-Z0-9_-]', '', thread_id).capitalize()
+            return tid_clean or "Generale"
+        return "Generale"
+
+    return clean_text
 
 
 def resolve_drive_folder_path(
@@ -16,31 +62,28 @@ def resolve_drive_folder_path(
     due_date: Optional[date] = None,
     category_label: Optional[str] = None,
     subfolder: Optional[str] = None,
+    chat_folder: Optional[str] = None,
 ) -> list[str]:
     """
-    Risolve il percorso logico delle cartelle su Google Drive in base alla categoria
-    e alla data di scadenza (se presente) o alla sottocartella / anno.
+    Risolve il percorso logico delle cartelle su Google Drive in base al canale/chat,
+    alla categoria e alla data di scadenza (se presente) o alla sottocartella / anno.
     
-    Struttura:
-    - Se specificata category_label:
+    Struttura con chat_folder:
+    - ["DoveLoAIMesso", "<Chat>", "<Categoria>", "<Anno o Sottocartella>"]
+    
+    Struttura standard (backward-compatible, senza chat_folder):
+    - Con category_label:
       * Con sottocartella: ["DoveLoAIMesso", "<Categoria>", "<Sottocartella>"]
       * Con scadenza: ["DoveLoAIMesso", "<Categoria>", "<Anno>"]
       * Senza: ["DoveLoAIMesso", "<Categoria>"]
-    - Struttura standard (backward-compatible):
-      * Con scadenza: ["DoveLoAIMesso", "<Anno>", "<Categoria>"]
-      * Senza scadenza: ["DoveLoAIMesso", "<Categoria>"]
+    - Standard con scadenza: ["DoveLoAIMesso", "<Anno>", "<Categoria>"]
+    - Standard senza scadenza: ["DoveLoAIMesso", "<Categoria>"]
     """
     clean_type = (doc_type or "").strip().lower()
 
     if category_label and category_label.strip():
-        cat_folder = category_label.strip()
-        if subfolder and subfolder.strip():
-            return ["DoveLoAIMesso", cat_folder, subfolder.strip()]
-        if due_date is not None:
-            return ["DoveLoAIMesso", cat_folder, str(due_date.year)]
-        return ["DoveLoAIMesso", cat_folder]
-
-    if clean_type in ("canzone", "testo_personale", "musica", "poesia"):
+        category = category_label.strip()
+    elif clean_type in ("canzone", "testo_personale", "musica", "poesia"):
         category = "Note & Testi Personali"
     elif clean_type in ("bolletta", "utenza"):
         category = "Bollette & Utenze"
@@ -52,6 +95,24 @@ def resolve_drive_folder_path(
         category = "Contratti & Polizze"
     else:
         category = "Documenti & Foto"
+
+    clean_chat = (chat_folder or "").strip() if chat_folder else None
+
+    if clean_chat:
+        # Struttura organizzata per chat: DoveLoAIMesso / <Chat> / <Categoria> / ...
+        if subfolder and subfolder.strip():
+            return ["DoveLoAIMesso", clean_chat, category, subfolder.strip()]
+        if due_date is not None:
+            return ["DoveLoAIMesso", clean_chat, category, str(due_date.year)]
+        return ["DoveLoAIMesso", clean_chat, category]
+
+    # Retrocompatibilità (senza chat_folder specificato)
+    if category_label and category_label.strip():
+        if subfolder and subfolder.strip():
+            return ["DoveLoAIMesso", category, subfolder.strip()]
+        if due_date is not None:
+            return ["DoveLoAIMesso", category, str(due_date.year)]
+        return ["DoveLoAIMesso", category]
 
     if subfolder and subfolder.strip():
         return ["DoveLoAIMesso", category, subfolder.strip()]

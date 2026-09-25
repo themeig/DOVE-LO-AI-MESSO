@@ -1,6 +1,6 @@
 {
-  "version_code": 285,
-  "version_name": "2.8.5",
+  "version_code": 286,
+  "version_name": "2.8.6",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "🕒 Orario reale di invio e divisori di data stile WhatsApp: ogni messaggio mostra ora l'orario effettivo di invio (non più l'orario attuale dell'app) sia nel timbro superiore sia all'interno della bolla, con separatori di data raggruppati come WhatsApp (OGGI, IERI, giorno della settimana o data estesa)."
+  "release_notes": "📂 Organizzazione Google Drive per Chat: i documenti caricati vengono ora archiviati su Google Drive in sottocartelle dedicate e pulite per ciascuna chat (es. DoveLoAIMesso / Famiglia / ..., DoveLoAIMesso / Lavoro & Studio / ..., DoveLoAIMesso / Generale / ...)."
 }

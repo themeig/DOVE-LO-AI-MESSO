@@ -162,3 +162,57 @@ def test_document_upload_with_local_only_mode():
 
     # Pulizia
     client.post("/api/drive/disconnect")
+
+
+def test_document_upload_in_thread_routes_to_chat_folder():
+    init_db()
+    client.get("/api/drive/callback?code=test_code")
+
+    captured_paths = []
+    from app.services.drive_service import MockGoogleDriveService
+    original_upload = MockGoogleDriveService.upload_file
+
+    def spy_upload(self, file_bytes, filename, mime_type, folder_path, access_token):
+        captured_paths.append(list(folder_path))
+        return original_upload(self, file_bytes, filename, mime_type, folder_path, access_token)
+
+    with patch.object(MockGoogleDriveService, "upload_file", spy_upload):
+        # 1. Caricamento in canale Famiglia
+        f1 = io.BytesIO(b"%PDF-1.4 bolletta per chat famiglia")
+        res1 = client.post(
+            "/api/documents/upload",
+            files={"file": ("bolletta_luce.pdf", f1, "application/pdf")},
+            data={"thread_id": "famiglia"}
+        )
+        assert res1.status_code in (200, 201)
+
+        # 2. Caricamento in canale Lavoro & Studio
+        f2 = io.BytesIO(b"%PDF-1.4 contratto per chat lavoro")
+        res2 = client.post(
+            "/api/documents/upload",
+            files={"file": ("contratto_consulenza.pdf", f2, "application/pdf")},
+            data={"thread_id": "lavoro"}
+        )
+        assert res2.status_code in (200, 201)
+
+        # 3. Caricamento in canale Generale
+        f3 = io.BytesIO(b"%PDF-1.4 scontrino per chat generale")
+        res3 = client.post(
+            "/api/documents/upload",
+            files={"file": ("scontrino_spesa.pdf", f3, "application/pdf")},
+            data={"thread_id": "general"}
+        )
+        assert res3.status_code in (200, 201)
+
+    assert len(captured_paths) == 3
+    # Verifica che il primo livello sotto DoveLoAIMesso sia la cartella della chat ripulita
+    assert captured_paths[0][0] == "DoveLoAIMesso"
+    assert captured_paths[0][1] == "Famiglia"
+
+    assert captured_paths[1][0] == "DoveLoAIMesso"
+    assert captured_paths[1][1] == "Lavoro & Studio"
+
+    assert captured_paths[2][0] == "DoveLoAIMesso"
+    assert captured_paths[2][1] == "Generale"
+
+    client.post("/api/drive/disconnect")

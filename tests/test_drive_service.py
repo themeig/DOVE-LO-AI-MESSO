@@ -7,6 +7,7 @@ from app.services.drive_service import (
     RealGoogleDriveService,
     get_drive_service,
     resolve_drive_folder_path,
+    sanitize_drive_folder_name,
 )
 
 
@@ -19,6 +20,39 @@ def test_resolve_drive_folder_path():
 
     path_generic = resolve_drive_folder_path("generico", None)
     assert path_generic == ["DoveLoAIMesso", "Documenti & Foto"]
+
+
+def test_sanitize_drive_folder_name():
+    assert sanitize_drive_folder_name("Famiglia 👨‍👩‍👧", thread_id="famiglia") == "Famiglia"
+    assert sanitize_drive_folder_name("Lavoro & Studio 💼", thread_id="lavoro") == "Lavoro & Studio"
+    assert sanitize_drive_folder_name("Casa & Utenze 🏠", thread_id="casa") == "Casa & Utenze"
+    assert sanitize_drive_folder_name("Dove lo AI messo", thread_id="general") == "Generale"
+    assert sanitize_drive_folder_name(None, thread_id="general") == "Generale"
+    assert sanitize_drive_folder_name("", thread_id="all") == "Generale"
+    assert sanitize_drive_folder_name("Progetto 2026 🚀", thread_id="proj-1") == "Progetto 2026"
+    assert sanitize_drive_folder_name("Cartella / Test : Special *", thread_id="custom") == "Cartella Test Special"
+
+
+def test_resolve_drive_folder_path_with_chat_folder():
+    # Chat Famiglia: bolletta con scadenza 2026
+    path_fam = resolve_drive_folder_path("bolletta", date(2026, 10, 28), chat_folder="Famiglia")
+    assert path_fam == ["DoveLoAIMesso", "Famiglia", "Bollette & Utenze", "2026"]
+
+    # Chat Famiglia: scontrino senza scadenza
+    path_scontrino = resolve_drive_folder_path("scontrino", None, chat_folder="Famiglia")
+    assert path_scontrino == ["DoveLoAIMesso", "Famiglia", "Fatture & Spese"]
+
+    # Chat Lavoro & Studio con category_label personalizzata
+    path_lavoro = resolve_drive_folder_path("contratto", None, category_label="Contratti Lavoro", chat_folder="Lavoro & Studio")
+    assert path_lavoro == ["DoveLoAIMesso", "Lavoro & Studio", "Contratti Lavoro"]
+
+    # Chat Generale con sottocartella
+    path_gen = resolve_drive_folder_path("canzone", None, category_label="Canzoni & Musica", subfolder="Bozze 2026", chat_folder="Generale")
+    assert path_gen == ["DoveLoAIMesso", "Generale", "Canzoni & Musica", "Bozze 2026"]
+
+    # Retrocompatibilità: senza chat_folder rimane identico al passato
+    legacy = resolve_drive_folder_path("bolletta", date(2026, 10, 28))
+    assert legacy == ["DoveLoAIMesso", "2026", "Bollette & Utenze"]
 
 
 def test_resolve_drive_folder_path_categories():
