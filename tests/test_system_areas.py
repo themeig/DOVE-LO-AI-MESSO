@@ -9,7 +9,7 @@ from app.version import APP_VERSION
 
 
 def test_app_version():
-    assert APP_VERSION == "2.10.9"
+    assert APP_VERSION == "2.10.10"
 
 
 def test_index_html_has_system_areas():
@@ -92,11 +92,15 @@ def test_app_bundle_has_system_area_and_mobile_gestures():
     assert "function updateHeaderCloudIndicators(driveConnected, calendarConnected)" in content
     assert "window.updateHeaderCloudIndicators = updateHeaderCloudIndicators;" in content
 
-    # Verifica gestione tasto indietro nativo e gesture swipe per cambio sezioni
+    # Verifica gestione tasto indietro nativo e gesture swipe interattivo 1:1 per cambio sezioni
     assert "function handleNativeBackPress()" in content
     assert "window.handleNativeBackPress = handleNativeBackPress;" in content
     assert "function initMobileSwipeGestures()" in content
     assert "window.initMobileSwipeGestures = initMobileSwipeGestures;" in content
+    assert "translate3d" in content
+    assert "activeFromEl.style.transform" in content
+    assert "activeToEl.style.transform" in content
+
 
 
 def test_android_main_activity_delegates_back_press():

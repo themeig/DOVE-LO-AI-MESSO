@@ -1,6 +1,6 @@
 {
-  "version_code": 309,
-  "version_name": "2.10.9",
+  "version_code": 310,
+  "version_name": "2.10.10",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "📸 Acquisizione Multi-Foto Continua Diretta: scatto da fotocamera senza regolazione forzata dei bordi, supporto sequenza multi-scatto e invio immediato all'AI come documento unico multipagina (PDF) o documenti separati."
+  "release_notes": "👆 Swipe Interattivo 1:1 in Tempo Reale: l'interfaccia segue fluidamente il dito durante il trascinamento continuo tra sezioni (Dashboard, Conversa e Sistema), attivo anche all'interno delle conversazioni chat."
 }

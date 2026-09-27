@@ -1360,123 +1360,299 @@
       handleNativeBackPress();
     });
 
-    // --- Gestione Gesture di Swipe Orizzontale per Cambio Sezione Mobile ---
+    // --- Gestione Gesture di Swipe Orizzontale Interattivo (1:1 Dragging) per Cambio Sezione Mobile ---
     function initMobileSwipeGestures() {
       let touchStartX = 0;
       let touchStartY = 0;
       let touchStartTime = 0;
-      let isSwipeCandidate = false;
+      let isDragging = false;
+      let gestureDirection = null; // null | 'horizontal' | 'vertical'
+      let activeFromEl = null;
+      let activeToEl = null;
+      let targetScreen = null;
+      let viewportWidth = window.innerWidth;
 
       const viewport = document.getElementById('appScreensViewport') || document.body;
 
+      function resetDragState() {
+        if (activeFromEl) {
+          activeFromEl.style.transform = '';
+          activeFromEl.style.transition = '';
+          activeFromEl.style.zIndex = '';
+          activeFromEl.style.willChange = '';
+        }
+        if (activeToEl) {
+          activeToEl.classList.add('hidden');
+          activeToEl.classList.remove('flex');
+          activeToEl.style.transform = '';
+          activeToEl.style.transition = '';
+          activeToEl.style.zIndex = '';
+          activeToEl.style.willChange = '';
+        }
+        activeFromEl = null;
+        activeToEl = null;
+        targetScreen = null;
+        isDragging = false;
+        gestureDirection = null;
+      }
+
       viewport.addEventListener('touchstart', (e) => {
         if (e.touches.length !== 1) {
-          isSwipeCandidate = false;
+          resetDragState();
           return;
         }
-        // Attivo solo su mobile / tablet o viewport ristretto
-        if (!isMobileView && window.innerWidth > 768) {
-          isSwipeCandidate = false;
+
+        // Attivo su mobile / tablet o viewport ristretto
+        if (!isMobileView && window.innerWidth > 850) {
           return;
         }
+
         if (isTransitioningScreens) {
-          isSwipeCandidate = false;
           return;
         }
 
         const target = e.target;
-        // Ignora input interattivi, pulsanti, form di chat
-        if (target.closest('input, textarea, select, button, label, #chatForm, #inputContainer, #threadsSearchInput, .modal-card, #photoActionModal')) {
-          isSwipeCandidate = false;
+        // Non iniziare lo swipe su controlli di testo interattivi o bottoni form
+        if (target.closest('input, textarea, select, #chatForm, #inputContainer, #threadsSearchInput, .modal-card, #multiPhotoModal, #multiScanChoiceModal')) {
           return;
         }
 
         // Ignora se un modale è aperto
-        const openModal = document.querySelector('#googleDriveModal:not(.hidden), #newThreadModal:not(.hidden), #watchedFoldersModal:not(.hidden)');
+        const openModal = document.querySelector('#googleDriveModal:not(.hidden), #newThreadModal:not(.hidden), #watchedFoldersModal:not(.hidden), #multiPhotoModal:not(.hidden), #multiScanChoiceModal:not(.hidden)');
         if (openModal) {
-          isSwipeCandidate = false;
-          return;
-        }
-
-        // Ignora elementi con scrolling orizzontale proprio (es. filtri o tabelle con overflow)
-        let curr = target;
-        let hasHorizontalScroll = false;
-        while (curr && curr !== viewport && curr !== document.body) {
-          if (curr.scrollWidth > curr.clientWidth + 10) {
-            const overflowX = window.getComputedStyle(curr).overflowX;
-            if (overflowX === 'auto' || overflowX === 'scroll') {
-              hasHorizontalScroll = true;
-              break;
-            }
-          }
-          curr = curr.parentElement;
-        }
-        if (hasHorizontalScroll) {
-          isSwipeCandidate = false;
           return;
         }
 
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         touchStartTime = Date.now();
-        isSwipeCandidate = true;
+        isDragging = false;
+        gestureDirection = null;
+        viewportWidth = viewport.clientWidth || window.innerWidth || 360;
       }, { passive: true });
 
       viewport.addEventListener('touchmove', (e) => {
-        if (!isSwipeCandidate || e.touches.length !== 1) return;
+        if (e.touches.length !== 1 || isTransitioningScreens) return;
+
         const currentX = e.touches[0].clientX;
         const currentY = e.touches[0].clientY;
-        const diffX = Math.abs(currentX - touchStartX);
-        const diffY = Math.abs(currentY - touchStartY);
+        const dx = currentX - touchStartX;
+        const dy = currentY - touchStartY;
 
-        // Se lo scroll verticale è prevalente, è navigazione nei messaggi o nella pagina: annulla lo swipe
-        if (diffY > 30 && diffY > diffX) {
-          isSwipeCandidate = false;
+        // Se la direzione non è ancora stata determinata:
+        if (gestureDirection === null) {
+          const absDx = Math.abs(dx);
+          const absDy = Math.abs(dy);
+
+          // Attendi un movimento iniziale minimo di 6px per capire l'intento dell'utente
+          if (absDx < 6 && absDy < 6) return;
+
+          if (absDx > absDy * 1.1) {
+            gestureDirection = 'horizontal';
+            isDragging = true;
+          } else {
+            gestureDirection = 'vertical';
+            isDragging = false;
+            return;
+          }
         }
-      }, { passive: true });
 
-      viewport.addEventListener('touchend', (e) => {
-        if (!isSwipeCandidate || !e.changedTouches || e.changedTouches.length === 0) return;
-        isSwipeCandidate = false;
+        // Se il gesto è stato classificato come scroll verticale, lascia scorrere la pagina/messaggi nativamente
+        if (gestureDirection !== 'horizontal' || !isDragging) return;
 
-        const touchEndX = e.changedTouches[0].clientX;
-        const touchEndY = e.changedTouches[0].clientY;
-        const deltaX = touchEndX - touchStartX;
-        const deltaY = touchEndY - touchStartY;
-        const elapsed = Date.now() - touchStartTime;
+        // Blocca lo scroll verticale mentre si trascina l'interfaccia orizzontalmente
+        if (e.cancelable) e.preventDefault();
 
-        // Criteri per swipe orizzontale valido:
-        // Spostamento >= 55px, preponderanza orizzontale 1.4x rispetto al verticale, durata <= 550ms
-        if (Math.abs(deltaX) < 55 || Math.abs(deltaX) < 1.4 * Math.abs(deltaY) || elapsed > 550) {
+        const normalizedCurrent = (currentActiveScreen === 'system') ? 'settings' : currentActiveScreen;
+        let nextTarget = null;
+
+        if (dx > 0) {
+          // Trascina verso destra -> (scopre la schermata a sinistra)
+          if (normalizedCurrent === 'settings') nextTarget = 'chat';
+          else if (normalizedCurrent === 'chat') nextTarget = 'dashboard';
+          else nextTarget = null; // A sinistra della dashboard non c'è nulla
+        } else if (dx < 0) {
+          // Trascina verso sinistra <- (scopre la schermata a destra)
+          if (normalizedCurrent === 'dashboard') nextTarget = 'chat';
+          else if (normalizedCurrent === 'chat') nextTarget = 'settings';
+          else nextTarget = null; // A destra di settings non c'è nulla
+        }
+
+        const fromEl = getScreenElement(normalizedCurrent);
+        if (!fromEl) return;
+        activeFromEl = fromEl;
+
+        // Gestione fine corsa (resistenza elastica se non ci sono ulteriori schermate in quella direzione)
+        if (!nextTarget) {
+          if (activeToEl) {
+            activeToEl.classList.add('hidden');
+            activeToEl.classList.remove('flex');
+            activeToEl.style.transform = '';
+            activeToEl = null;
+          }
+          const elasticDx = dx * 0.22;
+          fromEl.style.transition = 'none';
+          fromEl.style.transform = `translate3d(${elasticDx}px, 0, 0)`;
+          targetScreen = null;
           return;
         }
 
-        if (isTransitioningScreens) return;
+        const toEl = getScreenElement(nextTarget);
+        if (!toEl) return;
 
-        // Gesto Swipe a Destra -> (deltaX > 0): vai verso la sezione a sinistra
-        if (deltaX > 0) {
-          if (currentActiveScreen === 'settings' || currentActiveScreen === 'system') {
-            slideToScreen('chat');
-          } else if (currentActiveScreen === 'chat') {
-            const conv = document.getElementById('conversationPanel');
-            if (conv && conv.classList.contains('mobile-active')) {
-              // Dalla conversazione attiva torna alla lista chat/canali!
-              showThreadsSidebar();
-            } else {
-              // Dalla lista canali vai alla Dashboard
-              slideToScreen('dashboard');
+        // Se è cambiato il target rispetto alla mossa precedente (es. inversione repentina del dito)
+        if (activeToEl && activeToEl !== toEl) {
+          activeToEl.classList.add('hidden');
+          activeToEl.classList.remove('flex');
+          activeToEl.style.transform = '';
+          activeToEl = null;
+        }
+
+        if (activeToEl !== toEl) {
+          activeToEl = toEl;
+          targetScreen = nextTarget;
+          toEl.classList.remove('hidden');
+          toEl.classList.add('flex');
+          toEl.style.transition = 'none';
+          toEl.style.zIndex = '15';
+          fromEl.style.zIndex = '20';
+          toEl.style.willChange = 'transform';
+          fromEl.style.willChange = 'transform';
+
+          if (nextTarget === 'dashboard') renderDashboardView();
+        }
+
+        // Calcola e applica la traslazione graduale 1:1 in tempo reale con accelerazione hardware GPU
+        fromEl.style.transition = 'none';
+        fromEl.style.transform = `translate3d(${dx}px, 0, 0)`;
+
+        const toX = (dx > 0) ? (-viewportWidth + dx) : (viewportWidth + dx);
+        toEl.style.transition = 'none';
+        toEl.style.transform = `translate3d(${toX}px, 0, 0)`;
+      }, { passive: false });
+
+      function handleDragEnd(e) {
+        if (!isDragging || !activeFromEl) {
+          resetDragState();
+          return;
+        }
+
+        const changedTouch = (e.changedTouches && e.changedTouches[0]) || null;
+        const currentX = changedTouch ? changedTouch.clientX : touchStartX;
+        const dx = currentX - touchStartX;
+        const elapsed = Math.max(1, Date.now() - touchStartTime);
+        const velocity = dx / elapsed; // px/ms
+
+        isDragging = false;
+        gestureDirection = null;
+
+        const threshold = viewportWidth * 0.18; // Superato il 18% della larghezza o scatto rapido
+        const commit = targetScreen && (
+          (dx > 0 && (dx > threshold || (dx > 25 && velocity > 0.3))) ||
+          (dx < 0 && (dx < -threshold || (dx < -25 && velocity < -0.3)))
+        );
+
+        if (commit && activeToEl) {
+          isTransitioningScreens = true;
+          const animDuration = 240;
+          const easing = `transform ${animDuration}ms cubic-bezier(0.25, 1, 0.5, 1)`;
+
+          activeFromEl.style.transition = easing;
+          activeToEl.style.transition = easing;
+
+          const fromEnd = (dx > 0) ? viewportWidth : -viewportWidth;
+          activeFromEl.style.transform = `translate3d(${fromEnd}px, 0, 0)`;
+          activeToEl.style.transform = 'translate3d(0, 0, 0)';
+
+          const committedTarget = targetScreen;
+          const fromElToHide = activeFromEl;
+          const toElToShow = activeToEl;
+
+          setTimeout(() => {
+            fromElToHide.classList.add('hidden');
+            fromElToHide.classList.remove('flex');
+            fromElToHide.style.transform = '';
+            fromElToHide.style.transition = '';
+            fromElToHide.style.zIndex = '';
+            fromElToHide.style.willChange = '';
+
+            toElToShow.style.transform = '';
+            toElToShow.style.transition = '';
+            toElToShow.style.zIndex = '';
+            toElToShow.style.willChange = '';
+
+            currentActiveScreen = committedTarget;
+            updateAllBottomNavs(committedTarget);
+            isTransitioningScreens = false;
+
+            activeFromEl = null;
+            activeToEl = null;
+            targetScreen = null;
+
+            // Caricamento dati e inizializzazione della schermata di destinazione
+            if (committedTarget === 'dashboard') {
+              renderDashboardView();
+              loadDashboard(currentFilter);
+            } else if (committedTarget === 'settings') {
+              loadAiModelSetting();
+              loadOpenRouterCredits();
+              loadGoogleDriveStatus();
+              loadWatchedFolders();
+              if (typeof loadCalendarStatus === 'function') loadCalendarStatus();
+              if (typeof setSystemArea === 'function') setSystemArea(sessionStorage.getItem('dove_system_active_area') || 'all');
+            } else if (committedTarget === 'chat') {
+              if (isMobileView) {
+                if (conversationPanel.classList.contains('mobile-active')) {
+                  _mobileShowConversation(false);
+                } else {
+                  _mobileShowSidebar(false);
+                }
+              }
             }
+          }, animDuration + 10);
+        } else {
+          // Rimbalzo / Annullamento: ripristina fluidamente la schermata iniziale
+          const animDuration = 200;
+          const easing = `transform ${animDuration}ms cubic-bezier(0.25, 1, 0.5, 1)`;
+
+          if (activeFromEl) {
+            activeFromEl.style.transition = easing;
+            activeFromEl.style.transform = 'translate3d(0, 0, 0)';
           }
-        }
-        // Gesto Swipe a Sinistra <- (deltaX < 0): vai verso la sezione a destra
-        else {
-          if (currentActiveScreen === 'dashboard') {
-            slideToScreen('chat');
-          } else if (currentActiveScreen === 'chat') {
-            slideToScreen('settings');
+          if (activeToEl) {
+            activeToEl.style.transition = easing;
+            const returnX = (dx > 0) ? -viewportWidth : viewportWidth;
+            activeToEl.style.transform = `translate3d(${returnX}px, 0, 0)`;
           }
+
+          const fromElToRestore = activeFromEl;
+          const toElToHide = activeToEl;
+
+          setTimeout(() => {
+            if (toElToHide) {
+              toElToHide.classList.add('hidden');
+              toElToHide.classList.remove('flex');
+              toElToHide.style.transform = '';
+              toElToHide.style.transition = '';
+              toElToHide.style.zIndex = '';
+              toElToHide.style.willChange = '';
+            }
+            if (fromElToRestore) {
+              fromElToRestore.style.transform = '';
+              fromElToRestore.style.transition = '';
+              fromElToRestore.style.zIndex = '';
+              fromElToRestore.style.willChange = '';
+            }
+            activeFromEl = null;
+            activeToEl = null;
+            targetScreen = null;
+            isTransitioningScreens = false;
+          }, animDuration + 10);
         }
-      }, { passive: true });
+      }
+
+      viewport.addEventListener('touchend', handleDragEnd, { passive: true });
+      viewport.addEventListener('touchcancel', handleDragEnd, { passive: true });
     }
     window.initMobileSwipeGestures = initMobileSwipeGestures;
 
