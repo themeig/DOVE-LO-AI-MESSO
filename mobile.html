@@ -2420,6 +2420,7 @@
 
   <!-- JAVASCRIPT: Scanner Ottico, Gestione Transizione, Live API Chat & Dashboard -->
   <script src="/static/js/mobile-scanner.js"></script>
+  <script src="/static/js/pdf.min.js"></script>
   <script src="/static/js/app-bundle.js" defer></script>
 
   <!-- ================================================================= -->
@@ -2450,7 +2451,44 @@
       </div>
       <!-- Corpo Modale -->
       <div class="flex-1 bg-[#FAF8F2] relative overflow-hidden flex items-center justify-center p-2 sm:p-4">
-        <!-- Iframe per PDF -->
+        <!-- Visualizzatore PDF Canvas per Mobile & Desktop (Mozilla PDF.js) -->
+        <div id="modalPdfViewer" class="w-full h-full flex flex-col bg-[#222220] rounded-xs overflow-hidden border border-[#E3DDD1] hidden select-none">
+          <!-- Toolbar Controlli PDF Olivetti Industrial -->
+          <div id="pdfControls" class="bg-[#F8F5EE] border-b border-[#E3DDD1] px-3 py-2 flex items-center justify-between gap-2 shrink-0 text-xs font-mono-code select-none shadow-xs">
+            <div class="flex items-center gap-1.5">
+              <button type="button" id="pdfPrevBtn" onclick="pdfPrevPage()" class="px-2.5 py-1 bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] rounded-xs transition active:scale-95 flex items-center gap-1 font-bold cursor-pointer" title="Pagina precedente">
+                <i class="fa-solid fa-chevron-left text-[10px]"></i>
+              </button>
+              <span class="px-2 py-0.5 bg-white border border-[#E3DDD1] rounded-xs font-mono-code text-[11px] text-[#222220]">
+                <span id="pdfCurrentPage" class="font-bold text-[#3C5A48]">1</span> / <span id="pdfTotalPages">1</span>
+              </span>
+              <button type="button" id="pdfNextBtn" onclick="pdfNextPage()" class="px-2.5 py-1 bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] rounded-xs transition active:scale-95 flex items-center gap-1 font-bold cursor-pointer" title="Pagina successiva">
+                <i class="fa-solid fa-chevron-right text-[10px]"></i>
+              </button>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="pdfZoomOut()" class="px-2 py-1 bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] rounded-xs transition active:scale-95 cursor-pointer" title="Riduci zoom">
+                <i class="fa-solid fa-magnifying-glass-minus text-[11px] text-[#7A7568]"></i>
+              </button>
+              <span id="pdfZoomLevel" class="text-[10px] text-[#7A7568] font-mono-code hidden sm:inline px-1">100%</span>
+              <button type="button" onclick="pdfZoomIn()" class="px-2 py-1 bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] rounded-xs transition active:scale-95 cursor-pointer" title="Aumenta zoom">
+                <i class="fa-solid fa-magnifying-glass-plus text-[11px] text-[#7A7568]"></i>
+              </button>
+              <button type="button" onclick="pdfFitWidth()" class="px-2 py-1 bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] rounded-xs transition active:scale-95 cursor-pointer" title="Adatta a larghezza">
+                <i class="fa-solid fa-arrows-left-right text-[10px] text-[#7A7568]"></i>
+              </button>
+            </div>
+          </div>
+          <!-- Container Scrollabile Canvas delle Pagine -->
+          <div id="pdfCanvasContainer" class="flex-1 overflow-auto p-2 sm:p-4 flex flex-col items-center gap-3 custom-scroll">
+            <div id="pdfLoadingSpinner" class="flex flex-col items-center justify-center p-12 text-[#FAF8F2] gap-3">
+              <i class="fa-solid fa-circle-notch fa-spin text-2xl text-[#3C5A48]"></i>
+              <span class="text-xs font-mono-code">Rendering documento in corso...</span>
+            </div>
+            <canvas id="pdfRenderCanvas" class="shadow-lg border border-[#3C5A48]/30 bg-white max-w-full hidden rounded-xs"></canvas>
+          </div>
+        </div>
+        <!-- Iframe per PDF (Desktop fallback) -->
         <iframe id="modalPdfFrame" class="w-full h-full border border-[#E3DDD1] rounded-xs bg-white shadow-xs hidden"></iframe>
         <!-- Immagine per foto / scansioni -->
         <img id="modalImagePreview" class="max-w-full max-h-full object-contain mx-auto my-auto rounded-xs shadow-md border border-[#E3DDD1] hidden" alt="Anteprima">

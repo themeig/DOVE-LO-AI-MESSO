@@ -343,8 +343,10 @@ def get_session_maker(engine=None):
     return _session_maker
 
 
+def SessionLocal():
+    return get_session_maker()()
+
 def get_db():
-    SessionLocal = get_session_maker()
     db = SessionLocal()
     try:
         yield db

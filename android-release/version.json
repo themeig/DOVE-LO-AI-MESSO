@@ -1,6 +1,6 @@
 {
-  "version_code": 311,
-  "version_name": "2.10.11",
+  "version_code": 312,
+  "version_name": "2.10.12",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "📱 Impostazioni di Sistema Stile Smartphone: navigazione pulita con menu sezioni di livello 1 (Chat & AI, Google Drive, Google Calendar, Sicurezza) e apertura a scheda singola con sub-header e supporto tasto Indietro nativo."
+  "release_notes": "📄 Anteprima Documenti & PDF da Mobile: motore Mozilla PDF.js offline integrato su canvas HTML5, controlli zoom e pagina Olivetti Industrial, risoluzione MIME types e fallback strutturato."
 }

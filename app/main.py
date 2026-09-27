@@ -121,32 +121,39 @@ if _static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 def _serve_decrypted_file(filename: str):
-    file_path = get_settings().STORAGE_DIR / filename
+    import urllib.parse
+    from app.services.document_service import detect_media_type
+    from app.models.database import SessionLocal, Document
+
+    clean_filename = urllib.parse.unquote(filename.split("?")[0]).strip()
+    file_path = get_settings().STORAGE_DIR / clean_filename
+
+    # Fallback su database SQLite se il file non è trovato direttamente in STORAGE_DIR
+    if not file_path.exists():
+        db = SessionLocal()
+        try:
+            doc = db.query(Document).filter(
+                (Document.file_path.like(f"%{clean_filename}%")) |
+                (Document.title == clean_filename)
+            ).first()
+            if not doc and clean_filename.isdigit():
+                doc = db.query(Document).filter(Document.id == int(clean_filename)).first()
+            if doc and doc.file_path and Path(doc.file_path).exists():
+                file_path = Path(doc.file_path)
+        finally:
+            db.close()
+
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File non trovato")
+
     decrypted_bytes = read_decrypted_file(file_path)
-    ext = file_path.suffix.lstrip(".").lower()
-    if ext == "pdf":
-        media_type = "application/pdf"
-    elif ext in ["jpg", "jpeg"]:
-        media_type = "image/jpeg"
-    elif ext == "png":
-        media_type = "image/png"
-    elif ext == "webp":
-        media_type = "image/webp"
-    elif ext == "wav":
-        media_type = "audio/wav"
-    elif ext == "mp3":
-        media_type = "audio/mpeg"
-    elif ext in ["webm", "weba"]:
-        media_type = "audio/webm"
-    elif ext in ["ogg", "oga"]:
-        media_type = "audio/ogg"
-    elif ext == "m4a":
-        media_type = "audio/mp4"
-    else:
-        media_type = "application/octet-stream"
-    return Response(content=decrypted_bytes, media_type=media_type)
+    media_type = detect_media_type(decrypted_bytes, file_path.name)
+    headers = {
+        "Accept-Ranges": "bytes",
+        "Content-Length": str(len(decrypted_bytes)),
+        "Cache-Control": "private, max-age=3600"
+    }
+    return Response(content=decrypted_bytes, media_type=media_type, headers=headers)
 
 # Endpoint decifrati al volo per immagini e documenti
 @app.get("/uploads/{filename}")

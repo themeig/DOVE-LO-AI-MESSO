@@ -657,7 +657,8 @@ def render_office_file_to_html(file_bytes: bytes, filename: str) -> dict:
     is_xls = fn.endswith(".xls")
     is_csv = fn.endswith((".csv", ".tsv"))
     is_txt = fn.endswith((".txt", ".md", ".json", ".xml", ".log", ".yaml", ".yml"))
-    is_zip = fn.endswith(".zip") or ("zip" in fn and not (is_docx or is_xlsx))
+    is_pdf = fn.endswith(".pdf") or file_bytes.startswith(b"%PDF")
+    is_zip = (fn.endswith(".zip") or ("zip" in fn and not (is_docx or is_xlsx or is_pdf)))
 
     # Se archivio zip non marcato, controlla se ha cartella xl/ o word/
     if not (is_docx or is_xlsx or is_xls or is_csv or is_txt) and file_bytes.startswith(b"PK\x03\x04"):
@@ -1021,7 +1022,75 @@ def render_office_file_to_html(file_bytes: bytes, filename: str) -> dict:
             "error": None
         }
 
-    # D. FILE DI TESTO GENERICO (.txt, .md, .json, .xml)
+    # D. DOCUMENTI PDF (.pdf)
+    elif is_pdf:
+        pages_html = []
+        num_pages = 0
+        try:
+            reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+            num_pages = len(reader.pages)
+            for p_idx, page in enumerate(reader.pages):
+                try:
+                    p_text = page.extract_text() or ""
+                except Exception:
+                    p_text = ""
+                p_text_clean = p_text.strip()
+                if p_text_clean:
+                    safe_p_text = html.escape(p_text_clean)
+                    pages_html.append(f"""
+                    <div class="bg-white p-4 sm:p-5 rounded-xs border border-[#E3DDD1] shadow-xs mb-3">
+                        <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-2 mb-3">
+                            <span class="text-[10px] font-mono-code font-bold uppercase tracking-wider text-[#3C5A48] bg-[#F8F5EE] px-2 py-0.5 rounded-xs border border-[#E3DDD1]">
+                                <i class="fa-regular fa-file-lines mr-1"></i> Pagina {p_idx + 1} di {num_pages}
+                            </span>
+                        </div>
+                        <div class="font-mono-code text-xs text-[#222220] whitespace-pre-wrap leading-relaxed select-text">
+                            {safe_p_text}
+                        </div>
+                    </div>
+                    """)
+                else:
+                    pages_html.append(f"""
+                    <div class="bg-white p-4 rounded-xs border border-[#E3DDD1] shadow-xs mb-3 text-center text-[#7A7568] font-mono-code text-xs">
+                        <span class="text-[10px] uppercase font-bold text-[#3C5A48]">Pagina {p_idx + 1} di {num_pages}</span>
+                        <p class="mt-1 italic">(Pagina grafica o scansione)</p>
+                    </div>
+                    """)
+        except Exception as e:
+            logger.warning(f"Errore estrazione PDF {filename}: {e}")
+            pages_html.append(f'<div class="p-4 bg-amber-50 border border-amber-200 rounded-xs text-xs font-mono-code text-amber-800">Impossibile estrarre testo dal PDF: {html.escape(str(e))}</div>')
+
+        pdf_view_html = f"""
+        <div class="max-w-3xl mx-auto space-y-3 font-mono-code overflow-auto max-h-[68vh] p-2">
+            <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3 mb-2 bg-[#F8F5EE] p-3 rounded-xs border border-[#E3DDD1]">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-xs bg-[#C84B31] text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                        <i class="fa-solid fa-file-pdf"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xs font-bold text-[#222220] uppercase font-space">{html.escape(filename)}</h2>
+                        <p class="text-[10px] text-[#7A7568]">{num_pages} pagin{'a' if num_pages == 1 else 'e'} • Anteprima strutturata</p>
+                    </div>
+                </div>
+                <div class="text-[10px] text-[#3C5A48] bg-white border border-[#E3DDD1] px-2.5 py-1 rounded-xs font-bold">
+                    <span>PDF PROTETTO</span>
+                </div>
+            </div>
+            {"".join(pages_html) if pages_html else '<p class="text-[#7A7568] italic text-xs p-4 text-center">Nessuna pagina o contenuto testuale estratto.</p>'}
+        </div>
+        """
+        return {
+            "success": True,
+            "format": "pdf",
+            "filename": filename,
+            "title": clean_title,
+            "page_count": num_pages,
+            "sheets": [],
+            "html_content": pdf_view_html,
+            "error": None
+        }
+
+    # E. FILE DI TESTO GENERICO (.txt, .md, .json, .xml)
     else:
         raw_text = extract_text_from_office_file(file_bytes, filename)
         safe_text = html.escape(raw_text) if raw_text else "File vuoto o formato non testuale."

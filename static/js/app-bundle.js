@@ -7757,6 +7757,253 @@
       });
     }
 
+    // ==========================================
+    // MOTORE RENDERING PDF.JS (OFFLINE & MOBILE)
+    // ==========================================
+    let currentPdfDoc = null;
+    let currentPdfPage = 1;
+    let currentPdfScale = 1.0;
+    let isPdfRendering = false;
+    let pdfPagePending = null;
+
+    if (typeof window !== 'undefined' && window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/js/pdf.worker.min.js';
+    }
+
+    function renderPdfPage(num) {
+      if (!currentPdfDoc) return;
+      isPdfRendering = true;
+      const canvas = document.getElementById('pdfRenderCanvas');
+      const spinner = document.getElementById('pdfLoadingSpinner');
+      const pageNumEl = document.getElementById('pdfCurrentPage');
+      const totalPagesEl = document.getElementById('pdfTotalPages');
+      const zoomLevelEl = document.getElementById('pdfZoomLevel');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      currentPdfDoc.getPage(num).then(page => {
+        let viewport = page.getViewport({ scale: currentPdfScale || 1.0 });
+
+        // Calcolo larghezza ottimale per container mobile o desktop
+        const container = document.getElementById('pdfCanvasContainer');
+        if (container && (!currentPdfScale || currentPdfScale === 1.0)) {
+          const containerWidth = Math.max(container.clientWidth - 32, 260);
+          const unscaledViewport = page.getViewport({ scale: 1.0 });
+          currentPdfScale = Math.min(Math.max(containerWidth / unscaledViewport.width, 0.5), 2.5);
+          viewport = page.getViewport({ scale: currentPdfScale });
+        }
+
+        const outputScale = window.devicePixelRatio || 1;
+        canvas.width = Math.floor(viewport.width * outputScale);
+        canvas.height = Math.floor(viewport.height * outputScale);
+        canvas.style.width = Math.floor(viewport.width) + "px";
+        canvas.style.height = Math.floor(viewport.height) + "px";
+
+        const transform = outputScale !== 1
+          ? [outputScale, 0, 0, outputScale, 0, 0]
+          : null;
+
+        const renderContext = {
+          canvasContext: ctx,
+          transform: transform,
+          viewport: viewport
+        };
+
+        const renderTask = page.render(renderContext);
+        renderTask.promise.then(() => {
+          isPdfRendering = false;
+          if (spinner) spinner.classList.add('hidden');
+          canvas.classList.remove('hidden');
+          if (pageNumEl) pageNumEl.textContent = num;
+          if (totalPagesEl) totalPagesEl.textContent = currentPdfDoc.numPages;
+          if (zoomLevelEl) zoomLevelEl.textContent = Math.round(currentPdfScale * 100) + "%";
+
+          if (pdfPagePending !== null) {
+            const nextP = pdfPagePending;
+            pdfPagePending = null;
+            renderPdfPage(nextP);
+          }
+        }).catch(err => {
+          console.warn("Errore rendering pagina PDF:", err);
+          isPdfRendering = false;
+        });
+      }).catch(err => {
+        console.warn("Errore getPage PDF:", err);
+        isPdfRendering = false;
+      });
+    }
+
+    function queueRenderPdfPage(num) {
+      if (isPdfRendering) {
+        pdfPagePending = num;
+      } else {
+        renderPdfPage(num);
+      }
+    }
+
+    function pdfPrevPage() {
+      if (currentPdfPage <= 1) return;
+      currentPdfPage--;
+      queueRenderPdfPage(currentPdfPage);
+    }
+
+    function pdfNextPage() {
+      if (!currentPdfDoc || currentPdfPage >= currentPdfDoc.numPages) return;
+      currentPdfPage++;
+      queueRenderPdfPage(currentPdfPage);
+    }
+
+    function pdfZoomIn() {
+      currentPdfScale = Math.min((currentPdfScale || 1.0) + 0.25, 3.0);
+      queueRenderPdfPage(currentPdfPage);
+    }
+
+    function pdfZoomOut() {
+      currentPdfScale = Math.max((currentPdfScale || 1.0) - 0.25, 0.4);
+      queueRenderPdfPage(currentPdfPage);
+    }
+
+    function pdfFitWidth() {
+      const container = document.getElementById('pdfCanvasContainer');
+      if (!container || !currentPdfDoc) return;
+      currentPdfDoc.getPage(currentPdfPage).then(page => {
+        const unscaledViewport = page.getViewport({ scale: 1.0 });
+        const containerWidth = Math.max(container.clientWidth - 32, 260);
+        currentPdfScale = Math.min(Math.max(containerWidth / unscaledViewport.width, 0.5), 2.5);
+        queueRenderPdfPage(currentPdfPage);
+      });
+    }
+
+    window.pdfPrevPage = pdfPrevPage;
+    window.pdfNextPage = pdfNextPage;
+    window.pdfZoomIn = pdfZoomIn;
+    window.pdfZoomOut = pdfZoomOut;
+    window.pdfFitWidth = pdfFitWidth;
+
+    function renderPdfInModal(url, docId, safeTitle, targetDl) {
+      const pdfViewer = document.getElementById('modalPdfViewer');
+      const canvas = document.getElementById('pdfRenderCanvas');
+      const spinner = document.getElementById('pdfLoadingSpinner');
+      const subtitleEl = document.getElementById('modalSubtitle');
+      const pdfFrame = document.getElementById('modalPdfFrame');
+
+      if (!pdfViewer) {
+        if (pdfFrame) {
+          pdfFrame.src = url;
+          pdfFrame.classList.remove('hidden');
+        }
+        return;
+      }
+
+      pdfViewer.classList.remove('hidden');
+      if (canvas) canvas.classList.add('hidden');
+      if (spinner) spinner.classList.remove('hidden');
+
+      if (typeof window.pdfjsLib === 'undefined') {
+        console.warn("PDF.js non caricato, uso fallback");
+        fallbackToPdfHtmlOrFrame(url, docId, safeTitle, targetDl);
+        return;
+      }
+
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/js/pdf.worker.min.js';
+
+      let pdfFetchUrl = url;
+      if (docId && (!url || url.includes('/uploads/'))) {
+        pdfFetchUrl = `/api/documents/${docId}/file`;
+      }
+
+      const loadingTask = window.pdfjsLib.getDocument({
+        url: pdfFetchUrl,
+        withCredentials: true
+      });
+
+      loadingTask.promise.then(pdfDoc => {
+        currentPdfDoc = pdfDoc;
+        currentPdfPage = 1;
+        currentPdfScale = 1.0;
+        if (subtitleEl) {
+          subtitleEl.textContent = `Documento PDF protetto (${pdfDoc.numPages} pagin${pdfDoc.numPages === 1 ? 'a' : 'e'})`;
+        }
+        renderPdfPage(1);
+      }).catch(err => {
+        console.warn("PDF.js errore caricamento:", err);
+        if (docId && pdfFetchUrl !== `/api/documents/${docId}/file`) {
+          const retryTask = window.pdfjsLib.getDocument({
+            url: `/api/documents/${docId}/file`,
+            withCredentials: true
+          });
+          retryTask.promise.then(pdfDoc => {
+            currentPdfDoc = pdfDoc;
+            currentPdfPage = 1;
+            currentPdfScale = 1.0;
+            if (subtitleEl) {
+              subtitleEl.textContent = `Documento PDF protetto (${pdfDoc.numPages} pagin${pdfDoc.numPages === 1 ? 'a' : 'e'})`;
+            }
+            renderPdfPage(1);
+          }).catch(retryErr => {
+            console.warn("Retry PDF.js fallito:", retryErr);
+            fallbackToPdfHtmlOrFrame(url, docId, safeTitle, targetDl);
+          });
+        } else {
+          fallbackToPdfHtmlOrFrame(url, docId, safeTitle, targetDl);
+        }
+      });
+    }
+
+    function fallbackToPdfHtmlOrFrame(url, docId, safeTitle, targetDl) {
+      const pdfViewer = document.getElementById('modalPdfViewer');
+      const pdfFrame = document.getElementById('modalPdfFrame');
+      const officePreview = document.getElementById('modalOfficePreview');
+      const officeContent = document.getElementById('modalOfficeContent');
+      const fallback = document.getElementById('modalFallback');
+      const subtitleEl = document.getElementById('modalSubtitle');
+
+      if (pdfViewer) pdfViewer.classList.add('hidden');
+
+      if (officePreview && officeContent) {
+        officePreview.classList.remove('hidden');
+        officeContent.innerHTML = `
+          <div class="flex flex-col items-center justify-center p-12 text-[#222220] gap-3 font-mono-code">
+            <i class="fa-solid fa-circle-notch fa-spin text-2xl text-[#3C5A48]"></i>
+            <span class="text-xs font-bold">Generazione anteprima strutturata in corso...</span>
+          </div>
+        `;
+        const previewUrl = `/api/documents/preview-content?document_id=${encodeURIComponent(docId || '')}&file_url=${encodeURIComponent(url || '')}`;
+        fetch(previewUrl, {
+          headers: (typeof authHeaders === 'function' ? authHeaders() : {})
+        })
+          .then(res => {
+            if (!res.ok) throw new Error("Errore risposta preview (" + res.status + ")");
+            return res.json();
+          })
+          .then(data => {
+            if (data.html_content) {
+              officeContent.innerHTML = data.html_content;
+              if (subtitleEl) subtitleEl.textContent = "Documento PDF (Estratto strutturato)";
+            } else {
+              throw new Error("Nessun contenuto estraibile");
+            }
+          })
+          .catch(err => {
+            console.warn("Fallback HTML fallito:", err);
+            if (officePreview) officePreview.classList.add('hidden');
+            const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad/i.test(navigator.userAgent);
+            if (!isMobile && pdfFrame) {
+              pdfFrame.src = url;
+              pdfFrame.classList.remove('hidden');
+            } else if (fallback) {
+              fallback.classList.remove('hidden');
+              if (subtitleEl) subtitleEl.textContent = "Anteprima non disponibile";
+            }
+          });
+      } else if (pdfFrame) {
+        pdfFrame.src = url;
+        pdfFrame.classList.remove('hidden');
+      } else if (fallback) {
+        fallback.classList.remove('hidden');
+      }
+    }
+
     function openMediaModal(url, title, fileType = '', downloadUrl = '', docId = null) {
       window.currentModalDocId = docId;
       window.currentModalDocUrl = url;
@@ -7764,6 +8011,7 @@
       const titleEl = document.getElementById('modalTitle');
       const subtitleEl = document.getElementById('modalSubtitle');
       const downloadBtn = document.getElementById('modalDownloadBtn');
+      const pdfViewer = document.getElementById('modalPdfViewer');
       const pdfFrame = document.getElementById('modalPdfFrame');
       const imgPreview = document.getElementById('modalImagePreview');
       const officePreview = document.getElementById('modalOfficePreview');
@@ -7782,6 +8030,11 @@
       downloadBtn.onclick = (targetDl && targetDl !== '#')
         ? () => downloadFileFromUrl(targetDl, safeDownloadName, docId || null)
         : null;
+
+      if (pdfViewer) pdfViewer.classList.add('hidden');
+      currentPdfDoc = null;
+      isPdfRendering = false;
+      pdfPagePending = null;
 
       pdfFrame.classList.add('hidden');
       pdfFrame.src = '';
@@ -7820,8 +8073,7 @@
 
       if (isPdf) {
         subtitleEl.textContent = "Documento PDF protetto";
-        pdfFrame.src = url;
-        pdfFrame.classList.remove('hidden');
+        renderPdfInModal(url, docId, safeTitle, targetDl);
       } else if (isZip || isOffice) {
         const isExcel = /\.(xlsx?|xlsm|csv|tsv)$/i.test(cleanUrl) || /\.(xlsx?|xlsm|csv|tsv)$/i.test(lowerTitle) || lowerType.includes('excel') || lowerType.includes('sheet') || lowerType.includes('spreadsheet');
         if (isZip) {
@@ -7835,12 +8087,15 @@
           officePreview.classList.remove('hidden');
           fallback.classList.add('hidden');
           officeContent.innerHTML = `
-            <div class="flex flex-col items-center justify-center p-12 text-slate-500 gap-3">
-              <i class="fa-solid fa-circle-notch fa-spin text-2xl text-[#128C7E]"></i>
-              <span class="text-xs font-semibold text-slate-700">${isZip ? 'Lettura archivio compresso...' : 'Caricamento e decifratura anteprima in corso...'}</span>
+            <div class="flex flex-col items-center justify-center p-12 text-[#222220] gap-3 font-mono-code">
+              <i class="fa-solid fa-circle-notch fa-spin text-2xl text-[#3C5A48]"></i>
+              <span class="text-xs font-semibold">${isZip ? 'Lettura archivio compresso...' : 'Caricamento e decifratura anteprima in corso...'}</span>
             </div>
           `;
-          fetch(`/api/documents/preview-content?file_url=${encodeURIComponent(url)}`)
+          const previewQuery = `/api/documents/preview-content?document_id=${encodeURIComponent(docId || '')}&file_url=${encodeURIComponent(url || '')}`;
+          fetch(previewQuery, {
+            headers: (typeof authHeaders === 'function' ? authHeaders() : {})
+          })
             .then(res => {
               if (!res.ok) throw new Error("Errore risposta server (" + res.status + ")");
               return res.json();
@@ -7854,7 +8109,7 @@
                 }
               } else {
                 officeContent.innerHTML = `
-                  <div class="p-8 text-center text-slate-500">
+                  <div class="p-8 text-center text-slate-500 font-mono-code">
                     <p class="font-semibold text-slate-700 text-sm mb-2">Nessun contenuto visualizzabile direttamente</p>
                     <p class="text-xs text-slate-400">Puoi scaricare il file originale usando il pulsante Scarica in alto.</p>
                   </div>
@@ -7865,11 +8120,11 @@
               console.warn("Errore caricamento anteprima:", err);
               fallback.classList.add('hidden');
               officeContent.innerHTML = `
-                <div class="p-8 text-center text-slate-500">
+                <div class="p-8 text-center text-slate-500 font-mono-code">
                   <i class="fa-solid fa-triangle-exclamation text-amber-500 text-2xl mb-2"></i>
                   <p class="font-semibold text-slate-700 text-sm">Impossibile generare l'anteprima del documento</p>
                   <p class="text-xs text-slate-400 mt-1 mb-4">${escapeHtml(err.message || 'Errore lettura file')}</p>
-                  <a href="${targetDl}" download class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#075E54] text-white text-xs font-semibold rounded-lg shadow-2xs hover:bg-[#128C7E]">
+                  <a href="${targetDl}" download class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#3C5A48] text-white text-xs font-semibold rounded-xs shadow-xs hover:bg-[#2F4738]">
                     <i class="fa-solid fa-download"></i> Scarica file originale
                   </a>
                 </div>
@@ -7878,7 +8133,14 @@
         }
       } else if (isImg) {
         subtitleEl.textContent = "Immagine / Scansione";
+        let hasRetried = false;
         imgPreview.onerror = function() {
+          if (!hasRetried && docId && !url.includes(`/api/documents/${docId}/file`)) {
+            hasRetried = true;
+            console.log("Retry loading image via /api/documents/" + docId + "/file");
+            imgPreview.src = `/api/documents/${docId}/file`;
+            return;
+          }
           sendUITelemetry('MEDIA_PREVIEW_ERROR', {
             title: safeTitle,
             error_details: `Impossibile caricare anteprima immagine per '${safeTitle}' da ${url}`
@@ -7891,8 +8153,14 @@
         imgPreview.classList.remove('hidden');
       } else if (url) {
         subtitleEl.textContent = "Visualizzazione file";
-        pdfFrame.src = url;
-        pdfFrame.classList.remove('hidden');
+        const isMobile = window.innerWidth <= 768 || /Android|iPhone|iPad/i.test(navigator.userAgent);
+        if (isMobile) {
+          // Su mobile non tentare iframe per file non-immagine: usa preview-content
+          fallbackToPdfHtmlOrFrame(url, docId, safeTitle, targetDl);
+        } else {
+          pdfFrame.src = url;
+          pdfFrame.classList.remove('hidden');
+        }
       } else {
         fallback.classList.remove('hidden');
       }
@@ -7905,6 +8173,7 @@
       window.currentModalDocId = null;
       window.currentModalDocUrl = null;
       const modal = document.getElementById('mediaModal');
+      const pdfViewer = document.getElementById('modalPdfViewer');
       const pdfFrame = document.getElementById('modalPdfFrame');
       const imgPreview = document.getElementById('modalImagePreview');
       const officePreview = document.getElementById('modalOfficePreview');
@@ -7913,11 +8182,18 @@
         modal.classList.add('hidden');
         modal.classList.remove('flex');
       }
+      if (pdfViewer) pdfViewer.classList.add('hidden');
+      currentPdfDoc = null;
+      isPdfRendering = false;
+      pdfPagePending = null;
       if (pdfFrame) pdfFrame.src = '';
       if (imgPreview) imgPreview.src = '';
       if (officePreview) officePreview.classList.add('hidden');
       if (officeContent) officeContent.innerHTML = '';
     }
+
+    window.openMediaModal = openMediaModal;
+    window.closeMediaModal = closeMediaModal;
 
     function handleModalBackdropClick(e) {
       if (e.target && e.target.id === 'mediaModal') {

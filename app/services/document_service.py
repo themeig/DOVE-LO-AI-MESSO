@@ -165,3 +165,49 @@ def compile_images_to_pdf(image_bytes_list: list[bytes]) -> bytes:
     return out_pdf.getvalue()
 
 
+def detect_media_type(file_bytes: bytes, filename_or_ext: str = "") -> str:
+    """Rileva in modo accurato e robusto il MIME type controllando sia i magic bytes che l'estensione."""
+    clean_name = str(filename_or_ext or "").lower()
+    ext = (Path(clean_name).suffix.lstrip(".") if "." in clean_name else clean_name).strip()
+
+    # 1. Magic bytes sniffing
+    if file_bytes.startswith(b"%PDF") or ext == "pdf":
+        return "application/pdf"
+    if file_bytes.startswith(b"\xff\xd8\xff") or ext in ["jpg", "jpeg"]:
+        return "image/jpeg"
+    if file_bytes.startswith(b"\x89PNG\r\n\x1a\n") or ext == "png":
+        return "image/png"
+    if (file_bytes.startswith(b"RIFF") and len(file_bytes) >= 12 and file_bytes[8:12] == b"WEBP") or ext == "webp":
+        return "image/webp"
+    if file_bytes.startswith(b"GIF8") or ext == "gif":
+        return "image/gif"
+    if ext == "svg" or (b"<svg" in file_bytes[:512]):
+        return "image/svg+xml"
+    if ext in ["xlsx", "xlsm"]:
+        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    if ext == "xls":
+        return "application/vnd.ms-excel"
+    if ext == "docx":
+        return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    if ext == "doc":
+        return "application/msword"
+    if ext == "csv":
+        return "text/csv; charset=utf-8"
+    if ext in ["txt", "log", "json", "md", "yaml", "yml"]:
+        return "text/plain; charset=utf-8"
+    if ext == "zip" or file_bytes.startswith(b"PK\x03\x04"):
+        return "application/zip"
+    if ext == "wav" or file_bytes.startswith(b"RIFF"):
+        return "audio/wav"
+    if ext == "mp3" or file_bytes.startswith(b"ID3") or file_bytes.startswith(b"\xff\xfb") or file_bytes.startswith(b"\xff\xf3"):
+        return "audio/mpeg"
+    if ext in ["webm", "weba"]:
+        return "audio/webm"
+    if ext in ["ogg", "oga"]:
+        return "audio/ogg"
+    if ext == "m4a":
+        return "audio/mp4"
+    return "application/octet-stream"
+
+
+

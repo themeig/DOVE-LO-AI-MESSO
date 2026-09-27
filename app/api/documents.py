@@ -13,7 +13,12 @@ from app.config import get_settings
 from app.models.database import get_db, Document, ChatMessage, GoogleDriveCredential, get_app_setting, ChatThread
 from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDeleteResponse, UnzipVaultRequest
 from app.services.ai_service import get_ai_service
-from app.services.document_service import save_uploaded_file, read_decrypted_file, determine_document_status
+from app.services.document_service import (
+    save_uploaded_file,
+    read_decrypted_file,
+    determine_document_status,
+    detect_media_type,
+)
 from app.services.drive_service import get_drive_service, resolve_drive_folder_path, sanitize_drive_folder_name
 from app.services.calendar_service import (
     get_calendar_service,
@@ -513,33 +518,49 @@ def get_document_preview_content(
     db: Session = Depends(get_db)
 ):
     """
-    Ritorna la preview strutturata e l'HTML formattato per file Word (.docx, .doc),
-    Excel (.xlsx, .xls) o CSV, decifrati al volo dal caveau.
+    Ritorna la preview strutturata e l'HTML formattato per file PDF, Word (.docx, .doc),
+    Excel (.xlsx, .xls), CSV o ZIP, decifrati al volo dal caveau.
     """
+    import urllib.parse
     file_bytes = None
     target_filename = ""
+
+    # Se document_id non è passato ma è contenuto nell'URL (es. /api/documents/12/file o /download)
+    if not document_id and file_url:
+        m = re.search(r"/api/documents/(\d+)(?:/file|/download)?", file_url)
+        if m:
+            try:
+                document_id = int(m.group(1))
+            except ValueError:
+                pass
 
     if document_id:
         doc = db.query(Document).filter(Document.id == document_id).first()
         if doc and Path(doc.file_path).exists():
             file_bytes = read_decrypted_file(doc.file_path)
-            target_filename = Path(doc.file_path).name
+            target_filename = doc.title or Path(doc.file_path).name
 
     if file_bytes is None and (file_url or filename):
         raw_name = filename or ""
         if not raw_name and file_url:
             raw_name = file_url.split("?")[0].split("/")[-1]
 
+        raw_name = urllib.parse.unquote(raw_name).strip()
         target_filename = raw_name
         settings = get_settings()
         file_path = settings.STORAGE_DIR / raw_name
         if file_path.exists():
             file_bytes = read_decrypted_file(file_path)
         else:
-            doc = db.query(Document).filter(Document.file_path.like(f"%{raw_name}%")).first()
+            doc = db.query(Document).filter(
+                (Document.file_path.like(f"%{raw_name}%")) |
+                (Document.title == raw_name)
+            ).first()
+            if not doc and raw_name.isdigit():
+                doc = db.query(Document).filter(Document.id == int(raw_name)).first()
             if doc and Path(doc.file_path).exists():
                 file_bytes = read_decrypted_file(doc.file_path)
-                target_filename = Path(doc.file_path).name
+                target_filename = doc.title or Path(doc.file_path).name
 
     if file_bytes is None:
         raise HTTPException(status_code=404, detail="File non trovato o non accessibile per l'anteprima")
@@ -705,10 +726,16 @@ def get_document_file(document_id: int, db: Session = Depends(get_db)):
     if not doc or not Path(doc.file_path).exists():
         raise HTTPException(status_code=404, detail="File non trovato")
     from fastapi.responses import Response
-    from app.services.document_service import read_decrypted_file
+    from app.services.document_service import read_decrypted_file, detect_media_type
     decrypted_bytes = read_decrypted_file(doc.file_path)
-    media_type = "application/pdf" if doc.file_type == "pdf" else f"image/{doc.file_type}"
-    return Response(content=decrypted_bytes, media_type=media_type)
+    filename_hint = Path(doc.file_path).name or doc.file_type or ""
+    media_type = detect_media_type(decrypted_bytes, filename_hint)
+    headers = {
+        "Accept-Ranges": "bytes",
+        "Content-Length": str(len(decrypted_bytes)),
+        "Cache-Control": "private, max-age=3600"
+    }
+    return Response(content=decrypted_bytes, media_type=media_type, headers=headers)
 
 @router.get("/{document_id}/download")
 def download_document_file(document_id: int, db: Session = Depends(get_db)):
