@@ -1,6 +1,6 @@
 {
-  "version_code": 313,
-  "version_name": "2.10.13",
+  "version_code": 314,
+  "version_name": "2.10.14",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ UI Polish Olivetti: rimossi pulsanti + Oggetto e lucchetto dalla header della Dashboard; rimossi i sottotitoli descrittivi dalle singole schede del menu Sistema per un layout minimale e compatto stile impostazioni smartphone."
+  "release_notes": "✨ UI Polish Olivetti: rimosse diciture e sottotitoli ridondanti dalla Dashboard (protocollo crittografato AES-256 e intestazione registro unificato) per una visualizzazione più pulita e focalizzata sui dati sia su desktop che su mobile."
 }
