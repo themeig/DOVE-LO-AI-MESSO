@@ -1,6 +1,6 @@
 {
-  "version_code": 303,
-  "version_name": "2.10.3",
+  "version_code": 304,
+  "version_name": "2.10.4",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "🧠 Architettura Agentic Prompt-Driven & Regola Aurea Schede: rimosse le forzature deterministiche e impostato tool_choice='auto' nativo. Integrata la Regola Aurea per cui l'assistente AI mostra sempre e autonomamente le schede grafiche dei documenti ogni volta che ne parla o l'utente le richiede."
+  "release_notes": "⚙️ Riorganizzazione Modulare Impostazioni per Aree Tematiche: introdotta la suddivisione chiara per aree (Chat & AI, Google Drive, Google Calendar, Cartelle PC, Sicurezza & Backup) con barra a schede Olivetti e visualizzazione focalizzata."
 }

@@ -284,7 +284,7 @@ def get_mobile_app_version():
         except Exception:
             pass
     return {
-        "version_code": 303,
+        "version_code": 304,
         "version_name": APP_VERSION,
         "apk_url": "/api/app/latest-apk",
         "release_notes": "Aggiornamento applicazione"

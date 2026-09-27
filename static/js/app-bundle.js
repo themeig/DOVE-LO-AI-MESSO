@@ -574,6 +574,8 @@
         loadOpenRouterCredits();
         loadGoogleDriveStatus();
         loadWatchedFolders();
+        if (typeof loadCalendarStatus === 'function') loadCalendarStatus();
+        if (typeof setSystemArea === 'function') setSystemArea(sessionStorage.getItem('dove_system_active_area') || 'all');
       } else if (normalizedTarget === 'chat') {
         if (isMobileView) {
           if (conversationPanel.classList.contains('mobile-active')) {
@@ -1736,6 +1738,68 @@
     }
 
     window.loadOpenRouterCredits = loadOpenRouterCredits;
+
+    // --- Suddivisione Impostazioni Sistema per Aree Tematiche ---
+    function setSystemArea(area) {
+      const validAreas = ['all', 'chat', 'drive', 'calendar', 'pc', 'security'];
+      const targetArea = validAreas.includes(area) ? area : 'all';
+      sessionStorage.setItem('dove_system_active_area', targetArea);
+
+      // Aggiorna classi bottoni Tab
+      validAreas.forEach(a => {
+        const btn = document.getElementById(`btnSystemArea_${a}`);
+        if (!btn) return;
+        if (a === targetArea) {
+          btn.className = 'system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-[#3C5A48] text-white shadow-2xs shrink-0';
+        } else {
+          btn.className = 'system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0';
+        }
+      });
+
+      // Commuta visibilità sezioni container per area
+      const sectionIds = ['settingsArea_chat', 'settingsArea_drive', 'settingsArea_calendar', 'settingsArea_pc', 'settingsArea_security'];
+      sectionIds.forEach(id => {
+        const sec = document.getElementById(id);
+        if (!sec) return;
+        const secArea = id.replace('settingsArea_', '');
+        if (targetArea === 'all' || targetArea === secArea) {
+          sec.classList.remove('hidden');
+        } else {
+          sec.classList.add('hidden');
+        }
+      });
+    }
+    window.setSystemArea = setSystemArea;
+
+    async function loadCalendarStatus() {
+      const badge = document.getElementById('systemCalendarStatusBadge');
+      const details = document.getElementById('systemCalendarStatusDetails');
+      if (!badge) return;
+      try {
+        const res = await fetch('/api/calendar/status', { headers: authHeaders() });
+        if (!res.ok) throw new Error('Stato non disponibile');
+        const data = await res.json();
+        if (data.connected) {
+          badge.textContent = 'ATTIVO & COLLEGATO';
+          badge.className = 'stamp-oli stamp-solid-sage text-[8px] font-bold';
+          if (details) {
+            details.textContent = `ACCOUNT: ${(data.user_email || 'GOOGLE').toUpperCase()} • CALENDARIO DEDICATO: ${(data.calendar_name || 'DOVE LO AI MESSO - SCADENZE').toUpperCase()}`;
+          }
+        } else {
+          badge.textContent = 'NON COLLEGATO';
+          badge.className = 'stamp-oli stamp-terracotta text-[8px] font-bold';
+          if (details) {
+            details.textContent = 'Collega il tuo account Google nelle impostazioni Google Drive per sincronizzare automaticamente le scadenze.';
+          }
+        }
+      } catch (e) {
+        if (badge) {
+          badge.textContent = 'LOCALE / ICAL PRONTO';
+          badge.className = 'stamp-oli text-[8px] font-bold text-[#7A7568]';
+        }
+      }
+    }
+    window.loadCalendarStatus = loadCalendarStatus;
 
     // --- Google Drive Cloud Sync Handlers ---
     let googleDriveStatusCache = null;
@@ -8134,6 +8198,8 @@
       checkDeadlineAlerts();
       checkPendingProposalsBanner();
       loadGoogleDriveStatus();
+      if (typeof loadCalendarStatus === 'function') loadCalendarStatus();
+      if (typeof setSystemArea === 'function') setSystemArea(sessionStorage.getItem('dove_system_active_area') || 'all');
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('drive_connected') === 'true') {
         showToast('🟢 Google Drive collegato con successo!', 'success');

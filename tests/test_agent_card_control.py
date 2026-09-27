@@ -38,6 +38,7 @@ def test_upcoming_deadlines_attaches_documents_offline():
         db.commit()
 
         agent = AgentService()
+        agent.settings.OPENROUTER_API_KEY = ""
         resp = agent.run_turn("Cosa ho in scadenza o scaduto da pagare?", db=db, thread_id="test_cards_thread_offline")
         assert resp.documents is not None
         assert len(resp.documents) >= 2
@@ -48,6 +49,22 @@ def test_upcoming_deadlines_attaches_documents_offline():
 def test_non_vedo_le_schede_recovers_documents_from_previous_turn():
     engine = get_engine()
     with Session(engine) as db:
+        d = db.query(Document).filter(Document.title.like("%Enel%")).first()
+        if not d:
+            d = Document(
+                title="Bolletta Enel Luce",
+                issuer="Enel Energia",
+                amount=64.20,
+                due_date=date.today() + timedelta(days=5),
+                status="da_pagare",
+                file_path="uploads/bolletta_enel_rec.pdf",
+                file_type="application/pdf",
+                summary="Bolletta bimestrale luce",
+                thread_id="test_thread_recovery"
+            )
+            db.add(d)
+            db.commit()
+
         asst_msg = ChatMessage(
             thread_id="test_thread_recovery",
             sender="assistant",
@@ -58,6 +75,7 @@ def test_non_vedo_le_schede_recovers_documents_from_previous_turn():
         db.commit()
 
         agent = AgentService()
+        agent.settings.OPENROUTER_API_KEY = ""
         resp = agent.run_turn("non vedo le schede", db=db, thread_id="test_thread_recovery")
 
         assert resp.action == "show_document_card"
