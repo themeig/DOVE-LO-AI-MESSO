@@ -9,7 +9,7 @@ from app.version import APP_VERSION
 
 
 def test_app_version():
-    assert APP_VERSION == "2.10.11"
+    assert APP_VERSION == "2.10.13"
 
 
 def test_index_html_has_system_areas():
@@ -22,6 +22,13 @@ def test_index_html_has_system_areas():
     assert 'id="systemSectionDetailView"' in content
     assert 'openSystemSection' in content
     assert 'closeSystemSection' in content
+
+    # Verifica rimozione sottotitoli dalle singole impostazioni
+    assert 'id="menuStatus_chat"' not in content
+    assert 'id="menuStatus_drive"' not in content
+    assert 'id="menuStatus_calendar"' not in content
+    assert 'id="menuStatus_pc"' not in content
+    assert 'id="menuStatus_security"' not in content
 
     # Verifica presenza selettore tabs
     assert 'id="systemAreaTabs"' in content
@@ -43,8 +50,9 @@ def test_index_html_has_system_areas():
     assert 'systemCalendarStatusBadge' in content
     assert 'btnSyncGoogleCalendarSettings' in content
 
-    # ACQUISISCI ATTO rimosso dalla dashboard
+    # ACQUISISCI ATTO e + OGGETTO rimossi dalla dashboard
     assert 'ACQUISISCI ATTO' not in content
+    assert '+ OGGETTO' not in content
 
     # Logo Caveau ripristinato in alto a sinistra nella sidebar
     assert 'fa-solid fa-vault' in content
@@ -67,6 +75,12 @@ def test_mobile_html_has_system_areas():
     assert 'openSystemSection' in content
     assert 'closeSystemSection' in content
 
+    # Verifica rimozione sottotitoli dalle singole impostazioni mobile
+    assert 'id="menuStatus_chat"' not in content
+    assert 'id="menuStatus_drive"' not in content
+    assert 'id="menuStatus_calendar"' not in content
+    assert 'id="menuStatus_security"' not in content
+
     # Verifica presenza selettore tabs in mobile
     assert 'id="systemAreaTabs"' in content
     assert 'btnSystemArea_all' in content
@@ -79,8 +93,9 @@ def test_mobile_html_has_system_areas():
     assert 'btnSystemArea_pc' not in content
     assert 'id="settingsArea_pc"' not in content
 
-    # ACQUISISCI ATTO rimosso dalla dashboard mobile
+    # ACQUISISCI ATTO e + OGGETTO rimossi dalla dashboard mobile
     assert 'ACQUISISCI ATTO' not in content
+    assert '+ OGGETTO' not in content
 
     # Logo Caveau ripristinato in alto a sinistra nella sidebar mobile
     assert 'fa-solid fa-vault' in content
