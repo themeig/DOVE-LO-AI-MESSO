@@ -1,6 +1,6 @@
 {
-  "version_code": 304,
-  "version_name": "2.10.4",
+  "version_code": 305,
+  "version_name": "2.10.5",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "⚙️ Riorganizzazione Modulare Impostazioni per Aree Tematiche: introdotta la suddivisione chiara per aree (Chat & AI, Google Drive, Google Calendar, Cartelle PC, Sicurezza & Backup) con barra a schede Olivetti e visualizzazione focalizzata."
+  "release_notes": "📅 Sincronizzazione Automatica Completa Google Calendar: le scadenze vengono aggiornate automaticamente su Google Calendar al pagamento ([PAGATO]), alla cancellazione singola/massiva, alla rinomina o ricatalogazione dei documenti, all'estrazione da archivi ZIP e alla connessione dell'account Google."
 }

@@ -67,9 +67,13 @@ class MockGoogleCalendarService:
             return {}
         ev_id = doc.google_calendar_event_id or f"mock-cal-ev-{doc.id}-{uuid.uuid4().hex[:6]}"
         html_link = f"https://calendar.google.com/calendar/event?eid={ev_id}"
+        cat_label = doc.category_label or doc.category or "Scadenza"
+        title_prefix = "[PAGATO] " if doc.status == "quietanzato" else ""
+        event_title = f"{title_prefix}[{cat_label}] {doc.title}"
         self.events_db[ev_id] = {
             "id": ev_id,
-            "title": doc.title,
+            "title": event_title,
+            "status": doc.status,
             "due_date": doc.due_date.isoformat(),
             "amount": doc.amount,
             "calendar_id": calendar_id,
@@ -176,7 +180,8 @@ class RealGoogleCalendarService:
         end_date = (doc.due_date + timedelta(days=1)).isoformat()
 
         cat_label = doc.category_label or doc.category or "Scadenza"
-        summary_title = f"[{cat_label}] {doc.title}"
+        title_prefix = "[PAGATO] " if doc.status == "quietanzato" else ""
+        summary_title = f"{title_prefix}[{cat_label}] {doc.title}"
 
         lines = [
             f"Atto archiviato: {doc.title}",
@@ -186,7 +191,9 @@ class RealGoogleCalendarService:
             lines.append(f"Ente/Fornitore: {doc.issuer}")
         if doc.amount is not None:
             lines.append(f"Importo: € {doc.amount:.2f}")
-        if doc.status:
+        if doc.status == "quietanzato":
+            lines.append("Stato atto: QUIETANZATO / SALDATO ✅")
+        elif doc.status:
             lines.append(f"Stato atto: {doc.status.upper()}")
         if doc.summary:
             lines.append(f"\nNote & Sintesi:\n{doc.summary}")
@@ -298,3 +305,70 @@ def set_calendar_service(service: Optional[GoogleCalendarServiceInterface]):
     """Consente l'iniezione del servizio per scopi di testing."""
     global _calendar_service_instance
     _calendar_service_instance = service
+
+
+def auto_sync_calendar_event(doc: Document, db: Any) -> Optional[Dict[str, Any]]:
+    """Se Google Calendar è collegato e il documento ha data di scadenza (o aveva un evento associato), sincronizza o aggiorna l'evento."""
+    cred = db.query(GoogleDriveCredential).first()
+    if not cred or not cred.access_token:
+        return None
+    service = get_calendar_service()
+    try:
+        cal_id = cred.google_calendar_id or service.get_or_create_dedicated_calendar(cred.access_token)
+        if not cred.google_calendar_id:
+            cred.google_calendar_id = cal_id
+            db.commit()
+
+        if doc.due_date:
+            res = service.sync_deadline_event(doc, cal_id, cred.access_token)
+            if res and res.get("event_id"):
+                doc.google_calendar_event_id = res["event_id"]
+                db.commit()
+            return res
+        elif doc.google_calendar_event_id:
+            # Se la scadenza è stata rimossa dal documento, elimina l'evento esistente
+            service.delete_deadline_event(doc.google_calendar_event_id, cal_id, cred.access_token)
+            doc.google_calendar_event_id = None
+            db.commit()
+    except Exception as e:
+        logger.warning(f"Errore auto_sync_calendar_event per doc #{doc.id}: {e}")
+    return None
+
+
+def auto_delete_calendar_event(doc: Document, db: Any) -> bool:
+    """Se il documento ha un evento su Google Calendar, lo rimuove prima dell'eliminazione del record dal caveau."""
+    if not doc.google_calendar_event_id:
+        return False
+    cred = db.query(GoogleDriveCredential).first()
+    if not cred or not cred.access_token:
+        return False
+    service = get_calendar_service()
+    try:
+        cal_id = cred.google_calendar_id or "primary"
+        res = service.delete_deadline_event(doc.google_calendar_event_id, cal_id, cred.access_token)
+        doc.google_calendar_event_id = None
+        db.commit()
+        return res
+    except Exception as e:
+        logger.warning(f"Errore auto_delete_calendar_event per doc #{doc.id}: {e}")
+        return False
+
+
+def auto_sync_all_deadlines(db: Any) -> Optional[Dict[str, Any]]:
+    """Sincronizza tutte le scadenze presenti nel caveau verso Google Calendar se connesso."""
+    cred = db.query(GoogleDriveCredential).first()
+    if not cred or not cred.access_token:
+        return None
+    service = get_calendar_service()
+    try:
+        cal_id = cred.google_calendar_id or service.get_or_create_dedicated_calendar(cred.access_token)
+        if not cred.google_calendar_id:
+            cred.google_calendar_id = cal_id
+            db.commit()
+        docs = db.query(Document).filter(Document.due_date.isnot(None)).all()
+        res = service.sync_all_deadlines(docs, cred.access_token, cal_id)
+        db.commit()
+        return res
+    except Exception as e:
+        logger.warning(f"Errore auto_sync_all_deadlines: {e}")
+        return None

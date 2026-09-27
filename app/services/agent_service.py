@@ -1640,6 +1640,9 @@ class AgenticChatService:
             db.commit()
             db.refresh(doc)
 
+            from app.services.calendar_service import auto_sync_calendar_event
+            auto_sync_calendar_event(doc, db)
+
             fn = Path(doc.file_path).name if doc.file_path else ""
             doc_info = {
                 "id": doc.id,
@@ -1715,6 +1718,9 @@ class AgenticChatService:
 
             db.commit()
             db.refresh(doc)
+
+            from app.services.calendar_service import auto_sync_calendar_event
+            auto_sync_calendar_event(doc, db)
 
             fn = Path(doc.file_path).name if doc.file_path else ""
             doc_info = {

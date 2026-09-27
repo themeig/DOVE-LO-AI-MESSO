@@ -6,8 +6,8 @@ from pathlib import Path
 from app.version import APP_VERSION
 
 
-def test_app_version_is_2_10_4():
-    assert APP_VERSION == "2.10.4"
+def test_app_version():
+    assert APP_VERSION == "2.10.5"
 
 
 def test_index_html_has_system_areas():

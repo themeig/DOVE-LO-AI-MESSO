@@ -268,6 +268,13 @@ def scan_local_folder(
                 category_icon=extracted.category_icon
             )
             db.add(doc)
+            db.flush()
+            if doc.due_date:
+                try:
+                    from app.services.calendar_service import auto_sync_calendar_event
+                    auto_sync_calendar_event(doc, db)
+                except Exception as sync_err:
+                    logger.warning(f"Errore auto_sync_calendar_event per file indicizzato {file_path.name}: {sync_err}")
             new_count += 1
             details.append(f"Indicizzato: {file_path.name} -> '{title}' ({doc_status})")
         except Exception as err:
@@ -679,6 +686,12 @@ def approve_file_proposal(proposal_id: int, db: Session) -> Tuple[bool, str, Opt
         )
         db.add(doc)
         db.flush()
+        if doc.due_date:
+            try:
+                from app.services.calendar_service import auto_sync_calendar_event
+                auto_sync_calendar_event(doc, db)
+            except Exception as sync_err:
+                logger.warning(f"Errore auto_sync_calendar_event per file locale approvato: {sync_err}")
 
         proposal.status = "approved"
         proposal.resolved_at = datetime.now(timezone.utc)

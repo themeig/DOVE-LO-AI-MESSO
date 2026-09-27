@@ -104,6 +104,13 @@ def drive_oauth_callback(
     db.commit()
     db.refresh(cred)
 
+    # Sincronizza automaticamente tutte le scadenze del caveau verso il calendario dedicato
+    try:
+        from app.services.calendar_service import auto_sync_all_deadlines
+        auto_sync_all_deadlines(db)
+    except Exception as sync_err:
+        logger.warning(f"Errore auto_sync_all_deadlines al login Google: {sync_err}")
+
     accept_header = request.headers.get("accept", "")
     if "text/html" in accept_header:
         user_display = html.escape(cred.user_email or "Account Google")

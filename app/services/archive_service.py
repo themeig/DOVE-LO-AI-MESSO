@@ -1609,8 +1609,14 @@ def unzip_document_to_vault(
                 extracted_docs.append(new_doc)
 
         db.commit()
+        from app.services.calendar_service import auto_sync_calendar_event
         for d in extracted_docs:
             db.refresh(d)
+            if d.due_date:
+                try:
+                    auto_sync_calendar_event(d, db)
+                except Exception as sync_err:
+                    logger.warning(f"Errore sincronizzazione calendar per doc decompresso #{d.id}: {sync_err}")
 
     except Exception as e:
         logger.error(f"Errore durante l'unzip di {doc.title}: {e}")

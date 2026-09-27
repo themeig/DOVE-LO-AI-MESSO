@@ -14,7 +14,11 @@ from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDele
 from app.services.ai_service import get_ai_service
 from app.services.document_service import save_uploaded_file, read_decrypted_file, determine_document_status
 from app.services.drive_service import get_drive_service, resolve_drive_folder_path, sanitize_drive_folder_name
-from app.services.calendar_service import get_calendar_service
+from app.services.calendar_service import (
+    get_calendar_service,
+    auto_sync_calendar_event,
+    auto_delete_calendar_event,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -113,18 +117,8 @@ def _process_and_save_single_doc(
     db.add(doc)
     db.flush()
 
-    # Sincronizzazione automatica con Google Calendar se data di scadenza presente e credenziali attive
-    if doc.due_date and active_cred and active_cred.access_token:
-        try:
-            cal_service = get_calendar_service()
-            cal_id = active_cred.google_calendar_id or cal_service.get_or_create_dedicated_calendar(active_cred.access_token)
-            if not active_cred.google_calendar_id:
-                active_cred.google_calendar_id = cal_id
-            cal_res = cal_service.sync_deadline_event(doc, cal_id, active_cred.access_token)
-            if cal_res and cal_res.get("event_id"):
-                doc.google_calendar_event_id = cal_res["event_id"]
-        except Exception as e:
-            logger.warning(f"Errore durante sync scadenza Google Calendar per '{filename}': {e}")
+    # Sincronizzazione automatica con Google Calendar se data di scadenza presente e account collegato
+    auto_sync_calendar_event(doc, db)
 
     return doc
 
@@ -692,13 +686,17 @@ def update_document_status(
     db.commit()
     db.refresh(doc)
 
+    # Sincronizzazione automatica con Google Calendar se collegato
+    auto_sync_calendar_event(doc, db)
+
     return {
         "document_id": doc.id,
         "title": doc.title,
         "issuer": doc.issuer,
         "amount": doc.amount,
         "due_date": doc.due_date.isoformat() if doc.due_date else None,
-        "status": doc.status
+        "status": doc.status,
+        "google_calendar_event_id": doc.google_calendar_event_id
     }
 
 @router.delete("/bulk", response_model=BulkDeleteResponse)
@@ -715,6 +713,8 @@ def delete_documents_bulk(payload: BulkDeleteRequest, db: Session = Depends(get_
     deleted_ids = []
     for doc in docs:
         deleted_ids.append(doc.id)
+        # Rimuove l'evento dal calendario se presente
+        auto_delete_calendar_event(doc, db)
         if doc.file_path and not doc.is_local_file:
             try:
                 p = Path(doc.file_path)
@@ -739,6 +739,9 @@ def delete_document(document_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Documento non trovato")
 
     title = doc.title
+    # Rimuove l'evento dal calendario se presente
+    auto_delete_calendar_event(doc, db)
+
     # Try removing physical file (only if not a local computer folder file)
     if doc.file_path and not doc.is_local_file:
         try:

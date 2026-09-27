@@ -472,6 +472,11 @@ def rename_vault_document(new_title: str, document_id: Optional[int] = None) -> 
         old_title = doc.title
         doc.title = new_title.strip()
         db.commit()
+        try:
+            from app.services.calendar_service import auto_sync_calendar_event
+            auto_sync_calendar_event(doc, db)
+        except Exception:
+            pass
         return f"Documento #{doc.id} rinominato con successo da '{old_title}' a '{doc.title}'."
 
 @mcp.tool()
@@ -521,6 +526,11 @@ def recategorize_vault_document(
             doc.subfolder = resolved_subfolder
 
         db.commit()
+        try:
+            from app.services.calendar_service import auto_sync_calendar_event
+            auto_sync_calendar_event(doc, db)
+        except Exception:
+            pass
         sub_str = f" (sottocartella: {doc.subfolder})" if doc.subfolder else ""
         return f"Documento #{doc.id} '{doc.title}' spostato con successo da '{old_label}' alla sezione '{doc.category_label}'{sub_str} (icona: {doc.category_icon})."
 
@@ -544,6 +554,11 @@ def delete_vault_record(
             if not doc:
                 return f"Documento '{title}' non trovato per l'eliminazione."
             t = doc.title
+            try:
+                from app.services.calendar_service import auto_delete_calendar_event
+                auto_delete_calendar_event(doc, db)
+            except Exception:
+                pass
             db.delete(doc)
             db.commit()
             return f"Documento '{t}' eliminato definitivamente dal caveau."
@@ -570,6 +585,12 @@ def delete_vault_record(
                 q = q.filter(Document.doc_type.ilike(f"%{category.lower()}%"))
             docs_to_del = q.all()
             count = len(docs_to_del)
+            try:
+                from app.services.calendar_service import auto_delete_calendar_event
+                for d in docs_to_del:
+                    auto_delete_calendar_event(d, db)
+            except Exception:
+                pass
             for d in docs_to_del:
                 db.delete(d)
             db.commit()
