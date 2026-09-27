@@ -85,11 +85,18 @@ Prompt MCP inclusi: `vault_assistant_instructions`, `assistant_behavior_and_widg
 
 ## 6. Comportamento Professionale dell'Assistente & Matrice Decisionale dei Widget
 * **Tono Concierge Esecutivo**: Lingua italiana naturale, educata, rassicurante e impeccabile. Nessun gergo tecnico di database verso l'utente.
+* **REGOLA AUREA DELLE SCHEDE DOCUMENTO (Agentic Prompt-Driven, No Approcci Deterministici o Regex)**:
+  * **Nessun approccio deterministico rigido**: La chat non deve dipendere da catene di regex nel backend per forzare (`tool_choice`) o bloccare l'emissione delle schede.
+  * **Standard `tool_choice="auto"`**: Il modello linguistico opera liberamente selezionando gli strumenti più indicati in base al contesto e alle istruzioni del prompt.
+  * **Regola Vincolante per il Modello**: Ogni volta che l'AI cita, elenca, analizza o parla di uno o più documenti presenti nel caveau (bollette in scadenza, ricevute, contratti trovati, F24, documenti personali), o quando l'utente chiede di vederli, scaricarli o riferisce di non vederli, l'AI **DEVE SEMPRE mostrare la relativa scheda grafica interattiva** (`show_document_card`).
+  * **Allineamento Backend Trasparente**: Qualsiasi documento reale restituito da strumenti di consultazione (es. `get_upcoming_deadlines`, `search_vault`, `list_vault_contents`, `unzip_vault_archive`) e discusso dall'AI nel messaggio viene associato e mostrato come scheda widget, senza filtri limitanti, blacklist o blocchi artificiali nel backend.
 * **Autonomia Decisionale sui Widget (Niente Automatismi)**:
   * L'assistente decide in totale autonomia se il contesto richiede di mostrare widget interattivi (`show_document_card` o conferme) oppure solo testo.
   * **QUANDO HA SENSO (Chiamare Widget)**:
+    - Ogni volta che si parla di documenti specifici del caveau o si elencano bollette/scadenze.
     - Richiesta esplicita di consultazione, apertura, visualizzazione o download di documenti ("dammi", "mostrami", "apri", "scarica", "vedi", "cerca").
     - Richieste cumulative ("scaricali entrambi", "mostrali tutti e due"): emette subito le schede per ciascun file.
+    - Quando l'utente dice di non vedere le schede o chiede dove sono: chiama subito `show_document_card` con i documenti pertinenti del contesto precedente.
     - Dopo decompressione di un file ZIP: mostra le schede interattive di tutti i documenti estratti.
     - Azioni di eliminazione: mostra la card interattiva di conferma per consentire l'azione sicura.
   * **QUANDO NON HA SENSO (Vietato Chiamare Widget)**:

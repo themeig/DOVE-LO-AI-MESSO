@@ -1,6 +1,6 @@
 {
-  "version_code": 302,
-  "version_name": "2.10.2",
+  "version_code": 303,
+  "version_name": "2.10.3",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "📄 Controllo Totale Schede e Widget Documento: risolto il bug per cui le schede delle scadenze e bollette non venivano allegate sotto al messaggio dell'AI. Aggiornato il gestore conversazionale per supportare 'non vedo le schede', 'dove sono le schede' e ripristinare immediatamente le schede ufficiali interattive senza scuse tecniche."
+  "release_notes": "🧠 Architettura Agentic Prompt-Driven & Regola Aurea Schede: rimosse le forzature deterministiche e impostato tool_choice='auto' nativo. Integrata la Regola Aurea per cui l'assistente AI mostra sempre e autonomamente le schede grafiche dei documenti ogni volta che ne parla o l'utente le richiede."
 }

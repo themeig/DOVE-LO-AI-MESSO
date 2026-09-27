@@ -547,10 +547,9 @@ IDENTITÀ, AMBIENTE OPERATIVO E INTERFACCIA UTENTE (DOVE SEI E COME FUNZIONI):
      * [⬇️ Scarica]: scarica direttamente il file originale sul dispositivo (computer o smartphone) dell'utente.
 
 3. GESTIONE DELLE SCHEDE DOCUMENTO (NESSUN AUTOMATISMO, DECIDI TU IN AUTONOMIA SE HA SENSO):
-   - DECIDI TU IN AUTONOMIA QUANDO HA SENSO MOSTRARE I WIDGET / SCHEDE: Spetta a te valutare se il contesto richiede di mostrare le schede documento interattive (`show_document_card`) oppure no. Non esistono automatismi.
-   - QUANDO HA SENSO MOSTRARE LE SCHEDE:
-     * Quando l'utente chiede esplicitamente di trovare, vedere, aprire o scaricare uno o più documenti (es. "dammi la bolletta Enel", "mostrami la tessera sanitaria", "scarica il 730", "cerca il contratto", "scaricali entrambi", "download").
-     * In questi casi, invoca subito `show_document_card` con tutti i documenti pertinenti, senza chiedere conferme superflue come "vuoi che ti mostri la scheda?".
+   - REGOLA AUREA SULLE SCHEDE DOCUMENTO (MOSTRA LA SCHEDA OGNI VOLTA CHE PARLI DI UN DOCUMENTO):
+     * Ogni volta che parli, citi, elenchi, analizzi o rispondi su uno o più documenti presenti nel caveau (ad esempio bollette in scadenza, ricevute, contratti trovati, F24, documenti personali), o quando l'utente ti chiede di vederli, aprirli, scaricarli o segnala di non vederli: DEVI SEMPRE MOSTRARE LA RELATIVA SCHEDA GRAFICA INTERATTIVA invocando `show_document_card(document_ids=[...])` o allegando i documenti pertinenti estratti dagli strumenti (`search_vault`, `get_upcoming_deadlines`, `list_vault_contents`, ecc.)!
+     * Quando l'utente chiede esplicitamente di trovare, vedere, aprire o scaricare uno o più documenti (es. "dammi la bolletta Enel", "mostrami la tessera sanitaria", "scarica il 730", "cerca il contratto", "scaricali entrambi", "download"), o dice "non vedo le schede" o "dove sono le schede": invoca subito `show_document_card` con tutti i documenti pertinenti, senza chiedere conferme superflue come "vuoi che ti mostri la scheda?".
      * Gestione collettiva di "scaricali", "entrambi", "tutti e due", "tutti": mostra le schede per tutti contemporaneamente senza dire "devi farlo singolarmente".
     - QUANDO NON HA SENSO E NON DEVI MAI MOSTRARE SCHEDE O WIDGET:
       * Domande generali, informative, meta o di aiuto sulle tue capacità (es. "cosa puoi fare?", "chi sei?", "cosa sai fare?", "come funzioni?", "aiuto", saluti, spiegazioni generali).
@@ -580,6 +579,7 @@ REGOLE OPERATIVE:
 
 4. QUANDO L'UTENTE CHIEDE DELLE SCADENZE O COSA DEVE PAGARE:
    - USA lo strumento `get_upcoming_deadlines`.
+   - Se sono presenti bollette o scadenze da pagare, presenta le informazioni ed emetti SEMPRE le schede dei documenti corrispondenti per permettere all'utente di visionarle o scaricarle direttamente!
 
 5. QUANDO L'UTENTE CHIEDE DI ELIMINARE O CANCELLARE:
    - Per eliminare un singolo elemento: cerca con `search_vault` e chiama `delete_vault_record(target_type='document' o 'physical_item', target_id=..., title=...)`.
@@ -3688,30 +3688,9 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             and not is_listing_request
         )
 
-        if is_content_inspect_request:
-            tool_choice_cfg = {"type": "function", "function": {"name": "read_vault_document_content"}}
-        elif is_delete_request:
-            tool_choice_cfg = {"type": "function", "function": {"name": "delete_vault_record"}}
-        elif is_unzip_request:
-            tool_choice_cfg = {"type": "function", "function": {"name": "unzip_vault_archive"}}
-        elif is_link_photo_intent:
-            tool_choice_cfg = {"type": "function", "function": {"name": "link_document_to_item"}}
-        elif is_rename_request:
-            tool_choice_cfg = {"type": "function", "function": {"name": "rename_vault_document"}}
-        elif is_download_or_show:
-            tool_choice_cfg = {"type": "function", "function": {"name": "show_document_card"}}
-        elif is_doc_search_request or is_where_request:
-            tool_choice_cfg = {"type": "function", "function": {"name": "search_vault"}}
-        elif is_drive_status_request:
-            tool_choice_cfg = {"type": "function", "function": {"name": "get_google_drive_status"}}
-        elif is_listing_request:
-            tool_choice_cfg = {"type": "function", "function": {"name": "list_vault_contents"}}
-        elif is_store_or_update:
-            tool_choice_cfg = {"type": "function", "function": {"name": "store_physical_item"}}
-        elif is_deadline_request:
-            tool_choice_cfg = {"type": "function", "function": {"name": "get_upcoming_deadlines"}}
-        else:
-            tool_choice_cfg = "auto"
+        # Standard Agentic Prompt-Driven: il modello opera con tool_choice='auto'
+        # e sceglie liberamente gli strumenti più appropriati in base al contesto e al prompt
+        tool_choice_cfg = "auto"
 
         try:
             r1 = httpx.post(
