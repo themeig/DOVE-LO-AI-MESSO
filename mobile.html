@@ -1640,29 +1640,137 @@
         </div>
       </div>
 
-      <!-- SELETTORE AREE SISTEMA (TABS OLIVETTI INDUSTRIAL) -->
-      <div id="systemAreaTabs" class="flex items-center gap-1.5 p-1.5 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs overflow-x-auto custom-scroll select-none shadow-2xs">
-        <button id="btnSystemArea_all" type="button" onclick="setSystemArea('all')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-[#3C5A48] text-white shadow-2xs shrink-0">
-          <i class="fa-solid fa-layer-group text-[11px]"></i>
-          <span>Tutte le Aree</span>
-        </button>
-        <button id="btnSystemArea_chat" type="button" onclick="setSystemArea('chat')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
-          <i class="fa-solid fa-message text-[#3C5A48] text-[11px]"></i>
-          <span>💬 Chat & AI</span>
-        </button>
-        <button id="btnSystemArea_drive" type="button" onclick="setSystemArea('drive')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
-          <i class="fa-brands fa-google-drive text-emerald-700 text-[11px]"></i>
-          <span>☁️ Google Drive</span>
-        </button>
-        <button id="btnSystemArea_calendar" type="button" onclick="setSystemArea('calendar')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
-          <i class="fa-solid fa-calendar-check text-[#2B4C7E] text-[11px]"></i>
-          <span>📅 Google Calendar</span>
-        </button>
-        <button id="btnSystemArea_security" type="button" onclick="setSystemArea('security')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
-          <i class="fa-solid fa-shield-halved text-[#7A7568] text-[11px]"></i>
-          <span>🔒 Sicurezza & Backup</span>
-        </button>
+      <!-- MENU SEZIONI SISTEMA (STILE IMPOSTAZIONI SMARTPHONE) -->
+      <div id="systemSectionsMenu" class="space-y-3 animate-in fade-in duration-150">
+        <div class="px-1 mb-1 flex items-center justify-between">
+          <p class="text-xs text-[#7A7568] font-mono-code uppercase tracking-wider">Aree & Parametri di Configurazione</p>
+          <span class="text-[10px] text-[#7A7568] font-mono-code">Tocca per aprire</span>
+        </div>
+
+        <div class="bg-white border border-[#E3DDD1] rounded-xs divide-y divide-[#E3DDD1] shadow-2xs overflow-hidden">
+          <!-- 1. Chat & Motore AI -->
+          <button type="button" onclick="openSystemSection('chat')" class="w-full p-4 flex items-center justify-between text-left hover:bg-[#FAF8F2] transition cursor-pointer group">
+            <div class="flex items-center gap-3.5 min-w-0">
+              <div class="w-10 h-10 rounded-xs bg-[#EBF1ED] text-[#3C5A48] border border-[#3C5A48]/20 flex items-center justify-center text-base shrink-0 group-hover:bg-[#3C5A48] group-hover:text-white transition">
+                <i class="fa-solid fa-robot"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-space font-bold text-sm text-[#222220]">Chat & Assistente AI</span>
+                  <span class="stamp-oli stamp-solid-sage text-[8px] py-0.2 px-1">AI CORE</span>
+                </div>
+                <p class="text-xs text-[#7A7568] font-mono-code truncate mt-0.5" id="menuStatus_chat">
+                  Modelli linguistici, memoria contestuale, crediti OpenRouter
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-[#7A7568] group-hover:text-[#222220] pl-2 shrink-0">
+              <i class="fa-solid fa-chevron-right text-xs group-hover:translate-x-0.5 transition-transform"></i>
+            </div>
+          </button>
+
+          <!-- 2. Google Drive Cloud Sync -->
+          <button type="button" onclick="openSystemSection('drive')" class="w-full p-4 flex items-center justify-between text-left hover:bg-[#FAF8F2] transition cursor-pointer group">
+            <div class="flex items-center gap-3.5 min-w-0">
+              <div class="w-10 h-10 rounded-xs bg-[#E8F0FE] text-[#1A73E8] border border-[#1A73E8]/20 flex items-center justify-center text-base shrink-0 group-hover:bg-[#1A73E8] group-hover:text-white transition">
+                <i class="fa-brands fa-google-drive"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-space font-bold text-sm text-[#222220]">Google Drive Cloud Sync</span>
+                  <span class="stamp-oli text-[8px] py-0.2 px-1" id="menuBadge_drive">CLOUD</span>
+                </div>
+                <p class="text-xs text-[#7A7568] font-mono-code truncate mt-0.5" id="menuStatus_drive">
+                  Backup remoto, modalità Dual/Cloud, sincronizzazione file
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-[#7A7568] group-hover:text-[#222220] pl-2 shrink-0">
+              <i class="fa-solid fa-chevron-right text-xs group-hover:translate-x-0.5 transition-transform"></i>
+            </div>
+          </button>
+
+          <!-- 3. Google Calendar -->
+          <button type="button" onclick="openSystemSection('calendar')" class="w-full p-4 flex items-center justify-between text-left hover:bg-[#FAF8F2] transition cursor-pointer group">
+            <div class="flex items-center gap-3.5 min-w-0">
+              <div class="w-10 h-10 rounded-xs bg-[#E6F4EA] text-[#0F9D58] border border-[#0F9D58]/20 flex items-center justify-center text-base shrink-0 group-hover:bg-[#0F9D58] group-hover:text-white transition">
+                <i class="fa-solid fa-calendar-check"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-space font-bold text-sm text-[#222220]">Google Calendar</span>
+                  <span class="stamp-oli text-[8px] py-0.2 px-1" id="menuBadge_calendar">CALENDARIO</span>
+                </div>
+                <p class="text-xs text-[#7A7568] font-mono-code truncate mt-0.5" id="menuStatus_calendar">
+                  Sincronizzazione automatica scadenze fiscali, bollette e promemoria
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-[#7A7568] group-hover:text-[#222220] pl-2 shrink-0">
+              <i class="fa-solid fa-chevron-right text-xs group-hover:translate-x-0.5 transition-transform"></i>
+            </div>
+          </button>
+
+          <!-- 4. Sicurezza & Crittografia -->
+          <button type="button" onclick="openSystemSection('security')" class="w-full p-4 flex items-center justify-between text-left hover:bg-[#FAF8F2] transition cursor-pointer group">
+            <div class="flex items-center gap-3.5 min-w-0">
+              <div class="w-10 h-10 rounded-xs bg-[#FAF0ED] text-[#C84B31] border border-[#C84B31]/20 flex items-center justify-center text-base shrink-0 group-hover:bg-[#C84B31] group-hover:text-white transition">
+                <i class="fa-solid fa-shield-halved"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-space font-bold text-sm text-[#222220]">Sicurezza & Crittografia</span>
+                  <span class="stamp-oli stamp-terracotta text-[8px] py-0.2 px-1">AES-256</span>
+                </div>
+                <p class="text-xs text-[#7A7568] font-mono-code truncate mt-0.5" id="menuStatus_security">
+                  Cifratura zero-knowledge, PIN di blocco, backup ed esportazione vault
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-[#7A7568] group-hover:text-[#222220] pl-2 shrink-0">
+              <i class="fa-solid fa-chevron-right text-xs group-hover:translate-x-0.5 transition-transform"></i>
+            </div>
+          </button>
+        </div>
       </div>
+
+      <!-- VISTA DETTAGLIO SEZIONE APERTA -->
+      <div id="systemSectionDetailView" class="hidden space-y-4">
+        <!-- Sub-Header Dettaglio con Tasto Torna alle Sezioni -->
+        <div id="systemSectionDetailHeader" class="bg-white p-3 rounded-xs border border-[#E3DDD1] flex items-center justify-between shadow-2xs">
+          <button type="button" onclick="closeSystemSection()" class="px-3 py-1.5 rounded-xs bg-[#FAF8F2] hover:bg-[#3C5A48] text-[#222220] hover:text-white border border-[#E3DDD1] font-space font-bold text-xs flex items-center gap-2 transition cursor-pointer shadow-2xs active:scale-95">
+            <i class="fa-solid fa-arrow-left text-xs"></i>
+            <span>Tutte le Sezioni</span>
+          </button>
+          <div class="flex items-center gap-2">
+            <h3 id="activeSectionTitle" class="font-space font-bold text-xs uppercase text-[#222220] hidden sm:inline">Sezione</h3>
+            <span id="activeSectionBadge" class="stamp-oli stamp-solid-sage text-[9px] font-mono-code font-bold py-0.5 px-2">SEZIONE ATTIVA</span>
+          </div>
+        </div>
+
+        <!-- SELETTORE AREE SISTEMA (TABS OLIVETTI INDUSTRIAL) -->
+        <div id="systemAreaTabs" class="hidden flex items-center gap-1.5 p-1.5 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs overflow-x-auto custom-scroll select-none shadow-2xs">
+          <button id="btnSystemArea_all" type="button" onclick="setSystemArea('all')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-[#3C5A48] text-white shadow-2xs shrink-0">
+            <i class="fa-solid fa-layer-group text-[11px]"></i>
+            <span>Tutte le Aree</span>
+          </button>
+          <button id="btnSystemArea_chat" type="button" onclick="setSystemArea('chat')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
+            <i class="fa-solid fa-message text-[#3C5A48] text-[11px]"></i>
+            <span>💬 Chat & AI</span>
+          </button>
+          <button id="btnSystemArea_drive" type="button" onclick="setSystemArea('drive')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
+            <i class="fa-brands fa-google-drive text-emerald-700 text-[11px]"></i>
+            <span>☁️ Google Drive</span>
+          </button>
+          <button id="btnSystemArea_calendar" type="button" onclick="setSystemArea('calendar')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
+            <i class="fa-solid fa-calendar-check text-[#2B4C7E] text-[11px]"></i>
+            <span>📅 Google Calendar</span>
+          </button>
+          <button id="btnSystemArea_security" type="button" onclick="setSystemArea('security')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
+            <i class="fa-solid fa-shield-halved text-[#7A7568] text-[11px]"></i>
+            <span>🔒 Sicurezza & Backup</span>
+          </button>
+        </div>
 
       <!-- ================================================================= -->
       <!-- AREA 1: IMPOSTAZIONI CHAT & MOTORE AI                             -->
@@ -2282,6 +2390,8 @@
 
         </div>
       </section>
+
+      </div> <!-- /#systemSectionDetailView -->
 
     </main>
 

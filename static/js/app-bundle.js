@@ -577,6 +577,7 @@
         loadGoogleDriveStatus();
         loadWatchedFolders();
         if (typeof loadCalendarStatus === 'function') loadCalendarStatus();
+        if (typeof updateSystemMenuStatusBadges === 'function') updateSystemMenuStatusBadges();
         if (typeof setSystemArea === 'function') setSystemArea(sessionStorage.getItem('dove_system_active_area') || 'all');
       } else if (normalizedTarget === 'chat') {
         if (isMobileView) {
@@ -1344,6 +1345,21 @@
         }
       }
 
+      // 2b. Se l'utente si trova in Sistema e ha una sezione aperta nel dettaglio, torna all'elenco sezioni principale
+      if (currentActiveScreen === 'settings') {
+        const detail = document.getElementById('systemSectionDetailView');
+        if (detail && !detail.classList.contains('hidden')) {
+          if (typeof closeSystemSection === 'function') {
+            closeSystemSection();
+          } else {
+            detail.classList.add('hidden');
+            const menu = document.getElementById('systemSectionsMenu');
+            if (menu) menu.classList.remove('hidden');
+          }
+          return true;
+        }
+      }
+
       // 3. Se l'utente si trova su Dashboard o Sistema, torna alla sezione Conversa (Chat)
       if (currentActiveScreen !== 'chat') {
         closeToChat();
@@ -1599,6 +1615,7 @@
               loadGoogleDriveStatus();
               loadWatchedFolders();
               if (typeof loadCalendarStatus === 'function') loadCalendarStatus();
+              if (typeof updateSystemMenuStatusBadges === 'function') updateSystemMenuStatusBadges();
               if (typeof setSystemArea === 'function') setSystemArea(sessionStorage.getItem('dove_system_active_area') || 'all');
             } else if (committedTarget === 'chat') {
               if (isMobileView) {
@@ -2115,35 +2132,181 @@
 
     window.loadOpenRouterCredits = loadOpenRouterCredits;
 
-    // --- Suddivisione Impostazioni Sistema per Aree Tematiche ---
-    function setSystemArea(area) {
-      const validAreas = ['all', 'chat', 'drive', 'calendar', 'pc', 'security'];
-      const targetArea = validAreas.includes(area) ? area : 'all';
-      sessionStorage.setItem('dove_system_active_area', targetArea);
+    // --- Suddivisione Impostazioni Sistema per Aree Tematiche (Stile Smartphone) ---
+    let currentOpenSystemSection = null;
 
-      // Aggiorna classi bottoni Tab
-      validAreas.forEach(a => {
+    const SYSTEM_SECTION_CONFIG = {
+      chat: { title: "Chat & Assistente AI", badge: "AI CORE" },
+      drive: { title: "Google Drive Cloud Sync", badge: "CLOUD BACKUP" },
+      calendar: { title: "Google Calendar", badge: "CALENDARIO TRIBUTI" },
+      pc: { title: "Cartelle PC & Monitoraggio", badge: "DESKTOP" },
+      security: { title: "Sicurezza & Crittografia", badge: "AES-256 ZERO-KNOWLEDGE" }
+    };
+
+    function updateSystemMenuStatusBadges() {
+      // 1. Chat & AI
+      const menuStatusChat = document.getElementById('menuStatus_chat');
+      if (menuStatusChat) {
+        const savedModel = localStorage.getItem('dove_ai_model') || 'google/gemini-2.5-flash';
+        const modelLabel = savedModel.includes('pro') ? 'Gemini Pro' : savedModel.includes('flash') ? 'Gemini Flash' : 'Claude 3.7';
+        const credits = sessionStorage.getItem('openrouter_credits');
+        const creditsText = credits ? ` • Saldo: ${credits}` : '';
+        menuStatusChat.textContent = `Modello: ${modelLabel}${creditsText} • Prompt di sistema`;
+      }
+
+      // 2. Google Drive
+      const menuBadgeDrive = document.getElementById('menuBadge_drive');
+      const menuStatusDrive = document.getElementById('menuStatus_drive');
+      const driveIsConnected = window.currentDriveConnected || false;
+      if (menuBadgeDrive) {
+        if (driveIsConnected) {
+          menuBadgeDrive.textContent = 'COLLEGATO';
+          menuBadgeDrive.className = 'stamp-oli stamp-solid-sage text-[8px] py-0.2 px-1';
+        } else {
+          menuBadgeDrive.textContent = 'CLOUD';
+          menuBadgeDrive.className = 'stamp-oli text-[8px] py-0.2 px-1';
+        }
+      }
+      if (menuStatusDrive) {
+        if (driveIsConnected) {
+          menuStatusDrive.textContent = 'Sincronizzazione cloud attiva • Backup automatico';
+        } else {
+          menuStatusDrive.textContent = 'Backup remoto, modalità Dual/Cloud, sincronizzazione file';
+        }
+      }
+
+      // 3. Google Calendar
+      const menuBadgeCalendar = document.getElementById('menuBadge_calendar');
+      const menuStatusCalendar = document.getElementById('menuStatus_calendar');
+      const calBadge = document.getElementById('systemCalendarStatusBadge');
+      const calConnected = (window.currentCalendarConnected !== undefined) 
+        ? window.currentCalendarConnected 
+        : (calBadge && (calBadge.textContent.includes('COLLEGATO') || calBadge.textContent.includes('ATTIVO')));
+      if (menuBadgeCalendar) {
+        if (calConnected) {
+          menuBadgeCalendar.textContent = 'ATTIVO';
+          menuBadgeCalendar.className = 'stamp-oli stamp-solid-sage text-[8px] py-0.2 px-1';
+        } else {
+          menuBadgeCalendar.textContent = 'CALENDARIO';
+          menuBadgeCalendar.className = 'stamp-oli text-[8px] py-0.2 px-1';
+        }
+      }
+      if (menuStatusCalendar) {
+        if (calConnected) {
+          menuStatusCalendar.textContent = 'Sincronizzazione tributi e bollette attiva';
+        } else {
+          menuStatusCalendar.textContent = 'Sincronizzazione automatica scadenze fiscali, bollette e promemoria';
+        }
+      }
+
+      // 4. Cartelle PC
+      const menuStatusPc = document.getElementById('menuStatus_pc');
+      if (menuStatusPc) {
+        menuStatusPc.textContent = 'Monitoraggio cartelle locali, Download, scansione automatica file';
+      }
+    }
+    window.updateSystemMenuStatusBadges = updateSystemMenuStatusBadges;
+
+    function openSystemSection(area) {
+      const validAreas = ['chat', 'drive', 'calendar', 'pc', 'security'];
+      if (!validAreas.includes(area)) {
+        closeSystemSection();
+        return;
+      }
+      currentOpenSystemSection = area;
+      sessionStorage.setItem('dove_system_open_section', area);
+      sessionStorage.setItem('dove_system_active_area', area);
+
+      const menu = document.getElementById('systemSectionsMenu');
+      const detail = document.getElementById('systemSectionDetailView');
+      if (menu) menu.classList.add('hidden');
+      if (detail) detail.classList.remove('hidden');
+
+      // Imposta titolo e badge della sezione attiva nel sub-header
+      const titleEl = document.getElementById('activeSectionTitle');
+      const badgeEl = document.getElementById('activeSectionBadge');
+      const cfg = SYSTEM_SECTION_CONFIG[area] || { title: area.toUpperCase(), badge: "ATTIVA" };
+      if (titleEl) titleEl.textContent = cfg.title;
+      if (badgeEl) badgeEl.textContent = cfg.badge;
+
+      // Aggiorna visibilità sezioni (solo quella selezionata è visibile)
+      const sectionIds = ['settingsArea_chat', 'settingsArea_drive', 'settingsArea_calendar', 'settingsArea_pc', 'settingsArea_security'];
+      sectionIds.forEach(id => {
+        const sec = document.getElementById(id);
+        if (!sec) return;
+        const secArea = id.replace('settingsArea_', '');
+        if (secArea === area) {
+          sec.classList.remove('hidden');
+        } else {
+          sec.classList.add('hidden');
+        }
+      });
+
+      // Aggiorna classi bottoni Tab per coerenza
+      ['all', 'chat', 'drive', 'calendar', 'pc', 'security'].forEach(a => {
         const btn = document.getElementById(`btnSystemArea_${a}`);
         if (!btn) return;
-        if (a === targetArea) {
+        if (a === area) {
           btn.className = 'system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-[#3C5A48] text-white shadow-2xs shrink-0';
         } else {
           btn.className = 'system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0';
         }
       });
 
-      // Commuta visibilità sezioni container per area
+      // Scroll verso l'alto
+      const scrollable = document.querySelector('#viewSettings main') || document.querySelector('#viewSettings') || window;
+      if (scrollable && scrollable.scrollTo) {
+        scrollable.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+    window.openSystemSection = openSystemSection;
+
+    function closeSystemSection() {
+      currentOpenSystemSection = null;
+      sessionStorage.setItem('dove_system_open_section', 'none');
+      sessionStorage.setItem('dove_system_active_area', 'all');
+
+      const menu = document.getElementById('systemSectionsMenu');
+      const detail = document.getElementById('systemSectionDetailView');
+      if (menu) menu.classList.remove('hidden');
+      if (detail) detail.classList.add('hidden');
+
+      // Mantieni tutte le sezioni visibili per compatibilità
       const sectionIds = ['settingsArea_chat', 'settingsArea_drive', 'settingsArea_calendar', 'settingsArea_pc', 'settingsArea_security'];
       sectionIds.forEach(id => {
         const sec = document.getElementById(id);
-        if (!sec) return;
-        const secArea = id.replace('settingsArea_', '');
-        if (targetArea === 'all' || targetArea === secArea) {
-          sec.classList.remove('hidden');
-        } else {
-          sec.classList.add('hidden');
+        if (sec) sec.classList.remove('hidden');
+      });
+
+      // Aggiorna stato tab 'all'
+      const btnAll = document.getElementById('btnSystemArea_all');
+      if (btnAll) {
+        btnAll.className = 'system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-[#3C5A48] text-white shadow-2xs shrink-0';
+      }
+      ['chat', 'drive', 'calendar', 'pc', 'security'].forEach(a => {
+        const btn = document.getElementById(`btnSystemArea_${a}`);
+        if (btn) {
+          btn.className = 'system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0';
         }
       });
+
+      updateSystemMenuStatusBadges();
+
+      const scrollable = document.querySelector('#viewSettings main') || document.querySelector('#viewSettings') || window;
+      if (scrollable && scrollable.scrollTo) {
+        scrollable.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+    window.closeSystemSection = closeSystemSection;
+
+    function setSystemArea(area) {
+      const validAreas = ['all', 'chat', 'drive', 'calendar', 'pc', 'security'];
+      const targetArea = validAreas.includes(area) ? area : 'all';
+      if (targetArea === 'all') {
+        closeSystemSection();
+      } else {
+        openSystemSection(targetArea);
+      }
     }
     window.setSystemArea = setSystemArea;
 
@@ -2187,7 +2350,9 @@
         if (!res.ok) throw new Error('Stato non disponibile');
         const data = await res.json();
         const isConnected = !!data.connected;
+        window.currentCalendarConnected = isConnected;
         updateHeaderCloudIndicators(null, isConnected);
+        if (typeof updateSystemMenuStatusBadges === 'function') updateSystemMenuStatusBadges();
         if (badge) {
           if (isConnected) {
             badge.textContent = 'ATTIVO & COLLEGATO';
@@ -2204,7 +2369,9 @@
           }
         }
       } catch (e) {
+        window.currentCalendarConnected = false;
         updateHeaderCloudIndicators(null, false);
+        if (typeof updateSystemMenuStatusBadges === 'function') updateSystemMenuStatusBadges();
         if (badge) {
           badge.textContent = 'LOCALE / ICAL PRONTO';
           badge.className = 'stamp-oli text-[8px] font-bold text-[#7A7568]';
@@ -2255,7 +2422,9 @@
         if (loadingEl) loadingEl.classList.add('hidden');
 
         if (data.connected) {
+          window.currentDriveConnected = true;
           updateHeaderCloudIndicators(true, null);
+          if (typeof updateSystemMenuStatusBadges === 'function') updateSystemMenuStatusBadges();
           if (connectedEl) connectedEl.classList.remove('hidden');
           if (disconnectedEl) disconnectedEl.classList.add('hidden');
           if (emailEl) emailEl.textContent = data.user_email || 'Account Google';
@@ -2281,7 +2450,9 @@
             kpiDriveDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse";
           }
         } else {
+          window.currentDriveConnected = false;
           updateHeaderCloudIndicators(false, null);
+          if (typeof updateSystemMenuStatusBadges === 'function') updateSystemMenuStatusBadges();
           if (connectedEl) connectedEl.classList.add('hidden');
           if (disconnectedEl) disconnectedEl.classList.remove('hidden');
           if (toolsBadge) {
@@ -2300,7 +2471,9 @@
         }
       } catch (err) {
         console.error("Errore loadGoogleDriveStatus:", err);
+        window.currentDriveConnected = false;
         updateHeaderCloudIndicators(false, null);
+        if (typeof updateSystemMenuStatusBadges === 'function') updateSystemMenuStatusBadges();
         if (loadingEl) loadingEl.classList.add('hidden');
         if (disconnectedEl) disconnectedEl.classList.remove('hidden');
       }

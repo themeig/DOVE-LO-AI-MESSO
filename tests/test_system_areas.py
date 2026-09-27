@@ -9,13 +9,19 @@ from app.version import APP_VERSION
 
 
 def test_app_version():
-    assert APP_VERSION == "2.10.10"
+    assert APP_VERSION == "2.10.11"
 
 
 def test_index_html_has_system_areas():
     index_path = Path("index.html")
     assert index_path.exists()
     content = index_path.read_text(encoding="utf-8")
+
+    # Verifica presenza menu sezioni stile smartphone
+    assert 'id="systemSectionsMenu"' in content
+    assert 'id="systemSectionDetailView"' in content
+    assert 'openSystemSection' in content
+    assert 'closeSystemSection' in content
 
     # Verifica presenza selettore tabs
     assert 'id="systemAreaTabs"' in content
@@ -55,6 +61,12 @@ def test_mobile_html_has_system_areas():
     assert mobile_path.exists()
     content = mobile_path.read_text(encoding="utf-8")
 
+    # Verifica presenza menu sezioni stile smartphone in mobile
+    assert 'id="systemSectionsMenu"' in content
+    assert 'id="systemSectionDetailView"' in content
+    assert 'openSystemSection' in content
+    assert 'closeSystemSection' in content
+
     # Verifica presenza selettore tabs in mobile
     assert 'id="systemAreaTabs"' in content
     assert 'btnSystemArea_all' in content
@@ -87,6 +99,12 @@ def test_app_bundle_has_system_area_and_mobile_gestures():
 
     assert "function setSystemArea(area)" in content
     assert "window.setSystemArea = setSystemArea;" in content
+    assert "function openSystemSection(area)" in content
+    assert "window.openSystemSection = openSystemSection;" in content
+    assert "function closeSystemSection()" in content
+    assert "window.closeSystemSection = closeSystemSection;" in content
+    assert "function updateSystemMenuStatusBadges()" in content
+    assert "window.updateSystemMenuStatusBadges = updateSystemMenuStatusBadges;" in content
     assert "function loadCalendarStatus()" in content
     assert "window.loadCalendarStatus = loadCalendarStatus;" in content
     assert "function updateHeaderCloudIndicators(driveConnected, calendarConnected)" in content
