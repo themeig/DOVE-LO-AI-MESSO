@@ -1,6 +1,6 @@
 {
-  "version_code": 300,
-  "version_name": "2.10.0",
+  "version_code": 301,
+  "version_name": "2.10.1",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "📅 Integrazione Completa con Google Calendar: sincronizzazione cloud automatica e manuale nello scadenzario con calendario dedicato 'Dove Lo AI Messo - Scadenze'. Tasto 1-Tap 'Google Cal' diretto su ogni atto con precompilazione data, titolo, importo e fornitore senza bisogno di configurazioni. Hook automatico all'upload dei documenti con scadenza e badge di avvenuta sincronizzazione."
+  "release_notes": "📅 Google Calendar Guida & Filtro Scadenze: aggiunto banner informativo, pulsante rapido 'Apri Google Calendar ↗' e modal interattivo con le istruzioni dettagliate passo-passo per visualizzare e filtrare solo le scadenze del caveau (tramite l'opzione 'Mostra solo questo' su Web e l'attivazione della sincronizzazione su app mobile Android)."
 }

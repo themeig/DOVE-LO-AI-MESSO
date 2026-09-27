@@ -21,11 +21,13 @@ def get_calendar_status(db: Session = Depends(get_db)):
     service = get_calendar_service()
     is_real = hasattr(service, "client_id") and bool(service.client_id)
 
+    cal_id = cred.google_calendar_id if cred else None
     return {
         "connected": bool(cred),
         "user_email": cred.user_email if cred else None,
-        "calendar_id": cred.google_calendar_id if cred else None,
+        "calendar_id": cal_id,
         "calendar_name": DEDICATED_CALENDAR_SUMMARY,
+        "web_url": "https://calendar.google.com/calendar/u/0/r",
         "mode": "real" if is_real else "mock",
     }
 
@@ -57,10 +59,12 @@ def sync_all_calendar_deadlines(db: Session = Depends(get_db)):
             "success": True,
             "calendar_id": cal_id,
             "calendar_name": DEDICATED_CALENDAR_SUMMARY,
+            "user_email": cred.user_email,
+            "web_url": "https://calendar.google.com/calendar/u/0/r",
             "synced_count": result.get("synced_count", 0),
             "synced_doc_ids": result.get("synced_doc_ids", []),
             "errors": result.get("errors", []),
-            "message": f"Sincronizzate {result.get('synced_count', 0)} scadenze su Google Calendar.",
+            "message": f"Sincronizzate {result.get('synced_count', 0)} scadenze nel calendario dedicato '{DEDICATED_CALENDAR_SUMMARY}'.",
         }
     except Exception as e:
         logger.error(f"Errore sincronizzazione Google Calendar: {e}")

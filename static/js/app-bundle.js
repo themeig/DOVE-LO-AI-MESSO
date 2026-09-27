@@ -5242,12 +5242,12 @@
         const msg = data.message || `Sincronizzate con successo ${data.synced_count || 0} scadenze su Google Calendar.`;
         if (typeof showSystemToast === 'function') {
           showSystemToast(`📅 ${msg}`, 'success');
-        } else {
-          alert(`📅 ${msg}`);
         }
         if (typeof loadDashboard === 'function') {
           loadDashboard(currentFilter);
         }
+        // Mostra guida pratica per visualizzare e filtrare subito su Google Calendar
+        showCalendarFilterGuideModal(data.user_email);
       } catch (err) {
         console.error('Errore sync Google Calendar:', err);
         if (typeof showSystemToast === 'function') {
@@ -5261,6 +5261,105 @@
       }
     }
     window.syncAllToGoogleCalendar = syncAllToGoogleCalendar;
+
+    // Modal interattivo Guida Filtro Google Calendar
+    function showCalendarFilterGuideModal(userEmail = '') {
+      let modal = document.getElementById('calendarFilterGuideModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'calendarFilterGuideModal';
+        modal.className = 'fixed inset-0 z-50 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-3 sm:p-4';
+        document.body.appendChild(modal);
+      }
+
+      const emailStr = userEmail || 'il tuo account Google';
+
+      modal.innerHTML = `
+        <div class="bg-[#F8F5EE] border-2 border-[#3C5A48] rounded-xs shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden text-[#222220]">
+          <!-- Header Modal -->
+          <div class="bg-[#3C5A48] text-white p-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i class="fa-brands fa-google text-base"></i>
+              <span class="font-space font-bold text-sm tracking-tight uppercase">Guida: Scadenze su Google Calendar</span>
+            </div>
+            <button onclick="closeCalendarFilterGuideModal()" class="text-white/80 hover:text-white text-base cursor-pointer">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <!-- Corpo Modal -->
+          <div class="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs font-mono-code leading-relaxed">
+            <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs space-y-1">
+              <div class="flex items-center gap-1.5 text-[#3C5A48] font-bold font-space uppercase text-[11px]">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>Sincronizzazione Effettuata con Successo</span>
+              </div>
+              <p class="text-[#7A7568]">
+                Le tue scadenze sono salvate nel calendario dedicato secondario:
+                <strong class="text-[#222220] block font-space text-xs mt-0.5">"Dove Lo AI Messo - Scadenze"</strong>
+                collegato all'account <strong>${escapeHtml(emailStr)}</strong>.
+              </p>
+            </div>
+
+            <!-- Sezione Web -->
+            <div class="space-y-1.5">
+              <h4 class="font-space font-bold text-[#222220] text-xs uppercase flex items-center gap-1.5">
+                <i class="fa-solid fa-desktop text-[#3C5A48]"></i>
+                <span>1. Da Computer / Browser (calendar.google.com)</span>
+              </h4>
+              <ol class="list-decimal list-inside space-y-1.5 text-[#4A473E] bg-white p-3 rounded-xs border border-[#E3DDD1]">
+                <li>Se avevi già aperta la scheda di Google Calendar, premi <strong>F5 (Ricarica pagina)</strong>.</li>
+                <li>Nella colonna sinistra, sotto la sezione <strong>"I miei calendari"</strong>, troverai <strong>"Dove Lo AI Messo - Scadenze"</strong> (se la colonna è nascosta, aprila dal menu ☰ in alto a sinistra).</li>
+                <li class="pt-1 font-semibold text-[#222220]">
+                  🎯 <strong>Filtro per vedere SOLO queste scadenze:</strong> passa il mouse sopra <em>"Dove Lo AI Messo - Scadenze"</em>, clicca sui <strong>tre puntini verticali (⋮)</strong> a destra e seleziona <strong>"Mostra solo questo"</strong>!
+                </li>
+              </ol>
+            </div>
+
+            <!-- Sezione Smartphone -->
+            <div class="space-y-1.5">
+              <h4 class="font-space font-bold text-[#222220] text-xs uppercase flex items-center gap-1.5">
+                <i class="fa-solid fa-mobile-screen text-[#C84B31]"></i>
+                <span>2. Da Smartphone (App Google Calendar per Android / iOS)</span>
+              </h4>
+              <ol class="list-decimal list-inside space-y-1.5 text-[#4A473E] bg-white p-3 rounded-xs border border-[#E3DDD1]">
+                <li>Apri l'app Google Calendar sul telefono.</li>
+                <li>Tocca il menu in alto a sinistra (☰) e scorri in fondo su <strong>Impostazioni</strong>.</li>
+                <li>Tocca il tuo account Google (<strong>${escapeHtml(emailStr)}</strong>).</li>
+                <li>Tocca <strong>"Dove Lo AI Messo - Scadenze"</strong> (se non compare subito, tocca prima <em>"Mostra altri"</em>).</li>
+                <li class="pt-1 text-[#C84B31] font-bold">
+                  ⚡ <strong>Attiva la levetta "Sincronizza"</strong> (su Android i nuovi calendari secondari hanno la sincronizzazione disattivata per impostazione predefinita).
+                </li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- Footer Modal -->
+          <div class="bg-[#FAF8F2] border-t border-[#E3DDD1] p-3 flex items-center justify-between gap-2 flex-wrap">
+            <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener noreferrer" class="px-3 py-2 bg-[#2B4C7E] hover:bg-[#1E3557] text-white text-xs font-bold font-space rounded-xs transition shadow-xs flex items-center gap-1.5">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              <span>Apri Google Calendar ↗</span>
+            </a>
+            <button onclick="closeCalendarFilterGuideModal()" class="px-3 py-2 bg-white hover:bg-[#F8F5EE] border border-[#E3DDD1] text-[#222220] text-xs font-bold font-space rounded-xs transition cursor-pointer">
+              Ho Capito
+            </button>
+          </div>
+        </div>
+      `;
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+    window.showCalendarFilterGuideModal = showCalendarFilterGuideModal;
+
+    function closeCalendarFilterGuideModal() {
+      const modal = document.getElementById('calendarFilterGuideModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+    window.closeCalendarFilterGuideModal = closeCalendarFilterGuideModal;
 
     // Render del widget interattivo Olivetti Industrial per ogni atto
     function renderDocumentWidgetHtml(doc) {
@@ -5429,6 +5528,10 @@
             <i class="fa-brands fa-google"></i>
             <span id="txtSyncGoogleCalendar">SINCRONIZZA GOOGLE CALENDAR</span>
           </button>
+          <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener noreferrer" class="px-3 py-2 bg-white hover:bg-[#FAF8F2] text-[#2B4C7E] border border-[#2B4C7E]/40 active:scale-95 rounded-xs text-xs font-bold font-space transition shadow-xs flex items-center gap-1.5 cursor-pointer" title="Apri Google Calendar in una nuova scheda del browser">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <span class="hidden sm:inline">APRI GOOGLE CALENDAR ↗</span>
+          </a>
           <button onclick="exportDeadlinesToICS(currentRecords)" class="px-3 py-2 bg-[#3C5A48] hover:bg-[#2F4738] active:scale-95 text-white rounded-xs text-xs font-bold font-space transition shadow-xs flex items-center gap-1.5 cursor-pointer" title="Scarica file .ics con promemoria compatibile Google Calendar, Apple e Outlook">
             <i class="fa-solid fa-calendar-arrow-down"></i>
             <span>ESPORTA (.ICS)</span>
@@ -5440,6 +5543,37 @@
         </div>
       `;
       container.appendChild(headerBox);
+
+      // Banner Informativo Google Calendar con guida al filtro
+      const calBannerBox = document.createElement('div');
+      calBannerBox.className = 'bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-3 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs';
+      calBannerBox.innerHTML = `
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xs bg-[#2B4C7E] text-white flex items-center justify-center shrink-0 text-sm shadow-2xs">
+            <i class="fa-brands fa-google"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-space font-bold text-[#222220]">Calendario Dedicato: Dove Lo AI Messo - Scadenze</span>
+              <span class="stamp-oli stamp-solid-sage text-[8px] font-bold">ATTIVO & COLLEGATO</span>
+            </div>
+            <p class="text-[11px] text-[#7A7568] font-mono-code mt-0.5">
+              Tutte le scadenze sono salvate in un calendario secondario dedicato per non sovrapporsi ai tuoi impegni personali.
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap shrink-0">
+          <button onclick="showCalendarFilterGuideModal()" class="px-2.5 py-1.5 bg-white hover:bg-[#F8F5EE] text-[#2B4C7E] border border-[#2B4C7E]/50 rounded-xs text-[11px] font-space font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs" title="Istruzioni per visualizzare e filtrare solo le scadenze del caveau">
+            <i class="fa-solid fa-filter"></i>
+            <span>Come visualizzare e filtrare solo queste scadenze?</span>
+          </button>
+          <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 bg-[#2B4C7E] hover:bg-[#1E3557] text-white rounded-xs text-[11px] font-space font-bold transition flex items-center gap-1.5 shadow-2xs" title="Apri Google Calendar in una nuova scheda">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <span>Apri Google Cal</span>
+          </a>
+        </div>
+      `;
+      container.appendChild(calBannerBox);
 
       // 4. Bento KPI Scadenzario
       const statsBox = document.createElement('div');
