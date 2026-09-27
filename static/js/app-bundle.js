@@ -888,10 +888,7 @@
       if (titleEl) titleEl.textContent = thread.name;
       if (iconEl) iconEl.className = `fa-solid ${thread.icon || 'fa-compass'}`;
       if (avatarEl) {
-        const isOli = getActiveTheme() === 'olivetti';
-        avatarEl.className = isOli
-          ? `w-8 h-8 rounded-xs flex items-center justify-center text-white text-xs font-bold border border-[#E3DDD1] shadow-xs shrink-0 ${thread.color || 'bg-[#3C5A48]'}`
-          : `w-10 h-10 rounded-full flex items-center justify-center text-white text-base font-bold border border-white/20 shrink-0 ${thread.color || 'bg-[#128C7E]'}`;
+        avatarEl.className = 'hidden';
       }
 
       if (subEl) {
@@ -1771,28 +1768,64 @@
     }
     window.setSystemArea = setSystemArea;
 
+    function updateHeaderCloudIndicators(driveConnected, calendarConnected) {
+      if (driveConnected !== null && driveConnected !== undefined) {
+        ['chatHeaderDriveStatus', 'sidebarHeaderDriveStatus'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            if (driveConnected) {
+              el.classList.remove('hidden');
+              el.classList.add('inline-flex');
+            } else {
+              el.classList.add('hidden');
+              el.classList.remove('inline-flex');
+            }
+          }
+        });
+      }
+      if (calendarConnected !== null && calendarConnected !== undefined) {
+        ['chatHeaderCalendarStatus', 'sidebarHeaderCalendarStatus'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            if (calendarConnected) {
+              el.classList.remove('hidden');
+              el.classList.add('inline-flex');
+            } else {
+              el.classList.add('hidden');
+              el.classList.remove('inline-flex');
+            }
+          }
+        });
+      }
+    }
+    window.updateHeaderCloudIndicators = updateHeaderCloudIndicators;
+
     async function loadCalendarStatus() {
       const badge = document.getElementById('systemCalendarStatusBadge');
       const details = document.getElementById('systemCalendarStatusDetails');
-      if (!badge) return;
       try {
         const res = await fetch('/api/calendar/status', { headers: authHeaders() });
         if (!res.ok) throw new Error('Stato non disponibile');
         const data = await res.json();
-        if (data.connected) {
-          badge.textContent = 'ATTIVO & COLLEGATO';
-          badge.className = 'stamp-oli stamp-solid-sage text-[8px] font-bold';
-          if (details) {
-            details.textContent = `ACCOUNT: ${(data.user_email || 'GOOGLE').toUpperCase()} • CALENDARIO DEDICATO: ${(data.calendar_name || 'DOVE LO AI MESSO - SCADENZE').toUpperCase()}`;
-          }
-        } else {
-          badge.textContent = 'NON COLLEGATO';
-          badge.className = 'stamp-oli stamp-terracotta text-[8px] font-bold';
-          if (details) {
-            details.textContent = 'Collega il tuo account Google nelle impostazioni Google Drive per sincronizzare automaticamente le scadenze.';
+        const isConnected = !!data.connected;
+        updateHeaderCloudIndicators(null, isConnected);
+        if (badge) {
+          if (isConnected) {
+            badge.textContent = 'ATTIVO & COLLEGATO';
+            badge.className = 'stamp-oli stamp-solid-sage text-[8px] font-bold';
+            if (details) {
+              details.textContent = `ACCOUNT: ${(data.user_email || 'GOOGLE').toUpperCase()} • CALENDARIO DEDICATO: ${(data.calendar_name || 'DOVE LO AI MESSO - SCADENZE').toUpperCase()}`;
+            }
+          } else {
+            badge.textContent = 'NON COLLEGATO';
+            badge.className = 'stamp-oli stamp-terracotta text-[8px] font-bold';
+            if (details) {
+              details.textContent = 'Collega il tuo account Google nelle impostazioni Google Drive per sincronizzare automaticamente le scadenze.';
+            }
           }
         }
       } catch (e) {
+        updateHeaderCloudIndicators(null, false);
         if (badge) {
           badge.textContent = 'LOCALE / ICAL PRONTO';
           badge.className = 'stamp-oli text-[8px] font-bold text-[#7A7568]';
@@ -1843,6 +1876,7 @@
         if (loadingEl) loadingEl.classList.add('hidden');
 
         if (data.connected) {
+          updateHeaderCloudIndicators(true, null);
           if (connectedEl) connectedEl.classList.remove('hidden');
           if (disconnectedEl) disconnectedEl.classList.add('hidden');
           if (emailEl) emailEl.textContent = data.user_email || 'Account Google';
@@ -1868,6 +1902,7 @@
             kpiDriveDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse";
           }
         } else {
+          updateHeaderCloudIndicators(false, null);
           if (connectedEl) connectedEl.classList.add('hidden');
           if (disconnectedEl) disconnectedEl.classList.remove('hidden');
           if (toolsBadge) {
@@ -1886,6 +1921,7 @@
         }
       } catch (err) {
         console.error("Errore loadGoogleDriveStatus:", err);
+        updateHeaderCloudIndicators(false, null);
         if (loadingEl) loadingEl.classList.add('hidden');
         if (disconnectedEl) disconnectedEl.classList.remove('hidden');
       }
@@ -1920,6 +1956,8 @@
         });
         if (!res.ok) throw new Error("Errore durante la disconnessione");
         await loadGoogleDriveStatus();
+        if (typeof loadCalendarStatus === 'function') await loadCalendarStatus();
+        updateHeaderCloudIndicators(false, false);
         showToast("Google Drive disconnesso con successo", "info");
       } catch (err) {
         console.error("Errore disconnectGoogleDrive:", err);

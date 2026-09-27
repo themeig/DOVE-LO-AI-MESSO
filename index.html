@@ -53,13 +53,15 @@
       <!-- Top Bar Sidebar -->
       <div class="h-[60px] bg-[#F8F5EE] border-b border-[#E3DDD1] text-[#222220] px-3.5 flex items-center justify-between shrink-0 select-none box-border">
         <div class="flex items-center space-x-2.5">
-          <div class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs font-black shadow-xs">
-            <i class="fa-solid fa-vault"></i>
-          </div>
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220]">Dove lo AI messo</h2>
-              <span class="stamp-oli text-[8px] app-version-badge cursor-pointer hover:bg-[#FAF8F2] transition" onclick="window.checkAppUpdates(true)" title="Verifica aggiornamenti">v2.6.1</span>
+              <span id="sidebarHeaderDriveStatus" class="hidden text-xs text-[#3C5A48] items-center ml-0.5" title="Google Drive Collegato">
+                <i class="fa-brands fa-google-drive"></i>
+              </span>
+              <span id="sidebarHeaderCalendarStatus" class="hidden text-xs text-[#3C5A48] items-center ml-0.5" title="Google Calendar Collegato">
+                <i class="fa-solid fa-calendar-check"></i>
+              </span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568]">REGISTRO CENTRALE & AREE</p>
           </div>
@@ -146,19 +148,19 @@
             <i class="fa-solid fa-arrow-left text-base"></i>
           </button>
 
-          <!-- Avatar e Stato Online -->
-          <div class="relative shrink-0">
-            <div id="activeThreadAvatar" class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center font-black text-xs shadow-xs">
-              <i id="activeThreadIcon" class="fa-solid fa-compass"></i>
-            </div>
-            <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-[#3C5A48] border-2 border-[#F8F5EE] rounded-full"></span>
-          </div>
+          <!-- Placeholder nascosto per compatibilità script thread -->
+          <div id="activeThreadAvatar" class="hidden"><i id="activeThreadIcon"></i></div>
 
           <!-- Titolo Chat & Info Membri / Area -->
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-bold text-xs leading-tight truncate font-space text-[#222220]">Dove lo AI messo</h1>
-              <span class="stamp-oli text-[8px] app-version-badge cursor-pointer hover:bg-[#FAF8F2] transition shrink-0" onclick="window.checkAppUpdates(true)" title="Verifica aggiornamenti">v2.6.1</span>
+              <span id="chatHeaderDriveStatus" class="hidden text-xs text-[#3C5A48] items-center ml-0.5" title="Google Drive Collegato">
+                <i class="fa-brands fa-google-drive"></i>
+              </span>
+              <span id="chatHeaderCalendarStatus" class="hidden text-xs text-[#3C5A48] items-center ml-0.5" title="Google Calendar Collegato">
+                <i class="fa-solid fa-calendar-check"></i>
+              </span>
             </div>
             <p id="activeThreadSubtitle" class="text-[9px] font-mono-code text-[#7A7568] truncate">
               Assistente Personale & Caveau • online
@@ -1397,15 +1399,6 @@
           <span>+ OGGETTO</span>
         </button>
 
-        <!-- Pulsante Primario: Carica Documento -->
-        <button 
-          onclick="triggerFileInput()" 
-          class="bg-[#3C5A48] hover:bg-[#2F4738] text-white text-xs font-bold font-space px-3.5 py-1.5 rounded-xs shadow-xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
-          title="Carica uno o più documenti/foto nel caveau"
-        >
-          <i class="fa-solid fa-plus text-xs"></i>
-          <span>ACQUISISCI ATTO</span>
-        </button>
       </div>
     </header>
 

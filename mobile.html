@@ -53,13 +53,15 @@
       <!-- Top Bar Sidebar -->
       <div class="h-[60px] bg-[#F8F5EE] border-b border-[#E3DDD1] text-[#222220] px-3.5 flex items-center justify-between shrink-0 select-none box-border">
         <div class="flex items-center space-x-2.5">
-          <div class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs font-black shadow-xs">
-            <i class="fa-solid fa-vault"></i>
-          </div>
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220]">Dove lo AI messo</h2>
-              <span class="stamp-oli text-[8px] app-version-badge cursor-pointer hover:bg-[#FAF8F2] transition" onclick="window.checkAppUpdates(true)" title="Verifica aggiornamenti">v2.6.1</span>
+              <span id="sidebarHeaderDriveStatus" class="hidden text-xs text-[#3C5A48] items-center ml-0.5" title="Google Drive Collegato">
+                <i class="fa-brands fa-google-drive"></i>
+              </span>
+              <span id="sidebarHeaderCalendarStatus" class="hidden text-xs text-[#3C5A48] items-center ml-0.5" title="Google Calendar Collegato">
+                <i class="fa-solid fa-calendar-check"></i>
+              </span>
             </div>
             <p class="text-[9px] font-mono-code text-[#7A7568]">REGISTRO CENTRALE & AREE</p>
           </div>
@@ -146,19 +148,19 @@
             <i class="fa-solid fa-arrow-left text-base"></i>
           </button>
 
-          <!-- Avatar e Stato Online -->
-          <div class="relative shrink-0">
-            <div id="activeThreadAvatar" class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center font-black text-xs shadow-xs">
-              <i id="activeThreadIcon" class="fa-solid fa-compass"></i>
-            </div>
-            <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-[#3C5A48] border-2 border-[#F8F5EE] rounded-full"></span>
-          </div>
+          <!-- Placeholder nascosto per compatibilità script thread -->
+          <div id="activeThreadAvatar" class="hidden"><i id="activeThreadIcon"></i></div>
 
           <!-- Titolo Chat & Info Membri / Area -->
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
               <h1 id="activeThreadTitle" class="font-bold text-xs leading-tight truncate font-space text-[#222220]">Dove lo AI messo</h1>
-              <span class="stamp-oli text-[8px] app-version-badge cursor-pointer hover:bg-[#FAF8F2] transition shrink-0" onclick="window.checkAppUpdates(true)" title="Verifica aggiornamenti">v2.6.1</span>
+              <span id="chatHeaderDriveStatus" class="hidden text-xs text-[#3C5A48] items-center ml-0.5" title="Google Drive Collegato">
+                <i class="fa-brands fa-google-drive"></i>
+              </span>
+              <span id="chatHeaderCalendarStatus" class="hidden text-xs text-[#3C5A48] items-center ml-0.5" title="Google Calendar Collegato">
+                <i class="fa-solid fa-calendar-check"></i>
+              </span>
             </div>
             <p id="activeThreadSubtitle" class="text-[9px] font-mono-code text-[#7A7568] truncate">
               Assistente Personale & Caveau • online
@@ -256,52 +258,8 @@
         </div>
       </div>
 
-      <!-- Banner Avviso File Sensibili Cartelle Monitorate nella Chat -->
-      <div 
-        id="chatSensitiveAlertBanner" 
-        class="hidden bg-gradient-to-r from-emerald-50 via-teal-50 to-amber-50 border-b border-emerald-200/90 px-3.5 py-2 text-xs text-slate-800 flex items-center justify-between shadow-2xs z-10 select-none animate-fade-in"
-      >
-        <div class="flex items-center gap-2.5 min-w-0 pr-2">
-          <div class="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 text-xs shadow-2xs animate-pulse">
-            <i class="fa-solid fa-shield-halved"></i>
-          </div>
-          <div class="min-w-0">
-            <span id="chatSensitiveBannerText" class="font-bold text-xs leading-snug line-clamp-1 text-slate-900">
-              Rilevato nuovo file sensibile
-            </span>
-            <span id="chatSensitiveBannerSubtext" class="text-[10px] text-slate-600 block line-clamp-1">
-              Vuoi proteggerlo cifrato nel Caveau?
-            </span>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button 
-            id="chatSensitiveBannerActionBtn"
-            onclick="approveFirstPendingProposal(this)" 
-            class="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-2xs transition active:scale-95 flex items-center gap-1 cursor-pointer"
-            title="Salva cifrato nel caveau"
-          >
-            <i class="fa-solid fa-lock text-[10px]"></i>
-            <span>Salva nel Caveau</span>
-          </button>
-          <button 
-            onclick="openWatchedFoldersModal()" 
-            class="bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs transition active:scale-95 hidden sm:flex items-center gap-1 cursor-pointer"
-            title="Gestisci cartelle e proposte"
-          >
-            <i class="fa-solid fa-folder-tree text-[10px] text-teal-600"></i>
-            <span>Gestisci</span>
-          </button>
-          <button 
-            onclick="dismissChatSensitiveBanner()" 
-            class="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100/60 rounded-md transition cursor-pointer"
-            title="Chiudi avviso temporaneamente"
-          >
-            <i class="fa-solid fa-xmark text-xs"></i>
-          </button>
-        </div>
-      </div>
+      <!-- Banner Avviso File Sensibili non presente su versione mobile -->
+      <div id="chatSensitiveAlertBanner" class="hidden"></div>
 
       <!-- Feed Messaggi con Overlay Drag & Drop -->
       <div class="relative flex-1 flex flex-col min-h-0" id="chatDropZone">
@@ -1412,15 +1370,6 @@
           <span>+ OGGETTO</span>
         </button>
 
-        <!-- Pulsante Primario: Carica Documento -->
-        <button 
-          onclick="triggerFileInput()" 
-          class="bg-[#3C5A48] hover:bg-[#2F4738] text-white text-xs font-bold font-space px-3.5 py-1.5 rounded-xs shadow-xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer"
-          title="Carica uno o più documenti/foto nel caveau"
-        >
-          <i class="fa-solid fa-plus text-xs"></i>
-          <span>ACQUISISCI ATTO</span>
-        </button>
       </div>
     </header>
 
@@ -1433,27 +1382,8 @@
         <span class="text-[#3C5A48] font-bold">● PROTOCOLLO CRITTOGRAFATO</span>
       </div>
 
-      <!-- Banner Notifica File Sensibili Rilevati nelle Cartelle Monitorate -->
-      <div id="sensitiveFilesAlertBanner" class="hidden bg-[#FAF8F2] border-2 border-[#C84B31] rounded-xs p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
-        <div class="flex items-center gap-3.5">
-          <div class="w-10 h-10 rounded-xs bg-[#C84B31] text-white flex items-center justify-center text-lg shadow-xs shrink-0">
-            <i class="fa-solid fa-shield-halved"></i>
-          </div>
-          <div>
-            <h4 id="sensitiveBannerTitle" class="text-xs font-bold text-[#222220] flex items-center gap-2 font-space uppercase">
-              <span>File Sensibili Rilevati sul PC</span>
-              <span id="sensitiveBannerBadge" class="stamp-oli stamp-terracotta text-[8px]">0 da verificare</span>
-            </h4>
-            <p id="sensitiveBannerText" class="text-[11px] text-[#7A7568] font-mono-code mt-0.5">L'AI ha individuato nuovi documenti fiscali o personali nella cartella Download o monitorata. Vuoi salvarli cifrati nel Caveau?</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 shrink-0 self-end sm:self-center">
-          <button onclick="openWatchedFoldersModal()" class="bg-[#3C5A48] hover:bg-[#2F4738] text-white text-xs font-bold font-space px-3.5 py-1.5 rounded-xs shadow-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer">
-            <i class="fa-solid fa-lock text-xs"></i>
-            <span>ESAMINA & PROTEGGI</span>
-          </button>
-        </div>
-      </div>
+      <!-- Banner Notifica non presente su versione mobile -->
+      <div id="sensitiveFilesAlertBanner" class="hidden"></div>
 
       <!-- BENTO-GRID KPI OLIVETTI INDUSTRIAL (SOTTSASS & RAMS) -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1748,10 +1678,6 @@
         <button id="btnSystemArea_calendar" type="button" onclick="setSystemArea('calendar')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
           <i class="fa-solid fa-calendar-check text-[#2B4C7E] text-[11px]"></i>
           <span>📅 Google Calendar</span>
-        </button>
-        <button id="btnSystemArea_pc" type="button" onclick="setSystemArea('pc')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
-          <i class="fa-solid fa-folder-tree text-[#C84B31] text-[11px]"></i>
-          <span>💻 Cartelle PC</span>
         </button>
         <button id="btnSystemArea_security" type="button" onclick="setSystemArea('security')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
           <i class="fa-solid fa-shield-halved text-[#7A7568] text-[11px]"></i>
@@ -2247,65 +2173,7 @@
       </section>
 
       <!-- ================================================================= -->
-      <!-- AREA 4: IMPOSTAZIONI CARTELLE PC MONITORATE                       -->
-      <!-- ================================================================= -->
-      <section id="settingsArea_pc" class="system-area-section space-y-4">
-        <!-- Header Sezione Olivetti -->
-        <div class="system-area-header flex items-center justify-between border-b border-[#E3DDD1] pb-2 pt-1">
-          <div class="flex items-center gap-2.5">
-            <div class="w-7 h-7 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#C84B31] flex items-center justify-center text-xs shadow-2xs shrink-0">
-              <i class="fa-solid fa-folder-tree"></i>
-            </div>
-            <div>
-              <h3 class="font-bold text-xs md:text-sm text-[#222220] font-space uppercase">4. Impostazioni PC & Cartelle Monitorate</h3>
-              <p class="text-[9px] text-[#7A7568] font-mono-code">SCANNER FILE SYSTEM • RILEVAMENTO AUTOMATICO DOCUMENTI FISCALI & UTENZE</p>
-            </div>
-          </div>
-          <span class="stamp-oli text-[8px] font-mono-code font-bold">AREA CARTELLE PC</span>
-        </div>
-
-        <!-- Card Cartelle PC Monitorate -->
-        <div class="bg-white rounded-xs border border-[#E3DDD1] p-5 shadow-xs space-y-5">
-          <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-sm shadow-2xs">
-                <i class="fa-solid fa-folder-tree"></i>
-              </div>
-              <div>
-                <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Cartelle PC Monitorate</h3>
-                <p class="text-[10px] text-[#7A7568] font-mono-code">RILEVAMENTO AUTOMATICO DOCUMENTI NEL FILE SYSTEM LOCALE</p>
-              </div>
-            </div>
-            <span id="toolsFoldersBadge" class="stamp-oli stamp-terracotta text-[8px]">0 Cartelle</span>
-          </div>
-
-          <p class="text-xs text-[#7A7568] font-mono-code leading-relaxed">
-            Il demone di scansione locale ispeziona in background le tue cartelle di lavoro (come <strong class="text-[#222220]">Download</strong>, <strong class="text-[#222220]">Documenti</strong> o <strong class="text-[#222220]">Desktop</strong>) per identificare automaticamente bollette, modelli F24, fatture e ricevute, proponendoti la catalogazione istantanea nel Caveau.
-          </p>
-
-          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-[#E3DDD1]">
-            <button 
-              type="button" 
-              onclick="openWatchedFoldersModal()" 
-              class="px-3.5 py-1.5 bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] rounded-xs font-space font-bold text-xs shadow-2xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
-            >
-              <i class="fa-solid fa-folder-open text-[#C84B31] text-xs"></i>
-              <span>Configura Cartelle Monitorate</span>
-            </button>
-            <button 
-              type="button" 
-              onclick="triggerScanSensitiveFiles()" 
-              class="px-3.5 py-1.5 bg-[#3C5A48] hover:bg-[#2F4738] text-white rounded-xs font-space font-bold text-xs shadow-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
-            >
-              <i class="fa-solid fa-magnifying-glass text-xs"></i>
-              <span>Scansiona Ora</span>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- ================================================================= -->
-      <!-- AREA 5: IMPOSTAZIONI SICUREZZA, BACKUP & CAVEAU                   -->
+      <!-- AREA 4: IMPOSTAZIONI SICUREZZA, BACKUP & CAVEAU                   -->
       <!-- ================================================================= -->
       <section id="settingsArea_security" class="system-area-section space-y-4">
         <!-- Header Sezione Olivetti -->
@@ -2654,93 +2522,8 @@
   </div>
 
 
-  <!-- ================================================================= -->
-  <!-- 6. MODALE: GESTIONE CARTELLE PC MONITORATE & INDICIZZAZIONE       -->
-  <!-- ================================================================= -->
-  <div id="watchedFoldersModal" class="hidden fixed inset-0 bg-black/60 z-50 items-center justify-center p-4 backdrop-blur-xs">
-    <div class="modal-card bg-white rounded-xs max-w-2xl w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 border-2 border-[#3C5A48]">
-      <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
-        <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-base shadow-xs">
-            <i class="fa-solid fa-folder-tree"></i>
-          </div>
-          <div>
-            <h3 class="font-bold text-sm text-[#222220] font-space uppercase">Cartelle Monitorate & Protezione Caveau</h3>
-            <p class="text-[10px] text-[#7A7568] font-mono-code">Monitora cartelle PC, rileva file sensibili e salvali cifrati nel Caveau</p>
-          </div>
-        </div>
-        <button onclick="closeWatchedFoldersModal()" class="text-[#7A7568] hover:text-[#222220] p-1 cursor-pointer">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
-      </div>
-
-      <!-- Monitoraggio Rapido 1-Click (Download, Documenti, Desktop) -->
-      <div class="bg-[#FAF8F2] p-3.5 rounded-xs border border-[#E3DDD1] space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-[#3C5A48] font-space uppercase flex items-center gap-1.5">
-            <i class="fa-solid fa-bolt text-[#C84B31]"></i>
-            <span>Monitoraggio Rapido 1-Click (Consigliato):</span>
-          </span>
-          <span class="text-[10px] text-[#7A7568] font-mono-code">Scansione e notifica automatica</span>
-        </div>
-        <div id="folderPresetsList" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <!-- Popolato dinamicamente da loadFolderPresets() -->
-        </div>
-      </div>
-
-      <div class="flex items-center justify-between bg-[#FAF8F2] p-3 rounded-xs border border-[#E3DDD1] gap-3">
-        <div class="text-xs text-[#222220]">
-          <span class="font-bold font-space uppercase text-[11px] block">Collega un'altra cartella specifica:</span>
-          <p class="text-[10px] text-[#7A7568] font-mono-code">Scegli qualsiasi cartella dal disco locale con la finestra nativa.</p>
-        </div>
-        <button 
-          onclick="selectFolderFromPC()" 
-          id="btnSelectFolderPC"
-          class="bg-[#3C5A48] hover:bg-[#2F4738] text-white text-xs font-bold font-space uppercase px-3 py-2 rounded-xs shadow-xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0"
-        >
-          <i class="fa-solid fa-folder-plus text-xs"></i>
-          <span>Sfoglia Cartella...</span>
-        </button>
-      </div>
-
-      <!-- Sezione File Sensibili da Approvare (se presenti) -->
-      <div id="pendingProposalsSection" class="hidden space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-[#C84B31] font-space uppercase flex items-center gap-1.5">
-            <i class="fa-solid fa-shield-halved text-[#3C5A48]"></i>
-            <span>File Sensibili Rilevati in Attesa di Approvazione</span>
-          </span>
-          <button onclick="triggerScanSensitiveFiles()" id="btnScanSensitiveNow" class="text-[11px] text-[#3C5A48] hover:text-[#2F4738] font-bold font-space uppercase flex items-center gap-1 cursor-pointer">
-            <i class="fa-solid fa-arrows-rotate text-[10px]"></i>
-            <span>Controlla Ora</span>
-          </button>
-        </div>
-        <div id="pendingProposalsList" class="space-y-2 max-h-40 overflow-y-auto custom-scroll pr-1">
-          <!-- Popolato dinamicamente da loadPendingProposals() -->
-        </div>
-      </div>
-
-      <!-- Lista cartelle attive -->
-      <div>
-        <div class="flex items-center justify-between mb-1.5">
-          <span class="text-xs font-bold text-[#222220] font-space uppercase">Cartelle attive collegate:</span>
-          <button onclick="triggerScanSensitiveFiles()" class="text-[11px] text-[#3C5A48] hover:text-[#2F4738] font-bold font-space uppercase cursor-pointer">
-            <i class="fa-solid fa-shield-cat text-xs mr-1"></i> Scansione Immediata
-          </button>
-        </div>
-        <div id="watchedFoldersList" class="space-y-2 max-h-48 overflow-y-auto custom-scroll pr-1">
-          <!-- Popolato dinamicamente da loadWatchedFolders() -->
-        </div>
-      </div>
-
-      <div class="flex items-center justify-between pt-2 border-t border-[#E3DDD1] text-xs">
-        <span id="watchedFoldersCountText" class="text-[#7A7568] text-[10px] font-mono-code">Caricamento cartelle...</span>
-        <button onclick="closeWatchedFoldersModal()" class="px-4 py-2 bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] font-bold font-space text-xs rounded-xs transition cursor-pointer">
-          Chiudi
-        </button>
-      </div>
-    </div>
-  </div>
+  <!-- Modale cartelle monitorate non presente su versione mobile -->
+  <div id="watchedFoldersModal" class="hidden"></div>
 
   <!-- ================================================================= -->
   <!-- 7. MODALE: ELIMINAZIONE TOTALE DATABASE (RESET CAVEAU)            -->

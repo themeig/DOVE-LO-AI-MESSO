@@ -1,13 +1,14 @@
 """
 Test di verifica per la suddivisione delle impostazioni di Sistema per aree tematiche
-(Chat & AI, Google Drive, Google Calendar, Cartelle PC, Sicurezza & Backup).
+(Chat & AI, Google Drive, Google Calendar, Cartelle PC, Sicurezza & Backup)
+e per la pulizia UI (indicatori cloud nel top-left, rimozione acquisici atto e cartelle pc su mobile).
 """
 from pathlib import Path
 from app.version import APP_VERSION
 
 
 def test_app_version():
-    assert APP_VERSION == "2.10.5"
+    assert APP_VERSION == "2.10.6"
 
 
 def test_index_html_has_system_areas():
@@ -35,6 +36,15 @@ def test_index_html_has_system_areas():
     assert 'systemCalendarStatusBadge' in content
     assert 'btnSyncGoogleCalendarSettings' in content
 
+    # ACQUISISCI ATTO rimosso dalla dashboard
+    assert 'ACQUISISCI ATTO' not in content
+
+    # Indicatori cloud Drive e Calendar presenti nel header
+    assert 'chatHeaderDriveStatus' in content
+    assert 'chatHeaderCalendarStatus' in content
+    assert 'sidebarHeaderDriveStatus' in content
+    assert 'sidebarHeaderCalendarStatus' in content
+
 
 def test_mobile_html_has_system_areas():
     mobile_path = Path("mobile.html")
@@ -47,15 +57,20 @@ def test_mobile_html_has_system_areas():
     assert 'btnSystemArea_chat' in content
     assert 'btnSystemArea_drive' in content
     assert 'btnSystemArea_calendar' in content
-    assert 'btnSystemArea_pc' in content
     assert 'btnSystemArea_security' in content
 
-    # Verifica presenza sezioni aree tematiche in mobile
-    assert 'id="settingsArea_chat"' in content
-    assert 'id="settingsArea_drive"' in content
-    assert 'id="settingsArea_calendar"' in content
-    assert 'id="settingsArea_pc"' in content
-    assert 'id="settingsArea_security"' in content
+    # Sezione Cartelle PC rimossa da mobile
+    assert 'btnSystemArea_pc' not in content
+    assert 'id="settingsArea_pc"' not in content
+
+    # ACQUISISCI ATTO rimosso dalla dashboard mobile
+    assert 'ACQUISISCI ATTO' not in content
+
+    # Indicatori cloud Drive e Calendar presenti nel header mobile
+    assert 'chatHeaderDriveStatus' in content
+    assert 'chatHeaderCalendarStatus' in content
+    assert 'sidebarHeaderDriveStatus' in content
+    assert 'sidebarHeaderCalendarStatus' in content
 
 
 def test_app_bundle_has_system_area_controller():
@@ -67,3 +82,5 @@ def test_app_bundle_has_system_area_controller():
     assert "window.setSystemArea = setSystemArea;" in content
     assert "function loadCalendarStatus()" in content
     assert "window.loadCalendarStatus = loadCalendarStatus;" in content
+    assert "function updateHeaderCloudIndicators(driveConnected, calendarConnected)" in content
+    assert "window.updateHeaderCloudIndicators = updateHeaderCloudIndicators;" in content
