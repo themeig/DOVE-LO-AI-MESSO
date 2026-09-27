@@ -261,7 +261,8 @@ def get_dashboard(
                     original_path=doc.original_path or (doc.file_path if doc.is_local_file else None),
                     summary=doc.summary,
                     drive_web_url=doc.drive_web_url,
-                    download_url=f"/api/documents/{doc.id}/download"
+                    download_url=f"/api/documents/{doc.id}/download",
+                    google_calendar_event_id=doc.google_calendar_event_id
                 )
             )
 

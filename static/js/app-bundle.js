@@ -3088,6 +3088,11 @@
                           <i class="fa-brands fa-google-drive text-[10px]"></i> <span>Drive ↗</span>
                         </a>
                       ` : ''}
+                      ${docItem.due_date ? `
+                        <a href="${getGoogleCalendarDirectLink(docItem)}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 stamp-oli text-[9px] hover:bg-[#2B4C7E] hover:text-white transition" title="Aggiungi scadenza su Google Calendar">
+                          <i class="fa-brands fa-google text-[10px]"></i> <span>Cal ↗</span>
+                        </a>
+                      ` : ''}
                       ${url ? `
                         <button type="button" onclick="openMediaModal('${url}', '${title.replace(/'/g, "\\'")}', '${fileType}', '${downloadUrl}', ${docId || 'null'})" class="bg-[#3C5A48] hover:bg-[#2F4738] text-white text-[10px] font-bold px-2 py-1 rounded-xs shadow-xs transition flex items-center gap-1 active:scale-95 cursor-pointer font-space" title="Visualizza anteprima">
                           <i class="fa-regular fa-eye text-xs"></i>
@@ -5180,6 +5185,83 @@
     }
     window.exportSingleDeadlineToICS = exportSingleDeadlineToICS;
 
+    // Genera URL diretto template Google Calendar 1-Tap
+    function getGoogleCalendarDirectLink(doc) {
+      if (!doc || !doc.due_date) return '#';
+      try {
+        const rawDateStr = String(doc.due_date).split('T')[0];
+        const parts = rawDateStr.split('-');
+        if (parts.length !== 3) return '#';
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        const d = parseInt(parts[2], 10);
+
+        const startRaw = `${parts[0]}${parts[1]}${parts[2]}`;
+        const nextDate = new Date(Date.UTC(y, m - 1, d + 1));
+        const nextY = nextDate.getUTCFullYear();
+        const nextM = String(nextDate.getUTCMonth() + 1).padStart(2, '0');
+        const nextD = String(nextDate.getUTCDate()).padStart(2, '0');
+        const endRaw = `${nextY}${nextM}${nextD}`;
+
+        const catLabel = doc.category_label || doc.category || 'Scadenza';
+        const title = encodeURIComponent(`[${catLabel}] ${doc.title || 'Scadenza'}`);
+        let details = `Atto archiviato: ${doc.title || ''}\nCategoria: ${catLabel}`;
+        if (doc.issuer) details += `\nEnte/Fornitore: ${doc.issuer}`;
+        if (doc.amount != null) details += `\nImporto: € ${Number(doc.amount).toFixed(2)}`;
+        if (doc.status) details += `\nStato: ${doc.status.toUpperCase()}`;
+        if (doc.summary) details += `\n\nSintesi & Note:\n${doc.summary}`;
+        details += `\n\nArchivio: Dove Lo AI Messo`;
+        const encDetails = encodeURIComponent(details);
+
+        return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startRaw}/${endRaw}&details=${encDetails}`;
+      } catch (e) {
+        return '#';
+      }
+    }
+    window.getGoogleCalendarDirectLink = getGoogleCalendarDirectLink;
+
+    // Sincronizzazione massiva API Google Calendar
+    async function syncAllToGoogleCalendar() {
+      const btn = document.getElementById('btnSyncGoogleCalendar');
+      const txt = document.getElementById('txtSyncGoogleCalendar');
+      if (btn) btn.disabled = true;
+      if (txt) txt.textContent = 'SINCRONIZZAZIONE IN CORSO...';
+
+      try {
+        const res = await fetch('/api/calendar/sync', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) {
+          const err = data.detail || 'Impossibile sincronizzare con Google Calendar';
+          if (typeof showSystemToast === 'function') {
+            showSystemToast(`⚠️ ${err}`, 'warning');
+          } else {
+            alert(err);
+          }
+          return;
+        }
+        const msg = data.message || `Sincronizzate con successo ${data.synced_count || 0} scadenze su Google Calendar.`;
+        if (typeof showSystemToast === 'function') {
+          showSystemToast(`📅 ${msg}`, 'success');
+        } else {
+          alert(`📅 ${msg}`);
+        }
+        if (typeof loadDashboard === 'function') {
+          loadDashboard(currentFilter);
+        }
+      } catch (err) {
+        console.error('Errore sync Google Calendar:', err);
+        if (typeof showSystemToast === 'function') {
+          showSystemToast(`❌ Errore durante la sincronizzazione: ${err.message}`, 'error');
+        } else {
+          alert(`Errore: ${err.message}`);
+        }
+      } finally {
+        if (btn) btn.disabled = false;
+        if (txt) txt.textContent = 'SINCRONIZZA GOOGLE CALENDAR';
+      }
+    }
+    window.syncAllToGoogleCalendar = syncAllToGoogleCalendar;
+
     // Render del widget interattivo Olivetti Industrial per ogni atto
     function renderDocumentWidgetHtml(doc) {
       const docId = doc.id || doc.document_id;
@@ -5249,6 +5331,11 @@
               <button type="button" onclick="exportSingleDeadlineToICS(${docId})" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] border border-[#3C5A48] text-[10px] font-bold px-2.5 py-1.5 rounded-xs shadow-xs transition flex items-center gap-1 active:scale-95 cursor-pointer font-space" title="Scarica promemoria iCalendar">
                 <i class="fa-regular fa-calendar-plus text-xs text-[#3C5A48]"></i> <span>.ics</span>
               </button>
+              ${doc.due_date ? `
+                <a href="${getGoogleCalendarDirectLink(doc)}" target="_blank" rel="noopener noreferrer" class="bg-[#2B4C7E] hover:bg-[#1E3557] text-white text-[10px] font-bold px-2.5 py-1.5 rounded-xs shadow-xs transition flex items-center gap-1 active:scale-95 cursor-pointer font-space" title="Aggiungi promemoria a Google Calendar con 1 tap">
+                  <i class="fa-brands fa-google text-xs"></i> <span>Google Cal</span>
+                </a>
+              ` : ''}
             </div>
           </div>
           ${summary ? `
@@ -5338,9 +5425,13 @@
           </div>
         </div>
         <div class="flex items-center gap-2 flex-wrap self-start md:self-center">
+          <button onclick="syncAllToGoogleCalendar()" id="btnSyncGoogleCalendar" class="px-3 py-2 bg-[#2B4C7E] hover:bg-[#1E3557] active:scale-95 text-white rounded-xs text-xs font-bold font-space transition shadow-xs flex items-center gap-1.5 cursor-pointer" title="Sincronizza automaticamente le scadenze con il tuo calendario Google dedicato">
+            <i class="fa-brands fa-google"></i>
+            <span id="txtSyncGoogleCalendar">SINCRONIZZA GOOGLE CALENDAR</span>
+          </button>
           <button onclick="exportDeadlinesToICS(currentRecords)" class="px-3 py-2 bg-[#3C5A48] hover:bg-[#2F4738] active:scale-95 text-white rounded-xs text-xs font-bold font-space transition shadow-xs flex items-center gap-1.5 cursor-pointer" title="Scarica file .ics con promemoria compatibile Google Calendar, Apple e Outlook">
             <i class="fa-solid fa-calendar-arrow-down"></i>
-            <span>ESPORTA CALENDARIO (.ICS)</span>
+            <span>ESPORTA (.ICS)</span>
           </button>
           <button onclick="filterTable('all')" class="px-3 py-2 bg-white hover:bg-[#FAF8F2] text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] rounded-xs text-xs font-bold font-space transition flex items-center gap-1.5 cursor-pointer" title="Torna all'elenco completo del faldone">
             <i class="fa-solid fa-arrow-left"></i>
@@ -5569,6 +5660,7 @@
                       ${escapeHtml(doc.category_label || 'Archivio')}
                     </span>
                     ${urgencyBadgeHtml}
+                    ${doc.google_calendar_event_id ? `<span class="stamp-oli stamp-solid-sage text-[8px] font-bold" title="Sincronizzato sul tuo calendario Google dedicato"><i class="fa-solid fa-cloud-check mr-0.5"></i> CALENDAR</span>` : ''}
                     ${doc.thread_name ? `<span class="stamp-oli text-[8px]"><i class="fa-solid fa-folder text-[#7A7568] mr-1"></i>${escapeHtml(doc.thread_name)}</span>` : ''}
                   </div>
                   <h3 class="font-bold text-[#222220] text-xs sm:text-sm font-space mt-1 truncate">
@@ -5602,6 +5694,10 @@
                     <i class="fa-regular fa-calendar-plus text-xs text-[#3C5A48]"></i>
                     <span>.ics</span>
                   </button>
+                  <a href="${getGoogleCalendarDirectLink(doc)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 bg-white hover:bg-[#FAF8F2] text-[#2B4C7E] border border-[#2B4C7E]/40 text-[10px] font-bold font-space rounded-xs transition active:scale-95 flex items-center gap-1 cursor-pointer" title="Aggiungi con 1 tap a Google Calendar">
+                    <i class="fa-brands fa-google text-xs text-[#2B4C7E]"></i>
+                    <span>Google Cal</span>
+                  </a>
                   ${doc.file_url ? `
                     <button onclick="openMediaModal('${escapeHtml(doc.file_url)}', '${escapeHtml(doc.title).replace(/'/g, "\\'")}', '${escapeHtml(doc.file_type || 'application/pdf')}', '${doc.download_url || `/api/documents/${doc.id}/download`}', ${doc.id})" class="p-1 bg-white hover:bg-[#FAF8F2] text-[#3C5A48] border border-[#3C5A48] rounded-xs text-[10px] transition active:scale-95 flex items-center justify-center w-6 h-6 cursor-pointer" title="Anteprima documento">
                       <i class="fa-regular fa-eye text-xs"></i>

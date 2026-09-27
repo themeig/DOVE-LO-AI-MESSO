@@ -197,6 +197,8 @@ class RealGoogleDriveService:
         )
         self.scope = (
             "https://www.googleapis.com/auth/drive.file "
+            "https://www.googleapis.com/auth/calendar "
+            "https://www.googleapis.com/auth/calendar.events "
             "https://www.googleapis.com/auth/userinfo.email"
         )
         self._http_client = http_client

@@ -105,6 +105,7 @@ class RecordItem(BaseModel):
     summary: Optional[str] = None
     drive_web_url: Optional[str] = None
     download_url: Optional[str] = None
+    google_calendar_event_id: Optional[str] = None
 
 class DashboardKPI(BaseModel):
     total_upcoming_amount: float

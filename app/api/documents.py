@@ -14,6 +14,7 @@ from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDele
 from app.services.ai_service import get_ai_service
 from app.services.document_service import save_uploaded_file, read_decrypted_file, determine_document_status
 from app.services.drive_service import get_drive_service, resolve_drive_folder_path, sanitize_drive_folder_name
+from app.services.calendar_service import get_calendar_service
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +112,20 @@ def _process_and_save_single_doc(
     )
     db.add(doc)
     db.flush()
+
+    # Sincronizzazione automatica con Google Calendar se data di scadenza presente e credenziali attive
+    if doc.due_date and active_cred and active_cred.access_token:
+        try:
+            cal_service = get_calendar_service()
+            cal_id = active_cred.google_calendar_id or cal_service.get_or_create_dedicated_calendar(active_cred.access_token)
+            if not active_cred.google_calendar_id:
+                active_cred.google_calendar_id = cal_id
+            cal_res = cal_service.sync_deadline_event(doc, cal_id, active_cred.access_token)
+            if cal_res and cal_res.get("event_id"):
+                doc.google_calendar_event_id = cal_res["event_id"]
+        except Exception as e:
+            logger.warning(f"Errore durante sync scadenza Google Calendar per '{filename}': {e}")
+
     return doc
 
 
@@ -180,6 +195,7 @@ async def upload_document(
         "summary": doc.summary,
         "drive_file_id": doc.drive_file_id,
         "drive_web_url": doc.drive_web_url,
+        "google_calendar_event_id": doc.google_calendar_event_id,
         "category": doc.category,
         "category_label": doc.category_label,
         "category_icon": doc.category_icon,
@@ -231,6 +247,7 @@ async def upload_document(
         "summary": doc.summary,
         "drive_file_id": doc.drive_file_id,
         "drive_web_url": doc.drive_web_url,
+        "google_calendar_event_id": doc.google_calendar_event_id,
         "routed_model": routed_model
     }
 
@@ -339,6 +356,7 @@ async def upload_documents_batch(
             "summary": d.summary,
             "drive_file_id": d.drive_file_id,
             "drive_web_url": d.drive_web_url,
+            "google_calendar_event_id": d.google_calendar_event_id,
             "category": d.category,
             "category_label": d.category_label,
             "category_icon": d.category_icon,

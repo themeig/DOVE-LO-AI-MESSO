@@ -1,6 +1,6 @@
 {
-  "version_code": 290,
-  "version_name": "2.9.0",
+  "version_code": 300,
+  "version_name": "2.10.0",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "📅 Scadenzario Universale & Cronologico nel Registro Dashboard: vista dedicata accessibile dalla Card 01 e dalla barra filtri con raggruppamento in 5 blocchi temporali (scadute, imminenti entro 30 gg, entro l'anno corrente, a lungo termine e quietanzate/rinnovate). Include filtri dinamici per categoria tematica, sub-filtri di stato, widget interattivi Olivetti espandibili per ogni documento ed esportazione promemoria calendario (.ics) compatibile con Google Calendar, Apple e Outlook."
+  "release_notes": "📅 Integrazione Completa con Google Calendar: sincronizzazione cloud automatica e manuale nello scadenzario con calendario dedicato 'Dove Lo AI Messo - Scadenze'. Tasto 1-Tap 'Google Cal' diretto su ogni atto con precompilazione data, titolo, importo e fornitore senza bisogno di configurazioni. Hook automatico all'upload dei documenti con scadenza e badge di avvenuta sincronizzazione."
 }

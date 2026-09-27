@@ -102,6 +102,7 @@ class Document(Base):
     original_path = Column(String(500), nullable=True)
     drive_file_id = Column(String(255), nullable=True, index=True)
     drive_web_url = Column(String(500), nullable=True)
+    google_calendar_event_id = Column(String(255), nullable=True, index=True)
     category = Column(String(100), nullable=True, index=True)
     category_label = Column(EncryptedString(255), nullable=True)
     category_icon = Column(String(50), nullable=True)
@@ -192,6 +193,7 @@ class GoogleDriveCredential(Base):
     token_expiry = Column(DateTime, nullable=True)
     storage_mode = Column(String(50), default="dual")  # 'dual', 'cloud_only' o 'local_only'
     root_folder_id = Column(String(255), nullable=True)
+    google_calendar_id = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -290,8 +292,18 @@ def init_db(engine=None):
             if "drive_folder_path" not in cols:
                 conn.execute(text("ALTER TABLE documents ADD COLUMN drive_folder_path VARCHAR(500)"))
                 conn.commit()
+            if "google_calendar_event_id" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN google_calendar_event_id VARCHAR(255)"))
+                conn.commit()
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_documents_category ON documents(category)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_documents_cal_event ON documents(google_calendar_event_id)"))
             conn.commit()
+
+        if "google_drive_credentials" in table_names:
+            gdc_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(google_drive_credentials)")).fetchall()]
+            if "google_calendar_id" not in gdc_cols:
+                conn.execute(text("ALTER TABLE google_drive_credentials ADD COLUMN google_calendar_id VARCHAR(255)"))
+                conn.commit()
 
         if "watched_folders" in table_names:
             wf_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(watched_folders)")).fetchall()]
