@@ -102,6 +102,9 @@ class RecordItem(BaseModel):
     has_photo: Optional[bool] = None
     is_local_file: Optional[bool] = None
     original_path: Optional[str] = None
+    summary: Optional[str] = None
+    drive_web_url: Optional[str] = None
+    download_url: Optional[str] = None
 
 class DashboardKPI(BaseModel):
     total_upcoming_amount: float
@@ -109,6 +112,7 @@ class DashboardKPI(BaseModel):
     total_documents_count: int
     total_items_count: int
     quietanzati_count: Optional[int] = 0
+    total_deadlines_count: Optional[int] = 0
 
 class DashboardResponse(BaseModel):
     kpi: DashboardKPI

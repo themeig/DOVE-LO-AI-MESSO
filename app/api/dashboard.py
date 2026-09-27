@@ -159,6 +159,8 @@ def get_dashboard(
     f_raw = (filter or "all").lower().strip()
     if f_raw in ("da_pagare", "scadenze", "scadenza", "deadlines", "pending"):
         norm_filter = "deadlines"
+    elif f_raw in ("scadenzario", "scadenziario", "calendar", "scadenzario_completo"):
+        norm_filter = "scadenzario"
     elif f_raw in ("oggetti", "items", "oggetti_fisici", "cose"):
         norm_filter = "items"
     elif f_raw in ("quietanzato", "quietanzati", "pagati", "saldati", "paid"):
@@ -191,13 +193,16 @@ def get_dashboard(
     total_items_count = len(all_items)
     quietanzati_docs = [d for d in all_docs if d.status == "quietanzato"]
     quietanzati_count = len(quietanzati_docs)
+    deadlines_docs = [d for d in all_docs if d.due_date is not None]
+    total_deadlines_count = len(deadlines_docs)
 
     kpi = DashboardKPI(
         total_upcoming_amount=total_upcoming_amount,
         pending_deadlines_count=pending_deadlines_count,
         total_documents_count=total_documents_count,
         total_items_count=total_items_count,
-        quietanzati_count=quietanzati_count
+        quietanzati_count=quietanzati_count,
+        total_deadlines_count=total_deadlines_count
     )
 
     # 3. Assemble records
@@ -205,16 +210,18 @@ def get_dashboard(
 
     needs_commit = False
     # Map documents
-    if norm_filter in ("all", "documents", "deadlines", "quietanzati"):
+    if norm_filter in ("all", "documents", "deadlines", "quietanzati", "scadenzario"):
         for doc in all_docs:
             if norm_filter == "deadlines" and doc.status != "da_pagare":
                 continue
             if norm_filter == "quietanzati" and doc.status != "quietanzato":
                 continue
+            if norm_filter == "scadenzario" and doc.due_date is None:
+                continue
 
             badge_color = "amber" if doc.status == "da_pagare" else "emerald"
             fn = Path(doc.file_path).name
-            cat = categorize_deadline(doc.due_date) if doc.status == "da_pagare" else None
+            cat = categorize_deadline(doc.due_date) if doc.due_date else None
             doc_cat, doc_cat_label, doc_cat_icon = classify_document_category(doc)
             if not doc.category_label or doc.category_label != doc_cat_label:
                 doc.category = doc_cat
@@ -251,9 +258,16 @@ def get_dashboard(
                     image_url=f"/uploads/{fn}" if doc.file_type in ["jpg", "jpeg", "png", "webp"] else None,
                     has_photo=doc.file_type in ["jpg", "jpeg", "png", "webp"],
                     is_local_file=bool(doc.is_local_file),
-                    original_path=doc.original_path or (doc.file_path if doc.is_local_file else None)
+                    original_path=doc.original_path or (doc.file_path if doc.is_local_file else None),
+                    summary=doc.summary,
+                    drive_web_url=doc.drive_web_url,
+                    download_url=f"/api/documents/{doc.id}/download"
                 )
             )
+
+        if norm_filter == "scadenzario":
+            # Ordina le scadenze cronologicamente (le più imminenti o scadute per prime)
+            records.sort(key=lambda r: (r.due_date or "9999-12-31", r.id))
 
         if needs_commit:
             try:

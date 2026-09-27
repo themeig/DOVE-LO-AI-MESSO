@@ -1,6 +1,6 @@
 {
-  "version_code": 287,
-  "version_name": "2.8.7",
+  "version_code": 290,
+  "version_name": "2.9.0",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✅ Riconoscimento Intelligente Documenti Quietanzati: rilevamento automatico di timbri 'PAGATO', diciture 'SALDATO' e quietanze di bonifico/versamento. I documenti già saldati vengono protocollati direttamente con stato 'quietanzato' evitando scadenze aperte non necessarie."
+  "release_notes": "📅 Scadenzario Universale & Cronologico nel Registro Dashboard: vista dedicata accessibile dalla Card 01 e dalla barra filtri con raggruppamento in 5 blocchi temporali (scadute, imminenti entro 30 gg, entro l'anno corrente, a lungo termine e quietanzate/rinnovate). Include filtri dinamici per categoria tematica, sub-filtri di stato, widget interattivi Olivetti espandibili per ogni documento ed esportazione promemoria calendario (.ics) compatibile con Google Calendar, Apple e Outlook."
 }

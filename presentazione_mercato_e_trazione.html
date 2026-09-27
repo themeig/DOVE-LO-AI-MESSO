@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analisi di Mercato & Trazione — Dove lo AI messo</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+    
+    :root {
+      --bg-cream: #F8F5EE;
+      --card-bg: #FFFFFF;
+      --card-subtle: #F3EFE6;
+      --sage: #3C5A48;
+      --terracotta: #C84B31;
+      --charcoal: #222220;
+      --border-oli: #E3DDD1;
+      --muted: #6E6A60;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-cream);
+      color: var(--charcoal);
+    }
+
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .font-display {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .slide {
+      display: none;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+
+    .slide.active {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .stamp-oli {
+      border: 1.5px solid var(--sage);
+      color: var(--sage);
+      padding: 2px 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    .stamp-terracotta {
+      border: 1.5px solid var(--terracotta);
+      color: var(--terracotta);
+      padding: 2px 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #F3EFE6;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #C8C2B3;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-[#C84B31] selection:text-white">
+
+  <!-- TOP HEADER / PROGRESS BAR -->
+  <header class="border-b border-[#E3DDD1] bg-[#FAF8F3] px-6 py-3 sticky top-0 z-50 backdrop-blur-sm bg-opacity-95">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-sm bg-[#3C5A48] flex items-center justify-center text-white font-mono-code font-bold text-sm shadow-sm">
+          🧭
+        </div>
+        <div>
+          <h1 class="font-display font-bold text-base tracking-tight text-[#222220] flex items-center gap-2">
+            DOVE LO AI MESSO
+            <span class="stamp-oli font-mono-code">MARKET VALIDATION</span>
+          </h1>
+          <p class="text-xs text-[#6E6A60] font-mono-code">Analisi di Mercato, Concorrenti, Pain Monetizzabile & Trazione</p>
+        </div>
+      </div>
+
+      <!-- Navigation & Counter -->
+      <div class="flex items-center gap-3">
+        <span class="text-xs font-mono-code text-[#6E6A60] bg-[#EFECE3] px-2.5 py-1 rounded border border-[#E3DDD1]">
+          Slide <span id="currentSlideNum" class="font-bold text-[#222220]">1</span> / <span id="totalSlidesNum">10</span>
+        </span>
+        <button onclick="prevSlide()" class="p-1.5 px-3 rounded text-xs font-mono-code border border-[#E3DDD1] hover:bg-[#EFECE3] active:scale-95 transition-all text-[#222220]">
+          ← Prev
+        </button>
+        <button onclick="nextSlide()" class="p-1.5 px-3 rounded text-xs font-mono-code bg-[#3C5A48] hover:bg-[#2F4738] text-white active:scale-95 transition-all shadow-sm">
+          Next →
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN SLIDES CONTAINER -->
+  <main class="flex-1 max-w-6xl w-full mx-auto p-6 md:p-10 flex flex-col justify-center">
+
+    <!-- SLIDE 1: INTRO / EXECUTIVE SUMMARY -->
+    <section id="slide-1" class="slide active">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+        <div class="md:col-span-7 space-y-5">
+          <div class="flex items-center gap-2">
+            <span class="stamp-terracotta font-mono-code">RAPPORTO STRATEGICO 2026</span>
+            <span class="text-xs font-mono-code text-[#6E6A60]">Versione 2.8.7</span>
+          </div>
+          <h2 class="font-display font-bold text-3xl md:text-5xl text-[#222220] leading-tight">
+            Ha senso sul mercato? Chi pagherebbe davvero?
+          </h2>
+          <p class="text-base text-[#4A4740] leading-relaxed">
+            Un'analisi rigorosa sul posizionamento di <strong>"Dove lo AI messo"</strong>: dal paradosso delle app per ritrovare oggetti al <span class="text-[#C84B31] font-semibold">vero dolore economico</span> che spinge privati e professionisti a sottoscrivere un abbonamento.
+          </p>
+          <div class="grid grid-cols-2 gap-4 pt-2">
+            <div class="p-4 bg-white border border-[#E3DDD1] rounded-lg shadow-sm">
+              <div class="font-mono-code text-2xl font-bold text-[#3C5A48]">$2.26B → $4.5B</div>
+              <div class="text-xs text-[#6E6A60] mt-1">Mercato Personal Document Management (CAGR +7.1%)</div>
+            </div>
+            <div class="p-4 bg-white border border-[#E3DDD1] rounded-lg shadow-sm">
+              <div class="font-mono-code text-2xl font-bold text-[#C84B31]">100% Locale</div>
+              <div class="text-xs text-[#6E6A60] mt-1">Privacy Zero-Knowledge & AES-128 con PBKDF2</div>
+            </div>
+          </div>
+          <div class="pt-2 text-xs font-mono-code text-[#6E6A60] flex items-center gap-2">
+            <span>💡 Usa i tasti freccia <strong>[←]</strong> e <strong>[→]</strong> della tastiera per sfogliare</span>
+          </div>
+        </div>
+
+        <div class="md:col-span-5 bg-white border-2 border-[#E3DDD1] p-6 rounded-xl shadow-md space-y-4">
+          <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
+            <span class="font-mono-code font-bold text-xs uppercase text-[#3C5A48]">Sintesi del Verdetto</span>
+            <span class="stamp-oli">OPPORTUNITÀ ALTA</span>
+          </div>
+          <ul class="space-y-3 text-sm text-[#3E3B34]">
+            <li class="flex items-start gap-2.5">
+              <span class="text-[#3C5A48] font-bold">✓</span>
+              <span><strong>Trazione Reale:</strong> Sì, ma solo se posizionata su <em>Fisco, Scadenze e Cartelle PC</em> (non solo su oggetti fisici).</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <span class="text-[#3C5A48] font-bold">✓</span>
+              <span><strong>Moat Difendibile:</strong> Il <em>Folder Watcher</em> locale su PC e l'ispezione Excel anti-allucinazione non esistono sui competitor.</span>
+            </li>
+            <li class="flex items-start gap-2.5">
+              <span class="text-[#3C5A48] font-bold">✓</span>
+              <span><strong>Design Unico:</strong> L'esperienza <em>Olivetti Industrial</em> trasforma la noia della burocrazia in un'esperienza tattile e di pregio.</span>
+            </li>
+          </ul>
+          <div class="pt-3 border-t border-[#E3DDD1] flex justify-between items-center text-xs font-mono-code text-[#6E6A60]">
+            <span>Target Primario:</span>
+            <span class="font-bold text-[#222220]">Partite IVA & Family CFO</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: THE WHITE SPACE (LO SPAZIO NEL MERCATO) -->
+    <section id="slide-2" class="slide">
+      <div class="space-y-6">
+        <div>
+          <span class="stamp-oli font-mono-code">POSIZIONAMENTO STRATEGICO</span>
+          <h2 class="font-display font-bold text-3xl text-[#222220] mt-1">Lo Spazio nel Mercato: I 3 Silos Frammentati</h2>
+          <p class="text-sm text-[#6E6A60]">Tutti i prodotti attuali costringono l'utente a scegliere tra compartimenti stagni che non comunicano.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <!-- Silo 1 -->
+          <div class="bg-white border border-[#E3DDD1] p-5 rounded-lg space-y-3 shadow-sm hover:border-[#6E6A60] transition-colors">
+            <div class="w-8 h-8 rounded bg-[#EFECE3] flex items-center justify-center font-bold text-base">📦</div>
+            <h3 class="font-display font-bold text-base text-[#222220]">1. Inventario Fisico</h3>
+            <p class="text-xs text-[#6E6A60] leading-relaxed">
+              <strong>Sortly, Itemtopia, HouseBook, SmartBox</strong>: ottimi per scatoloni e traslochi, ma richiedono inserimento dati manuale sfiancante.
+            </p>
+            <div class="text-xs font-mono-code text-[#C84B31] bg-[#FDF2F0] p-2 rounded">
+              ❌ Ciechi sui documenti PDF, zero calcolo scadenze bollette/F24.
+            </div>
+          </div>
+
+          <!-- Silo 2 -->
+          <div class="bg-white border border-[#E3DDD1] p-5 rounded-lg space-y-3 shadow-sm hover:border-[#6E6A60] transition-colors">
+            <div class="w-8 h-8 rounded bg-[#EFECE3] flex items-center justify-center font-bold text-base">📄</div>
+            <h3 class="font-display font-bold text-base text-[#222220]">2. Documenti & Fisco</h3>
+            <p class="text-xs text-[#6E6A60] leading-relaxed">
+              <strong>Kipy, Fileee, Paperless-ngx</strong>: scansionano documenti o richiedono complicati server Docker.
+            </p>
+            <div class="text-xs font-mono-code text-[#C84B31] bg-[#FDF2F0] p-2 rounded">
+              ❌ Solo mobile o iper-tecnici. Non sanno dove sono gli oggetti fisici di casa.
+            </div>
+          </div>
+
+          <!-- Silo 3 -->
+          <div class="bg-white border border-[#E3DDD1] p-5 rounded-lg space-y-3 shadow-sm hover:border-[#6E6A60] transition-colors">
+            <div class="w-8 h-8 rounded bg-[#EFECE3] flex items-center justify-center font-bold text-base">🧠</div>
+            <h3 class="font-display font-bold text-base text-[#222220]">3. AI Second Brain</h3>
+            <p class="text-xs text-[#6E6A60] leading-relaxed">
+              <strong>Fabric.so, Notion AI, Mem</strong>: ottimi per appunti di lavoro e sintesi di articoli web.
+            </p>
+            <div class="text-xs font-mono-code text-[#C84B31] bg-[#FDF2F0] p-2 rounded">
+              ❌ Cloud chiuso, zero riservatezza locale, inutili se cerchi le chiavi di riserva o il 730.
+            </div>
+          </div>
+        </div>
+
+        <!-- The Intersection -->
+        <div class="bg-[#3C5A48] text-white p-6 rounded-xl shadow-lg border border-[#2F4738] flex flex-col md:flex-row items-center justify-between gap-6">
+          <div class="space-y-1">
+            <span class="stamp-oli bg-[#2F4738] border-white text-white">L'INTERSEZIONE DI "DOVE LO AI MESSO"</span>
+            <h4 class="font-display font-bold text-xl">L'Anello Mancante tra Mondo Fisico, Burocrazia e Privacy Locale</h4>
+            <p class="text-xs text-[#D8E2DC] max-w-2xl leading-relaxed">
+              Se compri una caldaia o uno scooter hai un <strong>oggetto fisico</strong>, una <strong>fattura d'acquisto</strong>, una <strong>garanzia</strong> e una <strong>scadenza di revisione</strong>. La tua app unifica tutto con input vocale a zero sforzo e cifratura locale.
+            </p>
+          </div>
+          <div class="text-center font-mono-code text-xs bg-[#2F4738] px-4 py-3 rounded-lg border border-[#4E755E] shrink-0">
+            <div class="text-amber-300 font-bold text-sm">ZERO SFORZO</div>
+            <div>Folder Watcher + Voice Whisper</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: COMPETITOR DEEP DIVE -->
+    <section id="slide-3" class="slide">
+      <div class="space-y-5">
+        <div class="flex justify-between items-end">
+          <div>
+            <span class="stamp-terracotta font-mono-code">BENCHMARK DETTAGLIATO</span>
+            <h2 class="font-display font-bold text-3xl text-[#222220] mt-1">La Mappa dei Concorrenti Diretti</h2>
+          </div>
+          <span class="text-xs font-mono-code text-[#6E6A60]">Analisi aggiornata 2026</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Competitor 1: KIPY -->
+          <div class="bg-white p-4 border border-[#E3DDD1] rounded-lg space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-display font-bold text-base text-[#222220]">Kipy (Italia)</span>
+              <span class="text-xs font-mono-code bg-[#EFECE3] px-2 py-0.5 rounded">Freemium / App Mobile</span>
+            </div>
+            <p class="text-xs text-[#4A4740]">
+              App mobile italiana focalizzata su CIE, patente, bollette e assicurazioni con scadenze push.
+            </p>
+            <div class="text-xs font-mono-code text-[#3C5A48] bg-[#F1F6F3] p-2 rounded">
+              <strong>Vantaggio nostro:</strong> Kipy non ha accesso al PC desktop, non monitora la cartella <code>Download</code>, non gestisce oggetti fisici e memorizza i documenti sul loro cloud privato.
+            </div>
+          </div>
+
+          <!-- Competitor 2: FILEEE -->
+          <div class="bg-white p-4 border border-[#E3DDD1] rounded-lg space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-display font-bold text-base text-[#222220]">fileee (Germania / Europa)</span>
+              <span class="text-xs font-mono-code bg-[#EFECE3] px-2 py-0.5 rounded">€4.99 - €9.99/m + fileeeBox</span>
+            </div>
+            <p class="text-xs text-[#4A4740]">
+              Scanner intelligente con estrazione fatture e box fisica da scrivania con scala graduata per ritrovare i fogli di carta.
+            </p>
+            <div class="text-xs font-mono-code text-[#3C5A48] bg-[#F1F6F3] p-2 rounded">
+              <strong>Vantaggio nostro:</strong> fileee è rigido e orientato all'ufficio. "Dove lo AI messo" gestisce l'intera casa, ha ricerca fuzzy in italiano, tool agentici e server MCP aperto.
+            </div>
+          </div>
+
+          <!-- Competitor 3: PAPERLESS-NGX -->
+          <div class="bg-white p-4 border border-[#E3DDD1] rounded-lg space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-display font-bold text-base text-[#222220]">Paperless-ngx (Open Source)</span>
+              <span class="text-xs font-mono-code bg-[#EFECE3] px-2 py-0.5 rounded">Gratis / Self-Hosted Docker</span>
+            </div>
+            <p class="text-xs text-[#4A4740]">
+              Il punto di riferimento della community homelab/privacy per catalogare PDF con OCR avanzato.
+            </p>
+            <div class="text-xs font-mono-code text-[#3C5A48] bg-[#F1F6F3] p-2 rounded">
+              <strong>Vantaggio nostro:</strong> Richiede Linux, Docker e manutenzione da sistemista. La nostra app si avvia con un click su Windows (PyWebView) con un'interfaccia Olivetti accessibile a chiunque.
+            </div>
+          </div>
+
+          <!-- Competitor 4: SORTLY / ITEMTOPIA -->
+          <div class="bg-white p-4 border border-[#E3DDD1] rounded-lg space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-display font-bold text-base text-[#222220]">Sortly & Itemtopia (Global)</span>
+              <span class="text-xs font-mono-code bg-[#EFECE3] px-2 py-0.5 rounded">$29 - $119/m (Sortly)</span>
+            </div>
+            <p class="text-xs text-[#4A4740]">
+              Catalogazione di oggetti per stanze e scatole con stampa di etichette e QR code.
+            </p>
+            <div class="text-xs font-mono-code text-[#3C5A48] bg-[#F1F6F3] p-2 rounded">
+              <strong>Vantaggio nostro:</strong> Sortly ha prezzi da multinazionale. Nessuna delle due legge dati tabellari Excel, né collega fatture alle detrazioni fiscali o monitora scadenze complesse.
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 bg-[#FAF8F3] border border-[#E3DDD1] rounded-md text-xs text-[#6E6A60] flex items-center justify-between">
+          <span>🎯 <strong>Il Concorrente Nascosto:</strong> La chat di WhatsApp con sé stessi e la cartella "Nuova Cartella (3)" sul desktop.</span>
+          <span class="stamp-terracotta">FATTORE FRIZIONE ZERO</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: FEATURE MATRIX COMPARISON -->
+    <section id="slide-4" class="slide">
+      <div class="space-y-4">
+        <div>
+          <span class="stamp-oli font-mono-code">MATRICE TECNOLOGICA</span>
+          <h2 class="font-display font-bold text-2xl md:text-3xl text-[#222220] mt-1">Confronto Funzionalità per Funzionalità</h2>
+        </div>
+
+        <div class="overflow-x-auto custom-scroll border border-[#E3DDD1] rounded-lg bg-white shadow-sm">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-[#F8F5EE] border-b border-[#E3DDD1] font-mono-code text-[#222220]">
+              <tr>
+                <th class="p-3">Funzionalità Chiave</th>
+                <th class="p-3 text-center bg-[#EBF1ED] text-[#3C5A48] font-bold">Dove lo AI messo</th>
+                <th class="p-3 text-center">Kipy</th>
+                <th class="p-3 text-center">Paperless-ngx</th>
+                <th class="p-3 text-center">Sortly</th>
+                <th class="p-3 text-center">Fabric.so</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#E3DDD1] text-[#3E3B34]">
+              <tr>
+                <td class="p-3 font-medium">💬 Chat Olivetti & Dettatura Vocale (Whisper)</td>
+                <td class="p-3 text-center bg-[#F4F7F5] font-bold text-[#3C5A48]">✅ Nativa</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#C84B31]">🟡 Solo testo</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">📂 Folder Watcher PC (Monitora Download/Desktop)</td>
+                <td class="p-3 text-center bg-[#F4F7F5] font-bold text-[#3C5A48]">✅ Proattivo</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No (solo mobile)</td>
+                <td class="p-3 text-center text-[#C84B31]">🟡 Solo consume dir</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">📊 Scadenzario Fiscale & Quietanzamento</td>
+                <td class="p-3 text-center bg-[#F4F7F5] font-bold text-[#3C5A48]">✅ Deterministico</td>
+                <td class="p-3 text-center text-[#3C5A48]">✅ Push base</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">📍 Tracciamento Oggetti Fisici & Foto Cassetto</td>
+                <td class="p-3 text-center bg-[#F4F7F5] font-bold text-[#3C5A48]">✅ Connesso</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#3C5A48]">✅ Focus primario</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">📑 Ispezione Puntuale Excel (Zero Allucinazioni)</td>
+                <td class="p-3 text-center bg-[#F4F7F5] font-bold text-[#3C5A48]">✅ OpenPyXL formule</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#C84B31]">🟡 Solo testo grezzo</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">🔒 Crittografia Locale Zero-Knowledge (PBKDF2 600k)</td>
+                <td class="p-3 text-center bg-[#F4F7F5] font-bold text-[#3C5A48]">✅ AES-128 Fernet</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ Cloud terzo</td>
+                <td class="p-3 text-center text-[#C84B31]">🟡 In chiaro su server</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ Cloud terzo</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ Cloud terzo</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">📦 Agente ZIP (Comprimi per Commercialista)</td>
+                <td class="p-3 text-center bg-[#F4F7F5] font-bold text-[#3C5A48]">✅ Con Indice TXT</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#C84B31]">🟡 Export manuale</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">🤖 Server MCP (20 Tool per Cursor/Claude)</td>
+                <td class="p-3 text-center bg-[#F4F7F5] font-bold text-[#3C5A48]">✅ 20 Tool Ufficiali</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+                <td class="p-3 text-center text-[#A09C90]">❌ No</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: THE TRUE MONETIZABLE PAIN -->
+    <section id="slide-5" class="slide">
+      <div class="space-y-6">
+        <div>
+          <span class="stamp-terracotta font-mono-code">ANALISI PSICOLOGICA ED ECONOMICA</span>
+          <h2 class="font-display font-bold text-3xl text-[#222220] mt-1">Il Vero Dolore: Perché la Gente Paga?</h2>
+          <p class="text-sm text-[#6E6A60]">Regola aurea del SaaS: la gente non paga per le "Vitamine", paga solo per gli "Antidolorifici".</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- The Fake Pain -->
+          <div class="bg-white border-2 border-dashed border-[#E3DDD1] p-5 rounded-xl space-y-3">
+            <div class="flex items-center gap-2">
+              <span class="stamp-terracotta">IL DOLORE APPARENTE (VITAMINA)</span>
+            </div>
+            <h3 class="font-display font-bold text-lg text-[#222220]">"Non trovo le forbici o il caricatore"</h3>
+            <p class="text-xs text-[#6E6A60] leading-relaxed">
+              È una frustrazione quotidiana reale, ma è un <strong>dolore a bassa intensità economica</strong>. Nessuno paga €10 al mese per sapere dove ha messo la spillatrice, e quasi tutti smettono di catalogare dopo 3 giorni.
+            </p>
+            <div class="p-3 bg-[#FDF2F0] rounded text-xs text-[#C84B31] font-mono-code">
+              Propensione di spesa (WTP): BASSISSIMA (€0 - €2 una tantum). Alto tasso di abbandono (Churn 90%).
+            </div>
+          </div>
+
+          <!-- The Real Pain -->
+          <div class="bg-[#F8F5EE] border-2 border-[#3C5A48] p-5 rounded-xl space-y-3 shadow-md">
+            <div class="flex items-center gap-2">
+              <span class="stamp-oli">IL DOLORE REALE (ANTIDOLORIFICO)</span>
+            </div>
+            <h3 class="font-display font-bold text-lg text-[#3C5A48]">"Multe per scadenze e detrazioni 730 perse"</h3>
+            <p class="text-xs text-[#3E3B34] leading-relaxed">
+              Dimenticare un <strong>F24</strong> o una bolletta significa more del 10%-30% o stacco utenze (€50-€150). Perdere gli scontrini sanitari o le fatture di ristrutturazione significa <strong>perdere centinaia di euro di rimborsi fiscali</strong>.
+            </p>
+            <div class="p-3 bg-[#EAF2ED] rounded text-xs text-[#3C5A48] font-mono-code font-bold">
+              Propensione di spesa (WTP): ALTISSIMA (€5 - €15 / mese). L'app si ripaga da sola con una sola mora evitata.
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 Moneteizable Pillars -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+          <div class="p-3 bg-white border border-[#E3DDD1] rounded-lg">
+            <div class="font-mono-code text-xs text-[#C84B31] font-bold">1. Sanzioni & More</div>
+            <div class="text-xs text-[#6E6A60] mt-1">F24, TARI, Bollo auto non pagati costano caro.</div>
+          </div>
+          <div class="p-3 bg-white border border-[#E3DDD1] rounded-lg">
+            <div class="font-mono-code text-xs text-[#3C5A48] font-bold">2. Detrazioni 730</div>
+            <div class="text-xs text-[#6E6A60] mt-1">Farmaci, visite, bonus casa recuperati al 100%.</div>
+          </div>
+          <div class="p-3 bg-white border border-[#E3DDD1] rounded-lg">
+            <div class="font-mono-code text-xs text-[#222220] font-bold">3. Shoebox Anxiety</div>
+            <div class="text-xs text-[#6E6A60] mt-1">Fine della paura da buste chiuse e Download intasati.</div>
+          </div>
+          <div class="p-3 bg-white border border-[#E3DDD1] rounded-lg">
+            <div class="font-mono-code text-xs text-[#3C5A48] font-bold">4. Commercialista</div>
+            <div class="text-xs text-[#6E6A60] mt-1">Export ZIP completo in 5 secondi invece di weekend di panico.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: IDEAL CUSTOMER PROFILE (ICP) -->
+    <section id="slide-6" class="slide">
+      <div class="space-y-5">
+        <div>
+          <span class="stamp-oli font-mono-code">SEGMENTAZIONE UTENTI</span>
+          <h2 class="font-display font-bold text-3xl text-[#222220] mt-1">Chi è il Target Ideale? (I 4 Archetipi)</h2>
+          <p class="text-sm text-[#6E6A60]">Non vendere a "chiunque". Questi sono i 4 profili che sentono il dolore più acuto.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Profile 1 -->
+          <div class="bg-white p-5 border border-[#E3DDD1] rounded-lg space-y-2 shadow-sm">
+            <div class="flex justify-between items-center">
+              <span class="font-display font-bold text-base text-[#222220]">1. Il Freelancer / P.IVA Disorganizzato</span>
+              <span class="stamp-terracotta font-mono-code">WTP: €9 - €15 / MESE</span>
+            </div>
+            <p class="text-xs text-[#4A4740]">
+              Consulenti, programmatori, architetti, psicologi. Hanno spese miste casa/lavoro, fatture scaricabili, F24 continui e il terrore della chiusura IVA trimestrale.
+            </p>
+            <div class="text-xs font-mono-code text-[#3C5A48]">
+              ⭐ Killer Feature: <code>create_zip_archive</code> per il commercialista + ispezione Excel per verificare al volo le righe contabili.
+            </div>
+          </div>
+
+          <!-- Profile 2 -->
+          <div class="bg-white p-5 border border-[#E3DDD1] rounded-lg space-y-2 shadow-sm">
+            <div class="flex justify-between items-center">
+              <span class="font-display font-bold text-base text-[#222220]">2. Il "Family CFO" (Capofamiglia 30-55)</span>
+              <span class="stamp-oli font-mono-code">WTP: €5 - €8 / MESE</span>
+            </div>
+            <p class="text-xs text-[#4A4740]">
+              La persona che in casa tiene le fila di: bollette luce/gas, rate condominio, visite mediche figli, contratti assicurativi, tagliandi auto e chiavi di riserva.
+            </p>
+            <div class="text-xs font-mono-code text-[#3C5A48]">
+              ⭐ Killer Feature: Scadenzario con badge e notifiche di gruppo + foto posizioni fisiche ("Dov'è il libretto della caldaia?").
+            </div>
+          </div>
+
+          <!-- Profile 3 -->
+          <div class="bg-white p-5 border border-[#E3DDD1] rounded-lg space-y-2 shadow-sm">
+            <div class="flex justify-between items-center">
+              <span class="font-display font-bold text-base text-[#222220]">3. L'Utente ADHD / Disorganizzato Cronico</span>
+              <span class="stamp-oli font-mono-code">POTENZIALE VIRALE TIKTOK</span>
+            </div>
+            <p class="text-xs text-[#4A4740]">
+              Soffre di paralisi amministrativa e sovraccarico sensoriale. Rifiuta Notion o Excel perché richiedono ore di configurazione.
+            </p>
+            <div class="text-xs font-mono-code text-[#3C5A48]">
+              ⭐ Killer Feature: Dettatura vocale Whisper + trascina intera cartella senza dover compilare un solo form manuale.
+            </div>
+          </div>
+
+          <!-- Profile 4 -->
+          <div class="bg-white p-5 border border-[#E3DDD1] rounded-lg space-y-2 shadow-sm">
+            <div class="flex justify-between items-center">
+              <span class="font-display font-bold text-base text-[#222220]">4. Il Privacy Prosumer & Homelabber</span>
+              <span class="stamp-terracotta font-mono-code">WTP: €49 - €79 LIFETIME</span>
+            </div>
+            <p class="text-xs text-[#4A4740]">
+              Ama la privacy di Paperless-ngx ma odia la complessità di Docker. Vuole l'integrazione MCP per pilotare l'archivio con agenti AI come Claude Desktop o Cursor.
+            </p>
+            <div class="text-xs font-mono-code text-[#3C5A48]">
+              ⭐ Killer Feature: Server MCP con 20 tool + cifratura locale AES a 600.000 iterazioni PBKDF2.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 7: OVERCOMING DATA ENTRY BURNOUT -->
+    <section id="slide-7" class="slide">
+      <div class="space-y-6">
+        <div>
+          <span class="stamp-terracotta font-mono-code">UX & RETENTION STRATEGY</span>
+          <h2 class="font-display font-bold text-3xl text-[#222220] mt-1">Come Distruggere il "Data Entry Burnout"</h2>
+          <p class="text-sm text-[#6E6A60]">Tutte le app di organizzazione falliscono per lo stesso motivo: l'onere di catalogazione.</p>
+        </div>
+
+        <div class="bg-white border border-[#E3DDD1] p-5 rounded-xl shadow-sm">
+          <div class="font-mono-code text-xs text-[#C84B31] font-bold uppercase tracking-wider mb-2">Il Ciclo della Morte delle App Tradizionali:</div>
+          <div class="flex flex-col md:flex-row items-center justify-between gap-3 text-center text-xs">
+            <div class="p-3 bg-[#FAF8F3] border border-[#E3DDD1] rounded w-full">1. Scarica l'app entusiasta</div>
+            <span class="text-[#6E6A60] font-bold">→</span>
+            <div class="p-3 bg-[#FAF8F3] border border-[#E3DDD1] rounded w-full">2. Deve compilare 10 campi a mano</div>
+            <span class="text-[#6E6A60] font-bold">→</span>
+            <div class="p-3 bg-[#FDF2F0] border border-[#C84B31] text-[#C84B31] font-bold rounded w-full">3. Burnout da inserimento dati</div>
+            <span class="text-[#6E6A60] font-bold">→</span>
+            <div class="p-3 bg-[#222220] text-white font-bold rounded w-full">4. Abbandono dopo 7 giorni</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="p-4 bg-white border-2 border-[#3C5A48] rounded-lg space-y-2">
+            <div class="text-lg">🤖</div>
+            <h4 class="font-display font-bold text-sm text-[#3C5A48]">Folder Watcher Passivo</h4>
+            <p class="text-xs text-[#4A4740]">
+              L'utente non deve neanche aprire l'app. Scarica il PDF della banca e l'app gli propone con 1 click di cifrarlo e archiviarlo.
+            </p>
+          </div>
+
+          <div class="p-4 bg-white border-2 border-[#3C5A48] rounded-lg space-y-2">
+            <div class="text-lg">🎤</div>
+            <h4 class="font-display font-bold text-sm text-[#3C5A48]">Dettatura Vocale Whisper</h4>
+            <p class="text-xs text-[#4A4740]">
+              Invece di digitare campi: <em>"Ho posato il passaporto nel secondo cassetto dello studio"</em>. 2 secondi contro 45 secondi di form.
+            </p>
+          </div>
+
+          <div class="p-4 bg-white border-2 border-[#3C5A48] rounded-lg space-y-2">
+            <div class="text-lg">📁</div>
+            <h4 class="font-display font-bold text-sm text-[#3C5A48]">Drag & Drop Ricorsivo</h4>
+            <p class="text-xs text-[#4A4740]">
+              Trascina l'intera cartella disordinata da 300 file: il motore estrae tutto in parallelo con 3 worker senza blocchi.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 8: MONETIZATION & ROI CALCULATOR -->
+    <section id="slide-8" class="slide">
+      <div class="space-y-6">
+        <div>
+          <span class="stamp-oli font-mono-code">BUSINESS MODEL & PRICING</span>
+          <h2 class="font-display font-bold text-3xl text-[#222220] mt-1">Modello di Monetizzazione & Calcolatore ROI</h2>
+          <p class="text-sm text-[#6E6A60]">Come monetizzare massimizzando la conversione e dimostrando il valore economico all'utente.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Tier 1 -->
+          <div class="bg-white p-5 border border-[#E3DDD1] rounded-xl space-y-3">
+            <div class="stamp-oli font-mono-code">GRATUITO PER SEMPRE</div>
+            <h3 class="font-display font-bold text-xl text-[#222220]">Local Freemium</h3>
+            <div class="font-mono-code text-2xl font-bold text-[#3C5A48]">€0</div>
+            <ul class="text-xs text-[#4A4740] space-y-1.5 pt-2 border-t border-[#E3DDD1]">
+              <li>✓ Storage locale 100% su proprio PC</li>
+              <li>✓ Crittografia AES-128 / PBKDF2</li>
+              <li>✓ Chat Olivetti & Scadenzario</li>
+              <li>✓ Folder Watcher locale</li>
+            </ul>
+            <div class="text-[11px] text-[#6E6A60] italic">Obiettivo: Fiducia totale e passaparola virale.</div>
+          </div>
+
+          <!-- Tier 2 -->
+          <div class="bg-white p-5 border-2 border-[#3C5A48] rounded-xl space-y-3 relative shadow-md">
+            <div class="absolute -top-3 right-4 bg-[#3C5A48] text-white text-[10px] font-mono-code font-bold px-2.5 py-0.5 rounded">CONSIGLIATO</div>
+            <div class="stamp-terracotta font-mono-code">RICORRENTE (MRR)</div>
+            <h3 class="font-display font-bold text-xl text-[#222220]">Cloud Pro & Gruppi</h3>
+            <div class="font-mono-code text-2xl font-bold text-[#C84B31]">€5,90 <span class="text-xs text-[#6E6A60]">/ mese</span></div>
+            <ul class="text-xs text-[#4A4740] space-y-1.5 pt-2 border-t border-[#E3DDD1]">
+              <li>✓ Sync crittografato Multi-Dispositivo (PC ↔ Mobile)</li>
+              <li>✓ Spazi condivisi Famiglia / Studio</li>
+              <li>✓ Notifiche push scadenze urgenti (Telegram/WhatsApp)</li>
+              <li>✓ Backup crittografato automatico</li>
+            </ul>
+            <div class="text-[11px] text-[#3C5A48] font-bold">Obiettivo: Ricavi prevedibili ad alta marginalità.</div>
+          </div>
+
+          <!-- Tier 3 -->
+          <div class="bg-white p-5 border border-[#E3DDD1] rounded-xl space-y-3">
+            <div class="stamp-oli font-mono-code">UNA TANTUM</div>
+            <h3 class="font-display font-bold text-xl text-[#222220]">Lifetime Prosumer</h3>
+            <div class="font-mono-code text-2xl font-bold text-[#222220]">€69 <span class="text-xs text-[#6E6A60]">una tantum</span></div>
+            <ul class="text-xs text-[#4A4740] space-y-1.5 pt-2 border-t border-[#E3DDD1]">
+              <li>✓ Licenza desktop a vita</li>
+              <li>✓ Server MCP illimitato</li>
+              <li>✓ Aggiornamenti minori garantiti</li>
+              <li>✓ Zero canoni ricorrenti</li>
+            </ul>
+            <div class="text-[11px] text-[#6E6A60] italic">Obiettivo: Incasso immediato da sviluppatori & tech pro.</div>
+          </div>
+        </div>
+
+        <!-- ROI Simulator Widget -->
+        <div class="bg-white border border-[#E3DDD1] p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="font-display font-bold text-sm text-[#222220]">Simulatore del Valore Generato per l'Utente:</div>
+            <div class="text-xs text-[#6E6A60]">Evitare 1 sola mora F24 (€35) + recuperare 3 fatture mediche al 730 (€120) =</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="font-mono-code text-xl font-bold text-[#3C5A48] bg-[#EAF2ED] px-4 py-2 rounded-lg border border-[#C8E0D1]">
+              + €155 / anno risparmiati
+            </div>
+            <div class="text-xs font-mono-code text-[#6E6A60]">
+              (Costo app €59/anno → <strong>ROI 262%</strong>)
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 9: GO-TO-MARKET & TRACTION ROADMAP -->
+    <section id="slide-9" class="slide">
+      <div class="space-y-5">
+        <div>
+          <span class="stamp-terracotta font-mono-code">GROWTH STRATEGY</span>
+          <h2 class="font-display font-bold text-3xl text-[#222220] mt-1">Piano di Trazione: I 4 Canali di Crescita</h2>
+          <p class="text-sm text-[#6E6A60]">Strategia per ottenere i primi 1.000 utenti attivi senza spendere migliaia di euro in pubblicità.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Channel 1 -->
+          <div class="bg-white p-5 border border-[#E3DDD1] rounded-lg space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-display font-bold text-base text-[#222220]">1. Canale B2B2C: Commercialisti & CAF</span>
+              <span class="stamp-oli font-mono-code">CONVERSIONE MASSIMA</span>
+            </div>
+            <p class="text-xs text-[#4A4740]">
+              I commercialisti odiano ricevere ricevute sbiadite e file sparsi dai clienti. Proponi il software con la promessa: <em>"Fallo usare ai tuoi clienti: ti consegneranno un solo pacchetto ZIP cifrato con tutte le spese già catalogate."</em> Il commercialista diventa promoter.
+            </p>
+          </div>
+
+          <!-- Channel 2 -->
+          <div class="bg-white p-5 border border-[#E3DDD1] rounded-lg space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-display font-bold text-base text-[#222220]">2. Creator di Finanza Personale Italia</span>
+              <span class="stamp-oli font-mono-code">VIRALITÀ ORGANICA</span>
+            </div>
+            <p class="text-xs text-[#4A4740]">
+              La community italiana (subreddits <code>r/ItaliaPersonalFinance</code>, canali YouTube come Mr Rip o Paolo Coletti) è attentissima all'efficienza contabile e alla privacy. Un'app locale, con design Lettera 22 che risolve il caos F24, genera recensioni spontanee.
+            </p>
+          </div>
+
+          <!-- Channel 3 -->
+          <div class="bg-white p-5 border border-[#E3DDD1] rounded-lg space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-display font-bold text-base text-[#222220]">3. Community ADHD & TikTok "Decluttering"</span>
+              <span class="stamp-terracotta font-mono-code">ACQUISIZIONE VIRALE</span>
+            </div>
+            <p class="text-xs text-[#4A4740]">
+              Video brevi a forte impatto visivo: mostrare lo schermo con la cartella Download piena di 100 file anonimi, trascinarla in "Dove lo AI messo" e vedere lo scadenzario compilarsi in 10 secondi a ritmo di macchina da scrivere.
+            </p>
+          </div>
+
+          <!-- Channel 4 -->
+          <div class="bg-white p-5 border border-[#E3DDD1] rounded-lg space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-display font-bold text-base text-[#222220]">4. Product Hunt & Hacker News (Show HN)</span>
+              <span class="stamp-oli font-mono-code">TECH CREDIBILITY</span>
+            </div>
+            <p class="text-xs text-[#4A4740]">
+              Lancio globale posizionato su: <strong>"The Olivetti-style Zero-Knowledge Local Document Vault with native MCP Server"</strong>. Attira appassionati di design, sostenitori del local-first software e sviluppatori di agenti AI.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 10: ACTION PLAN & VERDICT -->
+    <section id="slide-10" class="slide">
+      <div class="bg-white border-2 border-[#3C5A48] p-8 rounded-2xl shadow-xl space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#E3DDD1] pb-4">
+          <div>
+            <span class="stamp-oli font-mono-code text-xs">CONCLUSIONI ESECUTIVE</span>
+            <h2 class="font-display font-bold text-3xl text-[#222220] mt-1">Verdetto Finale & 3 Azioni Immediate</h2>
+          </div>
+          <div class="stamp-terracotta font-mono-code text-xs">GO TO MARKET READY</div>
+        </div>
+
+        <div class="text-sm text-[#3E3B34] leading-relaxed">
+          L'idea ha <strong>fortissimo potenziale di trazione</strong>, a condizione di comunicarla non come "l'app per trovare le chiavi", ma come:
+          <blockquote class="p-3 my-2 bg-[#F8F5EE] border-l-4 border-[#3C5A48] font-medium italic text-[#222220]">
+            "Il caveau crittografato e concierge personale che monitora le tue scadenze, protegge i tuoi documenti sul PC ed elimina multe e disordine fiscale."
+          </blockquote>
+        </div>
+
+        <div class="space-y-3">
+          <div class="font-mono-code text-xs font-bold uppercase text-[#3C5A48]">I 3 Prossimi Step Consigliati per Lanciare:</div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="p-4 bg-[#FAF8F3] border border-[#E3DDD1] rounded-lg">
+              <span class="font-mono-code text-xs font-bold text-[#C84B31]">STEP 1</span>
+              <h4 class="font-display font-bold text-sm text-[#222220] mt-1">Landing Page Waitlist</h4>
+              <p class="text-xs text-[#6E6A60] mt-1">Incentrata sul dolore delle scadenze e del disordine su PC con video demo di 30 secondi.</p>
+            </div>
+            <div class="p-4 bg-[#FAF8F3] border border-[#E3DDD1] rounded-lg">
+              <span class="font-mono-code text-xs font-bold text-[#3C5A48]">STEP 2</span>
+              <h4 class="font-display font-bold text-sm text-[#222220] mt-1">Bot Notifiche Telegram</h4>
+              <p class="text-xs text-[#6E6A60] mt-1">Per inviare il promemoria F24 sullo smartphone anche a computer spento.</p>
+            </div>
+            <div class="p-4 bg-[#FAF8F3] border border-[#E3DDD1] rounded-lg">
+              <span class="font-mono-code text-xs font-bold text-[#222220]">STEP 3</span>
+              <h4 class="font-display font-bold text-sm text-[#222220] mt-1">Pulsante Commercialista</h4>
+              <p class="text-xs text-[#6E6A60] mt-1">Rendere il comando ZIP visibilissimo come "Esporta Cartella 730 / Fisco 2025".</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-[#E3DDD1] flex flex-col md:flex-row items-center justify-between text-xs text-[#6E6A60] font-mono-code gap-2">
+          <span>Progetto: DOVE LO AI MESSO • Versione 2.8.7</span>
+          <button onclick="goToSlide(1)" class="text-[#3C5A48] hover:underline font-bold">
+            ↺ Riavvia la presentazione dalla Slide 1
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM FOOTER & THUMBNAILS -->
+  <footer class="border-t border-[#E3DDD1] bg-[#FAF8F3] py-3 px-6">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs font-mono-code text-[#6E6A60]">
+      <div class="flex items-center gap-1.5 overflow-x-auto custom-scroll py-1 max-w-full">
+        <span class="text-[11px] text-[#A09C90] mr-1">VAI A:</span>
+        <button onclick="goToSlide(1)" class="slide-dot px-2 py-0.5 rounded border border-[#E3DDD1] bg-white hover:bg-[#EFECE3]" data-slide="1">1. Intro</button>
+        <button onclick="goToSlide(2)" class="slide-dot px-2 py-0.5 rounded border border-[#E3DDD1] bg-white hover:bg-[#EFECE3]" data-slide="2">2. Mercato</button>
+        <button onclick="goToSlide(3)" class="slide-dot px-2 py-0.5 rounded border border-[#E3DDD1] bg-white hover:bg-[#EFECE3]" data-slide="3">3. Competitor</button>
+        <button onclick="goToSlide(4)" class="slide-dot px-2 py-0.5 rounded border border-[#E3DDD1] bg-white hover:bg-[#EFECE3]" data-slide="4">4. Matrice</button>
+        <button onclick="goToSlide(5)" class="slide-dot px-2 py-0.5 rounded border border-[#E3DDD1] bg-white hover:bg-[#EFECE3]" data-slide="5">5. Vero Pain</button>
+        <button onclick="goToSlide(6)" class="slide-dot px-2 py-0.5 rounded border border-[#E3DDD1] bg-white hover:bg-[#EFECE3]" data-slide="6">6. Target</button>
+        <button onclick="goToSlide(7)" class="slide-dot px-2 py-0.5 rounded border border-[#E3DDD1] bg-white hover:bg-[#EFECE3]" data-slide="7">7. No Burnout</button>
+        <button onclick="goToSlide(8)" class="slide-dot px-2 py-0.5 rounded border border-[#E3DDD1] bg-white hover:bg-[#EFECE3]" data-slide="8">8. Pricing</button>
+        <button onclick="goToSlide(9)" class="slide-dot px-2 py-0.5 rounded border border-[#E3DDD1] bg-white hover:bg-[#EFECE3]" data-slide="9">9. Trazione</button>
+        <button onclick="goToSlide(10)" class="slide-dot px-2 py-0.5 rounded border border-[#E3DDD1] bg-white hover:bg-[#EFECE3]" data-slide="10">10. Conclusioni</button>
+      </div>
+      <div class="text-[11px] text-[#8C877B]">
+        Design ispirato a Olivetti & Sottsass
+      </div>
+    </div>
+  </footer>
+
+  <!-- INTERACTIVE PRESENTATION LOGIC -->
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 10;
+
+    function updateSlide() {
+      // Hide all slides
+      for (let i = 1; i <= totalSlides; i++) {
+        const el = document.getElementById(`slide-${i}`);
+        if (el) el.classList.remove('active');
+      }
+
+      // Show current slide
+      const currentEl = document.getElementById(`slide-${currentSlide}`);
+      if (currentEl) currentEl.classList.add('active');
+
+      // Update counters
+      document.getElementById('currentSlideNum').innerText = currentSlide;
+
+      // Update footer indicator buttons
+      document.querySelectorAll('.slide-dot').forEach(btn => {
+        const slideIdx = parseInt(btn.getAttribute('data-slide'));
+        if (slideIdx === currentSlide) {
+          btn.classList.add('bg-[#3C5A48]', 'text-white', 'border-[#3C5A48]');
+          btn.classList.remove('bg-white', 'text-[#6E6A60]');
+        } else {
+          btn.classList.remove('bg-[#3C5A48]', 'text-white', 'border-[#3C5A48]');
+          btn.classList.add('bg-white', 'text-[#6E6A60]');
+        }
+      });
+
+      // Scroll to top of window smoothly on change
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    function goToSlide(n) {
+      if (n >= 1 && n <= totalSlides) {
+        currentSlide = n;
+        updateSlide();
+      }
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        prevSlide();
+      }
+    });
+
+    // Initialize
+    updateSlide();
+  </script>
+</body>
+</html>

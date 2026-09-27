@@ -5018,6 +5018,13 @@
           if (qCount > 0) bQuiet.classList.remove('hidden');
           else bQuiet.classList.add('hidden');
         }
+        const bScad = document.getElementById('tabBadgeScadenzario');
+        if (bScad) {
+          const sCount = kpi.total_deadlines_count || 0;
+          bScad.textContent = sCount;
+          if (sCount > 0) bScad.classList.remove('hidden');
+          else bScad.classList.add('hidden');
+        }
         const fI = document.getElementById('fItems');
         if (fI) fI.textContent = kpi.total_items_count ? `Oggetti (${kpi.total_items_count})` : 'Oggetti';
 
@@ -5056,9 +5063,596 @@
       renderDashboardView();
     }
 
+    // =========================================================================
+    // MODULO SCADENZARIO UNIVERSALE & CALENDARIO ATTI
+    // =========================================================================
+    let scadenzarioCategoryFilter = 'all';
+    let scadenzarioStatusFilter = 'all';
+    const expandedScadenzarioWidgetIds = new Set();
+
+    function setScadenzarioCategoryFilter(cat) {
+      scadenzarioCategoryFilter = cat;
+      renderScadenzarioView(currentRecords);
+    }
+    window.setScadenzarioCategoryFilter = setScadenzarioCategoryFilter;
+
+    function setScadenzarioStatusFilter(status) {
+      scadenzarioStatusFilter = status;
+      renderScadenzarioView(currentRecords);
+    }
+    window.setScadenzarioStatusFilter = setScadenzarioStatusFilter;
+
+    function toggleScadenzarioWidget(docId) {
+      if (expandedScadenzarioWidgetIds.has(docId)) {
+        expandedScadenzarioWidgetIds.delete(docId);
+      } else {
+        expandedScadenzarioWidgetIds.add(docId);
+      }
+      renderScadenzarioView(currentRecords);
+    }
+    window.toggleScadenzarioWidget = toggleScadenzarioWidget;
+
+    // Generatore file RFC 5545 iCalendar (.ics) per Google Calendar, Apple, Outlook
+    function generateICSContent(records) {
+      const pad = n => n < 10 ? '0' + n : n;
+      const now = new Date();
+      const nowStr = now.getUTCFullYear() +
+        pad(now.getUTCMonth() + 1) +
+        pad(now.getUTCDate()) + 'T' +
+        pad(now.getUTCHours()) +
+        pad(now.getUTCMinutes()) +
+        pad(now.getUTCSeconds()) + 'Z';
+
+      let lines = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//DoveLoAIMesso//Scadenzario Universale//IT',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        'X-WR-CALNAME:Scadenzario Caveau - Dove Lo AI Messo',
+        'X-WR-TIMEZONE:Europe/Rome'
+      ];
+
+      (records || []).forEach(r => {
+        if (!r.due_date) return;
+        const cleanDate = r.due_date.replace(/-/g, '');
+        const uid = `scadenza-${r.id}-${cleanDate}@doveloaimesso.local`;
+        const summary = (r.title || 'Scadenza Documento').replace(/[,;\\]/g, ' ');
+        const category = (r.category_label || r.category || 'Generale').replace(/[,;\\]/g, ' ');
+        let desc = `Titolo: ${summary}\\nCategoria: ${category}`;
+        if (r.amount != null) desc += `\\nImporto: € ${r.amount.toFixed(2)}`;
+        if (r.source) desc += `\\nEnte/Fornitore: ${r.source}`;
+        if (r.status) desc += `\\nStato: ${r.status.toUpperCase()}`;
+        if (r.location_or_notes) desc += `\\nNote: ${(r.location_or_notes || '').replace(/[\r\n]+/g, ' ')}`;
+
+        lines.push('BEGIN:VEVENT');
+        lines.push(`UID:${uid}`);
+        lines.push(`DTSTAMP:${nowStr}`);
+        lines.push(`DTSTART;VALUE=DATE:${cleanDate}`);
+        lines.push(`DTEND;VALUE=DATE:${cleanDate}`);
+        lines.push(`SUMMARY:${summary} [${category}]`);
+        lines.push(`DESCRIPTION:${desc}`);
+        lines.push(`CATEGORIES:${category}`);
+        if (r.status === 'quietanzato') {
+          lines.push('STATUS:COMPLETED');
+        } else {
+          lines.push('STATUS:CONFIRMED');
+        }
+        lines.push('BEGIN:VALARM');
+        lines.push('TRIGGER:-P1D');
+        lines.push('ACTION:DISPLAY');
+        lines.push(`DESCRIPTION:Promemoria Scadenza: ${summary}`);
+        lines.push('END:VALARM');
+        lines.push('END:VEVENT');
+      });
+
+      lines.push('END:VCALENDAR');
+      return lines.join('\r\n');
+    }
+
+    function exportDeadlinesToICS(records, filename = 'scadenzario_caveau.ics') {
+      const valid = (records || []).filter(r => r.due_date);
+      if (!valid || valid.length === 0) {
+        alert("Nessuna scadenza con data definita da esportare.");
+        return;
+      }
+      const ics = generateICSContent(valid);
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    window.exportDeadlinesToICS = exportDeadlinesToICS;
+
+    function exportSingleDeadlineToICS(docId) {
+      const doc = (currentRecords || []).find(r => r.id === docId);
+      if (!doc || !doc.due_date) {
+        alert("Documento non trovato o privo di data di scadenza.");
+        return;
+      }
+      const safeName = (doc.title || 'scadenza').toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 30);
+      exportDeadlinesToICS([doc], `${safeName}_${doc.due_date}.ics`);
+    }
+    window.exportSingleDeadlineToICS = exportSingleDeadlineToICS;
+
+    // Render del widget interattivo Olivetti Industrial per ogni atto
+    function renderDocumentWidgetHtml(doc) {
+      const docId = doc.id || doc.document_id;
+      const title = escapeHtml(doc.title || 'Documento');
+      const escapedTitle = title.replace(/'/g, "\\'");
+      const issuer = escapeHtml(doc.source || doc.issuer || 'Atto Archiviato');
+      const fileUrl = doc.file_url ? escapeHtml(doc.file_url) : '';
+      const fileType = escapeHtml(doc.file_type || 'application/pdf');
+      const downloadUrl = doc.download_url || `/api/documents/${docId}/download`;
+      const isZip = (doc.file_type === 'zip' || (doc.title && doc.title.toLowerCase().endsWith('.zip')));
+      const summary = doc.location_or_notes || doc.summary || '';
+
+      let amountHtml = '';
+      if (doc.amount != null) {
+        amountHtml = `<span class="stamp-oli stamp-solid-terracotta text-[9px] font-bold">€ ${doc.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`;
+      }
+      let dueHtml = '';
+      if (doc.due_date) {
+        dueHtml = `<span class="stamp-oli text-[9px] font-bold">Scadenza: ${doc.due_date}</span>`;
+      }
+
+      return `
+        <div class="mt-3 p-3.5 bg-white border-2 border-[#3C5A48]/50 rounded-xs shadow-xs text-left animate-in fade-in duration-150">
+          <div class="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
+            <div class="flex items-start gap-2.5 min-w-0">
+              <div class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                <i class="fa-solid ${doc.category_icon || 'fa-file-invoice'} text-sm"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="stamp-oli text-[8px] font-bold">SCHEDA ATTO #${docId}</span>
+                  <span class="stamp-oli stamp-solid-sage text-[8px] font-bold">${escapeHtml(doc.category_label || 'Archivio')}</span>
+                  ${doc.thread_name ? `<span class="stamp-oli text-[8px]">${escapeHtml(doc.thread_name)}</span>` : ''}
+                </div>
+                <h4 class="font-bold text-[#222220] text-sm font-space mt-1">${title}</h4>
+                <p class="text-[11px] text-[#7A7568] font-mono-code">${issuer}</p>
+                <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  ${amountHtml}
+                  ${dueHtml}
+                  ${doc.urgency_label ? `<span class="stamp-oli ${doc.urgency === 'overdue' ? 'stamp-terracotta' : ''} text-[8px] font-bold">${escapeHtml(doc.urgency_label)}</span>` : ''}
+                </div>
+              </div>
+            </div>
+            <!-- Azioni Widget -->
+            <div class="flex items-center gap-1.5 flex-wrap shrink-0 self-start sm:self-center">
+              ${doc.drive_web_url ? `
+                <a href="${doc.drive_web_url}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 stamp-oli text-[9px] font-bold hover:bg-[#3C5A48] hover:text-white transition flex items-center gap-1">
+                  <i class="fa-brands fa-google-drive text-[10px]"></i> <span>Drive ↗</span>
+                </a>
+              ` : ''}
+              ${fileUrl ? `
+                <button type="button" onclick="openMediaModal('${fileUrl}', '${escapedTitle}', '${fileType}', '${downloadUrl}', ${docId})" class="bg-[#3C5A48] hover:bg-[#2F4738] text-white text-[10px] font-bold px-2.5 py-1.5 rounded-xs shadow-xs transition flex items-center gap-1 active:scale-95 cursor-pointer font-space" title="Visualizza documento">
+                  <i class="fa-regular fa-eye text-xs"></i> <span>Vedi</span>
+                </button>
+              ` : ''}
+              ${isZip ? `
+                <button type="button" onclick="unzipDocumentById(${docId})" class="bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-xs shadow-xs transition flex items-center gap-1 active:scale-95 cursor-pointer font-space" title="Decomprimi archivio">
+                  <i class="fa-solid fa-file-zipper text-xs"></i> <span>Estrai</span>
+                </button>
+              ` : ''}
+              <button type="button" onclick="downloadDashboardDoc(${docId})" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] border border-[#3C5A48] text-[10px] font-bold px-2.5 py-1.5 rounded-xs shadow-xs transition flex items-center gap-1 active:scale-95 cursor-pointer font-space" title="Scarica file">
+                <i class="fa-solid fa-download text-xs"></i> <span>Scarica</span>
+              </button>
+              <button type="button" onclick="openFileInExplorer(${docId})" class="bg-[#FAF8F2] hover:bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] text-[10px] font-bold px-2 py-1.5 rounded-xs shadow-xs transition flex items-center gap-1 active:scale-95 cursor-pointer font-space" title="Apri in Esplora Risorse">
+                <i class="fa-regular fa-folder-open text-xs text-[#C84B31]"></i> <span class="hidden sm:inline">PC</span>
+              </button>
+              <button type="button" onclick="exportSingleDeadlineToICS(${docId})" class="bg-white hover:bg-[#FAF8F2] text-[#3C5A48] border border-[#3C5A48] text-[10px] font-bold px-2.5 py-1.5 rounded-xs shadow-xs transition flex items-center gap-1 active:scale-95 cursor-pointer font-space" title="Scarica promemoria iCalendar">
+                <i class="fa-regular fa-calendar-plus text-xs text-[#3C5A48]"></i> <span>.ics</span>
+              </button>
+            </div>
+          </div>
+          ${summary ? `
+            <div class="mt-2.5 pt-2 border-t border-[#E3DDD1] text-[11px] text-[#222220] font-mono-code leading-relaxed bg-[#FAF8F2] p-2 rounded-xs border border-[#E3DDD1]/50">
+              <span class="text-[#7A7568] font-bold uppercase text-[9px] block mb-0.5">Sintesi Dati & Contenuto:</span>
+              ${formatMessageText(summary)}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // Render della Vista Scadenzario Dedicato
+    function renderScadenzarioView(records) {
+      const container = document.getElementById('dashboardScadenzarioContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const allDeadlines = (records || []).filter(r => r.type === 'document' && r.due_date);
+
+      if (!allDeadlines || allDeadlines.length === 0) {
+        container.innerHTML = `
+          <div class="py-12 text-center bg-white rounded-xs border border-[#E3DDD1] p-8 shadow-xs">
+            <div class="w-12 h-12 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center mx-auto mb-3 text-xl">
+              <i class="fa-solid fa-calendar-check"></i>
+            </div>
+            <h3 class="font-space font-bold text-sm text-[#222220] uppercase">Nessuna Scadenza Registrata</h3>
+            <p class="text-xs text-[#7A7568] font-mono-code mt-1 max-w-md mx-auto">Non sono presenti documenti, bollette o atti con data di scadenza definita nel faldone corrente.</p>
+            <div class="mt-4 flex items-center justify-center gap-2">
+              <button onclick="filterTable('all')" class="px-3.5 py-2 bg-[#3C5A48] text-white rounded-xs text-xs font-bold font-space transition hover:bg-[#2F4738] cursor-pointer">
+                Torna al Registro Completo
+              </button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // 1. Mappa categorie presenti con conteggio
+      const catCounts = {};
+      allDeadlines.forEach(d => {
+        const catName = d.category_label || 'Altri Documenti Archiviati';
+        catCounts[catName] = (catCounts[catName] || 0) + 1;
+      });
+
+      // 2. Filtro per Categoria e Stato
+      let filtered = allDeadlines.filter(d => {
+        if (scadenzarioCategoryFilter !== 'all') {
+          const catName = d.category_label || 'Altri Documenti Archiviati';
+          if (catName !== scadenzarioCategoryFilter) return false;
+        }
+        if (scadenzarioStatusFilter === 'da_pagare') {
+          if (d.status !== 'da_pagare') return false;
+        } else if (scadenzarioStatusFilter === 'overdue') {
+          if (d.urgency !== 'overdue' && (d.days_remaining == null || d.days_remaining >= 0)) return false;
+        } else if (scadenzarioStatusFilter === 'quietanzati') {
+          if (d.status !== 'quietanzato') return false;
+        }
+        return true;
+      });
+
+      // Metriche di sintesi per lo scadenzario
+      const totalDue = filtered.filter(d => d.status === 'da_pagare' && d.amount).reduce((acc, d) => acc + d.amount, 0);
+      const overdueCount = filtered.filter(d => d.status === 'da_pagare' && (d.urgency === 'overdue' || (d.days_remaining != null && d.days_remaining < 0))).length;
+      const upcomingSoonCount = filtered.filter(d => d.status === 'da_pagare' && d.days_remaining != null && d.days_remaining >= 0 && d.days_remaining <= 30).length;
+
+      // 3. Header Top Bar
+      const headerBox = document.createElement('div');
+      headerBox.className = 'bg-white border border-[#E3DDD1] rounded-xs p-4 sm:p-5 shadow-xs flex flex-col md:flex-row justify-between md:items-center gap-4';
+      headerBox.innerHTML = `
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center shrink-0 text-lg shadow-xs">
+            <i class="fa-solid fa-calendar-days"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-[9px] font-mono-code text-[#7A7568] uppercase font-bold">01 / REGISTRO TEMPORALE</span>
+              <span class="stamp-oli stamp-solid-sage text-[8px] font-bold">UNIVERSALE</span>
+              <span class="stamp-oli text-[8px] font-bold">${allDeadlines.length} SCADENZE TOTALI</span>
+            </div>
+            <h2 class="text-sm sm:text-base font-bold text-[#222220] font-space uppercase tracking-tight mt-0.5">
+              Scadenzario & Calendario Atti
+            </h2>
+            <p class="text-[11px] text-[#7A7568] font-mono-code leading-relaxed">
+              Tracciamento universale di tributi F24, utenze, documenti personali, polizze, contratti e revisioni.
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap self-start md:self-center">
+          <button onclick="exportDeadlinesToICS(currentRecords)" class="px-3 py-2 bg-[#3C5A48] hover:bg-[#2F4738] active:scale-95 text-white rounded-xs text-xs font-bold font-space transition shadow-xs flex items-center gap-1.5 cursor-pointer" title="Scarica file .ics con promemoria compatibile Google Calendar, Apple e Outlook">
+            <i class="fa-solid fa-calendar-arrow-down"></i>
+            <span>ESPORTA CALENDARIO (.ICS)</span>
+          </button>
+          <button onclick="filterTable('all')" class="px-3 py-2 bg-white hover:bg-[#FAF8F2] text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] rounded-xs text-xs font-bold font-space transition flex items-center gap-1.5 cursor-pointer" title="Torna all'elenco completo del faldone">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span class="hidden sm:inline">REGISTRO COMPLETO</span>
+          </button>
+        </div>
+      `;
+      container.appendChild(headerBox);
+
+      // 4. Bento KPI Scadenzario
+      const statsBox = document.createElement('div');
+      statsBox.className = 'grid grid-cols-2 sm:grid-cols-4 gap-2.5';
+      statsBox.innerHTML = `
+        <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-2xs">
+          <span class="text-[9px] font-mono-code text-[#7A7568] uppercase font-bold block">TOTALE DA SALDARE</span>
+          <span class="text-lg sm:text-xl font-black font-mono-code text-[#C84B31]">€ ${totalDue.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        </div>
+        <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-2xs">
+          <span class="text-[9px] font-mono-code text-[#7A7568] uppercase font-bold block">TERMINE SCADUTO</span>
+          <span class="text-lg sm:text-xl font-black font-mono-code ${overdueCount > 0 ? 'text-red-700' : 'text-[#7A7568]'}">${overdueCount} atti</span>
+        </div>
+        <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-2xs">
+          <span class="text-[9px] font-mono-code text-[#7A7568] uppercase font-bold block">QUESTO MESE (≤ 30 GG)</span>
+          <span class="text-lg sm:text-xl font-black font-mono-code ${upcomingSoonCount > 0 ? 'text-amber-800' : 'text-[#7A7568]'}">${upcomingSoonCount} atti</span>
+        </div>
+        <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-2xs">
+          <span class="text-[9px] font-mono-code text-[#7A7568] uppercase font-bold block">QUIETANZATI / SALDATI</span>
+          <span class="text-lg sm:text-xl font-black font-mono-code text-[#3C5A48]">${filtered.filter(d=>d.status==='quietanzato').length} atti</span>
+        </div>
+      `;
+      container.appendChild(statsBox);
+
+      // 5. Filtri Categorie & Sub-Filtri Stato
+      const filterBox = document.createElement('div');
+      filterBox.className = 'bg-white border border-[#E3DDD1] rounded-xs p-3 shadow-xs space-y-2.5';
+
+      let catChipsHtml = `
+        <button onclick="setScadenzarioCategoryFilter('all')" class="px-2.5 py-1 rounded-xs text-[10px] font-space font-bold transition cursor-pointer ${scadenzarioCategoryFilter === 'all' ? 'bg-[#3C5A48] text-white shadow-2xs' : 'bg-[#F8F5EE] text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1]'}">
+          TUTTE (${allDeadlines.length})
+        </button>
+      `;
+      Object.keys(catCounts).sort().forEach(cat => {
+        const count = catCounts[cat];
+        const isActive = (scadenzarioCategoryFilter === cat);
+        catChipsHtml += `
+          <button onclick="setScadenzarioCategoryFilter('${cat.replace(/'/g, "\\'")}')" class="px-2.5 py-1 rounded-xs text-[10px] font-space font-bold transition cursor-pointer ${isActive ? 'bg-[#3C5A48] text-white shadow-2xs' : 'bg-[#F8F5EE] text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1]'}">
+            ${escapeHtml(cat.toUpperCase())} (${count})
+          </button>
+        `;
+      });
+
+      const totalUnpaid = allDeadlines.filter(d => d.status === 'da_pagare').length;
+      const totalOverdue = allDeadlines.filter(d => d.status === 'da_pagare' && (d.urgency === 'overdue' || (d.days_remaining != null && d.days_remaining < 0))).length;
+      const totalPaid = allDeadlines.filter(d => d.status === 'quietanzato').length;
+
+      let statusChipsHtml = `
+        <button onclick="setScadenzarioStatusFilter('all')" class="px-2.5 py-1 rounded-xs text-[10px] font-space font-bold transition cursor-pointer ${scadenzarioStatusFilter === 'all' ? 'bg-[#222220] text-white shadow-2xs' : 'bg-[#F8F5EE] text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1]'}">
+          TUTTI GLI STATI
+        </button>
+        <button onclick="setScadenzarioStatusFilter('da_pagare')" class="px-2.5 py-1 rounded-xs text-[10px] font-space font-bold transition cursor-pointer flex items-center gap-1 ${scadenzarioStatusFilter === 'da_pagare' ? 'bg-[#C84B31] text-white shadow-2xs' : 'bg-[#F8F5EE] text-[#C84B31] hover:text-[#C84B31]/90 border border-[#E3DDD1]'}">
+          <span>🔴 DA SALDARE</span>
+          <span class="text-[8px] bg-white/20 px-1 py-0.2 rounded-xs font-mono-code">${totalUnpaid}</span>
+        </button>
+        <button onclick="setScadenzarioStatusFilter('overdue')" class="px-2.5 py-1 rounded-xs text-[10px] font-space font-bold transition cursor-pointer flex items-center gap-1 ${scadenzarioStatusFilter === 'overdue' ? 'bg-red-800 text-white shadow-2xs' : 'bg-[#F8F5EE] text-red-800 hover:text-red-900 border border-[#E3DDD1]'}">
+          <span>⚠️ SCADUTE</span>
+          <span class="text-[8px] bg-white/20 px-1 py-0.2 rounded-xs font-mono-code">${totalOverdue}</span>
+        </button>
+        <button onclick="setScadenzarioStatusFilter('quietanzati')" class="px-2.5 py-1 rounded-xs text-[10px] font-space font-bold transition cursor-pointer flex items-center gap-1 ${scadenzarioStatusFilter === 'quietanzati' ? 'bg-emerald-800 text-white shadow-2xs' : 'bg-[#F8F5EE] text-emerald-800 hover:text-emerald-900 border border-[#E3DDD1]'}">
+          <span>✅ QUIETANZATI</span>
+          <span class="text-[8px] bg-white/20 px-1 py-0.2 rounded-xs font-mono-code">${totalPaid}</span>
+        </button>
+      `;
+
+      filterBox.innerHTML = `
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-[10px] font-bold font-mono-code text-[#7A7568] uppercase mr-1 flex items-center gap-1">
+            <i class="fa-solid fa-folder-tree text-[#3C5A48]"></i> Categoria:
+          </span>
+          ${catChipsHtml}
+        </div>
+        <div class="flex items-center gap-1.5 flex-wrap pt-2 border-t border-[#E3DDD1]">
+          <span class="text-[10px] font-bold font-mono-code text-[#7A7568] uppercase mr-1 flex items-center gap-1">
+            <i class="fa-solid fa-clock text-[#C84B31]"></i> Stato:
+          </span>
+          ${statusChipsHtml}
+        </div>
+      `;
+      container.appendChild(filterBox);
+
+      if (filtered.length === 0) {
+        const noMatchBox = document.createElement('div');
+        noMatchBox.className = 'py-10 text-center bg-white rounded-xs border border-[#E3DDD1] p-6 shadow-xs';
+        noMatchBox.innerHTML = `
+          <i class="fa-solid fa-filter-circle-xmark text-3xl text-slate-300 mb-2 block"></i>
+          <p class="font-space font-bold text-xs text-[#222220]">Nessuna scadenza corrisponde ai filtri selezionati</p>
+          <button onclick="setScadenzarioCategoryFilter('all'); setScadenzarioStatusFilter('all');" class="mt-3 px-3 py-1.5 bg-[#F8F5EE] border border-[#E3DDD1] text-[#222220] rounded-xs text-xs font-bold font-space hover:bg-[#FAF8F2] transition cursor-pointer">
+            Azzera Filtri
+          </button>
+        `;
+        container.appendChild(noMatchBox);
+        return;
+      }
+
+      // 6. Ripartizione nei 5 Blocchi Temporali
+      const MONTH_NAMES = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
+      
+      const bScadute = filtered.filter(d => d.status === 'da_pagare' && (d.urgency === 'overdue' || (d.days_remaining != null && d.days_remaining < 0)));
+      const bImminenti = filtered.filter(d => d.status === 'da_pagare' && d.days_remaining != null && d.days_remaining >= 0 && d.days_remaining <= 30);
+      const bEntroAnno = filtered.filter(d => d.status !== 'quietanzato' && d.days_remaining != null && d.days_remaining > 30 && d.days_remaining <= 365);
+      const bLungoTermine = filtered.filter(d => d.status !== 'quietanzato' && (d.days_remaining == null || d.days_remaining > 365));
+      const bQuietanzate = filtered.filter(d => d.status === 'quietanzato');
+
+      const blocks = [
+        {
+          title: "SCADUTE / TERMINE SUPERATO",
+          icon: "fa-fire",
+          headerColor: "text-red-800 bg-red-100 border-red-300",
+          badgeColor: "bg-red-200 text-red-900",
+          items: bScadute
+        },
+        {
+          title: "IN SCADENZA QUESTO MESE (ENTRO 30 GIORNI)",
+          icon: "fa-clock",
+          headerColor: "text-amber-900 bg-amber-100 border-amber-300",
+          badgeColor: "bg-amber-200 text-amber-950",
+          items: bImminenti
+        },
+        {
+          title: "PROSSIMI MESI (ENTRO L'ANNO CORRENTE)",
+          icon: "fa-calendar-day",
+          headerColor: "text-[#3C5A48] bg-[#FAF8F2] border-[#E3DDD1]",
+          badgeColor: "bg-[#3C5A48]/10 text-[#3C5A48]",
+          items: bEntroAnno
+        },
+        {
+          title: "A LUNGO TERMINE (VALIDITÀ PLURIENNALE)",
+          icon: "fa-id-card-clip",
+          headerColor: "text-slate-800 bg-slate-100 border-slate-300",
+          badgeColor: "bg-slate-200 text-slate-900",
+          items: bLungoTermine
+        },
+        {
+          title: "QUIETANZATE, SALDATE & RINNOVATE",
+          icon: "fa-circle-check",
+          headerColor: "text-emerald-800 bg-emerald-50 border-emerald-300",
+          badgeColor: "bg-emerald-200 text-emerald-950",
+          items: bQuietanzate
+        }
+      ];
+
+      blocks.forEach(block => {
+        if (!block.items || block.items.length === 0) return;
+
+        const blockSection = document.createElement('div');
+        blockSection.className = 'space-y-2.5';
+
+        // Intestazione Blocco
+        const bHeader = document.createElement('div');
+        bHeader.className = `flex items-center justify-between px-3.5 py-2 rounded-xs border text-xs font-bold font-space uppercase ${block.headerColor}`;
+        bHeader.innerHTML = `
+          <div class="flex items-center gap-2">
+            <i class="fa-solid ${block.icon}"></i>
+            <span>${block.title}</span>
+          </div>
+          <span class="text-[10px] font-mono-code px-2 py-0.5 rounded-xs font-bold ${block.badgeColor}">${block.items.length} ATTI</span>
+        `;
+        blockSection.appendChild(bHeader);
+
+        // Lista Atti del Blocco
+        const itemsList = document.createElement('div');
+        itemsList.className = 'space-y-2';
+
+        block.items.forEach(doc => {
+          const docItem = document.createElement('div');
+          docItem.className = 'bg-white border border-[#E3DDD1] hover:border-[#3C5A48] rounded-xs p-3 transition shadow-2xs';
+
+          // Calcolo Date Tile
+          let dayStr = '--';
+          let monthStr = '---';
+          let yearStr = '----';
+          if (doc.due_date) {
+            const parts = doc.due_date.split('-');
+            if (parts.length === 3) {
+              yearStr = parts[0];
+              const mIdx = parseInt(parts[1], 10) - 1;
+              monthStr = (mIdx >= 0 && mIdx < 12) ? MONTH_NAMES[mIdx] : parts[1];
+              dayStr = parts[2];
+            }
+          }
+
+          // Countdown Urgenza
+          let urgencyBadgeHtml = '';
+          if (doc.status === 'quietanzato') {
+            urgencyBadgeHtml = `<span class="stamp-oli stamp-solid-sage text-[8px] font-bold">QUIETANZATO / RINNOVATO</span>`;
+          } else if (doc.urgency_label) {
+            const isRed = doc.urgency === 'overdue';
+            const isAmber = doc.urgency === 'today' || doc.urgency === 'urgent';
+            const cls = isRed ? 'stamp-oli stamp-terracotta' : (isAmber ? 'stamp-oli stamp-terracotta' : 'stamp-oli');
+            urgencyBadgeHtml = `<span class="${cls} text-[8px] font-bold">${escapeHtml(doc.urgency_label)}</span>`;
+          }
+
+          // Importo
+          let amountStr = '';
+          if (doc.amount != null) {
+            amountStr = `<span class="font-mono-code font-black text-sm text-[#222220]">€ ${doc.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`;
+          }
+
+          const isExpanded = expandedScadenzarioWidgetIds.has(doc.id);
+          const toggleWidgetBtnText = isExpanded ? `▴ Chiudi Scheda` : `📋 Scheda / Widget ▾`;
+
+          docItem.innerHTML = `
+            <div class="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
+              <!-- Riquadro Data Calendario Dattiloscritto -->
+              <div class="flex items-center gap-3 min-w-0 flex-1">
+                <div class="w-14 sm:w-16 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-1.5 flex flex-col items-center justify-center text-center shrink-0 select-none">
+                  <span class="text-[8px] font-mono-code font-bold uppercase text-[#7A7568] leading-tight">${monthStr}</span>
+                  <span class="text-xl sm:text-2xl font-black font-space text-[#222220] leading-none my-0.5">${dayStr}</span>
+                  <span class="text-[8px] font-mono-code text-[#7A7568] leading-tight">${yearStr}</span>
+                </div>
+
+                <!-- Info Atto -->
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="stamp-oli text-[8px] font-bold">
+                      <i class="fa-solid ${doc.category_icon || 'fa-file-invoice'} mr-1 text-[#3C5A48]"></i>
+                      ${escapeHtml(doc.category_label || 'Archivio')}
+                    </span>
+                    ${urgencyBadgeHtml}
+                    ${doc.thread_name ? `<span class="stamp-oli text-[8px]"><i class="fa-solid fa-folder text-[#7A7568] mr-1"></i>${escapeHtml(doc.thread_name)}</span>` : ''}
+                  </div>
+                  <h3 class="font-bold text-[#222220] text-xs sm:text-sm font-space mt-1 truncate">
+                    ${escapeHtml(doc.title)}
+                  </h3>
+                  <div class="flex items-center gap-2 mt-0.5 text-[11px] text-[#7A7568] font-mono-code flex-wrap">
+                    <span>${escapeHtml(doc.source || 'Ente')}</span>
+                    ${doc.location_or_notes ? `<span>• ${escapeHtml(doc.location_or_notes)}</span>` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Importo & Azioni Scadenza -->
+              <div class="flex flex-col sm:items-end justify-between gap-2 shrink-0 self-start sm:self-center w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-[#E3DDD1]">
+                <div class="flex items-center gap-2 justify-between sm:justify-end">
+                  ${amountStr}
+                  ${doc.status === 'da_pagare' ? `
+                    <button onclick="markAsPaid(${doc.id})" class="stamp-oli stamp-solid-terracotta text-[8px] font-bold hover:opacity-90 transition active:scale-95 cursor-pointer" title="Segna come saldato/rinnovato">
+                      SALDA / RINNOVA
+                    </button>
+                  ` : ''}
+                </div>
+
+                <!-- Pulsanti Azione Principali -->
+                <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                  <button onclick="toggleScadenzarioWidget(${doc.id})" class="px-2.5 py-1 bg-[#FAF8F2] hover:bg-white text-[#3C5A48] border border-[#3C5A48] text-[10px] font-bold font-space rounded-xs transition active:scale-95 flex items-center gap-1 cursor-pointer" title="Apri/chiudi il widget completo di questo documento">
+                    <i class="fa-solid fa-file-lines text-xs"></i>
+                    <span>${toggleWidgetBtnText}</span>
+                  </button>
+                  <button onclick="exportSingleDeadlineToICS(${doc.id})" class="px-2.5 py-1 bg-white hover:bg-[#FAF8F2] text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] text-[10px] font-bold font-space rounded-xs transition active:scale-95 flex items-center gap-1 cursor-pointer" title="Scarica evento .ics compatibile con Google Calendar">
+                    <i class="fa-regular fa-calendar-plus text-xs text-[#3C5A48]"></i>
+                    <span>.ics</span>
+                  </button>
+                  ${doc.file_url ? `
+                    <button onclick="openMediaModal('${escapeHtml(doc.file_url)}', '${escapeHtml(doc.title).replace(/'/g, "\\'")}', '${escapeHtml(doc.file_type || 'application/pdf')}', '${doc.download_url || `/api/documents/${doc.id}/download`}', ${doc.id})" class="p-1 bg-white hover:bg-[#FAF8F2] text-[#3C5A48] border border-[#3C5A48] rounded-xs text-[10px] transition active:scale-95 flex items-center justify-center w-6 h-6 cursor-pointer" title="Anteprima documento">
+                      <i class="fa-regular fa-eye text-xs"></i>
+                    </button>
+                  ` : ''}
+                  ${doc.drive_web_url ? `
+                    <a href="${doc.drive_web_url}" target="_blank" rel="noopener noreferrer" class="p-1 stamp-oli text-[8px] hover:bg-[#3C5A48] hover:text-white transition flex items-center justify-center w-6 h-6" title="Apri in Google Drive">
+                      <i class="fa-brands fa-google-drive text-[9px]"></i>
+                    </a>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+
+            <!-- Widget Interattivo Espandibile Inline -->
+            ${isExpanded ? renderDocumentWidgetHtml(doc) : ''}
+          `;
+
+          itemsList.appendChild(docItem);
+        });
+
+        blockSection.appendChild(itemsList);
+        container.appendChild(blockSection);
+      });
+    }
+    window.renderScadenzarioView = renderScadenzarioView;
+
     function renderDashboardView() {
       const groupedCont = document.getElementById('dashboardGroupedContainer');
       const tableCont = document.getElementById('dashboardTableContainer');
+      const scadCont = document.getElementById('dashboardScadenzarioContainer');
+
+      if (currentFilter === 'scadenzario' || currentFilter === 'scadenziario' || currentFilter === 'calendar') {
+        if (dashboardViewMode === 'table') {
+          if (groupedCont) groupedCont.classList.add('hidden');
+          if (scadCont) scadCont.classList.add('hidden');
+          if (tableCont) tableCont.classList.remove('hidden');
+          renderTableRows(currentRecords);
+        } else {
+          if (groupedCont) groupedCont.classList.add('hidden');
+          if (tableCont) tableCont.classList.add('hidden');
+          if (scadCont) {
+            scadCont.classList.remove('hidden');
+            renderScadenzarioView(currentRecords);
+          }
+        }
+        return;
+      }
+
+      if (scadCont) scadCont.classList.add('hidden');
+
       if (dashboardViewMode === 'grouped') {
         if (groupedCont) groupedCont.classList.remove('hidden');
         if (tableCont) tableCont.classList.add('hidden');
@@ -5823,6 +6417,7 @@
     function filterTable(filter) {
       currentFilter = filter;
       const btnA = document.getElementById('fAll');
+      const btnScad = document.getElementById('fScadenzario');
       const btnD = document.getElementById('fDeadlines');
       const btnQ = document.getElementById('fQuietanzati');
       const btnI = document.getElementById('fItems');
@@ -5831,14 +6426,17 @@
       const inactiveClass = `${baseBtnClass} text-[#7A7568] hover:text-[#222220]`;
       const activeClass = `${baseBtnClass} bg-[#3C5A48] text-white`;
 
-      [btnA, btnD, btnQ, btnI].forEach(b => {
+      [btnA, btnScad, btnD, btnQ, btnI].forEach(b => {
         if (b) {
           b.className = inactiveClass;
-          if (b === btnD || b === btnQ) b.classList.add('flex', 'items-center', 'gap-1');
+          if (b === btnScad || b === btnD || b === btnQ) b.classList.add('flex', 'items-center', 'gap-1');
         }
       });
 
       if (filter === 'all' && btnA) btnA.className = activeClass;
+      if ((filter === 'scadenzario' || filter === 'scadenziario' || filter === 'calendar') && btnScad) {
+        btnScad.className = `${activeClass} flex items-center gap-1`;
+      }
       if ((filter === 'deadlines' || filter === 'da_pagare') && btnD) {
         btnD.className = `${activeClass} flex items-center gap-1`;
       }
@@ -5857,6 +6455,9 @@
           currentRecords = allDashboardRecordsCache.filter(r => r.type === 'document' && r.status === 'da_pagare');
         } else if (filter === 'quietanzati' || filter === 'quietanzato') {
           currentRecords = allDashboardRecordsCache.filter(r => r.status === 'quietanzato');
+        } else if (filter === 'scadenzario' || filter === 'scadenziario' || filter === 'calendar') {
+          currentRecords = allDashboardRecordsCache.filter(r => r.type === 'document' && r.due_date);
+          currentRecords.sort((a, b) => (a.due_date || '9999').localeCompare(b.due_date || '9999'));
         }
         renderDashboardView();
       }
