@@ -48,3 +48,23 @@ def test_migrate_unencrypted_files(tmp_path):
     on_disk = legacy_file.read_bytes()
     assert on_disk != b"File da migrare a cifrato"
     assert read_decrypted_file(legacy_file) == b"File da migrare a cifrato"
+
+def test_compile_images_to_pdf():
+    import io
+    from PIL import Image
+    from app.services.document_service import compile_images_to_pdf
+
+    img1 = Image.new("RGB", (200, 300), color="blue")
+    buf1 = io.BytesIO()
+    img1.save(buf1, format="JPEG")
+    b1 = buf1.getvalue()
+
+    img2 = Image.new("RGB", (200, 300), color="green")
+    buf2 = io.BytesIO()
+    img2.save(buf2, format="JPEG")
+    b2 = buf2.getvalue()
+
+    pdf_bytes = compile_images_to_pdf([b1, b2])
+    assert pdf_bytes.startswith(b"%PDF")
+    assert len(pdf_bytes) > 500
+

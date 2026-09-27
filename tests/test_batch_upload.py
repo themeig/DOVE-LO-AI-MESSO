@@ -1,4 +1,4 @@
-﻿"""Test per il caricamento batch di piu file e cartelle."""
+"""Test per il caricamento batch di piu file e cartelle."""
 import io
 import pytest
 from fastapi.testclient import TestClient
@@ -58,3 +58,35 @@ def test_upload_batch_single_file_fallback():
     assert data["success"] is True
     assert data["count"] == 1
     assert len(data["documents"]) == 1
+
+def test_upload_multipage_photos():
+    """Test caricamento e compilazione multipagina di più foto da cellulare."""
+    from PIL import Image
+
+    img1 = Image.new("RGB", (200, 300), color="red")
+    buf1 = io.BytesIO()
+    img1.save(buf1, format="JPEG")
+    buf1.seek(0)
+
+    img2 = Image.new("RGB", (200, 300), color="yellow")
+    buf2 = io.BytesIO()
+    img2.save(buf2, format="JPEG")
+    buf2.seek(0)
+
+    files = [
+        ("files", ("foto_pag1.jpg", buf1, "image/jpeg")),
+        ("files", ("foto_pag2.jpg", buf2, "image/jpeg")),
+    ]
+
+    res = client.post(
+        "/api/documents/upload-multipage-photos",
+        files=files,
+        data={"thread_id": "general"}
+    )
+    assert res.status_code == 201
+    data = res.json()
+    assert data["document_id"] > 0
+    assert data["title"]
+    assert "foto" in data["chat_reply"].lower() or "multipagina" in data["chat_reply"].lower()
+    assert data["file_url"].endswith(".pdf")
+

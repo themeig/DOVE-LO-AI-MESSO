@@ -403,8 +403,10 @@
           alert('Impossibile salvare la foto: ' + err.message);
         }
       } else {
-        // Scatto da fotocamera nativa per scanner documentale o chat
-        if (window.MobileScanner && typeof window.MobileScanner.loadExternalImage === 'function') {
+        // Scatto da fotocamera per documenti o chat
+        if (typeof handleCameraMultiPhotoSelected === 'function') {
+          handleCameraMultiPhotoSelected(event);
+        } else if (window.MobileScanner && typeof window.MobileScanner.loadExternalImage === 'function') {
           window.MobileScanner.loadExternalImage(file);
         } else {
           processFilesUpload([file]);
@@ -1293,6 +1295,8 @@
     function handleNativeBackPress() {
       // 1. Chiudi modali o drawer aperti se presenti
       const openModalIds = [
+        'multiPhotoModal',
+        'multiScanChoiceModal',
         'googleDriveModal',
         'newThreadModal',
         'documentDetailModal',
@@ -1305,6 +1309,14 @@
       for (const mId of openModalIds) {
         const el = document.getElementById(mId);
         if (el && !el.classList.contains('hidden')) {
+          if (mId === 'multiPhotoModal' && typeof cancelMultiPhotoSession === 'function') {
+            cancelMultiPhotoSession();
+            return true;
+          }
+          if (mId === 'multiScanChoiceModal' && typeof cancelMultiScanChoice === 'function') {
+            cancelMultiScanChoice();
+            return true;
+          }
           if (mId === 'googleDriveModal' && typeof closeGoogleDriveModal === 'function') {
             closeGoogleDriveModal();
             return true;
@@ -3856,11 +3868,23 @@
 
     function triggerCameraInput() {
       if (attachmentMenu) attachmentMenu.classList.add('hidden');
+      multiPhotoTargetThreadId = currentThreadId || 'general';
       const isMobileNative = window.AndroidNativeVoice || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      if (isMobileNative) {
+      const cameraInput = document.getElementById('cameraMultiPhotoInput');
+      if (isMobileNative && cameraInput) {
+        cameraInput.value = '';
+        cameraInput.click();
+      } else if (cameraInput && !navigator.mediaDevices?.getUserMedia) {
+        cameraInput.value = '';
+        cameraInput.click();
+      } else if (isMobileNative) {
         const itemPhotoInput = document.getElementById('itemPhotoInput');
-        if (itemPhotoInput) itemPhotoInput.click();
-        else if (realFileInput) realFileInput.click();
+        if (itemPhotoInput) {
+          itemPhotoInput.value = '';
+          itemPhotoInput.click();
+        } else if (realFileInput) {
+          realFileInput.click();
+        }
       } else {
         openWebcamCaptureModal();
       }
@@ -4337,6 +4361,255 @@
     window.onNativeScanCancelled = function() {
       // Scansione annullata dall'utente
     };
+
+    // =========================================================================
+    // GESTIONE MULTI-FOTO CONTINUA DA CELLULARE SENZA BORDI (Olivetti Style)
+    // =========================================================================
+    let multiPhotosSession = [];
+    let multiPhotoTargetThreadId = null;
+
+    function openMultiPhotoModal() {
+      const modal = document.getElementById('multiPhotoModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeMultiPhotoModal() {
+      const modal = document.getElementById('multiPhotoModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function cancelMultiPhotoSession() {
+      multiPhotosSession.forEach(p => {
+        if (p.previewUrl) URL.revokeObjectURL(p.previewUrl);
+      });
+      multiPhotosSession = [];
+      closeMultiPhotoModal();
+      showToast("Acquisizione foto annullata.", "info");
+    }
+
+    function renderMultiPhotoModal() {
+      const count = multiPhotosSession.length;
+      const countBadge = document.getElementById('multiPhotoCountBadge');
+      const separateBadge = document.getElementById('multiPhotoSeparateCountBadge');
+      const grid = document.getElementById('multiPhotoGrid');
+      const singleAction = document.getElementById('multiPhotoSingleAction');
+      const multipleActions = document.getElementById('multiPhotoMultipleActions');
+
+      if (countBadge) countBadge.textContent = count;
+      if (separateBadge) separateBadge.textContent = `${count} FILE`;
+
+      if (grid) {
+        grid.innerHTML = '';
+        multiPhotosSession.forEach((item, index) => {
+          const card = document.createElement('div');
+          card.className = "relative rounded-xs border border-[#D8D2C4] bg-[#FAF8F2] overflow-hidden group shadow-xs";
+          card.innerHTML = `
+            <img src="${item.previewUrl}" alt="Foto ${index + 1}" class="w-full h-24 object-cover">
+            <span class="stamp-oli absolute top-1 left-1 text-[8px] bg-white/95 text-[#222220] py-0.5 px-1 font-mono-code font-bold shadow-xs">
+              PAG. ${index + 1}
+            </span>
+            <button type="button" onclick="removeMultiPhoto(${index})" title="Elimina foto" class="absolute top-1 right-1 w-6 h-6 rounded-xs bg-white/95 text-[#C84B31] hover:bg-[#C84B31] hover:text-white flex items-center justify-center text-xs shadow-xs transition cursor-pointer">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          `;
+          grid.appendChild(card);
+        });
+      }
+
+      if (count <= 1) {
+        if (singleAction) singleAction.classList.remove('hidden');
+        if (multipleActions) multipleActions.classList.add('hidden');
+      } else {
+        if (singleAction) singleAction.classList.add('hidden');
+        if (multipleActions) multipleActions.classList.remove('hidden');
+      }
+    }
+
+    function removeMultiPhoto(index) {
+      if (index >= 0 && index < multiPhotosSession.length) {
+        const removed = multiPhotosSession.splice(index, 1)[0];
+        if (removed && removed.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+        if (multiPhotosSession.length === 0) {
+          closeMultiPhotoModal();
+        } else {
+          renderMultiPhotoModal();
+        }
+      }
+    }
+
+    function triggerAnotherCameraShot() {
+      const input = document.getElementById('cameraMultiPhotoInput');
+      if (input) {
+        input.value = '';
+        input.click();
+      }
+    }
+
+    function triggerGalleryMultiAdd() {
+      const input = document.getElementById('galleryMultiPhotoInput');
+      if (input) {
+        input.value = '';
+        input.click();
+      }
+    }
+
+    function handleCameraMultiPhotoSelected(event) {
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
+      multiPhotoTargetThreadId = currentThreadId || 'general';
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        multiPhotosSession.push({
+          file: f,
+          previewUrl: URL.createObjectURL(f),
+          name: f.name || `foto_${Date.now()}_${i + 1}.jpg`
+        });
+      }
+      renderMultiPhotoModal();
+      openMultiPhotoModal();
+    }
+
+    function handleGalleryMultiPhotosSelected(event) {
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
+      multiPhotoTargetThreadId = currentThreadId || 'general';
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        multiPhotosSession.push({
+          file: f,
+          previewUrl: URL.createObjectURL(f),
+          name: f.name || `foto_${Date.now()}_${i + 1}.jpg`
+        });
+      }
+      renderMultiPhotoModal();
+      openMultiPhotoModal();
+    }
+
+    async function submitMultiPhotosToAI(mode) {
+      if (multiPhotosSession.length === 0) {
+        closeMultiPhotoModal();
+        return;
+      }
+      if (multiPhotosSession.length === 1 || mode === 'single') {
+        const item = multiPhotosSession[0];
+        const fileToUpload = item.file;
+        multiPhotosSession.forEach(p => { if (p.previewUrl) URL.revokeObjectURL(p.previewUrl); });
+        multiPhotosSession = [];
+        closeMultiPhotoModal();
+        await processFilesUpload([fileToUpload]);
+      } else {
+        await submitMultiPhotosSeparately();
+      }
+    }
+
+    async function submitMultiPhotosSeparately() {
+      if (multiPhotosSession.length === 0) {
+        closeMultiPhotoModal();
+        return;
+      }
+      const filesToUpload = multiPhotosSession.map(p => p.file);
+      multiPhotosSession.forEach(p => { if (p.previewUrl) URL.revokeObjectURL(p.previewUrl); });
+      multiPhotosSession = [];
+      closeMultiPhotoModal();
+      showToast(`📁 Acquisizione di ${filesToUpload.length} foto per catalogazione separata...`, 'info', 3000);
+      await processFilesUpload(filesToUpload);
+    }
+
+    async function submitMultiPhotosAsPdf() {
+      if (multiPhotosSession.length === 0) {
+        closeMultiPhotoModal();
+        return;
+      }
+      const filesToUpload = multiPhotosSession.map(p => p.file);
+      const targetThreadId = multiPhotoTargetThreadId || currentThreadId || 'general';
+      multiPhotosSession.forEach(p => { if (p.previewUrl) URL.revokeObjectURL(p.previewUrl); });
+      multiPhotosSession = [];
+      closeMultiPhotoModal();
+
+      if (currentThreadId && currentThreadId !== targetThreadId && typeof switchThread === 'function') {
+        switchThread(targetThreadId);
+      }
+
+      const totalCount = filesToUpload.length;
+      if (currentThreadId === targetThreadId) {
+        ensureTodayDateDivider();
+        appendUserBubble(`📸 Documento multipagina: ${totalCount} foto unite in unico PDF`, null, getTime());
+      }
+      setGenerationActive(true, `Compilazione ed analisi AI documento multipagina (${totalCount} foto)...`, null, targetThreadId);
+
+      const formData = new FormData();
+      filesToUpload.forEach(f => formData.append('files', f));
+      formData.append('thread_id', targetThreadId);
+
+      try {
+        const res = await fetch('/api/documents/upload-multipage-photos', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: formData
+        });
+        setGenerationActive(false, "", null, targetThreadId);
+        if (!res.ok) throw new Error("Errore durante l'elaborazione del documento multipagina");
+        const data = await res.json();
+
+        const docItem = {
+          id: data.document_id,
+          title: data.title,
+          issuer: data.issuer,
+          amount: data.amount,
+          due_date: data.due_date,
+          status: data.status,
+          summary: data.summary,
+          file_url: data.file_url,
+          download_url: data.download_url,
+          drive_web_url: data.drive_web_url,
+          file_type: data.file_type || 'application/pdf'
+        };
+
+        const th = threadsCache.find(t => t.id === targetThreadId);
+        if (th) {
+          th.last_message = data.chat_reply ? cleanSidebarPreview(data.chat_reply) : `Acquisito documento multipagina`;
+          th.last_message_time = getTime();
+          th.last_message_iso = new Date().toISOString();
+          th.message_count = (th.message_count || 0) + 2;
+          renderThreadsList();
+        }
+
+        if (currentThreadId === targetThreadId) {
+          ensureTodayDateDivider();
+          appendAssistantBubble(data.chat_reply || "📄 Documento multipagina salvato e protocollato!", [docItem], null, null, null, null, data.routed_model || 'google/gemini-2.5-flash-lite', getTime());
+          scrollBottom();
+        } else {
+          showToast(`📄 Documento multipagina protocollato in "${th?.name || targetThreadId}"`, 'success', 4500);
+        }
+        loadDashboard(currentFilter);
+      } catch (err) {
+        setGenerationActive(false, "", null, targetThreadId);
+        console.error("Errore upload-multipage-photos:", err);
+        showToast("⚠️ Impossibile salvare il documento multipagina.", "error");
+        if (currentThreadId === targetThreadId) {
+          ensureTodayDateDivider();
+          appendAssistantBubble("⚠️ Errore durante l'unione e analisi del documento multipagina.", null, null, null, null, null, null, getTime());
+        }
+      }
+    }
+
+    window.handleCameraMultiPhotoSelected = handleCameraMultiPhotoSelected;
+    window.handleGalleryMultiPhotosSelected = handleGalleryMultiPhotosSelected;
+    window.triggerAnotherCameraShot = triggerAnotherCameraShot;
+    window.triggerGalleryMultiAdd = triggerGalleryMultiAdd;
+    window.removeMultiPhoto = removeMultiPhoto;
+    window.cancelMultiPhotoSession = cancelMultiPhotoSession;
+    window.submitMultiPhotosToAI = submitMultiPhotosToAI;
+    window.submitMultiPhotosSeparately = submitMultiPhotosSeparately;
+    window.submitMultiPhotosAsPdf = submitMultiPhotosAsPdf;
+    window.openMultiPhotoModal = openMultiPhotoModal;
+    window.closeMultiPhotoModal = closeMultiPhotoModal;
 
     // =========================================================================
     // MODALE WEBCAM / VIDEOCAMERA DESKTOP (Scatto Foto Live)

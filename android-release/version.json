@@ -1,6 +1,6 @@
 {
-  "version_code": 308,
-  "version_name": "2.10.8",
+  "version_code": 309,
+  "version_name": "2.10.9",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "📱 Navigazione Mobile Intelligente & Gesture di Swipe: risolto il tasto indietro su Android che ora torna correttamente alla selezione delle chat anziché uscire dall'app, e introdotta la gesture di swipe orizzontale per cambiare fluidamente tra Dashboard, Conversa e Sistema."
+  "release_notes": "📸 Acquisizione Multi-Foto Continua Diretta: scatto da fotocamera senza regolazione forzata dei bordi, supporto sequenza multi-scatto e invio immediato all'AI come documento unico multipagina (PDF) o documenti separati."
 }

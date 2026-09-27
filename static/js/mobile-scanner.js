@@ -416,6 +416,11 @@
 
   // --- UI Controller & Native Camera Fallback ---
   function triggerNativeCamera() {
+    const cameraMultiPhotoInput = document.getElementById('cameraMultiPhotoInput');
+    if (cameraMultiPhotoInput) {
+      cameraMultiPhotoInput.click();
+      return;
+    }
     const itemPhotoInput = document.getElementById('itemPhotoInput');
     if (itemPhotoInput) {
       itemPhotoInput.click();
@@ -427,6 +432,10 @@
 
   function loadExternalImage(imageFileOrBlob) {
     if (!imageFileOrBlob) return;
+    if (typeof window.handleCameraMultiPhotoSelected === 'function') {
+      window.handleCameraMultiPhotoSelected({ target: { files: [imageFileOrBlob] } });
+      return;
+    }
     const reader = new FileReader();
     reader.onload = function (e) {
       const img = new Image();
@@ -538,11 +547,17 @@
     ctx.drawImage(video, 0, 0);
 
     stopCamera();
+    closeScannerModal();
 
-    // Detect corners
-    detectedCorners = detectPaperCorners(rawCapturedCanvas);
-    setScannerView('crop');
-    renderCropOverlay();
+    rawCapturedCanvas.toBlob(function(blob) {
+      if (!blob) return;
+      const file = new File([blob], `scansione_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      if (typeof window.handleCameraMultiPhotoSelected === 'function') {
+        window.handleCameraMultiPhotoSelected({ target: { files: [file] } });
+      } else if (typeof window.processFilesUpload === 'function') {
+        window.processFilesUpload([file]);
+      }
+    }, 'image/jpeg', 0.92);
   }
 
   function renderCropOverlay() {

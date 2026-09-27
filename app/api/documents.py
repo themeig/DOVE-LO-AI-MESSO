@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import time
 import unicodedata
 from datetime import datetime
 from pathlib import Path
@@ -227,6 +228,120 @@ async def upload_document(
     db.commit()
 
     fn = Path(doc.file_path).name
+    return {
+        "document_id": doc.id,
+        "title": doc.title,
+        "issuer": doc.issuer,
+        "amount": doc.amount,
+        "due_date": doc.due_date.isoformat() if doc.due_date else None,
+        "status": doc.status,
+        "chat_reply": chat_reply,
+        "file_url": f"/uploads/{fn}",
+        "download_url": f"/api/documents/{doc.id}/download",
+        "file_type": doc.file_type,
+        "summary": doc.summary,
+        "drive_file_id": doc.drive_file_id,
+        "drive_web_url": doc.drive_web_url,
+        "google_calendar_event_id": doc.google_calendar_event_id,
+        "routed_model": routed_model
+    }
+
+
+@router.post("/upload-multipage-photos", status_code=status.HTTP_201_CREATED)
+async def upload_multipage_photos(
+    files: List[UploadFile] = File(...),
+    thread_id: str = Form("general"),
+    db: Session = Depends(get_db)
+):
+    """Compila più foto acquisite da cellulare in un unico documento PDF multipagina standard."""
+    if not files:
+        raise HTTPException(status_code=400, detail="Nessuna foto fornita.")
+
+    image_bytes_list: List[bytes] = []
+    for f in files:
+        b = await f.read()
+        if b:
+            image_bytes_list.append(b)
+
+    if not image_bytes_list:
+        raise HTTPException(status_code=400, detail="Nessun dato immagine valido da elaborare.")
+
+    from app.services.document_service import compile_images_to_pdf
+    try:
+        pdf_bytes = compile_images_to_pdf(image_bytes_list)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Errore generazione PDF da foto: {e}")
+
+    filename = f"scansione_{len(image_bytes_list)}_pagine_{int(time.time())}.pdf"
+    doc = _process_and_save_single_doc(pdf_bytes, filename, "application/pdf", thread_id, db)
+    db.commit()
+    db.refresh(doc)
+
+    if doc.status == "quietanzato":
+        amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
+        chat_reply = f"📄 Ho protocollato e archiviato il documento multipagina ({len(image_bytes_list)} foto) come quietanzato: **{doc.title}**{amount_str}.\n💡 {doc.summary}"
+    elif doc.status == "da_pagare":
+        amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
+        due_str = f" con scadenza {doc.due_date.strftime('%d/%m/%Y')}" if doc.due_date else ""
+        chat_reply = f"📄 Ho registrato la spesa/scadenza multipagina ({len(image_bytes_list)} foto): **{doc.title}**{amount_str}{due_str}."
+    else:
+        chat_reply = f"📄 Ho unito e analizzato le {len(image_bytes_list)} foto in un unico documento: **{doc.title}**.\n💡 {doc.summary}"
+
+    active_model = get_app_setting(db, "ai_model", default=get_settings().OPENROUTER_MODEL) or "auto"
+    routed_model = "google/gemini-2.5-flash-lite" if active_model == "auto" else active_model
+
+    fn = Path(doc.file_path).name
+    doc_info = {
+        "id": doc.id,
+        "document_id": doc.id,
+        "title": doc.title,
+        "issuer": doc.issuer,
+        "amount": doc.amount,
+        "due_date": doc.due_date.isoformat() if doc.due_date else None,
+        "status": doc.status,
+        "file_url": f"/uploads/{fn}",
+        "download_url": f"/api/documents/{doc.id}/download",
+        "file_type": doc.file_type,
+        "summary": doc.summary,
+        "drive_file_id": doc.drive_file_id,
+        "drive_web_url": doc.drive_web_url,
+        "google_calendar_event_id": doc.google_calendar_event_id,
+        "category": doc.category,
+        "category_label": doc.category_label,
+        "category_icon": doc.category_icon,
+        "subfolder": doc.subfolder
+    }
+
+    user_msg = ChatMessage(
+        thread_id=thread_id,
+        sender="user",
+        message_type="document",
+        content=f"📸 Acquisite {len(image_bytes_list)} foto unite in documento unico: {filename}",
+        metadata_json=json.dumps({
+            "document_id": doc.id,
+            "file_name": filename,
+            "file_url": f"/uploads/{fn}",
+            "download_url": f"/api/documents/{doc.id}/download",
+            "file_type": doc.file_type,
+            "file_size": len(pdf_bytes),
+            "documents": [doc_info]
+        })
+    )
+    asst_msg = ChatMessage(
+        thread_id=thread_id,
+        sender="assistant",
+        message_type="document",
+        content=chat_reply,
+        metadata_json=json.dumps({
+            "document_id": doc.id,
+            "documents": [doc_info],
+            "routed_model": routed_model
+        })
+    )
+    db.add(user_msg)
+    db.add(asst_msg)
+    db.commit()
+
     return {
         "document_id": doc.id,
         "title": doc.title,

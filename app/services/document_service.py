@@ -135,3 +135,33 @@ def determine_document_status(extracted, due_date_obj=None) -> str:
 
     return "archiviato"
 
+
+def compile_images_to_pdf(image_bytes_list: list[bytes]) -> bytes:
+    """Compila una lista di immagini in un unico documento PDF multipagina standard."""
+    import io
+    from PIL import Image
+
+    pil_images = []
+    for b in image_bytes_list:
+        try:
+            im = Image.open(io.BytesIO(b))
+            if im.mode != "RGB":
+                im = im.convert("RGB")
+            pil_images.append(im)
+        except Exception:
+            continue
+
+    if not pil_images:
+        raise ValueError("Nessuna immagine valida fornita per la compilazione in PDF")
+
+    out_pdf = io.BytesIO()
+    pil_images[0].save(
+        out_pdf,
+        format="PDF",
+        save_all=True,
+        append_images=pil_images[1:],
+        resolution=150.0
+    )
+    return out_pdf.getvalue()
+
+
