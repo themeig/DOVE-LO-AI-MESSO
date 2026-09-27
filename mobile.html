@@ -53,6 +53,9 @@
       <!-- Top Bar Sidebar -->
       <div class="h-[60px] bg-[#F8F5EE] border-b border-[#E3DDD1] text-[#222220] px-3.5 flex items-center justify-between shrink-0 select-none box-border">
         <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs font-black shadow-xs shrink-0">
+            <i class="fa-solid fa-vault"></i>
+          </div>
           <div>
             <div class="flex items-center gap-1.5">
               <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220]">Dove lo AI messo</h2>
@@ -67,34 +70,6 @@
           </div>
         </div>
 
-        <div class="flex items-center space-x-1.5">
-          <!-- Apri Dashboard -->
-          <button 
-            onclick="openDashboard()" 
-            class="w-8 h-8 border border-[#3C5A48] bg-white text-[#3C5A48] rounded-xs flex items-center justify-center hover:bg-[#3C5A48] hover:text-white transition cursor-pointer text-xs" 
-            title="Apri Dashboard"
-          >
-            <i class="fa-solid fa-chart-pie"></i>
-          </button>
-
-          <!-- Sistema & Configurazione -->
-          <button 
-            onclick="switchScreen('settings')" 
-            class="w-8 h-8 border border-[#E3DDD1] bg-white text-[#7A7568] hover:text-[#222220] rounded-xs flex items-center justify-center hover:bg-[#EFECE3] transition cursor-pointer text-xs" 
-            title="Sistema & Configurazione Caveau"
-          >
-            <i class="fa-solid fa-sliders"></i>
-          </button>
-
-          <!-- Google Drive Cloud Sync -->
-          <button 
-            onclick="openGoogleDriveModal()" 
-            class="w-8 h-8 border border-[#E3DDD1] bg-white text-[#3C5A48] rounded-xs flex items-center justify-center hover:bg-[#3C5A48] hover:text-white transition cursor-pointer text-xs" 
-            title="Google Drive Cloud Sync"
-          >
-            <i class="fa-brands fa-google-drive"></i>
-          </button>
-        </div>
       </div>
 
       <!-- Barra di Ricerca Chat Olivetti -->

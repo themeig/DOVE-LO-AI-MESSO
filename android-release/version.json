@@ -1,6 +1,6 @@
 {
-  "version_code": 306,
-  "version_name": "2.10.6",
+  "version_code": 307,
+  "version_name": "2.10.7",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ Pulizia interfaccia utente & Indicatori Cloud: rimozione del pulsante ACQUISISCI ATTO nella dashboard, pulizia del quadrante top-left con icone discrete di stato sincronizzazione Google Drive e Google Calendar (attive solo se collegate), e rimozione della sezione Cartelle PC monitorate dall'app mobile."
+  "release_notes": "🏛️ Ripristino logo Caveau Olivetti in alto a sinistra e rimozione pulsanti ridondanti (dashboard, sistema, drive) dall'header della sidebar per un'interfaccia ancora più pulita ed essenziale."
 }
