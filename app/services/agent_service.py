@@ -604,9 +604,11 @@ REGOLE OPERATIVE:
 9. QUANDO L'UTENTE CHIEDE DI RINOMINARE UN FILE/FOTO:
    - Chiama `rename_vault_document(new_title=...)`.
 
-10. QUANDO L'UTENTE CHIEDE DI SCARICARE O VEDERE UN DOCUMENTO:
-    - Di norma, DIVIETO DI SCRIVERE FINTI LINK MARKDOWN e CHIAMA SEMPRE `show_document_card`! L'interfaccia mostrerà all'utente la scheda interattiva con i pulsanti [👁️ Vedi] e [⬇️ Scarica].
-    - GESTIONE RESILIENTE SEGNALAZIONI UI: Se la telemetria UI del client segnala un errore di visualizzazione o se l'utente riferisce esplicitamente di non vedere il pulsante/scheda, riconosci l'inconveniente tecnico e fornisci come riserva il percorso/link di download diretto reale di sistema (es. `/api/documents/{id}/download`).
+10. QUANDO L'UTENTE CHIEDE DI SCARICARE O VEDERE UN DOCUMENTO (O SEGNALA DI NON VEDERE LE SCHEDE/PULSANTI):
+    - CHIAMA SEMPRE `show_document_card` indicando gli ID dei documenti pertinenti (`document_ids` o `document_id`)!
+    - L'interfaccia mostrerà all'utente le schede interattive complete con i pulsanti [👁️ Vedi] e [⬇️ Scarica].
+    - DIVIETO ASSOLUTO di scuse o lamentele su presunte "anomalie tecniche dell'interfaccia", "errori di visualizzazione" o "miei malfunzionamenti": rispondi sempre con garbo ed emetti con sicurezza la chiamata allo strumento `show_document_card`.
+    - DIVIETO di scrivere link grezzi o percorsi tecnici nel testo: le schede grafiche contengono già tutti i comandi necessari per visualizzare e scaricare i file.
 
 11. QUANDO L'UTENTE CARICA O ASSOCIA UNA FOTO/ALLEGATO A UN OGGETTO FISICO (es. 'ti allego la foto per il piano', 'ecco la foto delle chiavi', 'associa questa foto al passaporto'):
     - DEVI USARE `link_document_to_item(item_name=...)` per collegare istantaneamente il documento/foto alla posizione dell'oggetto fisico nel caveau!
@@ -954,11 +956,9 @@ class AgenticChatService:
             "================================================================================\n"
             "L'interfaccia client ha registrato i seguenti eventi o errori tecnici recenti:\n"
             + "\n".join(lines) + "\n\n"
-            "ISTRUZIONE RESILIENTE:\n"
-            "- Se l'utente ti dice che non vede il pulsante, non vede la scheda o non riesce ad aprire/scaricare il file:\n"
-            "  1. Riconosci cortesemente che si è verificato un inconveniente temporaneo di visualizzazione nella chat.\n"
-            "  2. Fornisci SUBITO il link diretto di download alternativo (es. `/api/documents/{id}/download` o pulsante nella Dashboard).\n"
-            "  3. Non limitarti a ripetere frasi generiche o a riprovare alla cieca senza fornire il link diretto di salvataggio!"
+            "ISTRUZIONE SULLE SCHEDE:\n"
+            "- Se l'utente ti dice che non vede il pulsante o non vede la scheda, invoca SEMPRE `show_document_card` con gli ID dei documenti per mostrare le schede ufficiali interattive!\n"
+            "- Mantieni sempre un tono da Concierge rassicurante, impeccabile e professionale, senza attribuire colpe o inventare anomalie dell'interfaccia."
         )
         return note
 
@@ -1795,14 +1795,53 @@ class AgenticChatService:
                         if d and d not in docs:
                             docs.append(d)
 
-            # 5. Se nessun parametro, prendi l'ultimo documento
+            # 5. Se nessun parametro, recupera i documenti contestuali dall'ultimo messaggio dell'assistente nel canale
             if not docs and not doc_id and not doc_ids and not doc_title and not doc_titles:
-                q = db.query(Document)
-                if thread_id and thread_id not in ["general", "all"]:
-                    q = q.filter(Document.thread_id == thread_id)
-                last_d = q.order_by(Document.id.desc()).first()
-                if last_d:
-                    docs.append(last_d)
+                last_asst = (
+                    db.query(ChatMessage)
+                    .filter(ChatMessage.thread_id == thread_id, ChatMessage.sender == "assistant")
+                    .order_by(ChatMessage.id.desc())
+                    .first()
+                )
+                if last_asst:
+                    if last_asst.metadata_json:
+                        try:
+                            m_json = json.loads(last_asst.metadata_json)
+                            m_docs = m_json.get("documents") or (m_json.get("data") or {}).get("deadlines") or (m_json.get("data") or {}).get("upcoming_documents")
+                            if m_docs:
+                                for md in m_docs:
+                                    md_id = md.get("id") or md.get("document_id")
+                                    if md_id:
+                                        d_obj = db.query(Document).filter(Document.id == int(md_id)).first()
+                                        if d_obj and d_obj not in docs:
+                                            docs.append(d_obj)
+                        except Exception:
+                            pass
+                    if not docs and last_asst.content:
+                        all_d = db.query(Document).order_by(Document.created_at.desc()).all()
+                        for d_cand in all_d:
+                            if d_cand.title and len(d_cand.title) >= 3 and d_cand.title.lower() in last_asst.content.lower():
+                                if d_cand not in docs:
+                                    docs.append(d_cand)
+                            elif d_cand.issuer and len(d_cand.issuer) >= 3 and d_cand.issuer.lower() in last_asst.content.lower():
+                                if d_cand not in docs:
+                                    docs.append(d_cand)
+                            elif d_cand.amount and (f"{d_cand.amount:.2f}".replace('.', ',') in last_asst.content or f"{d_cand.amount:.2f}" in last_asst.content):
+                                if d_cand not in docs:
+                                    docs.append(d_cand)
+                        if not docs and any(k in last_asst.content.lower() for k in ["scadenz", "bollett", "da pagare", "f24", "tribut"]):
+                            unpaid = db.query(Document).filter(Document.status == "da_pagare").order_by(Document.due_date.asc().nulls_last()).all()
+                            for ud in unpaid:
+                                if ud not in docs:
+                                    docs.append(ud)
+
+                if not docs:
+                    q = db.query(Document)
+                    if thread_id and thread_id not in ["general", "all"]:
+                        q = q.filter(Document.thread_id == thread_id)
+                    last_d = q.order_by(Document.id.desc()).first()
+                    if last_d:
+                        docs.append(last_d)
 
             if not docs:
                 return {"error": "Nessun documento trovato nel caveau da visualizzare.", "found": False}
@@ -2951,6 +2990,15 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
             and not any(re.search(rf"\b{re.escape(k)}\b", lower_t) for k in ["ti ricordi", "ti ricordi di", "ti ricordi questo", "ricordi", "sto quotando"])
         )
 
+        is_cards_request = any(k in lower_t for k in [
+            "non vedo le schede", "non vedo la scheda", "non vedo i documenti", "non vedo il documento",
+            "non vedo le card", "non vedo la card", "non le vedo", "non li vedo", "non la vedo", "non lo vedo",
+            "non vedo", "dove sono le schede", "non ci sono le schede", "non si vedono le schede",
+            "mancano le schede", "mostra le schede", "mostrami le schede", "fammi vedere le schede",
+            "fammeli vedere", "fammela vedere", "fammeli scaricare", "fammi scaricare",
+            "rimandami le schede", "riapri le schede", "mostrale", "mostrali", "mostrameli", "mostramela", "mostramelo"
+        ])
+
         is_where_request = (
             any(k in lower_t for k in [
                 "dov'è", "dov'e", "dove è", "dove sono", "dove si trova", "dove si trovano",
@@ -2958,6 +3006,7 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                 "dove trovo"
             ])
             and not is_store_or_update
+            and not is_cards_request
         )
 
         is_listing_request = (
@@ -3001,13 +3050,16 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
         is_link_photo_intent = bool(linked_photo_item)
 
         is_download_or_show = (
-            any(k in lower_t for k in [
-                "scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala", "scaricarli", "scaricali", "scaricare",
-                "download", "fare il download", "voglio scaricare", "voglio il download", "voglio fare il download",
-                "apri il documento", "apri il file", "mostramelo", "mostramela", "mostrameli", "mostra le schede", "mostrami le schede",
-                "fammi vedere il file", "fammi vedere il documento", "voglio vederlo", "voglio vederla", "voglio vederli",
-                "apri il pdf", "mostra la scheda", "vedi il documento", "mandami il pdf"
-            ])
+            (
+                any(k in lower_t for k in [
+                    "scarica", "scaricarla", "scaricarlo", "scaricalo", "scaricala", "scaricarli", "scaricali", "scaricare",
+                    "download", "fare il download", "voglio scaricare", "voglio il download", "voglio fare il download",
+                    "apri il documento", "apri il file", "mostramelo", "mostramela", "mostrameli",
+                    "fammi vedere il file", "fammi vedere il documento", "voglio vederlo", "voglio vederla", "voglio vederli",
+                    "apri il pdf", "mostra la scheda", "vedi il documento", "mandami il pdf"
+                ])
+                or is_cards_request
+            )
             and not is_store_or_update
             and not is_where_request
             and not is_link_photo_intent
@@ -3347,20 +3399,47 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                     .first()
                 )
                 target_docs = []
-                if is_download_or_show and last_asst_msg and last_asst_msg.content:
-                    all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
-                    for d in all_docs:
-                        if d.title and len(d.title) >= 3 and d.title.lower() in last_asst_msg.content.lower():
-                            if d not in target_docs:
-                                target_docs.append(d)
-                    if not target_docs:
-                        cand_lines = [line.strip(" *🏛️📄:-") for line in last_asst_msg.content.split("\n") if any(k in line.lower() for k in ["f24", "bolletta", "ricevuta", "contratto", "estratto", "certificato", "tessera", "mutuo"])]
-                        for cl in cand_lines:
-                            s_res = search_vault_documents(db, cl, thread_id=thread_id)
-                            if s_res:
-                                td = db.query(Document).filter(Document.id == s_res[0]["id"]).first()
-                                if td and td not in target_docs:
-                                    target_docs.append(td)
+                if is_download_or_show and last_asst_msg:
+                    # 1. Prova da metadata_json
+                    if last_asst_msg.metadata_json:
+                        try:
+                            m_data = json.loads(last_asst_msg.metadata_json)
+                            m_docs = m_data.get("documents") or (m_data.get("data") or {}).get("deadlines") or (m_data.get("data") or {}).get("upcoming_documents")
+                            if m_docs:
+                                for md in m_docs:
+                                    md_id = md.get("id") or md.get("document_id")
+                                    if md_id:
+                                        d_obj = db.query(Document).filter(Document.id == int(md_id)).first()
+                                        if d_obj and d_obj not in target_docs:
+                                            target_docs.append(d_obj)
+                        except Exception:
+                            pass
+                    # 2. Match su titoli, mittenti o importi nel testo del messaggio precedente
+                    if last_asst_msg.content:
+                        all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
+                        for d in all_docs:
+                            if d.title and len(d.title) >= 3 and d.title.lower() in last_asst_msg.content.lower():
+                                if d not in target_docs:
+                                    target_docs.append(d)
+                            elif d.issuer and len(d.issuer) >= 3 and d.issuer.lower() in last_asst_msg.content.lower():
+                                if d not in target_docs:
+                                    target_docs.append(d)
+                            elif d.amount and (f"{d.amount:.2f}".replace('.', ',') in last_asst_msg.content or f"{d.amount:.2f}" in last_asst_msg.content):
+                                if d not in target_docs:
+                                    target_docs.append(d)
+                        if not target_docs:
+                            cand_lines = [line.strip(" *🏛️📄:-") for line in last_asst_msg.content.split("\n") if any(k in line.lower() for k in ["f24", "bolletta", "ricevuta", "contratto", "estratto", "certificato", "tessera", "mutuo"])]
+                            for cl in cand_lines:
+                                s_res = search_vault_documents(db, cl, thread_id=thread_id)
+                                if s_res:
+                                    td = db.query(Document).filter(Document.id == s_res[0]["id"]).first()
+                                    if td and td not in target_docs:
+                                        target_docs.append(td)
+                        if not target_docs and any(k in last_asst_msg.content.lower() for k in ["scadenz", "bollett", "da pagare", "f24", "tribut"]):
+                            unpaid = db.query(Document).filter(Document.status == "da_pagare").order_by(Document.due_date.asc().nulls_last()).all()
+                            for ud in unpaid:
+                                if ud not in target_docs:
+                                    target_docs.append(ud)
 
                 if not target_docs:
                     clean_query = re.sub(
@@ -3720,7 +3799,14 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
 
                         docs_found = None
                         if isinstance(tool_data, dict):
-                            docs_found = tool_data.get("found_documents") or tool_data.get("recent_documents") or tool_data.get("documents") or tool_data.get("extracted_documents")
+                            docs_found = (
+                                tool_data.get("found_documents")
+                                or tool_data.get("recent_documents")
+                                or tool_data.get("documents")
+                                or tool_data.get("extracted_documents")
+                                or tool_data.get("upcoming_documents")
+                                or tool_data.get("deadlines")
+                            )
 
                         if not final_text:
                             if tool_action == "search_vault":
@@ -3891,15 +3977,49 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             filtered_docs = docs_found[:4]
                             tool_action = "show_document_card"
 
-                        # Niente automatismi: se il modello ha chiamato show_document_card, allega le schede.
-                        # Se ha chiamato search_vault, allega solo se l'utente chiedeva documenti specifici ed erano pertinenti.
+                        mentions_cards_in_text = any(k in final_text.lower() for k in [
+                            "sched", "scarica", "scaricarlo", "scaricarla", "scaricarli", "scaricarle",
+                            "visualizza", "visualizzarlo", "visualizzarla", "visualizzarli", "visualizzarle",
+                            "qui sotto", "apri il documento", "apri il file"
+                        ])
+
+                        # Regola deterministica e affidabile per l'allegato delle schede:
+                        # 1) show_document_card o unzip_vault_archive -> mostra sempre le schede
+                        # 2) get_upcoming_deadlines -> se ci sono scadenze e il testo menziona schede/visualizzazione/download o l'utente le cerca, allega SEMPRE le schede!
+                        # 3) search_vault -> filtra la pertinenza dei documenti
+                        # 4) Se final_text menziona schede e docs_found è presente -> allega sempre le schede!
                         if tool_action in ["show_document_card", "unzip_vault_archive"]:
                             filtered_docs = docs_found
                             tool_action = "show_document_card"
+                        elif tool_action == "get_upcoming_deadlines":
+                            if docs_found and (mentions_cards_in_text or is_download_or_show or not is_meta_or_help):
+                                filtered_docs = docs_found[:5]
+                                tool_action = "show_document_card"
+                            else:
+                                filtered_docs = None
                         elif tool_action == "search_vault":
                             filtered_docs = filter_relevant_documents(docs_found, final_text, user_text)
+                            if mentions_cards_in_text and docs_found and not filtered_docs:
+                                filtered_docs = docs_found[:4]
+                        elif mentions_cards_in_text and docs_found:
+                            filtered_docs = docs_found[:4]
+                            tool_action = "show_document_card"
                         else:
                             filtered_docs = None
+
+                        # Se lo strumento è show_document_card e filtered_docs è presente,
+                        # sanifica eventuali scuse allucinate su anomalie dell'interfaccia
+                        if tool_action == "show_document_card" and filtered_docs:
+                            if any(k in final_text.lower() for k in ["anomalia", "malfunzionamento", "errore di visualizzazione", "inconveniente tecnico"]):
+                                if len(filtered_docs) > 1:
+                                    lines_d = [f"- 📄 **{d['title']}** ({d.get('issuer') or d.get('doc_type', '')})" for d in filtered_docs]
+                                    final_text = (
+                                        f"📄 Ecco subito le schede interattive per ciascun documento qui sotto:\n\n" +
+                                        "\n".join(lines_d) +
+                                        "\n\nPuoi visualizzarli o scaricarli direttamente con i pulsanti 'Vedi' e 'Scarica'! ⬇️"
+                                    )
+                                else:
+                                    final_text = f"📄 Ecco subito la scheda per **{filtered_docs[0]['title']}** qui sotto con i pulsanti per visualizzarlo o scaricarlo direttamente! ⬇️"
 
                         conf_box = None
                         if isinstance(tool_data, dict) and "confirmation" in tool_data:
@@ -4126,22 +4246,49 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                             .first()
                         )
                         target_docs = []
-                        if last_asst_msg and last_asst_msg.content:
-                            all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
-                            for d in all_docs:
-                                if d.title and len(d.title) >= 3 and d.title.lower() in last_asst_msg.content.lower():
-                                    if d not in target_docs:
-                                        target_docs.append(d)
-                            if not target_docs:
-                                cand_lines = [line.strip(" *🏛️📄:-") for line in last_asst_msg.content.split("\n") if any(k in line.lower() for k in ["f24", "bolletta", "ricevuta", "contratto", "estratto", "certificato", "tessera"])]
-                                for cl in cand_lines:
-                                    s_res = search_vault_documents(db, cl, thread_id=thread_id)
-                                    if s_res:
-                                        td = db.query(Document).filter(Document.id == s_res[0]["id"]).first()
-                                        if td and td not in target_docs:
-                                            target_docs.append(td)
+                        if last_asst_msg:
+                            # 1. Prova da metadata_json
+                            if last_asst_msg.metadata_json:
+                                try:
+                                    m_data = json.loads(last_asst_msg.metadata_json)
+                                    m_docs = m_data.get("documents") or (m_data.get("data") or {}).get("deadlines") or (m_data.get("data") or {}).get("upcoming_documents")
+                                    if m_docs:
+                                        for md in m_docs:
+                                            md_id = md.get("id") or md.get("document_id")
+                                            if md_id:
+                                                d_obj = db.query(Document).filter(Document.id == int(md_id)).first()
+                                                if d_obj and d_obj not in target_docs:
+                                                    target_docs.append(d_obj)
+                                except Exception:
+                                    pass
+                            # 2. Match su titoli, mittenti o importi nel testo del messaggio precedente
+                            if last_asst_msg.content:
+                                all_docs = db.query(Document).order_by(Document.created_at.desc()).all()
+                                for d in all_docs:
+                                    if d.title and len(d.title) >= 3 and d.title.lower() in last_asst_msg.content.lower():
+                                        if d not in target_docs:
+                                            target_docs.append(d)
+                                    elif d.issuer and len(d.issuer) >= 3 and d.issuer.lower() in last_asst_msg.content.lower():
+                                        if d not in target_docs:
+                                            target_docs.append(d)
+                                    elif d.amount and (f"{d.amount:.2f}".replace('.', ',') in last_asst_msg.content or f"{d.amount:.2f}" in last_asst_msg.content):
+                                        if d not in target_docs:
+                                            target_docs.append(d)
+                                if not target_docs:
+                                    cand_lines = [line.strip(" *🏛️📄:-") for line in last_asst_msg.content.split("\n") if any(k in line.lower() for k in ["f24", "bolletta", "ricevuta", "contratto", "estratto", "certificato", "tessera", "mutuo"])]
+                                    for cl in cand_lines:
+                                        s_res = search_vault_documents(db, cl, thread_id=thread_id)
+                                        if s_res:
+                                            td = db.query(Document).filter(Document.id == s_res[0]["id"]).first()
+                                            if td and td not in target_docs:
+                                                target_docs.append(td)
+                                if not target_docs and any(k in last_asst_msg.content.lower() for k in ["scadenz", "bollett", "da pagare", "f24", "tribut"]):
+                                    unpaid = db.query(Document).filter(Document.status == "da_pagare").order_by(Document.due_date.asc().nulls_last()).all()
+                                    for ud in unpaid:
+                                        if ud not in target_docs:
+                                            target_docs.append(ud)
 
-                        if len(target_docs) > 1 and not any(k in lower_t for k in ["entrambi", "tutti", "tutte", "download", "scarica"]):
+                        if len(target_docs) > 1 and not any(k in lower_t for k in ["entrambi", "tutti", "tutte", "download", "scarica", "schede", "non vedo", "dove sono"]):
                             for d in target_docs:
                                 d_words = [w for w in re.split(r"[^\w]+", d.title.lower()) if len(w) > 2 and w not in ITALIAN_STOPWORDS]
                                 if any(w in lower_t for w in d_words):
@@ -4154,6 +4301,27 @@ DIVIETO ASSOLUTO: Non sei nel 2024! Siamo nell'anno {date_info['year']}. Conosci
                         if c_docs:
                             clean_reply = re.sub(r"\[(?:Link per scaricare|Scarica|Download)[^\]]*\]", "la scheda del documento allegata qui sotto", direct_reply, flags=re.IGNORECASE)
                             clean_reply = re.sub(r"per scaricare entrambi i documenti,?\s*dovrai farlo singolarmente\.?", "", clean_reply, flags=re.IGNORECASE).strip()
+                            clean_reply = re.sub(r"mi dispiace.*?(?:interfaccia|anomalia|visualizzazione|malfunzionamento).*?(?:\.|\n|$)", "", clean_reply, flags=re.IGNORECASE).strip()
+                            clean_reply = re.sub(r"(?:a causa di un|a causa di un'|per via di un).*?(?:interfaccia|anomalia|visualizzazione|malfunzionamento).*?(?:\.|\n|$)", "", clean_reply, flags=re.IGNORECASE).strip()
+                            is_apology_or_raw_links = (
+                                not clean_reply
+                                or len(clean_reply) < 15
+                                or any(k in clean_reply.lower() for k in [
+                                    "anomalia", "malfunzionamento", "errore di visualizzazione",
+                                    "inconveniente", "interfaccia", "problema tecnico", "scaricare direttamente",
+                                    "/api/documents", "link di download"
+                                ])
+                            )
+                            if is_apology_or_raw_links:
+                                if len(c_docs) > 1:
+                                    lines_d = [f"- 📄 **{d['title']}** ({d.get('issuer') or d.get('doc_type', '')})" for d in c_docs]
+                                    clean_reply = (
+                                        f"📄 Certamente! Ecco subito le schede interattive per ciascun documento qui sotto:\n\n" +
+                                        "\n".join(lines_d) +
+                                        "\n\nPuoi visualizzarli o scaricarli direttamente con i pulsanti 'Vedi' e 'Scarica'! ⬇️"
+                                    )
+                                else:
+                                    clean_reply = f"📄 Certamente! Ecco subito la scheda per **{c_docs[0]['title']}** qui sotto con i pulsanti per visualizzarlo o scaricarlo direttamente! ⬇️"
                             return ChatResponse(
                                 reply=clean_reply,
                                 action="show_document_card",
