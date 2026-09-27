@@ -1262,13 +1262,24 @@
     function showThreadsSidebar() {
       if (isMobileView) {
         _mobileShowSidebar(true);
+        try {
+          if (window.history.state && window.history.state.view === 'conversation') {
+            window.history.replaceState({ screen: 'chat', view: 'sidebar' }, '');
+          }
+        } catch (_) {}
       }
       // Su desktop non fa nulla — entrambi i pannelli sono sempre visibili
     }
+    window.showThreadsSidebar = showThreadsSidebar;
 
     function showConversation() {
       if (isMobileView) {
         _mobileShowConversation(true);
+        try {
+          if (!window.history.state || window.history.state.view !== 'conversation') {
+            window.history.pushState({ screen: 'chat', view: 'conversation', threadId: currentThreadId }, '');
+          }
+        } catch (_) {}
         requestAnimationFrame(() => {
           scrollToBottom(false);
           setTimeout(() => scrollToBottom(false), 120);
@@ -1276,6 +1287,186 @@
         });
       }
     }
+    window.showConversation = showConversation;
+
+    // --- Gestione Tasto Indietro Nativo Mobile (Android / Browser Popstate) ---
+    function handleNativeBackPress() {
+      // 1. Chiudi modali o drawer aperti se presenti
+      const openModalIds = [
+        'googleDriveModal',
+        'newThreadModal',
+        'documentDetailModal',
+        'watchedFoldersModal',
+        'deleteConfirmModal',
+        'scannerPreviewModal',
+        'systemModal',
+        'whitePaperModal'
+      ];
+      for (const mId of openModalIds) {
+        const el = document.getElementById(mId);
+        if (el && !el.classList.contains('hidden')) {
+          if (mId === 'googleDriveModal' && typeof closeGoogleDriveModal === 'function') {
+            closeGoogleDriveModal();
+            return true;
+          }
+          if (mId === 'newThreadModal' && typeof closeNewThreadModal === 'function') {
+            closeNewThreadModal();
+            return true;
+          }
+          if (mId === 'watchedFoldersModal' && typeof closeWatchedFoldersModal === 'function') {
+            closeWatchedFoldersModal();
+            return true;
+          }
+          el.classList.add('hidden');
+          el.classList.remove('flex');
+          return true;
+        }
+      }
+
+      // 2. Se l'utente è all'interno della conversazione su mobile, torna all'elenco chat/canali
+      if (isMobileView && currentActiveScreen === 'chat') {
+        const conv = document.getElementById('conversationPanel');
+        if (conv && conv.classList.contains('mobile-active')) {
+          showThreadsSidebar();
+          return true;
+        }
+      }
+
+      // 3. Se l'utente si trova su Dashboard o Sistema, torna alla sezione Conversa (Chat)
+      if (currentActiveScreen !== 'chat') {
+        closeToChat();
+        return true;
+      }
+
+      // 4. Se si trova già nella lista chat principale (root), ritorna false per consentire l'uscita
+      return false;
+    }
+    window.handleNativeBackPress = handleNativeBackPress;
+
+    // Listener popstate per browser mobile
+    window.addEventListener('popstate', (e) => {
+      handleNativeBackPress();
+    });
+
+    // --- Gestione Gesture di Swipe Orizzontale per Cambio Sezione Mobile ---
+    function initMobileSwipeGestures() {
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchStartTime = 0;
+      let isSwipeCandidate = false;
+
+      const viewport = document.getElementById('appScreensViewport') || document.body;
+
+      viewport.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) {
+          isSwipeCandidate = false;
+          return;
+        }
+        // Attivo solo su mobile / tablet o viewport ristretto
+        if (!isMobileView && window.innerWidth > 768) {
+          isSwipeCandidate = false;
+          return;
+        }
+        if (isTransitioningScreens) {
+          isSwipeCandidate = false;
+          return;
+        }
+
+        const target = e.target;
+        // Ignora input interattivi, pulsanti, form di chat
+        if (target.closest('input, textarea, select, button, label, #chatForm, #inputContainer, #threadsSearchInput, .modal-card, #photoActionModal')) {
+          isSwipeCandidate = false;
+          return;
+        }
+
+        // Ignora se un modale è aperto
+        const openModal = document.querySelector('#googleDriveModal:not(.hidden), #newThreadModal:not(.hidden), #watchedFoldersModal:not(.hidden)');
+        if (openModal) {
+          isSwipeCandidate = false;
+          return;
+        }
+
+        // Ignora elementi con scrolling orizzontale proprio (es. filtri o tabelle con overflow)
+        let curr = target;
+        let hasHorizontalScroll = false;
+        while (curr && curr !== viewport && curr !== document.body) {
+          if (curr.scrollWidth > curr.clientWidth + 10) {
+            const overflowX = window.getComputedStyle(curr).overflowX;
+            if (overflowX === 'auto' || overflowX === 'scroll') {
+              hasHorizontalScroll = true;
+              break;
+            }
+          }
+          curr = curr.parentElement;
+        }
+        if (hasHorizontalScroll) {
+          isSwipeCandidate = false;
+          return;
+        }
+
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+        isSwipeCandidate = true;
+      }, { passive: true });
+
+      viewport.addEventListener('touchmove', (e) => {
+        if (!isSwipeCandidate || e.touches.length !== 1) return;
+        const currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+        const diffX = Math.abs(currentX - touchStartX);
+        const diffY = Math.abs(currentY - touchStartY);
+
+        // Se lo scroll verticale è prevalente, è navigazione nei messaggi o nella pagina: annulla lo swipe
+        if (diffY > 30 && diffY > diffX) {
+          isSwipeCandidate = false;
+        }
+      }, { passive: true });
+
+      viewport.addEventListener('touchend', (e) => {
+        if (!isSwipeCandidate || !e.changedTouches || e.changedTouches.length === 0) return;
+        isSwipeCandidate = false;
+
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+        const elapsed = Date.now() - touchStartTime;
+
+        // Criteri per swipe orizzontale valido:
+        // Spostamento >= 55px, preponderanza orizzontale 1.4x rispetto al verticale, durata <= 550ms
+        if (Math.abs(deltaX) < 55 || Math.abs(deltaX) < 1.4 * Math.abs(deltaY) || elapsed > 550) {
+          return;
+        }
+
+        if (isTransitioningScreens) return;
+
+        // Gesto Swipe a Destra -> (deltaX > 0): vai verso la sezione a sinistra
+        if (deltaX > 0) {
+          if (currentActiveScreen === 'settings' || currentActiveScreen === 'system') {
+            slideToScreen('chat');
+          } else if (currentActiveScreen === 'chat') {
+            const conv = document.getElementById('conversationPanel');
+            if (conv && conv.classList.contains('mobile-active')) {
+              // Dalla conversazione attiva torna alla lista chat/canali!
+              showThreadsSidebar();
+            } else {
+              // Dalla lista canali vai alla Dashboard
+              slideToScreen('dashboard');
+            }
+          }
+        }
+        // Gesto Swipe a Sinistra <- (deltaX < 0): vai verso la sezione a destra
+        else {
+          if (currentActiveScreen === 'dashboard') {
+            slideToScreen('chat');
+          } else if (currentActiveScreen === 'chat') {
+            slideToScreen('settings');
+          }
+        }
+      }, { passive: true });
+    }
+    window.initMobileSwipeGestures = initMobileSwipeGestures;
 
     // Listener resize e orientamento — ricalcola layout
     let resizeTimer;
@@ -8243,6 +8434,7 @@
         showToast('🟢 Google Drive collegato con successo!', 'success');
         window.history.replaceState({}, document.title, window.location.pathname);
       }
+      if (typeof initMobileSwipeGestures === 'function') initMobileSwipeGestures();
       // Polling periodico per rilevare nuovi file sensibili segnalati dal monitor di background
       setInterval(checkPendingProposalsBanner, 20000);
     }

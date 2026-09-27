@@ -1,15 +1,15 @@
 """
 Test di verifica per la suddivisione delle impostazioni di Sistema per aree tematiche
-(Chat & AI, Google Drive, Google Calendar, Cartelle PC, Sicurezza & Backup)
-e per la pulizia UI (indicatori cloud nel top-left, logo caveau in alto a sinistra,
-rimozione pulsanti ridondanti dalla sidebar, rimozione acquisici atto e cartelle pc su mobile).
+(Chat & AI, Google Drive, Google Calendar, Cartelle PC, Sicurezza & Backup),
+per la pulizia UI (indicatori cloud, logo caveau) e per la navigazione mobile
+(gestione tasto indietro con ritorno a selezione chat, e gesture swipe cambio sezioni).
 """
 from pathlib import Path
 from app.version import APP_VERSION
 
 
 def test_app_version():
-    assert APP_VERSION == "2.10.7"
+    assert APP_VERSION == "2.10.8"
 
 
 def test_index_html_has_system_areas():
@@ -80,7 +80,7 @@ def test_mobile_html_has_system_areas():
     assert 'sidebarHeaderCalendarStatus' in content
 
 
-def test_app_bundle_has_system_area_controller():
+def test_app_bundle_has_system_area_and_mobile_gestures():
     bundle_path = Path("static/js/app-bundle.js")
     assert bundle_path.exists()
     content = bundle_path.read_text(encoding="utf-8")
@@ -91,3 +91,18 @@ def test_app_bundle_has_system_area_controller():
     assert "window.loadCalendarStatus = loadCalendarStatus;" in content
     assert "function updateHeaderCloudIndicators(driveConnected, calendarConnected)" in content
     assert "window.updateHeaderCloudIndicators = updateHeaderCloudIndicators;" in content
+
+    # Verifica gestione tasto indietro nativo e gesture swipe per cambio sezioni
+    assert "function handleNativeBackPress()" in content
+    assert "window.handleNativeBackPress = handleNativeBackPress;" in content
+    assert "function initMobileSwipeGestures()" in content
+    assert "window.initMobileSwipeGestures = initMobileSwipeGestures;" in content
+
+
+def test_android_main_activity_delegates_back_press():
+    activity_path = Path("android/app/src/main/java/com/doveloaimesso/app/MainActivity.java")
+    assert activity_path.exists()
+    content = activity_path.read_text(encoding="utf-8")
+
+    assert "window.handleNativeBackPress" in content
+    assert "Premi di nuovo per uscire da Dove lo AI messo" in content

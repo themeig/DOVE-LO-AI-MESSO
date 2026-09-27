@@ -1,6 +1,6 @@
 {
-  "version_code": 307,
-  "version_name": "2.10.7",
+  "version_code": 308,
+  "version_name": "2.10.8",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "🏛️ Ripristino logo Caveau Olivetti in alto a sinistra e rimozione pulsanti ridondanti (dashboard, sistema, drive) dall'header della sidebar per un'interfaccia ancora più pulita ed essenziale."
+  "release_notes": "📱 Navigazione Mobile Intelligente & Gesture di Swipe: risolto il tasto indietro su Android che ora torna correttamente alla selezione delle chat anziché uscire dall'app, e introdotta la gesture di swipe orizzontale per cambiare fluidamente tra Dashboard, Conversa e Sistema."
 }

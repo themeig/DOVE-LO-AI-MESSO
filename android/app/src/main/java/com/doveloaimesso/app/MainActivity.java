@@ -138,12 +138,32 @@ public class MainActivity extends AppCompatActivity {
         checkForUpdates(false);
         lastAutoCheckTime = System.currentTimeMillis();
 
-        // Gestione tasto indietro hardware nativo
+        // Gestione tasto indietro hardware nativo delegata alla Web App
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            private long lastBackPressTime = 0;
+
             @Override
             public void handleOnBackPressed() {
-                if (webView != null && webView.canGoBack()) {
-                    webView.goBack();
+                if (webView != null && errorLayout.getVisibility() != View.VISIBLE) {
+                    webView.evaluateJavascript(
+                        "typeof window.handleNativeBackPress === 'function' ? window.handleNativeBackPress() : false;",
+                        value -> {
+                            boolean handled = "true".equalsIgnoreCase(value) || "\"true\"".equalsIgnoreCase(value);
+                            if (!handled) {
+                                if (webView.canGoBack()) {
+                                    webView.goBack();
+                                    return;
+                                }
+                                long now = System.currentTimeMillis();
+                                if (now - lastBackPressTime < 2000) {
+                                    finish();
+                                } else {
+                                    lastBackPressTime = now;
+                                    Toast.makeText(MainActivity.this, "Premi di nuovo per uscire da Dove lo AI messo", Toast.LENGTH_SHORT).show();
+                                }
+                            }
+                        }
+                    );
                 } else {
                     finish();
                 }
