@@ -133,7 +133,7 @@ def test_agent_service_execute_tool_read_vault_document_content(db_session: Sess
     assert "590" in tool_res["markdown_table"]
 
 
-def test_agent_fallback_deterministic_excel_query(db_session: Session, tmp_path):
+def test_agent_fallback_deterministic_excel_query(db_session: Session, tmp_path, monkeypatch):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Fatture"
@@ -157,6 +157,8 @@ def test_agent_fallback_deterministic_excel_query(db_session: Session, tmp_path)
     db_session.commit()
 
     agent = AgenticChatService()
+    monkeypatch.setattr(agent.settings, "OPENROUTER_API_KEY", "")
+    monkeypatch.setattr(agent.settings, "GEMINI_API_KEY", "")
     # Domanda specifica sui dati di Excel
     resp = agent.run_turn(
         user_text="cosa c'è nella riga del cliente Mario Rossi nel foglio excel?",

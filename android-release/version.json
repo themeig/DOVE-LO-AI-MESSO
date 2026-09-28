@@ -1,6 +1,6 @@
 {
-  "version_code": 324,
-  "version_name": "2.10.24",
+  "version_code": 325,
+  "version_name": "2.11.0",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ Migliorie grafiche bottoni Pannello: scritte e metriche ingrandite su mobile, freccia direzionale verso destra interattiva inserita in ogni quadrato (desktop & mobile) per evidenziare la cliccabilità."
+  "release_notes": "🏗️ Refactoring Architettura Modulare allo stato dell'arte: eliminazione dei monoliti di codice, suddivisione in package specializzati backend (app.services.agent, app.services.archive) e moduli frontend (static/js/modules/) secondo i principi di Separation of Concerns (SoC)."
 }

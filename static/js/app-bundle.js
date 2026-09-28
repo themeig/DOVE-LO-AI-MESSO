@@ -1,3 +1,20 @@
+/**
+ * DOVE LO AI MESSO - Frontend App Bundle (Compilato da Architettura Modulare)
+ * Moduli sorgente situati in: static/js/modules/
+ * 1. 01-core.js: Autenticazione, Badge Versione, Sicurezza & Lock Screen
+ * 2. 02-navigation.js: Carousel Slide, Touch Gestures 1:1 & Popstate
+ * 3. 03-threads.js: Canali Conversazionali, Gruppi, Modelli AI & Schede Sistema
+ * 4. 04-cloud.js: Google Drive Cloud Sync & Google Calendar Sync
+ * 5. 05-chat.js: Chat Engine, Vocale Whisper, Markdown & Schede Protocollo
+ * 6. 06-panel.js: Hub Pannello 4 Quadrati, FinTech KPI, Ledger & Scadenze
+ * 7. 07-modals.js: Viewer File Office/PDF, Backup ZIP & Folders Watcher
+ */
+
+
+// >>> INIZIO MODULO: 01-core.js <<<
+// =========================================================================
+// MODULO 1: Core, Autenticazione, Ambiente, Sicurezza & Lock Screen
+// =========================================================================
     const chatView = document.getElementById('chatView');
     const dashboardView = document.getElementById('dashboardView');
     const systemView = document.getElementById('systemView');
@@ -500,6 +517,14 @@
       }
     }
 
+
+// <<< FINE MODULO: 01-core.js >>>
+
+
+// >>> INIZIO MODULO: 02-navigation.js <<<
+// =========================================================================
+// MODULO 2: Navigazione, Slide Carousel, Touch Gestures 1:1 & Popstate
+// =========================================================================
     // --- Navigazione & Scorrimento Orizzontale a Slide tra Schermate (Slides Carousel) ---
     let isTransitioningScreens = false;
     let currentActiveScreen = 'chat'; // 'dashboard' | 'chat' | 'settings'
@@ -745,473 +770,6 @@
       }
     }
 
-    // --- Gestione Threads, Gruppi e Aree Tematiche ---
-    async function loadThreads() {
-      try {
-        const res = await fetch('/api/threads', { headers: authHeaders() });
-        if (!res.ok) throw new Error("Errore recupero thread");
-        const data = await res.json();
-        threadsCache = data.threads || [];
-        renderThreadsList();
-        updateDashboardThreadFilter();
-        const found = threadsCache.find(t => t.id === currentThreadId);
-        if (found) {
-          updateActiveThreadHeader(found);
-        } else if (threadsCache.length > 0) {
-          switchThread(threadsCache[0].id, false);
-        }
-      } catch (err) {
-        console.error("Errore loadThreads:", err);
-      }
-    }
-
-    function sanitizeAssistantText(text) {
-      if (!text) return '';
-      let cleaned = String(text);
-      // Rimuovi tag residui XML di tool o thinking
-      cleaned = cleaned.replace(/<(?:thought|think|tool_call|tool_response|\w+_response)[^>]*>[\s\S]*?<\/(?:thought|think|tool_call|tool_response|\w+_response)>/gi, '');
-      cleaned = cleaned.replace(/<\/?(?:thought|think|tool_call|tool_response|function|parameter|arg_key|arg_value|\w+_response)[^>]*>/gi, '');
-      // Rimuovi blocchi JSON di tool in testa o residui di chiamate tool
-      cleaned = cleaned.replace(/^\s*\{"\w*response"\s*:\s*\{[\s\S]*?\}\s*\}\s*/i, '');
-      cleaned = cleaned.replace(/^\s*\{"(?:confirmation|target_type|targettype|target_id|targetid|deletevaultrecord|delete_vault_record)"\s*:[\s\S]*?\}\s*\}?\s*/i, '');
-      if (/^\s*\{[\s\S]*\}\s*$/.test(cleaned) && (cleaned.includes('response') || cleaned.includes('confirmation') || cleaned.includes('targetid'))) {
-        cleaned = '';
-      }
-      return cleaned.trim();
-    }
-
-    function cleanSidebarPreview(text) {
-      if (!text) return 'Nessun messaggio';
-      let clean = sanitizeAssistantText(String(text))
-        .replace(/<[^>]*>/g, '') // rimuovi tag html
-        .replace(/[*_~`#>•-]/g, '') // rimuovi caratteri markdown
-        .replace(/\r?\n|\r/g, ' ') // sostituisci a capo con spazio singolo
-        .replace(/\s+/g, ' ') // collassa spazi multipli
-        .trim();
-      return clean || 'Nessun messaggio';
-    }
-
-    function getTime() {
-      const d = new Date();
-      return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-    }
-
-    function formatSidebarTime(t) {
-      if (!t) return '';
-      const iso = t.last_message_iso || t.created_at;
-      if (iso) {
-        const d = new Date(iso);
-        if (!isNaN(d.getTime())) {
-          const now = new Date();
-          const targetDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          const diffTime = today.getTime() - targetDay.getTime();
-          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-          if (diffDays <= 0) {
-            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-          } else if (diffDays === 1) {
-            return 'Ieri';
-          } else if (diffDays > 1 && diffDays < 7) {
-            const day = d.toLocaleDateString('it-IT', { weekday: 'short' });
-            return day.charAt(0).toUpperCase() + day.slice(1);
-          } else {
-            return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-          }
-        }
-      }
-      return t.last_message_time || '';
-    }
-
-    function renderThreadsList() {
-      const container = document.getElementById('threadsContainer');
-      const searchVal = (document.getElementById('threadsSearchInput')?.value || '').toLowerCase().trim();
-      if (!container) return;
-
-      let filtered = threadsCache;
-      if (activeThreadFilter === 'group') {
-        filtered = filtered.filter(t => t.thread_type === 'group');
-      } else if (activeThreadFilter === 'thematic') {
-        filtered = filtered.filter(t => t.thread_type === 'thematic');
-      }
-
-      if (searchVal) {
-        filtered = filtered.filter(t => 
-          (t.name || '').toLowerCase().includes(searchVal) ||
-          (t.description || '').toLowerCase().includes(searchVal) ||
-          (t.members || []).some(m => m.toLowerCase().includes(searchVal))
-        );
-      }
-
-      if (filtered.length === 0) {
-        container.innerHTML = `
-          <div class="p-8 text-center text-slate-400 text-xs">
-            <i class="fa-solid fa-comments text-2xl mb-2 text-slate-300"></i>
-            <p>Nessun gruppo o area trovata.</p>
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = filtered.map(t => {
-        const isActive = t.id === currentThreadId;
-        const activeClass = isActive ? 'active-thread-item bg-[#FAF8F2] border-l-4 border-[#3C5A48]' : 'hover:bg-[#FAF8F2]';
-        const isGroup = t.thread_type === 'group';
-        const badgeTag = isGroup 
-          ? `<span class="stamp-oli text-[8px]">GRUPPO</span>`
-          : `<span class="stamp-oli text-[8px]">AREA</span>`;
-
-        const activeTask = activeThreadTasks[t.id];
-        const rawLastMsg = t.last_message || t.description || 'Nessun messaggio';
-        const cleanPreview = cleanSidebarPreview(rawLastMsg);
-        const timeStr = formatSidebarTime(t);
-
-        // Badge rotella che gira sull'avatar del thread quando l'assistente sta lavorando
-        const avatarSpinner = activeTask ? `
-          <span class="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-xs ring-1 ring-[#C84B31] z-10" title="${escapeHtml(activeTask.statusText || 'In elaborazione...')}">
-            <i class="fa-solid fa-circle-notch text-[#C84B31] text-[11px] animate-spin"></i>
-          </span>
-        ` : '';
-
-        let previewHtml = '';
-        const rightPillHtml = `<span class="text-[10px] text-[#7A7568] shrink-0 font-mono-code">${escapeHtml(timeStr)}</span>`;
-
-        if (activeTask) {
-          const pctStr = (activeTask.progressPercent !== null && activeTask.progressPercent !== undefined && !isNaN(activeTask.progressPercent))
-            ? ` (${activeTask.progressPercent}%)`
-            : '';
-          const statusDesc = activeTask.statusText || 'Elaborazione in corso...';
-          previewHtml = `
-            <p class="text-[11px] text-[#3C5A48] font-semibold truncate leading-tight flex-1 flex items-center gap-1.5 overflow-hidden whitespace-nowrap block" title="${escapeHtml(statusDesc + pctStr)}">
-              <i class="fa-solid fa-circle-notch text-[10px] text-[#C84B31] animate-spin shrink-0"></i>
-              <span class="truncate">${escapeHtml(statusDesc + pctStr)}</span>
-            </p>
-          `;
-        } else {
-          previewHtml = `
-            <p class="text-[11px] text-[#7A7568] truncate leading-tight flex-1 overflow-hidden whitespace-nowrap block font-mono-code" title="${escapeHtml(cleanPreview)}">${escapeHtml(cleanPreview)}</p>
-          `;
-        }
-
-        return `
-          <div onclick="switchThread('${t.id}')" class="h-[72px] min-h-[72px] max-h-[72px] flex items-center gap-3 px-3.5 py-2 cursor-pointer transition select-none ${activeClass} border-b border-[#E3DDD1] overflow-hidden box-border">
-            <div class="relative shrink-0">
-              <div class="thread-avatar w-11 h-11 rounded-xs flex items-center justify-center text-white text-lg font-bold border border-[#E3DDD1] shadow-2xs ${t.color || 'bg-[#3C5A48]'}">
-                <i class="fa-solid ${t.icon || 'fa-compass'}"></i>
-              </div>
-              ${avatarSpinner}
-            </div>
-            <div class="flex-1 min-w-0 overflow-hidden">
-              <div class="flex items-center justify-between gap-1 mb-1">
-                <h4 class="font-bold text-xs text-[#222220] font-space truncate">${escapeHtml(t.name)}</h4>
-                ${rightPillHtml}
-              </div>
-              <div class="flex items-center justify-between gap-2 overflow-hidden">
-                ${previewHtml}
-                <div class="shrink-0">${badgeTag}</div>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function setThreadFilter(filter) {
-      activeThreadFilter = filter;
-      const pAll = document.getElementById('pillAll');
-      const pGroup = document.getElementById('pillGroup');
-      const pThematic = document.getElementById('pillThematic');
-      
-      const isOli = getActiveTheme() === 'olivetti';
-      const activeStyle = isOli 
-        ? 'px-2.5 py-1 text-[10px] rounded-xs font-space font-bold transition bg-[#3C5A48] text-white cursor-pointer'
-        : 'px-2.5 py-1 text-xs rounded-full font-medium transition bg-[#E7FFDB] text-[#075E54] border border-[#25D366]/30 cursor-pointer';
-      const inactiveStyle = isOli
-        ? 'px-2.5 py-1 text-[10px] rounded-xs font-space font-bold transition bg-white border border-[#E3DDD1] text-[#7A7568] hover:text-[#222220] cursor-pointer'
-        : 'px-2.5 py-1 text-xs rounded-full font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-600 cursor-pointer';
-
-      if (pAll) pAll.className = filter === 'all' ? activeStyle : inactiveStyle;
-      if (pGroup) pGroup.className = filter === 'group' ? activeStyle : inactiveStyle;
-      if (pThematic) pThematic.className = filter === 'thematic' ? activeStyle : inactiveStyle;
-
-      renderThreadsList();
-    }
-
-    async function switchThread(threadId, fetchMessages = true) {
-      currentThreadId = threadId;
-      window.currentThreadId = threadId;
-      if (typeof cancelQuoteReply === 'function') cancelQuoteReply();
-      deadlineBannerDismissed = false;
-      const thread = threadsCache.find(t => t.id === threadId);
-      if (thread) {
-        updateActiveThreadHeader(thread);
-      }
-      renderThreadsList();
-      showConversation();
-      checkDeadlineAlerts(threadId);
-
-      if (fetchMessages) {
-        await loadThreadMessages(threadId);
-      }
-      scrollToBottom(false);
-    }
-
-    function updateActiveThreadHeader(thread) {
-      const titleEl = document.getElementById('activeThreadTitle');
-      const subEl = document.getElementById('activeThreadSubtitle');
-      const iconEl = document.getElementById('activeThreadIcon');
-      const avatarEl = document.getElementById('activeThreadAvatar');
-      const delBtn = document.getElementById('deleteThreadBtn');
-
-      if (titleEl) titleEl.textContent = thread.name;
-      if (iconEl) iconEl.className = `fa-solid ${thread.icon || 'fa-compass'}`;
-      if (avatarEl) {
-        avatarEl.className = `w-8 h-8 rounded-xs flex items-center justify-center text-white text-xs font-bold border border-[#E3DDD1] shadow-2xs shrink-0 ${thread.color || 'bg-[#3C5A48]'}`;
-      }
-
-      if (subEl) {
-        if (thread.thread_type === 'group') {
-          const mList = thread.members && thread.members.length > 0 ? thread.members.join(', ') : 'Io';
-          subEl.textContent = `Membri: ${mList} • online`;
-        } else {
-          subEl.textContent = `${thread.description || 'Area tematica'} • ${thread.message_count || 0} messaggi`;
-        }
-      }
-
-      if (delBtn) {
-        if (thread.id === 'general') {
-          delBtn.classList.add('hidden');
-        } else {
-          delBtn.classList.remove('hidden');
-        }
-      }
-    }
-
-    // Estrae e normalizza la data di un messaggio come oggetto Date valido nel fuso orario locale
-    function parseMessageDate(m) {
-      if (!m) return new Date();
-      if (m.created_at) {
-        const d = new Date(m.created_at);
-        if (!isNaN(d.getTime())) return d;
-      }
-      if (m.date) {
-        const d = new Date(m.date + 'T00:00:00');
-        if (!isNaN(d.getTime())) return d;
-      }
-      if (m.timestamp && typeof m.timestamp === 'string' && m.timestamp.length > 5) {
-        const d = new Date(m.timestamp);
-        if (!isNaN(d.getTime())) return d;
-      }
-      return new Date();
-    }
-
-    // Formatta l'orario di invio reale del messaggio (HH:MM) nel fuso orario locale del client
-    function formatMessageTime(m) {
-      if (!m) return getTime();
-      if (typeof m === 'string') {
-        const trimmed = m.trim();
-        if (/^\d{1,2}:\d{2}$/.test(trimmed)) return trimmed.padStart(5, '0');
-        const d = new Date(trimmed);
-        if (!isNaN(d.getTime())) {
-          return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-        }
-        return trimmed;
-      }
-      if (m.created_at) {
-        const d = new Date(m.created_at);
-        if (!isNaN(d.getTime())) {
-          return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-        }
-      }
-      if (m.timestamp && typeof m.timestamp === 'string') {
-        const trimmed = m.timestamp.trim();
-        if (/^\d{1,2}:\d{2}$/.test(trimmed)) return trimmed.padStart(5, '0');
-        const d = new Date(trimmed);
-        if (!isNaN(d.getTime())) {
-          return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-        }
-      }
-      return getTime();
-    }
-
-    // Formatta l'etichetta del divisore di data nello stile WhatsApp (OGGI, IERI, giorno della settimana o data completa)
-    function formatWhatsAppDateLabel(dateObj) {
-      if (!dateObj || isNaN(dateObj.getTime())) return 'OGGI';
-      const now = new Date();
-      const targetDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const diffTime = today.getTime() - targetDay.getTime();
-      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays <= 0) {
-        return 'OGGI';
-      } else if (diffDays === 1) {
-        return 'IERI';
-      } else if (diffDays > 1 && diffDays < 7) {
-        const dayName = targetDay.toLocaleDateString('it-IT', { weekday: 'long' });
-        return dayName.toUpperCase();
-      } else {
-        return targetDay.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
-      }
-    }
-
-    // Inserisce il separatore di data stile WhatsApp nel flusso della chat (evita duplicati consecutivi)
-    function appendDateDivider(dateObj, dateKey = null) {
-      if (!chatFeed) return;
-      const d = dateObj || new Date();
-      const key = dateKey || `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      
-      if (chatFeed.querySelector(`[data-chat-date="${key}"]`)) return;
-
-      const label = formatWhatsAppDateLabel(d);
-      const divider = document.createElement('div');
-      divider.className = 'chat-date-divider-wrapper flex justify-center my-3 select-none';
-      divider.setAttribute('data-chat-date', key);
-
-      const isOli = getActiveTheme() === 'olivetti';
-      if (isOli) {
-        divider.innerHTML = `
-          <span class="chat-date-divider stamp-oli text-[9px] font-mono-code font-bold tracking-wider px-3 py-1 bg-[#FAF8F2] border border-[#D8D2C4] text-[#7A7568] shadow-2xs rounded-xs flex items-center gap-1.5">
-            <i class="fa-regular fa-calendar text-[9px] opacity-75"></i>
-            <span>${escapeHtml(label)}</span>
-          </span>
-        `;
-      } else {
-        divider.innerHTML = `
-          <span class="chat-date-divider px-3 py-1 bg-white border border-slate-200/80 rounded-lg shadow-2xs text-[11px] font-medium text-[#54656f] flex items-center gap-1.5">
-            <i class="fa-regular fa-calendar text-[10px] text-slate-400"></i>
-            <span>${escapeHtml(label)}</span>
-          </span>
-        `;
-      }
-
-      chatFeed.appendChild(divider);
-    }
-
-    // Assicura che prima di un nuovo messaggio di oggi sia visibile il badge "OGGI"
-    function ensureTodayDateDivider() {
-      if (!chatFeed) return;
-      const today = new Date();
-      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      if (!chatFeed.querySelector(`[data-chat-date="${todayKey}"]`)) {
-        appendDateDivider(today, todayKey);
-      }
-    }
-
-    async function loadThreadMessages(threadId) {
-      chatFeed.innerHTML = `
-        <div class="flex justify-center my-4">
-          <span class="text-xs text-slate-400 bg-white/80 px-3 py-1 rounded-xs shadow-2xs font-mono-code">
-            <i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Caricamento messaggi...
-          </span>
-        </div>
-      `;
-      try {
-        const res = await fetch(`/api/threads/${encodeURIComponent(threadId)}/messages`);
-        if (!res.ok) throw new Error("Errore recupero messaggi");
-        const data = await res.json();
-        if (threadId !== currentThreadId) return; // Se l'utente ha cambiato chat nel frattempo, non sovrascrivere
-        const msgs = data.messages || [];
-
-        chatFeed.innerHTML = '';
-
-        if (msgs.length === 0) {
-          const today = new Date();
-          const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-          appendDateDivider(today, todayKey);
-        }
-
-        let lastDateKey = null;
-
-        for (const m of msgs) {
-          const mDate = parseMessageDate(m);
-          const dateKey = `${mDate.getFullYear()}-${String(mDate.getMonth() + 1).padStart(2, '0')}-${String(mDate.getDate()).padStart(2, '0')}`;
-          
-          if (dateKey !== lastDateKey) {
-            appendDateDivider(mDate, dateKey);
-            lastDateKey = dateKey;
-          }
-
-          const timeStr = formatMessageTime(m);
-
-          if (m.sender === 'user') {
-            const quoted = m.metadata && m.metadata.quoted_message ? m.metadata.quoted_message : null;
-            if (m.message_type === 'audio' && m.metadata && m.metadata.audio_url) {
-              const trText = m.metadata.transcription || (m.content && m.content.startsWith('🎤 ') ? m.content.slice(2).trim() : null);
-              appendUserAudioBubble(m.metadata.audio_url, m.metadata.duration || 0, quoted, trText, timeStr);
-            } else if (m.message_type === 'document' || (m.metadata && (m.metadata.file_url || m.metadata.document_id || m.metadata.documents)) || (m.content && m.content.startsWith('Caricato file:'))) {
-              const firstDoc = (m.metadata && m.metadata.documents && m.metadata.documents[0]) || null;
-              const fileName = (m.metadata && m.metadata.file_name) || (firstDoc && firstDoc.title) || (m.content ? m.content.replace(/^Caricato file:\s*/i, '').trim() : 'Documento');
-              const fileUrl = (m.metadata && m.metadata.file_url) || (firstDoc && firstDoc.file_url) || (m.metadata && m.metadata.document_id ? `/uploads/doc_${m.metadata.document_id}` : null);
-              const downloadUrl = (m.metadata && m.metadata.download_url) || (firstDoc && firstDoc.download_url) || fileUrl;
-              const fileSize = (m.metadata && m.metadata.file_size) || 0;
-              const fType = ((m.metadata && m.metadata.file_type) || (firstDoc && firstDoc.file_type) || '').toLowerCase();
-              const isImg = fType.startsWith('image') || /\.(jpe?g|png|webp|gif|bmp)$/i.test(fileName) || /\.(jpe?g|png|webp|gif|bmp)$/i.test(fileUrl || '');
-              const isPdf = fType.includes('pdf') || /\.pdf$/i.test(fileName) || /\.pdf$/i.test(fileUrl || '');
-              const docId = (firstDoc && (firstDoc.id || firstDoc.document_id)) || (m.metadata ? m.metadata.document_id : null);
-              appendUserFileBubble(fileName, fileSize, fileUrl, isImg, isPdf, downloadUrl, docId, timeStr);
-            } else {
-              appendUserBubble(m.content, quoted, timeStr);
-            }
-          } else {
-            let docs = m.metadata && m.metadata.documents ? m.metadata.documents : null;
-            if (!docs && m.metadata && m.metadata.document_id) {
-              docs = [{
-                id: m.metadata.document_id,
-                document_id: m.metadata.document_id,
-                title: (m.content && m.content.match(/\*\*(.*?)\*\*/)?.[1]) || 'Documento',
-                file_url: `/api/documents/${m.metadata.document_id}/file`,
-                download_url: `/api/documents/${m.metadata.document_id}/download`,
-                file_type: 'application/pdf'
-              }];
-            }
-            const conf = m.metadata && m.metadata.confirmation ? m.metadata.confirmation : null;
-            const itemPhoto = m.metadata && m.metadata.item_photo ? m.metadata.item_photo : null;
-            const storeItem = m.metadata && m.metadata.store_item ? m.metadata.store_item : null;
-            const proposal = (m.metadata && m.metadata.proposal) || (m.metadata && m.metadata.action === 'SENSITIVE_FILE_PROPOSAL' ? m.metadata.proposal : null);
-            const routedModel = (m.metadata && m.metadata.routed_model) || null;
-            appendAssistantBubble(m.content, docs, conf, itemPhoto, storeItem, proposal, routedModel, timeStr);
-          }
-        }
-
-        // All'apertura del thread, scorri sempre immediatamente fino all'ultimo messaggio
-        scrollToBottom(false);
-        requestAnimationFrame(() => {
-          scrollToBottom(false);
-          setTimeout(() => scrollToBottom(false), 50);
-          setTimeout(() => scrollToBottom(false), 180);
-          setTimeout(() => scrollToBottom(false), 350);
-        });
-
-        // Se ci sono immagini che devono ancora terminare il rendering, mantieni la vista agganciata in fondo al completamento
-        const feedImgs = chatFeed.querySelectorAll('img');
-        feedImgs.forEach(img => {
-          if (!img.complete) {
-            img.addEventListener('load', () => scrollToBottom(false), { once: true });
-          }
-        });
-
-        // Se questo thread ha un'attività in background in corso, mostra la barra di avanzamento / typing indicator
-        if (activeThreadTasks[threadId]) {
-          const task = activeThreadTasks[threadId];
-          showTypingIndicator(task.statusText || 'Elaborazione in corso...', task.progressPercent);
-        } else {
-          hideTypingIndicator();
-        }
-        if (typeof syncInputControlsForCurrentThread === 'function') {
-          syncInputControlsForCurrentThread();
-        }
-      } catch (err) {
-        if (threadId !== currentThreadId) return;
-        console.error("Errore loadThreadMessages:", err);
-        chatFeed.innerHTML = `
-          <div class="flex justify-center my-4 text-xs text-red-600 bg-red-50 p-2 rounded-lg">
-            Impossibile caricare i messaggi di questa chat.
-          </div>
-        `;
-      }
-    }
-    window.loadThreadMessages = loadThreadMessages;
-    window.loadChatHistory = () => loadThreadMessages(currentThreadId);
 
     // --- Sistema Responsivo Mobile/Desktop ---
 
@@ -1756,6 +1314,483 @@
     window.addEventListener('orientationchange', () => {
       setTimeout(applyLayout, 200);
     });
+
+
+// <<< FINE MODULO: 02-navigation.js >>>
+
+
+// >>> INIZIO MODULO: 03-threads.js <<<
+// =========================================================================
+// MODULO 3: Gestione Canali Chat (Threads), Gruppi, Modelli AI & Impostazioni
+// =========================================================================
+    // --- Gestione Threads, Gruppi e Aree Tematiche ---
+    async function loadThreads() {
+      try {
+        const res = await fetch('/api/threads', { headers: authHeaders() });
+        if (!res.ok) throw new Error("Errore recupero thread");
+        const data = await res.json();
+        threadsCache = data.threads || [];
+        renderThreadsList();
+        updateDashboardThreadFilter();
+        const found = threadsCache.find(t => t.id === currentThreadId);
+        if (found) {
+          updateActiveThreadHeader(found);
+        } else if (threadsCache.length > 0) {
+          switchThread(threadsCache[0].id, false);
+        }
+      } catch (err) {
+        console.error("Errore loadThreads:", err);
+      }
+    }
+
+    function sanitizeAssistantText(text) {
+      if (!text) return '';
+      let cleaned = String(text);
+      // Rimuovi tag residui XML di tool o thinking
+      cleaned = cleaned.replace(/<(?:thought|think|tool_call|tool_response|\w+_response)[^>]*>[\s\S]*?<\/(?:thought|think|tool_call|tool_response|\w+_response)>/gi, '');
+      cleaned = cleaned.replace(/<\/?(?:thought|think|tool_call|tool_response|function|parameter|arg_key|arg_value|\w+_response)[^>]*>/gi, '');
+      // Rimuovi blocchi JSON di tool in testa o residui di chiamate tool
+      cleaned = cleaned.replace(/^\s*\{"\w*response"\s*:\s*\{[\s\S]*?\}\s*\}\s*/i, '');
+      cleaned = cleaned.replace(/^\s*\{"(?:confirmation|target_type|targettype|target_id|targetid|deletevaultrecord|delete_vault_record)"\s*:[\s\S]*?\}\s*\}?\s*/i, '');
+      if (/^\s*\{[\s\S]*\}\s*$/.test(cleaned) && (cleaned.includes('response') || cleaned.includes('confirmation') || cleaned.includes('targetid'))) {
+        cleaned = '';
+      }
+      return cleaned.trim();
+    }
+
+    function cleanSidebarPreview(text) {
+      if (!text) return 'Nessun messaggio';
+      let clean = sanitizeAssistantText(String(text))
+        .replace(/<[^>]*>/g, '') // rimuovi tag html
+        .replace(/[*_~`#>•-]/g, '') // rimuovi caratteri markdown
+        .replace(/\r?\n|\r/g, ' ') // sostituisci a capo con spazio singolo
+        .replace(/\s+/g, ' ') // collassa spazi multipli
+        .trim();
+      return clean || 'Nessun messaggio';
+    }
+
+    function getTime() {
+      const d = new Date();
+      return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }
+
+    function formatSidebarTime(t) {
+      if (!t) return '';
+      const iso = t.last_message_iso || t.created_at;
+      if (iso) {
+        const d = new Date(iso);
+        if (!isNaN(d.getTime())) {
+          const now = new Date();
+          const targetDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const diffTime = today.getTime() - targetDay.getTime();
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+          if (diffDays <= 0) {
+            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+          } else if (diffDays === 1) {
+            return 'Ieri';
+          } else if (diffDays > 1 && diffDays < 7) {
+            const day = d.toLocaleDateString('it-IT', { weekday: 'short' });
+            return day.charAt(0).toUpperCase() + day.slice(1);
+          } else {
+            return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          }
+        }
+      }
+      return t.last_message_time || '';
+    }
+
+    function renderThreadsList() {
+      const container = document.getElementById('threadsContainer');
+      const searchVal = (document.getElementById('threadsSearchInput')?.value || '').toLowerCase().trim();
+      if (!container) return;
+
+      let filtered = threadsCache;
+      if (activeThreadFilter === 'group') {
+        filtered = filtered.filter(t => t.thread_type === 'group');
+      } else if (activeThreadFilter === 'thematic') {
+        filtered = filtered.filter(t => t.thread_type === 'thematic');
+      }
+
+      if (searchVal) {
+        filtered = filtered.filter(t => 
+          (t.name || '').toLowerCase().includes(searchVal) ||
+          (t.description || '').toLowerCase().includes(searchVal) ||
+          (t.members || []).some(m => m.toLowerCase().includes(searchVal))
+        );
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="p-8 text-center text-slate-400 text-xs">
+            <i class="fa-solid fa-comments text-2xl mb-2 text-slate-300"></i>
+            <p>Nessun gruppo o area trovata.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(t => {
+        const isActive = t.id === currentThreadId;
+        const activeClass = isActive ? 'active-thread-item bg-[#FAF8F2] border-l-4 border-[#3C5A48]' : 'hover:bg-[#FAF8F2]';
+        const isGroup = t.thread_type === 'group';
+        const badgeTag = isGroup 
+          ? `<span class="stamp-oli text-[8px]">GRUPPO</span>`
+          : `<span class="stamp-oli text-[8px]">AREA</span>`;
+
+        const activeTask = activeThreadTasks[t.id];
+        const rawLastMsg = t.last_message || t.description || 'Nessun messaggio';
+        const cleanPreview = cleanSidebarPreview(rawLastMsg);
+        const timeStr = formatSidebarTime(t);
+
+        // Badge rotella che gira sull'avatar del thread quando l'assistente sta lavorando
+        const avatarSpinner = activeTask ? `
+          <span class="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-xs ring-1 ring-[#C84B31] z-10" title="${escapeHtml(activeTask.statusText || 'In elaborazione...')}">
+            <i class="fa-solid fa-circle-notch text-[#C84B31] text-[11px] animate-spin"></i>
+          </span>
+        ` : '';
+
+        let previewHtml = '';
+        const rightPillHtml = `<span class="text-[10px] text-[#7A7568] shrink-0 font-mono-code">${escapeHtml(timeStr)}</span>`;
+
+        if (activeTask) {
+          const pctStr = (activeTask.progressPercent !== null && activeTask.progressPercent !== undefined && !isNaN(activeTask.progressPercent))
+            ? ` (${activeTask.progressPercent}%)`
+            : '';
+          const statusDesc = activeTask.statusText || 'Elaborazione in corso...';
+          previewHtml = `
+            <p class="text-[11px] text-[#3C5A48] font-semibold truncate leading-tight flex-1 flex items-center gap-1.5 overflow-hidden whitespace-nowrap block" title="${escapeHtml(statusDesc + pctStr)}">
+              <i class="fa-solid fa-circle-notch text-[10px] text-[#C84B31] animate-spin shrink-0"></i>
+              <span class="truncate">${escapeHtml(statusDesc + pctStr)}</span>
+            </p>
+          `;
+        } else {
+          previewHtml = `
+            <p class="text-[11px] text-[#7A7568] truncate leading-tight flex-1 overflow-hidden whitespace-nowrap block font-mono-code" title="${escapeHtml(cleanPreview)}">${escapeHtml(cleanPreview)}</p>
+          `;
+        }
+
+        return `
+          <div onclick="switchThread('${t.id}')" class="h-[72px] min-h-[72px] max-h-[72px] flex items-center gap-3 px-3.5 py-2 cursor-pointer transition select-none ${activeClass} border-b border-[#E3DDD1] overflow-hidden box-border">
+            <div class="relative shrink-0">
+              <div class="thread-avatar w-11 h-11 rounded-xs flex items-center justify-center text-white text-lg font-bold border border-[#E3DDD1] shadow-2xs ${t.color || 'bg-[#3C5A48]'}">
+                <i class="fa-solid ${t.icon || 'fa-compass'}"></i>
+              </div>
+              ${avatarSpinner}
+            </div>
+            <div class="flex-1 min-w-0 overflow-hidden">
+              <div class="flex items-center justify-between gap-1 mb-1">
+                <h4 class="font-bold text-xs text-[#222220] font-space truncate">${escapeHtml(t.name)}</h4>
+                ${rightPillHtml}
+              </div>
+              <div class="flex items-center justify-between gap-2 overflow-hidden">
+                ${previewHtml}
+                <div class="shrink-0">${badgeTag}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setThreadFilter(filter) {
+      activeThreadFilter = filter;
+      const pAll = document.getElementById('pillAll');
+      const pGroup = document.getElementById('pillGroup');
+      const pThematic = document.getElementById('pillThematic');
+      
+      const isOli = getActiveTheme() === 'olivetti';
+      const activeStyle = isOli 
+        ? 'px-2.5 py-1 text-[10px] rounded-xs font-space font-bold transition bg-[#3C5A48] text-white cursor-pointer'
+        : 'px-2.5 py-1 text-xs rounded-full font-medium transition bg-[#E7FFDB] text-[#075E54] border border-[#25D366]/30 cursor-pointer';
+      const inactiveStyle = isOli
+        ? 'px-2.5 py-1 text-[10px] rounded-xs font-space font-bold transition bg-white border border-[#E3DDD1] text-[#7A7568] hover:text-[#222220] cursor-pointer'
+        : 'px-2.5 py-1 text-xs rounded-full font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-600 cursor-pointer';
+
+      if (pAll) pAll.className = filter === 'all' ? activeStyle : inactiveStyle;
+      if (pGroup) pGroup.className = filter === 'group' ? activeStyle : inactiveStyle;
+      if (pThematic) pThematic.className = filter === 'thematic' ? activeStyle : inactiveStyle;
+
+      renderThreadsList();
+    }
+
+    async function switchThread(threadId, fetchMessages = true) {
+      currentThreadId = threadId;
+      window.currentThreadId = threadId;
+      if (typeof cancelQuoteReply === 'function') cancelQuoteReply();
+      deadlineBannerDismissed = false;
+      const thread = threadsCache.find(t => t.id === threadId);
+      if (thread) {
+        updateActiveThreadHeader(thread);
+      }
+      renderThreadsList();
+      showConversation();
+      checkDeadlineAlerts(threadId);
+
+      if (fetchMessages) {
+        await loadThreadMessages(threadId);
+      }
+      scrollToBottom(false);
+    }
+
+    function updateActiveThreadHeader(thread) {
+      const titleEl = document.getElementById('activeThreadTitle');
+      const subEl = document.getElementById('activeThreadSubtitle');
+      const iconEl = document.getElementById('activeThreadIcon');
+      const avatarEl = document.getElementById('activeThreadAvatar');
+      const delBtn = document.getElementById('deleteThreadBtn');
+
+      if (titleEl) titleEl.textContent = thread.name;
+      if (iconEl) iconEl.className = `fa-solid ${thread.icon || 'fa-compass'}`;
+      if (avatarEl) {
+        avatarEl.className = `w-8 h-8 rounded-xs flex items-center justify-center text-white text-xs font-bold border border-[#E3DDD1] shadow-2xs shrink-0 ${thread.color || 'bg-[#3C5A48]'}`;
+      }
+
+      if (subEl) {
+        if (thread.thread_type === 'group') {
+          const mList = thread.members && thread.members.length > 0 ? thread.members.join(', ') : 'Io';
+          subEl.textContent = `Membri: ${mList} • online`;
+        } else {
+          subEl.textContent = `${thread.description || 'Area tematica'} • ${thread.message_count || 0} messaggi`;
+        }
+      }
+
+      if (delBtn) {
+        if (thread.id === 'general') {
+          delBtn.classList.add('hidden');
+        } else {
+          delBtn.classList.remove('hidden');
+        }
+      }
+    }
+
+    // Estrae e normalizza la data di un messaggio come oggetto Date valido nel fuso orario locale
+    function parseMessageDate(m) {
+      if (!m) return new Date();
+      if (m.created_at) {
+        const d = new Date(m.created_at);
+        if (!isNaN(d.getTime())) return d;
+      }
+      if (m.date) {
+        const d = new Date(m.date + 'T00:00:00');
+        if (!isNaN(d.getTime())) return d;
+      }
+      if (m.timestamp && typeof m.timestamp === 'string' && m.timestamp.length > 5) {
+        const d = new Date(m.timestamp);
+        if (!isNaN(d.getTime())) return d;
+      }
+      return new Date();
+    }
+
+    // Formatta l'orario di invio reale del messaggio (HH:MM) nel fuso orario locale del client
+    function formatMessageTime(m) {
+      if (!m) return getTime();
+      if (typeof m === 'string') {
+        const trimmed = m.trim();
+        if (/^\d{1,2}:\d{2}$/.test(trimmed)) return trimmed.padStart(5, '0');
+        const d = new Date(trimmed);
+        if (!isNaN(d.getTime())) {
+          return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+        return trimmed;
+      }
+      if (m.created_at) {
+        const d = new Date(m.created_at);
+        if (!isNaN(d.getTime())) {
+          return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+      }
+      if (m.timestamp && typeof m.timestamp === 'string') {
+        const trimmed = m.timestamp.trim();
+        if (/^\d{1,2}:\d{2}$/.test(trimmed)) return trimmed.padStart(5, '0');
+        const d = new Date(trimmed);
+        if (!isNaN(d.getTime())) {
+          return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+      }
+      return getTime();
+    }
+
+    // Formatta l'etichetta del divisore di data nello stile WhatsApp (OGGI, IERI, giorno della settimana o data completa)
+    function formatWhatsAppDateLabel(dateObj) {
+      if (!dateObj || isNaN(dateObj.getTime())) return 'OGGI';
+      const now = new Date();
+      const targetDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const diffTime = today.getTime() - targetDay.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 0) {
+        return 'OGGI';
+      } else if (diffDays === 1) {
+        return 'IERI';
+      } else if (diffDays > 1 && diffDays < 7) {
+        const dayName = targetDay.toLocaleDateString('it-IT', { weekday: 'long' });
+        return dayName.toUpperCase();
+      } else {
+        return targetDay.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+      }
+    }
+
+    // Inserisce il separatore di data stile WhatsApp nel flusso della chat (evita duplicati consecutivi)
+    function appendDateDivider(dateObj, dateKey = null) {
+      if (!chatFeed) return;
+      const d = dateObj || new Date();
+      const key = dateKey || `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      
+      if (chatFeed.querySelector(`[data-chat-date="${key}"]`)) return;
+
+      const label = formatWhatsAppDateLabel(d);
+      const divider = document.createElement('div');
+      divider.className = 'chat-date-divider-wrapper flex justify-center my-3 select-none';
+      divider.setAttribute('data-chat-date', key);
+
+      const isOli = getActiveTheme() === 'olivetti';
+      if (isOli) {
+        divider.innerHTML = `
+          <span class="chat-date-divider stamp-oli text-[9px] font-mono-code font-bold tracking-wider px-3 py-1 bg-[#FAF8F2] border border-[#D8D2C4] text-[#7A7568] shadow-2xs rounded-xs flex items-center gap-1.5">
+            <i class="fa-regular fa-calendar text-[9px] opacity-75"></i>
+            <span>${escapeHtml(label)}</span>
+          </span>
+        `;
+      } else {
+        divider.innerHTML = `
+          <span class="chat-date-divider px-3 py-1 bg-white border border-slate-200/80 rounded-lg shadow-2xs text-[11px] font-medium text-[#54656f] flex items-center gap-1.5">
+            <i class="fa-regular fa-calendar text-[10px] text-slate-400"></i>
+            <span>${escapeHtml(label)}</span>
+          </span>
+        `;
+      }
+
+      chatFeed.appendChild(divider);
+    }
+
+    // Assicura che prima di un nuovo messaggio di oggi sia visibile il badge "OGGI"
+    function ensureTodayDateDivider() {
+      if (!chatFeed) return;
+      const today = new Date();
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      if (!chatFeed.querySelector(`[data-chat-date="${todayKey}"]`)) {
+        appendDateDivider(today, todayKey);
+      }
+    }
+
+    async function loadThreadMessages(threadId) {
+      chatFeed.innerHTML = `
+        <div class="flex justify-center my-4">
+          <span class="text-xs text-slate-400 bg-white/80 px-3 py-1 rounded-xs shadow-2xs font-mono-code">
+            <i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Caricamento messaggi...
+          </span>
+        </div>
+      `;
+      try {
+        const res = await fetch(`/api/threads/${encodeURIComponent(threadId)}/messages`);
+        if (!res.ok) throw new Error("Errore recupero messaggi");
+        const data = await res.json();
+        if (threadId !== currentThreadId) return; // Se l'utente ha cambiato chat nel frattempo, non sovrascrivere
+        const msgs = data.messages || [];
+
+        chatFeed.innerHTML = '';
+
+        if (msgs.length === 0) {
+          const today = new Date();
+          const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+          appendDateDivider(today, todayKey);
+        }
+
+        let lastDateKey = null;
+
+        for (const m of msgs) {
+          const mDate = parseMessageDate(m);
+          const dateKey = `${mDate.getFullYear()}-${String(mDate.getMonth() + 1).padStart(2, '0')}-${String(mDate.getDate()).padStart(2, '0')}`;
+          
+          if (dateKey !== lastDateKey) {
+            appendDateDivider(mDate, dateKey);
+            lastDateKey = dateKey;
+          }
+
+          const timeStr = formatMessageTime(m);
+
+          if (m.sender === 'user') {
+            const quoted = m.metadata && m.metadata.quoted_message ? m.metadata.quoted_message : null;
+            if (m.message_type === 'audio' && m.metadata && m.metadata.audio_url) {
+              const trText = m.metadata.transcription || (m.content && m.content.startsWith('🎤 ') ? m.content.slice(2).trim() : null);
+              appendUserAudioBubble(m.metadata.audio_url, m.metadata.duration || 0, quoted, trText, timeStr);
+            } else if (m.message_type === 'document' || (m.metadata && (m.metadata.file_url || m.metadata.document_id || m.metadata.documents)) || (m.content && m.content.startsWith('Caricato file:'))) {
+              const firstDoc = (m.metadata && m.metadata.documents && m.metadata.documents[0]) || null;
+              const fileName = (m.metadata && m.metadata.file_name) || (firstDoc && firstDoc.title) || (m.content ? m.content.replace(/^Caricato file:\s*/i, '').trim() : 'Documento');
+              const fileUrl = (m.metadata && m.metadata.file_url) || (firstDoc && firstDoc.file_url) || (m.metadata && m.metadata.document_id ? `/uploads/doc_${m.metadata.document_id}` : null);
+              const downloadUrl = (m.metadata && m.metadata.download_url) || (firstDoc && firstDoc.download_url) || fileUrl;
+              const fileSize = (m.metadata && m.metadata.file_size) || 0;
+              const fType = ((m.metadata && m.metadata.file_type) || (firstDoc && firstDoc.file_type) || '').toLowerCase();
+              const isImg = fType.startsWith('image') || /\.(jpe?g|png|webp|gif|bmp)$/i.test(fileName) || /\.(jpe?g|png|webp|gif|bmp)$/i.test(fileUrl || '');
+              const isPdf = fType.includes('pdf') || /\.pdf$/i.test(fileName) || /\.pdf$/i.test(fileUrl || '');
+              const docId = (firstDoc && (firstDoc.id || firstDoc.document_id)) || (m.metadata ? m.metadata.document_id : null);
+              appendUserFileBubble(fileName, fileSize, fileUrl, isImg, isPdf, downloadUrl, docId, timeStr);
+            } else {
+              appendUserBubble(m.content, quoted, timeStr);
+            }
+          } else {
+            let docs = m.metadata && m.metadata.documents ? m.metadata.documents : null;
+            if (!docs && m.metadata && m.metadata.document_id) {
+              docs = [{
+                id: m.metadata.document_id,
+                document_id: m.metadata.document_id,
+                title: (m.content && m.content.match(/\*\*(.*?)\*\*/)?.[1]) || 'Documento',
+                file_url: `/api/documents/${m.metadata.document_id}/file`,
+                download_url: `/api/documents/${m.metadata.document_id}/download`,
+                file_type: 'application/pdf'
+              }];
+            }
+            const conf = m.metadata && m.metadata.confirmation ? m.metadata.confirmation : null;
+            const itemPhoto = m.metadata && m.metadata.item_photo ? m.metadata.item_photo : null;
+            const storeItem = m.metadata && m.metadata.store_item ? m.metadata.store_item : null;
+            const proposal = (m.metadata && m.metadata.proposal) || (m.metadata && m.metadata.action === 'SENSITIVE_FILE_PROPOSAL' ? m.metadata.proposal : null);
+            const routedModel = (m.metadata && m.metadata.routed_model) || null;
+            appendAssistantBubble(m.content, docs, conf, itemPhoto, storeItem, proposal, routedModel, timeStr);
+          }
+        }
+
+        // All'apertura del thread, scorri sempre immediatamente fino all'ultimo messaggio
+        scrollToBottom(false);
+        requestAnimationFrame(() => {
+          scrollToBottom(false);
+          setTimeout(() => scrollToBottom(false), 50);
+          setTimeout(() => scrollToBottom(false), 180);
+          setTimeout(() => scrollToBottom(false), 350);
+        });
+
+        // Se ci sono immagini che devono ancora terminare il rendering, mantieni la vista agganciata in fondo al completamento
+        const feedImgs = chatFeed.querySelectorAll('img');
+        feedImgs.forEach(img => {
+          if (!img.complete) {
+            img.addEventListener('load', () => scrollToBottom(false), { once: true });
+          }
+        });
+
+        // Se questo thread ha un'attività in background in corso, mostra la barra di avanzamento / typing indicator
+        if (activeThreadTasks[threadId]) {
+          const task = activeThreadTasks[threadId];
+          showTypingIndicator(task.statusText || 'Elaborazione in corso...', task.progressPercent);
+        } else {
+          hideTypingIndicator();
+        }
+        if (typeof syncInputControlsForCurrentThread === 'function') {
+          syncInputControlsForCurrentThread();
+        }
+      } catch (err) {
+        if (threadId !== currentThreadId) return;
+        console.error("Errore loadThreadMessages:", err);
+        chatFeed.innerHTML = `
+          <div class="flex justify-center my-4 text-xs text-red-600 bg-red-50 p-2 rounded-lg">
+            Impossibile caricare i messaggi di questa chat.
+          </div>
+        `;
+      }
+    }
+    window.loadThreadMessages = loadThreadMessages;
+    window.loadChatHistory = () => loadThreadMessages(currentThreadId);
+
 
     // --- Gestione Modale Nuovo Thread / Gruppo ---
     function openNewThreadModal() {
@@ -2491,6 +2526,14 @@
     }
     window.loadCalendarStatus = loadCalendarStatus;
 
+
+// <<< FINE MODULO: 03-threads.js >>>
+
+
+// >>> INIZIO MODULO: 04-cloud.js <<<
+// =========================================================================
+// MODULO 4: Google Drive Cloud Sync & Google Calendar Auto-Sync
+// =========================================================================
     // --- Google Drive Cloud Sync Handlers ---
     let googleDriveStatusCache = null;
 
@@ -2752,111 +2795,14 @@
       }
     });
 
-    // --- White Paper Modal Handlers ---
-    function openWhitePaperModal() {
-      const modal = document.getElementById('whitePaperModal');
-      if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        const searchInput = document.getElementById('wpSearchInput');
-        if (searchInput) {
-          searchInput.value = '';
-          filterWhitePaperContent('');
-        }
-      }
-    }
 
-    function closeWhitePaperModal() {
-      const modal = document.getElementById('whitePaperModal');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }
-    }
-
-    function scrollWhitePaperSection(sectionId) {
-      const el = document.getElementById(sectionId);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-
-    function filterWhitePaperContent(query) {
-      const q = (query || '').toLowerCase().trim();
-      const sections = document.querySelectorAll('#whitePaperContent section');
-      sections.forEach(sec => {
-        if (!q || sec.textContent.toLowerCase().includes(q)) {
-          sec.style.display = '';
-        } else {
-          sec.style.display = 'none';
-        }
-      });
-    }
-
-    async function downloadWhitePaperMarkdown() {
-      try {
-        const res = await fetch('/api/whitepaper');
-        if (!res.ok) throw new Error('Errore nel recupero del White Paper');
-        const text = await res.text();
-        const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'WHITE_PAPER_DOVE_LO_AI_MESSO.md';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } catch (err) {
-        alert('Errore download White Paper: ' + err.message);
-      }
-    }
-
-    async function selectAiModel(modelId) {
-      const notice = document.getElementById('aiModelSavingNotice');
-      if (notice) notice.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Salvataggio...';
-      try {
-        const res = await fetch('/api/settings/ai-model', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model_id: modelId })
-        });
-        if (!res.ok) throw new Error("Errore aggiornamento modello");
-        const data = await res.json();
-        currentAiModel = data.current_model;
-        updateAiModelUI(data);
-        if (notice) notice.innerHTML = '<span class="text-[#3C5A48] font-bold font-mono-code"><i class="fa-solid fa-check mr-1"></i> Modello configurato e attivo</span>';
-        setTimeout(() => {
-          if (notice) notice.textContent = 'Salvataggio automatico istantaneo';
-        }, 2000);
-      } catch (err) {
-        console.error("Errore selectAiModel:", err);
-        if (notice) notice.innerHTML = '<span class="text-[#C84B31] font-bold font-mono-code"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Errore salvataggio</span>';
-      }
-    }
-
-    function handleFreeToggle(isFree) {
-      const targetModel = isFree ? 'nex-agi/nex-n2.5-pro:free' : 'google/gemini-2.5-flash-lite';
-      selectAiModel(targetModel);
-    }
+// <<< FINE MODULO: 04-cloud.js >>>
 
 
-    function updateDashboardThreadFilter() {
-      const select = document.getElementById('dashboardThreadSelect');
-      if (!select) return;
-      const currentVal = select.value;
-      select.innerHTML = '<option value="">📁 Tutti gli Spazi / Gruppi</option>';
-      threadsCache.forEach(t => {
-        const isGroup = t.thread_type === 'group';
-        const prefix = isGroup ? '👥' : '🗂️';
-        const opt = document.createElement('option');
-        opt.value = t.id;
-        opt.textContent = `${prefix} ${t.name}`;
-        if (t.id === currentVal) opt.selected = true;
-        select.appendChild(opt);
-      });
-    }
-
+// >>> INIZIO MODULO: 05-chat.js <<<
+// =========================================================================
+// MODULO 5: Chat Engine, Vocale Whisper, Markdown, Schede Widget & Upload
+// =========================================================================
     // --- Toggle Tasto Invio / Microfono ---
     input.addEventListener('input', () => {
       if (isGenerationActive) return;
@@ -6064,6 +6010,14 @@
       startVoiceRecording();
     }
 
+
+// <<< FINE MODULO: 05-chat.js >>>
+
+
+// >>> INIZIO MODULO: 06-panel.js <<<
+// =========================================================================
+// MODULO 6: Pannello Operativo (Hub 4 Quadrati, Panoramica, Ledger & Scadenze)
+// =========================================================================
     // --- Fetch Dashboard Live: GET /api/dashboard ---
     async function loadDashboard(filter = null) {
       if (filter !== null) currentFilter = filter;
@@ -7987,6 +7941,120 @@
       document.body.removeChild(link);
     }
 
+
+// <<< FINE MODULO: 06-panel.js >>>
+
+
+// >>> INIZIO MODULO: 07-modals.js <<<
+// =========================================================================
+// MODULO 7: Modali Operativi (Viewer File Office/PDF, Backup ZIP, Folders Watcher & Pitch Deck)
+// =========================================================================
+    // --- White Paper Modal Handlers ---
+    function openWhitePaperModal() {
+      const modal = document.getElementById('whitePaperModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        const searchInput = document.getElementById('wpSearchInput');
+        if (searchInput) {
+          searchInput.value = '';
+          filterWhitePaperContent('');
+        }
+      }
+    }
+
+    function closeWhitePaperModal() {
+      const modal = document.getElementById('whitePaperModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function scrollWhitePaperSection(sectionId) {
+      const el = document.getElementById(sectionId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function filterWhitePaperContent(query) {
+      const q = (query || '').toLowerCase().trim();
+      const sections = document.querySelectorAll('#whitePaperContent section');
+      sections.forEach(sec => {
+        if (!q || sec.textContent.toLowerCase().includes(q)) {
+          sec.style.display = '';
+        } else {
+          sec.style.display = 'none';
+        }
+      });
+    }
+
+    async function downloadWhitePaperMarkdown() {
+      try {
+        const res = await fetch('/api/whitepaper');
+        if (!res.ok) throw new Error('Errore nel recupero del White Paper');
+        const text = await res.text();
+        const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'WHITE_PAPER_DOVE_LO_AI_MESSO.md';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('Errore download White Paper: ' + err.message);
+      }
+    }
+
+    async function selectAiModel(modelId) {
+      const notice = document.getElementById('aiModelSavingNotice');
+      if (notice) notice.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Salvataggio...';
+      try {
+        const res = await fetch('/api/settings/ai-model', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model_id: modelId })
+        });
+        if (!res.ok) throw new Error("Errore aggiornamento modello");
+        const data = await res.json();
+        currentAiModel = data.current_model;
+        updateAiModelUI(data);
+        if (notice) notice.innerHTML = '<span class="text-[#3C5A48] font-bold font-mono-code"><i class="fa-solid fa-check mr-1"></i> Modello configurato e attivo</span>';
+        setTimeout(() => {
+          if (notice) notice.textContent = 'Salvataggio automatico istantaneo';
+        }, 2000);
+      } catch (err) {
+        console.error("Errore selectAiModel:", err);
+        if (notice) notice.innerHTML = '<span class="text-[#C84B31] font-bold font-mono-code"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Errore salvataggio</span>';
+      }
+    }
+
+    function handleFreeToggle(isFree) {
+      const targetModel = isFree ? 'nex-agi/nex-n2.5-pro:free' : 'google/gemini-2.5-flash-lite';
+      selectAiModel(targetModel);
+    }
+
+
+    function updateDashboardThreadFilter() {
+      const select = document.getElementById('dashboardThreadSelect');
+      if (!select) return;
+      const currentVal = select.value;
+      select.innerHTML = '<option value="">📁 Tutti gli Spazi / Gruppi</option>';
+      threadsCache.forEach(t => {
+        const isGroup = t.thread_type === 'group';
+        const prefix = isGroup ? '👥' : '🗂️';
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = `${prefix} ${t.name}`;
+        if (t.id === currentVal) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+
     // --- Modale Viewer Documenti & Immagini (PDF, Immagini, Excel, Word, CSV) ---
     function switchOfficeSheet(targetIdx) {
       const panels = document.querySelectorAll('.office-sheet-panel');
@@ -9593,3 +9661,6 @@
     });
     // Verifica immediata se il DOM è già pronto
     checkVaultAuth();
+
+// <<< FINE MODULO: 07-modals.js >>>
+
