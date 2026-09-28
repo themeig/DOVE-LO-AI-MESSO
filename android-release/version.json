@@ -1,6 +1,6 @@
 {
-  "version_code": 321,
-  "version_name": "2.10.21",
+  "version_code": 322,
+  "version_name": "2.10.22",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "🏛️ Riprogettazione Pannello: Panoramica in alto a sinistra con statistiche generali di utilizzo (totale chat/thread, documenti, scadenze rispettate e importi, scadenze non rispettate, indice di puntualità e oggetti tracciati). Bottoni minimali, puliti e intuitivi."
+  "release_notes": "📱 Ottimizzazione Mobile Pannello: 4 quadrati in formazione quadrata 2x2 compatta (Panoramica, Scadenze, Atti, Oggetti) visibili immediatamente senza scrolling verticale."
 }

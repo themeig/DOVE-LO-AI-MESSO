@@ -1376,51 +1376,51 @@
         </div>
 
         <!-- Intestazione Hub Pannello -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-[#E3DDD1]">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2 pb-1 border-b border-[#E3DDD1]">
           <div>
-            <h3 class="text-lg sm:text-xl font-black text-[#222220] font-space uppercase tracking-tight">PANNELLO DI CONTROLLO</h3>
-            <p class="text-[11px] text-[#7A7568] font-mono-code">Seleziona uno dei 4 registri per consultare o gestire il caveau</p>
+            <h3 class="text-sm sm:text-xl font-black text-[#222220] font-space uppercase tracking-tight">PANNELLO DI CONTROLLO</h3>
+            <p class="text-[10px] sm:text-[11px] text-[#7A7568] font-mono-code">Seleziona uno dei 4 registri per consultare o gestire il caveau</p>
           </div>
-          <div class="flex items-center gap-2 self-start sm:self-auto">
+          <div class="hidden sm:flex items-center gap-2 self-start sm:self-auto">
             <span class="stamp-oli text-[8px] font-bold">4 REGISTRI ATTIVI</span>
           </div>
         </div>
 
-        <!-- I 4 GROSSI BOTTONI (PANORAMICA, SCADENZE, ATTI, OGGETTI) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 py-2">
+        <!-- I 4 GROSSI BOTTONI (FORMAZIONE QUADRATA 2x2 ANCHE SU MOBILE) -->
+        <div class="grid grid-cols-2 gap-2.5 sm:gap-6 py-1 sm:py-2">
           
           <!-- 1. BOTTONE PANORAMICA (IN ALTO A SINISTRA) -->
           <button type="button" id="btnPanelPanoramica" onclick="openPanelSection('panoramica')" 
-                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#E3DDD1] hover:border-[#3C5A48] rounded-xs p-6 sm:p-7 flex flex-col justify-between text-left transition-all duration-150 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[170px] sm:min-h-[190px] shadow-xs select-none" 
+                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#E3DDD1] hover:border-[#3C5A48] rounded-xs p-3.5 sm:p-7 flex flex-col justify-between text-left transition-all duration-150 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[135px] sm:min-h-[190px] aspect-square sm:aspect-auto shadow-xs select-none" 
                   title="Clicca per aprire la Panoramica Generale e le Statistiche">
-            <div class="flex items-center justify-between">
-              <div class="w-11 h-11 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-lg text-[#3C5A48] group-hover:bg-[#3C5A48] group-hover:text-white transition shadow-2xs">
+            <div class="flex items-center justify-between gap-1">
+              <div class="w-8 h-8 sm:w-11 sm:h-11 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-xs sm:text-lg text-[#3C5A48] group-hover:bg-[#3C5A48] group-hover:text-white transition shadow-2xs shrink-0">
                 <i class="fa-solid fa-chart-pie"></i>
               </div>
-              <span class="stamp-oli stamp-solid-sage text-[8px] font-bold">REPORT & STATS</span>
+              <span class="stamp-oli stamp-solid-sage text-[7px] sm:text-[8px] font-bold px-1 sm:px-1.5 py-0.5 truncate max-w-[75px] sm:max-w-none">STATS</span>
             </div>
-            <div class="mt-4">
-              <h3 class="text-2xl sm:text-3xl font-black font-space text-[#222220] uppercase tracking-tight">PANORAMICA</h3>
-              <div class="mt-1 text-2xl sm:text-3xl font-black font-mono-code text-[#3C5A48]">
-                <span id="kpiTotalRecordsCount">0</span> <span class="text-xs font-mono-code text-[#7A7568] font-bold uppercase">record</span>
+            <div class="mt-1 sm:mt-4">
+              <h3 class="text-xs sm:text-2xl md:text-3xl font-black font-space text-[#222220] uppercase tracking-tight truncate">PANORAMICA</h3>
+              <div class="mt-0.5 sm:mt-1 text-base sm:text-2xl md:text-3xl font-black font-mono-code text-[#3C5A48] flex items-baseline gap-1">
+                <span id="kpiTotalRecordsCount">0</span> <span class="text-[9px] sm:text-xs font-mono-code text-[#7A7568] font-bold uppercase">record</span>
               </div>
             </div>
           </button>
 
           <!-- 2. BOTTONE SCADENZE (IN ALTO A DESTRA) -->
           <button type="button" id="btnPanelScadenze" onclick="openPanelSection('scadenze')" 
-                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#3C5A48] hover:border-[#C84B31] rounded-xs p-6 sm:p-7 flex flex-col justify-between text-left transition-all duration-150 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[170px] sm:min-h-[190px] shadow-xs select-none" 
+                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#3C5A48] hover:border-[#C84B31] rounded-xs p-3.5 sm:p-7 flex flex-col justify-between text-left transition-all duration-150 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[135px] sm:min-h-[190px] aspect-square sm:aspect-auto shadow-xs select-none" 
                   title="Clicca per aprire lo Scadenzario Fiscale e Bollette">
-            <div class="flex items-center justify-between">
-              <div class="w-11 h-11 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-lg text-[#C84B31] group-hover:bg-[#C84B31] group-hover:text-white transition shadow-2xs">
+            <div class="flex items-center justify-between gap-1">
+              <div class="w-8 h-8 sm:w-11 sm:h-11 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-xs sm:text-lg text-[#C84B31] group-hover:bg-[#C84B31] group-hover:text-white transition shadow-2xs shrink-0">
                 <i class="fa-solid fa-calendar-days"></i>
               </div>
-              <span id="kpiUpcomingBadge" class="stamp-oli stamp-terracotta text-[8px] font-bold">REGOLARE</span>
+              <span id="kpiUpcomingBadge" class="stamp-oli stamp-terracotta text-[7px] sm:text-[8px] font-bold px-1 sm:px-1.5 py-0.5 truncate max-w-[75px] sm:max-w-none">REGOLARE</span>
             </div>
-            <div class="mt-4">
-              <h3 class="text-2xl sm:text-3xl font-black font-space text-[#222220] uppercase tracking-tight">SCADENZE</h3>
-              <div id="kpiUpcomingAmount" class="mt-1 text-2xl sm:text-3xl font-black font-mono-code text-[#222220] whitespace-nowrap flex items-baseline gap-1.5">
-                <span class="text-lg sm:text-xl font-bold text-[#7A7568] select-none">€</span>
+            <div class="mt-1 sm:mt-4">
+              <h3 class="text-xs sm:text-2xl md:text-3xl font-black font-space text-[#222220] uppercase tracking-tight truncate">SCADENZE</h3>
+              <div id="kpiUpcomingAmount" class="mt-0.5 sm:mt-1 text-base sm:text-2xl md:text-3xl font-black font-mono-code text-[#222220] whitespace-nowrap flex items-baseline gap-1">
+                <span class="text-xs sm:text-xl font-bold text-[#7A7568] select-none">€</span>
                 <span>0,00</span>
               </div>
             </div>
@@ -1428,17 +1428,17 @@
 
           <!-- 3. BOTTONE ATTI (IN BASSO A SINISTRA) -->
           <button type="button" id="btnPanelAtti" onclick="openPanelSection('atti')" 
-                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#E3DDD1] hover:border-[#3C5A48] rounded-xs p-6 sm:p-7 flex flex-col justify-between text-left transition-all duration-150 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[170px] sm:min-h-[190px] shadow-xs select-none" 
+                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#E3DDD1] hover:border-[#3C5A48] rounded-xs p-3.5 sm:p-7 flex flex-col justify-between text-left transition-all duration-150 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[135px] sm:min-h-[190px] aspect-square sm:aspect-auto shadow-xs select-none" 
                   title="Clicca per aprire l'Archivio degli Atti e Documenti">
-            <div class="flex items-center justify-between">
-              <div class="w-11 h-11 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-lg text-[#3C5A48] group-hover:bg-[#3C5A48] group-hover:text-white transition shadow-2xs">
+            <div class="flex items-center justify-between gap-1">
+              <div class="w-8 h-8 sm:w-11 sm:h-11 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-xs sm:text-lg text-[#3C5A48] group-hover:bg-[#3C5A48] group-hover:text-white transition shadow-2xs shrink-0">
                 <i class="fa-solid fa-file-invoice"></i>
               </div>
-              <span class="stamp-oli stamp-solid-sage text-[8px] font-bold">DOCUMENTI</span>
+              <span class="stamp-oli stamp-solid-sage text-[7px] sm:text-[8px] font-bold px-1 sm:px-1.5 py-0.5 truncate max-w-[75px] sm:max-w-none">DOCUMENTI</span>
             </div>
-            <div class="mt-4">
-              <h3 class="text-2xl sm:text-3xl font-black font-space text-[#222220] uppercase tracking-tight">ATTI</h3>
-              <div class="mt-1 text-2xl sm:text-3xl font-black font-mono-code text-[#222220]">
+            <div class="mt-1 sm:mt-4">
+              <h3 class="text-xs sm:text-2xl md:text-3xl font-black font-space text-[#222220] uppercase tracking-tight truncate">ATTI</h3>
+              <div class="mt-0.5 sm:mt-1 text-base sm:text-2xl md:text-3xl font-black font-mono-code text-[#222220]">
                 <span id="kpiDocsCount">0</span>
               </div>
             </div>
@@ -1446,17 +1446,17 @@
 
           <!-- 4. BOTTONE OGGETTI (IN BASSO A DESTRA) -->
           <button type="button" id="btnPanelOggetti" onclick="openPanelSection('oggetti')" 
-                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#E3DDD1] hover:border-[#3C5A48] rounded-xs p-6 sm:p-7 flex flex-col justify-between text-left transition-all duration-150 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[170px] sm:min-h-[190px] shadow-xs select-none" 
+                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#E3DDD1] hover:border-[#3C5A48] rounded-xs p-3.5 sm:p-7 flex flex-col justify-between text-left transition-all duration-150 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[135px] sm:min-h-[190px] aspect-square sm:aspect-auto shadow-xs select-none" 
                   title="Clicca per aprire l'Inventario degli Oggetti Fisici">
-            <div class="flex items-center justify-between">
-              <div class="w-11 h-11 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-lg text-[#7A7568] group-hover:bg-[#3C5A48] group-hover:text-white transition shadow-2xs">
+            <div class="flex items-center justify-between gap-1">
+              <div class="w-8 h-8 sm:w-11 sm:h-11 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-xs sm:text-lg text-[#7A7568] group-hover:bg-[#3C5A48] group-hover:text-white transition shadow-2xs shrink-0">
                 <i class="fa-solid fa-boxes-stacked"></i>
               </div>
-              <span class="stamp-oli text-[8px] font-bold">INVENTARIO</span>
+              <span class="stamp-oli text-[7px] sm:text-[8px] font-bold px-1 sm:px-1.5 py-0.5 truncate max-w-[75px] sm:max-w-none">INVENTARIO</span>
             </div>
-            <div class="mt-4">
-              <h3 class="text-2xl sm:text-3xl font-black font-space text-[#222220] uppercase tracking-tight">OGGETTI</h3>
-              <div class="mt-1 text-2xl sm:text-3xl font-black font-mono-code text-[#222220]">
+            <div class="mt-1 sm:mt-4">
+              <h3 class="text-xs sm:text-2xl md:text-3xl font-black font-space text-[#222220] uppercase tracking-tight truncate">OGGETTI</h3>
+              <div class="mt-0.5 sm:mt-1 text-base sm:text-2xl md:text-3xl font-black font-mono-code text-[#222220]">
                 <span id="kpiItemsCount">0</span>
               </div>
             </div>
