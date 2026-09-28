@@ -4,12 +4,13 @@ Router API per la gestione dei gruppi condivisi, codici d'invito e adesione memb
 import uuid
 import secrets
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.models.database import get_db, Group, GroupMember, User, ActivityEvent
 from app.services.auth_service import get_current_user
+from app.services.websocket_manager import group_ws_manager
 
 router = APIRouter(prefix="/api/groups", tags=["Groups"])
 
@@ -301,4 +302,25 @@ def get_group_activity_feed(
         }
         for ev in events
     ]
+
+
+@router.websocket("/{group_id}/ws")
+async def group_websocket_endpoint(
+    websocket: WebSocket,
+    group_id: str
+):
+    """
+    Endpoint WebSocket per ricevere gli aggiornamenti di protocollo in tempo reale per un gruppo.
+    """
+    await group_ws_manager.connect(group_id, websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        group_ws_manager.disconnect(group_id, websocket)
+    except Exception:
+        group_ws_manager.disconnect(group_id, websocket)
+
 
