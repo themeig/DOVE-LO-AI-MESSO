@@ -10,8 +10,8 @@ android {
         applicationId "com.doveloaimesso.app"
         minSdk 26
         targetSdk 34
-        versionCode 325
-        versionName "2.11.0"
+        versionCode 326
+        versionName "2.12.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

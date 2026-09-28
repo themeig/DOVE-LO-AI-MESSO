@@ -115,6 +115,31 @@ app.include_router(drive_router)
 app.include_router(calendar_router)
 app.include_router(groups_router)
 
+@app.get("/api/health")
+def health_check():
+    """
+    Endpoint di healthcheck utilizzato da Railway, Docker e monitoraggio infrastruttura.
+    Restituisce lo stato del servizio, versione dell'applicazione e stato del database.
+    """
+    from datetime import datetime, timezone
+    from app.models.database import get_engine
+    from sqlalchemy import text
+
+    db_status = "connected"
+    try:
+        engine = get_engine()
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as e:
+        db_status = f"degraded: {str(e)}"
+
+    return {
+        "status": "healthy" if db_status == "connected" else "degraded",
+        "version": APP_VERSION,
+        "database": db_status,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
 settings = get_settings()
 
 # Serve static assets (CSS, JS) from /static/
