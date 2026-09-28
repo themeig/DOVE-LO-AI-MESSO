@@ -891,7 +891,7 @@
       if (titleEl) titleEl.textContent = thread.name;
       if (iconEl) iconEl.className = `fa-solid ${thread.icon || 'fa-compass'}`;
       if (avatarEl) {
-        avatarEl.className = 'hidden';
+        avatarEl.className = `w-8 h-8 rounded-xs flex items-center justify-center text-white text-xs font-bold border border-[#E3DDD1] shadow-2xs shrink-0 ${thread.color || 'bg-[#3C5A48]'}`;
       }
 
       if (subEl) {

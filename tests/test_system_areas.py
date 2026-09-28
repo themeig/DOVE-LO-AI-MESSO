@@ -9,7 +9,7 @@ from app.version import APP_VERSION
 
 
 def test_app_version():
-    assert APP_VERSION == "2.10.15"
+    assert APP_VERSION == "2.10.16"
 
 
 def test_index_html_has_system_areas():
@@ -57,9 +57,12 @@ def test_index_html_has_system_areas():
     # Logo Caveau ripristinato in alto a sinistra nella sidebar
     assert 'fa-solid fa-vault' in content
 
-    # Indicatori cloud Drive e Calendar presenti nel header
-    assert 'chatHeaderDriveStatus' in content
-    assert 'chatHeaderCalendarStatus' in content
+    # Avatar della chat visibile nell'header chat
+    assert 'id="activeThreadAvatar"' in content
+
+    # Indicatori cloud Drive e Calendar nel container sidebar a destra, rimossi vicino al nome chat
+    assert 'chatHeaderDriveStatus' not in content
+    assert 'chatHeaderCalendarStatus' not in content
     assert 'sidebarHeaderDriveStatus' in content
     assert 'sidebarHeaderCalendarStatus' in content
 
@@ -100,9 +103,12 @@ def test_mobile_html_has_system_areas():
     # Logo Caveau ripristinato in alto a sinistra nella sidebar mobile
     assert 'fa-solid fa-vault' in content
 
-    # Indicatori cloud Drive e Calendar presenti nel header mobile
-    assert 'chatHeaderDriveStatus' in content
-    assert 'chatHeaderCalendarStatus' in content
+    # Avatar della chat visibile nell'header chat mobile
+    assert 'id="activeThreadAvatar"' in content
+
+    # Indicatori cloud Drive e Calendar nel container sidebar a destra, rimossi vicino al nome chat mobile
+    assert 'chatHeaderDriveStatus' not in content
+    assert 'chatHeaderCalendarStatus' not in content
     assert 'sidebarHeaderDriveStatus' in content
     assert 'sidebarHeaderCalendarStatus' in content
 

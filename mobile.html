@@ -56,23 +56,22 @@
       
       <!-- Top Bar Sidebar -->
       <div class="h-[60px] bg-[#F8F5EE] border-b border-[#E3DDD1] text-[#222220] px-3.5 flex items-center justify-between shrink-0 select-none box-border">
-        <div class="flex items-center space-x-2.5">
+        <div class="flex items-center space-x-2.5 min-w-0">
           <div class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs font-black shadow-xs shrink-0">
             <i class="fa-solid fa-vault"></i>
           </div>
-          <div>
-            <div class="flex items-center gap-1.5">
-              <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220]">Dove lo AI messo</h2>
-              <span id="sidebarHeaderDriveStatus" class="hidden text-xs text-[#3C5A48] items-center ml-0.5" title="Google Drive Collegato">
-                <i class="fa-brands fa-google-drive"></i>
-              </span>
-              <span id="sidebarHeaderCalendarStatus" class="hidden text-xs text-[#3C5A48] items-center ml-0.5" title="Google Calendar Collegato">
-                <i class="fa-solid fa-calendar-check"></i>
-              </span>
-            </div>
-          </div>
+          <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220] truncate">Dove lo AI messo</h2>
         </div>
 
+        <!-- Indicatori Cloud (Google Drive & Google Calendar) a destra nel container -->
+        <div class="flex items-center gap-2 shrink-0">
+          <span id="sidebarHeaderDriveStatus" class="hidden text-xs text-[#3C5A48] items-center" title="Google Drive Collegato">
+            <i class="fa-brands fa-google-drive"></i>
+          </span>
+          <span id="sidebarHeaderCalendarStatus" class="hidden text-xs text-[#3C5A48] items-center" title="Google Calendar Collegato">
+            <i class="fa-solid fa-calendar-check"></i>
+          </span>
+        </div>
       </div>
 
       <!-- Barra di Ricerca Chat Olivetti -->
@@ -126,20 +125,14 @@
             <i class="fa-solid fa-arrow-left text-base"></i>
           </button>
 
-          <!-- Placeholder nascosto per compatibilità script thread -->
-          <div id="activeThreadAvatar" class="hidden"><i id="activeThreadIcon"></i></div>
+          <!-- Immagine / Icona del canale o chat attiva -->
+          <div id="activeThreadAvatar" class="w-8 h-8 rounded-xs flex items-center justify-center text-white text-xs font-bold border border-[#E3DDD1] shadow-2xs shrink-0 bg-[#3C5A48]">
+            <i id="activeThreadIcon" class="fa-solid fa-compass"></i>
+          </div>
 
           <!-- Titolo Chat & Info Membri / Area -->
           <div class="min-w-0">
-            <div class="flex items-center gap-1.5">
-              <h1 id="activeThreadTitle" class="font-bold text-xs leading-tight truncate font-space text-[#222220]">Dove lo AI messo</h1>
-              <span id="chatHeaderDriveStatus" class="hidden text-xs text-[#3C5A48] items-center ml-0.5" title="Google Drive Collegato">
-                <i class="fa-brands fa-google-drive"></i>
-              </span>
-              <span id="chatHeaderCalendarStatus" class="hidden text-xs text-[#3C5A48] items-center ml-0.5" title="Google Calendar Collegato">
-                <i class="fa-solid fa-calendar-check"></i>
-              </span>
-            </div>
+            <h1 id="activeThreadTitle" class="font-bold text-xs leading-tight truncate font-space text-[#222220]">Dove lo AI messo</h1>
             <p id="activeThreadSubtitle" class="text-[9px] font-mono-code text-[#7A7568] truncate">
               Assistente Personale & Caveau • online
             </p>

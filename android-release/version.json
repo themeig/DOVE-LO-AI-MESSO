@@ -1,6 +1,6 @@
 {
-  "version_code": 315,
-  "version_name": "2.10.15",
+  "version_code": 316,
+  "version_name": "2.10.16",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ UI Polish Olivetti: rimossa la dicitura 'REGISTRO CENTRALE & AREE' dalla sidebar e il pulsante lucchetto dall'header della chat sia su desktop che su mobile per un'esperienza visiva ancora più pulita e focalizzata."
+  "release_notes": "✨ UI Polish Olivetti: immagine/icona avatar della chat attiva posizionata a sinistra del nome; icone cloud (Drive e Calendar) rimosse dal titolo della conversazione e posizionate allineate a destra nel container superiore della barra laterale."
 }
