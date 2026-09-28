@@ -6419,48 +6419,15 @@
       const overdueCount = filtered.filter(d => d.status === 'da_pagare' && (d.urgency === 'overdue' || (d.days_remaining != null && d.days_remaining < 0))).length;
       const upcomingSoonCount = filtered.filter(d => d.status === 'da_pagare' && d.days_remaining != null && d.days_remaining >= 0 && d.days_remaining <= 30).length;
 
-      // 3. Banner Informativo o Riquadro di Collegamento Google Calendar
+      // 3. Riquadro di Collegamento Google Calendar (mostrato solo se non collegato)
       if (typeof window.currentCalendarConnected === 'undefined' && typeof loadCalendarStatus === 'function') {
         loadCalendarStatus();
       }
       const isCalConnected = (window.currentCalendarConnected === true) || (window.currentDriveConnected === true);
-      const calBannerBox = document.createElement('div');
       
-      if (isCalConnected) {
-        // Se già collegato: banner normale attivo con sincronizzazione e filtri
-        calBannerBox.className = 'bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-3 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs';
-        calBannerBox.innerHTML = `
-          <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-xs bg-[#2B4C7E] text-white flex items-center justify-center shrink-0 text-sm shadow-2xs">
-              <i class="fa-brands fa-google"></i>
-            </div>
-            <div>
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-space font-bold text-[#222220]">Calendario Dedicato: Dove Lo AI Messo - Scadenze</span>
-                <span class="stamp-oli stamp-solid-sage text-[8px] font-bold">ATTIVO & COLLEGATO</span>
-              </div>
-              <p class="text-[11px] text-[#7A7568] font-mono-code mt-0.5">
-                Tutte le scadenze sono salvate in un calendario secondario dedicato per non sovrapporsi ai tuoi impegni personali.
-              </p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2 flex-wrap shrink-0">
-            <button onclick="syncAllToGoogleCalendar()" id="btnSyncGoogleCalendar" class="px-2.5 py-1.5 bg-[#2B4C7E] hover:bg-[#1E3557] active:scale-95 text-white rounded-xs text-[11px] font-space font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer" title="Sincronizza subito con Google Calendar">
-              <i class="fa-solid fa-rotate"></i>
-              <span id="txtSyncGoogleCalendar">Sincronizza Ora</span>
-            </button>
-            <button onclick="showCalendarFilterGuideModal()" class="px-2.5 py-1.5 bg-white hover:bg-[#F8F5EE] text-[#2B4C7E] border border-[#2B4C7E]/50 rounded-xs text-[11px] font-space font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs" title="Istruzioni per visualizzare e filtrare solo le scadenze del caveau">
-              <i class="fa-solid fa-filter"></i>
-              <span>Come visualizzare e filtrare solo queste scadenze?</span>
-            </button>
-            <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 bg-white hover:bg-[#FAF8F2] text-[#2B4C7E] border border-[#2B4C7E]/50 rounded-xs text-[11px] font-space font-bold transition flex items-center gap-1.5 shadow-2xs" title="Apri Google Calendar in una nuova scheda">
-              <i class="fa-solid fa-arrow-up-right-from-square"></i>
-              <span>Apri Google Cal</span>
-            </a>
-          </div>
-        `;
-      } else {
+      if (!isCalConnected) {
         // Se non è collegato: riquadro bianco con invito a collegare l'account
+        const calBannerBox = document.createElement('div');
         calBannerBox.className = 'bg-white border border-[#E3DDD1] rounded-xs p-3.5 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs';
         calBannerBox.innerHTML = `
           <div class="flex items-center gap-3">
@@ -6488,8 +6455,8 @@
             </button>
           </div>
         `;
+        container.appendChild(calBannerBox);
       }
-      container.appendChild(calBannerBox);
 
       // 4. Bento KPI Scadenzario
       const statsBox = document.createElement('div');
@@ -6508,7 +6475,7 @@
           <span class="text-lg sm:text-xl font-black font-mono-code ${upcomingSoonCount > 0 ? 'text-amber-800' : 'text-[#7A7568]'}">${upcomingSoonCount} atti</span>
         </div>
         <div class="bg-white border border-[#E3DDD1] p-3 rounded-xs shadow-2xs">
-          <span class="text-[9px] font-mono-code text-[#7A7568] uppercase font-bold block">QUIETANZATI / SALDATI</span>
+          <span class="text-[9px] font-mono-code text-[#7A7568] uppercase font-bold block">PAGATI / SALDATI</span>
           <span class="text-lg sm:text-xl font-black font-mono-code text-[#3C5A48]">${filtered.filter(d=>d.status==='quietanzato').length} atti</span>
         </div>
       `;
@@ -6550,7 +6517,7 @@
           <span class="text-[8px] bg-white/20 px-1 py-0.2 rounded-xs font-mono-code">${totalOverdue}</span>
         </button>
         <button onclick="setScadenzarioStatusFilter('quietanzati')" class="px-2.5 py-1 rounded-xs text-[10px] font-space font-bold transition cursor-pointer flex items-center gap-1 ${scadenzarioStatusFilter === 'quietanzati' ? 'bg-emerald-800 text-white shadow-2xs' : 'bg-[#F8F5EE] text-emerald-800 hover:text-emerald-900 border border-[#E3DDD1]'}">
-          <span>✅ QUIETANZATI</span>
+          <span>✅ PAGATI</span>
           <span class="text-[8px] bg-white/20 px-1 py-0.2 rounded-xs font-mono-code">${totalPaid}</span>
         </button>
       `;
@@ -6585,13 +6552,29 @@
         return;
       }
 
-      // 6. Ripartizione nei 5 Blocchi Temporali
+      // 6. Ripartizione nei Blocchi Temporali
       const MONTH_NAMES = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
       
-      const bScadute = filtered.filter(d => d.status === 'da_pagare' && (d.urgency === 'overdue' || (d.days_remaining != null && d.days_remaining < 0)));
-      const bImminenti = filtered.filter(d => d.status === 'da_pagare' && d.days_remaining != null && d.days_remaining >= 0 && d.days_remaining <= 30);
-      const bEntroAnno = filtered.filter(d => d.status !== 'quietanzato' && d.days_remaining != null && d.days_remaining > 30 && d.days_remaining <= 365);
-      const bLungoTermine = filtered.filter(d => d.status !== 'quietanzato' && (d.days_remaining == null || d.days_remaining > 365));
+      function getDays(d) {
+        if (typeof d.days_remaining === 'number') return d.days_remaining;
+        if (!d.due_date) return null;
+        try {
+          const dDate = new Date(d.due_date + 'T00:00:00');
+          const todayObj = new Date();
+          todayObj.setHours(0, 0, 0, 0);
+          return Math.round((dDate - todayObj) / (1000 * 60 * 60 * 24));
+        } catch (e) {
+          return null;
+        }
+      }
+
+      const bScadute = filtered.filter(d => d.status === 'da_pagare' && (d.urgency === 'overdue' || (getDays(d) != null && getDays(d) < 0)));
+      const bOggi = filtered.filter(d => d.status === 'da_pagare' && (d.urgency === 'today' || getDays(d) === 0));
+      const bDomani = filtered.filter(d => d.status === 'da_pagare' && getDays(d) === 1 && d.urgency !== 'today');
+      const bQuestaSettimana = filtered.filter(d => d.status === 'da_pagare' && getDays(d) != null && getDays(d) >= 2 && getDays(d) <= 7);
+      const bQuestoMese = filtered.filter(d => d.status === 'da_pagare' && getDays(d) != null && getDays(d) > 7 && getDays(d) <= 30);
+      const bEntroAnno = filtered.filter(d => d.status !== 'quietanzato' && getDays(d) != null && getDays(d) > 30 && getDays(d) <= 365);
+      const bLungoTermine = filtered.filter(d => d.status !== 'quietanzato' && (getDays(d) == null || getDays(d) > 365));
       const bQuietanzate = filtered.filter(d => d.status === 'quietanzato');
 
       const blocks = [
@@ -6603,11 +6586,32 @@
           items: bScadute
         },
         {
-          title: "IN SCADENZA QUESTO MESE (ENTRO 30 GIORNI)",
-          icon: "fa-clock",
+          title: "IN SCADENZA OGGI (ENTRO 24 ORE)",
+          icon: "fa-bell",
+          headerColor: "text-red-900 bg-red-50 border-red-200",
+          badgeColor: "bg-red-100 text-red-900",
+          items: bOggi
+        },
+        {
+          title: "IN SCADENZA DOMANI",
+          icon: "fa-hourglass-half",
+          headerColor: "text-orange-900 bg-orange-100 border-orange-300",
+          badgeColor: "bg-orange-200 text-orange-950",
+          items: bDomani
+        },
+        {
+          title: "IN SCADENZA QUESTA SETTIMANA (ENTRO 7 GIORNI)",
+          icon: "fa-calendar-week",
           headerColor: "text-amber-900 bg-amber-100 border-amber-300",
           badgeColor: "bg-amber-200 text-amber-950",
-          items: bImminenti
+          items: bQuestaSettimana
+        },
+        {
+          title: "IN SCADENZA QUESTO MESE (ENTRO 30 GIORNI)",
+          icon: "fa-clock",
+          headerColor: "text-amber-800 bg-amber-50 border-amber-200",
+          badgeColor: "bg-amber-100 text-amber-900",
+          items: bQuestoMese
         },
         {
           title: "PROSSIMI MESI (ENTRO L'ANNO CORRENTE)",
@@ -6624,7 +6628,7 @@
           items: bLungoTermine
         },
         {
-          title: "QUIETANZATE, SALDATE & RINNOVATE",
+          title: "PAGATE, SALDATE & RINNOVATE",
           icon: "fa-circle-check",
           headerColor: "text-emerald-800 bg-emerald-50 border-emerald-300",
           badgeColor: "bg-emerald-200 text-emerald-950",
@@ -6675,7 +6679,7 @@
           // Countdown Urgenza
           let urgencyBadgeHtml = '';
           if (doc.status === 'quietanzato') {
-            urgencyBadgeHtml = `<span class="stamp-oli stamp-solid-sage text-[8px] font-bold">QUIETANZATO / RINNOVATO</span>`;
+            urgencyBadgeHtml = `<span class="stamp-oli stamp-solid-sage text-[8px] font-bold">PAGATO / RINNOVATO</span>`;
           } else if (doc.urgency_label) {
             const isRed = doc.urgency === 'overdue';
             const isAmber = doc.urgency === 'today' || doc.urgency === 'urgent';
@@ -7029,7 +7033,7 @@
               const lbl = rec.amount != null ? 'DA SALDARE' : 'IN SCADENZA';
               statusBadge = `<span class="stamp-oli stamp-terracotta text-[8px]">${lbl}</span>`;
             } else if (rec.status === 'quietanzato') {
-              const lbl = rec.amount != null ? 'QUIETANZATO' : 'RINNOVATO';
+              const lbl = rec.amount != null ? 'PAGATO' : 'RINNOVATO';
               statusBadge = `<span class="stamp-oli text-emerald-800 border-emerald-700 text-[8px]">${lbl}</span>`;
             } else {
               statusBadge = `<span class="stamp-oli text-[8px]">${escapeHtml(rec.status).toUpperCase()}</span>`;
@@ -7069,7 +7073,7 @@
             let payBtn = '';
             if (rec.status === 'da_pagare') {
               const lbl = rec.amount != null ? 'SALDA' : 'RINNOVA';
-              const titleAction = rec.amount != null ? 'Segna come pagato/quietanzato' : 'Segna come rinnovato o archiviato';
+              const titleAction = rec.amount != null ? 'Segna come pagato' : 'Segna come rinnovato o archiviato';
               payBtn = `<button onclick="markAsPaid(${rec.id})" class="stamp-oli stamp-solid-terracotta text-[8px] hover:opacity-90 transition active:scale-95 cursor-pointer" title="${titleAction}">${lbl}</button>`;
             }
 
@@ -7439,7 +7443,7 @@
           const lbl = rec.amount != null ? 'DA SALDARE' : 'IN SCADENZA';
           statusHtml = `<span class="stamp-oli stamp-terracotta text-[8px]">${lbl}</span>`;
         } else if (rec.status === 'quietanzato') {
-          const lbl = rec.amount != null ? 'QUIETANZATO' : 'RINNOVATO';
+          const lbl = rec.amount != null ? 'PAGATO' : 'RINNOVATO';
           statusHtml = `<span class="stamp-oli text-emerald-800 border-emerald-700 text-[8px]">${lbl}</span>`;
         } else {
           statusHtml = `<span class="stamp-oli text-[8px]">${escapeHtml(rec.status).toUpperCase()}</span>`;
@@ -7488,7 +7492,7 @@
           let payBtn = '';
           if (rec.status === 'da_pagare') {
             const lbl = rec.amount != null ? 'SALDA' : 'RINNOVA';
-            const titleAction = rec.amount != null ? 'Segna come pagato/quietanzato' : 'Segna come rinnovato o archiviato';
+            const titleAction = rec.amount != null ? 'Segna come pagato' : 'Segna come rinnovato o archiviato';
             payBtn = `<button onclick="markAsPaid(${rec.id})" class="stamp-oli stamp-solid-terracotta text-[8px] hover:opacity-90 transition active:scale-95 cursor-pointer" title="${titleAction}">${lbl}</button>`;
           } else if (rec.status === 'quietanzato') {
             const lbl = rec.amount != null ? 'SALDATO' : 'RINNOVATO';
