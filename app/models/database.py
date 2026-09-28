@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, date, timezone
-from sqlalchemy import create_engine, Column, Integer, String, Float, Date, DateTime, Text, Boolean, inspect, text, types
+from sqlalchemy import create_engine, Column, Integer, String, Float, Date, DateTime, Text, Boolean, JSON, inspect, text, types
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from app.config import get_settings
 from app.services.crypto_service import get_vault_manager, encrypt_str, decrypt_str
@@ -72,6 +72,50 @@ class EncryptedText(types.TypeDecorator):
         return value
 
 
+class User(Base):
+    __tablename__ = "users"
+    id = Column(String(100), primary_key=True)  # Supabase Auth UUID
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    full_name = Column(String(255), nullable=False)
+    avatar_url = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class Group(Base):
+    __tablename__ = "groups"
+    id = Column(String(100), primary_key=True)  # UUID
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    icon = Column(String(50), nullable=False, default="fa-house")
+    invite_code = Column(String(20), unique=True, nullable=False, index=True)
+    created_by = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class GroupMember(Base):
+    __tablename__ = "group_members"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    group_id = Column(String(100), nullable=False, index=True)
+    user_id = Column(String(100), nullable=False, index=True)
+    role = Column(String(50), nullable=False, default="member")  # admin, member, viewer
+    joined_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class ActivityEvent(Base):
+    __tablename__ = "activity_events"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    group_id = Column(String(100), nullable=False, index=True)
+    actor_user_id = Column(String(100), nullable=True, index=True)
+    actor_name = Column(String(255), nullable=False)
+    event_type = Column(String(50), nullable=False, index=True)
+    title = Column(String(500), nullable=False)
+    content = Column(Text, nullable=True)
+    document_id = Column(Integer, nullable=True, index=True)
+    item_id = Column(Integer, nullable=True, index=True)
+    payload = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+
+
 class ChatThread(Base):
     __tablename__ = "chat_threads"
     id = Column(String(50), primary_key=True)
@@ -88,6 +132,8 @@ class Document(Base):
     __tablename__ = "documents"
     id = Column(Integer, primary_key=True, autoincrement=True)
     thread_id = Column(String(50), nullable=False, default="general", index=True)
+    user_id = Column(String(100), nullable=True, index=True)
+    group_id = Column(String(100), nullable=True, index=True)
     physical_item_id = Column(Integer, nullable=True, index=True)
     title = Column(EncryptedString(500), nullable=False)
     file_path = Column(String(500), nullable=False)
@@ -97,7 +143,11 @@ class Document(Base):
     amount = Column(Float, nullable=True)
     due_date = Column(Date, nullable=True)
     status = Column(String(50), nullable=False, default="da_pagare")
-    summary = Column(EncryptedText, nullable=False)
+    paid_by_user_id = Column(String(100), nullable=True)
+    paid_at = Column(DateTime, nullable=True)
+    storage_provider = Column(String(50), nullable=True, default="local")
+    storage_path = Column(String(500), nullable=True)
+    summary = Column(EncryptedText, nullable=True, default="")
     is_local_file = Column(types.Boolean, nullable=False, default=False)
     original_path = Column(String(500), nullable=True)
     drive_file_id = Column(String(255), nullable=True, index=True)
@@ -151,6 +201,8 @@ class PhysicalItem(Base):
     __tablename__ = "physical_items"
     id = Column(Integer, primary_key=True, autoincrement=True)
     thread_id = Column(String(50), nullable=False, default="general", index=True)
+    user_id = Column(String(100), nullable=True, index=True)
+    group_id = Column(String(100), nullable=True, index=True)
     document_id = Column(Integer, nullable=True, index=True)
     item_name = Column(EncryptedString(500), nullable=False, index=True)
     category = Column(String(100), nullable=True)
@@ -250,7 +302,7 @@ def init_db(engine=None):
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN thread_id VARCHAR(50) DEFAULT 'general'"))
                     conn.commit()
 
-        # Ensure image_path and document_id in physical_items
+        # Ensure image_path, document_id, group_id, user_id in physical_items
         if "physical_items" in table_names:
             cols = [c["name"] for c in inspector.get_columns("physical_items")]
             if "image_path" not in cols:
@@ -259,8 +311,14 @@ def init_db(engine=None):
             if "document_id" not in cols:
                 conn.execute(text("ALTER TABLE physical_items ADD COLUMN document_id INTEGER"))
                 conn.commit()
+            if "group_id" not in cols:
+                conn.execute(text("ALTER TABLE physical_items ADD COLUMN group_id VARCHAR(100)"))
+                conn.commit()
+            if "user_id" not in cols:
+                conn.execute(text("ALTER TABLE physical_items ADD COLUMN user_id VARCHAR(100)"))
+                conn.commit()
 
-        # Ensure physical_item_id, is_local_file, original_path in documents
+        # Ensure physical_item_id, is_local_file, original_path, group_id, user_id in documents
         if "documents" in table_names:
             cols = [c["name"] for c in inspector.get_columns("documents")]
             if "physical_item_id" not in cols:
@@ -297,6 +355,24 @@ def init_db(engine=None):
                 conn.commit()
             if "google_calendar_event_id" not in cols:
                 conn.execute(text("ALTER TABLE documents ADD COLUMN google_calendar_event_id VARCHAR(255)"))
+                conn.commit()
+            if "group_id" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN group_id VARCHAR(100)"))
+                conn.commit()
+            if "user_id" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN user_id VARCHAR(100)"))
+                conn.commit()
+            if "paid_by_user_id" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN paid_by_user_id VARCHAR(100)"))
+                conn.commit()
+            if "paid_at" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN paid_at DATETIME"))
+                conn.commit()
+            if "storage_provider" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN storage_provider VARCHAR(50) DEFAULT 'local'"))
+                conn.commit()
+            if "storage_path" not in cols:
+                conn.execute(text("ALTER TABLE documents ADD COLUMN storage_path VARCHAR(500)"))
                 conn.commit()
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_documents_category ON documents(category)"))
             conn.execute(text("CREATE INDEX IF NOT EXISTS ix_documents_cal_event ON documents(google_calendar_event_id)"))
