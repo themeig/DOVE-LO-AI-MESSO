@@ -65,6 +65,12 @@ def test_dashboard_filter_aliases():
         if r["type"] == "document":
             assert r["status"] == "quietanzato"
 
+    # Test ?filter=atti
+    res_atti = client.get("/api/dashboard?filter=atti")
+    assert res_atti.status_code == 200
+    for r in res_atti.json()["records"]:
+        assert r["type"] == "document"
+
 
 def test_patch_document_status():
     fake_pdf = io.BytesIO(b"%PDF-1.4 fake content")

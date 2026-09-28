@@ -165,7 +165,7 @@ def get_dashboard(
         norm_filter = "items"
     elif f_raw in ("quietanzato", "quietanzati", "pagati", "saldati", "paid"):
         norm_filter = "quietanzati"
-    elif f_raw in ("documenti", "documents", "docs", "file"):
+    elif f_raw in ("documenti", "documents", "docs", "file", "atti", "atto"):
         norm_filter = "documents"
     else:
         norm_filter = "all"

@@ -641,11 +641,79 @@
       });
     }
 
+    function openPanelHub() {
+      const hub = document.getElementById('panelHubContainer');
+      const detail = document.getElementById('panelDetailContainer');
+      if (hub) hub.classList.remove('hidden');
+      if (detail) detail.classList.add('hidden');
+      const main = document.querySelector('#dashboardView main');
+      if (main) main.scrollTop = 0;
+      loadDashboard('all');
+    }
+    window.openPanelHub = openPanelHub;
+
+    function openPanelSection(section) {
+      const hub = document.getElementById('panelHubContainer');
+      const detail = document.getElementById('panelDetailContainer');
+      if (hub) hub.classList.add('hidden');
+      if (detail) detail.classList.remove('hidden');
+
+      const titleEl = document.getElementById('panelDetailSectionTitle');
+      const iconEl = document.getElementById('panelDetailSectionIcon');
+      const badgeEl = document.getElementById('panelDetailSectionBadge');
+
+      const norm = (section || 'panoramica').toLowerCase().trim();
+
+      if (norm === 'scadenze' || norm === 'deadlines' || norm === 'scadenzario' || norm === 'da_pagare') {
+        if (titleEl) titleEl.textContent = 'SCADENZE & TRIBUTI';
+        if (iconEl) iconEl.className = 'fa-solid fa-calendar-days text-[#C84B31] text-xs';
+        if (badgeEl) {
+          badgeEl.textContent = 'SCADENZARIO';
+          badgeEl.className = 'stamp-oli stamp-terracotta text-[9px] font-bold';
+        }
+        filterTable('scadenzario');
+      } else if (norm === 'atti' || norm === 'documents' || norm === 'documenti') {
+        if (titleEl) titleEl.textContent = 'ATTI & DOCUMENTI';
+        if (iconEl) iconEl.className = 'fa-solid fa-file-invoice text-[#3C5A48] text-xs';
+        if (badgeEl) {
+          badgeEl.textContent = 'ARCHIVIO ATTI';
+          badgeEl.className = 'stamp-oli stamp-solid-sage text-[9px] font-bold';
+        }
+        filterTable('atti');
+      } else if (norm === 'oggetti' || norm === 'items') {
+        if (titleEl) titleEl.textContent = 'OGGETTI FISICI & STANZE';
+        if (iconEl) iconEl.className = 'fa-solid fa-compass-drafting text-[#7A7568] text-xs';
+        if (badgeEl) {
+          badgeEl.textContent = 'INVENTARIO';
+          badgeEl.className = 'stamp-oli text-[9px] font-bold';
+        }
+        filterTable('items');
+      } else {
+        // panoramica / all
+        if (titleEl) titleEl.textContent = 'PANORAMICA GENERALE';
+        if (iconEl) iconEl.className = 'fa-solid fa-table-cells-large text-[#3C5A48] text-xs';
+        if (badgeEl) {
+          badgeEl.textContent = 'REGISTRO COMPLETO';
+          badgeEl.className = 'stamp-oli stamp-solid-sage text-[9px] font-bold';
+        }
+        filterTable('all');
+      }
+
+      const main = document.querySelector('#dashboardView main');
+      if (main) main.scrollTop = 0;
+    }
+    window.openPanelSection = openPanelSection;
+
     function openDashboard(filter = null) {
       slideToScreen('dashboard', () => {
-        if (filter) filterTable(filter);
+        if (filter && filter !== 'all') {
+          openPanelSection(filter);
+        } else {
+          openPanelHub();
+        }
       });
     }
+    window.openDashboard = openDashboard;
 
     function openSystem() {
       slideToScreen('settings');
@@ -661,7 +729,7 @@
 
     function switchScreen(screen) {
       if (screen === 'dashboard') {
-        openDashboard('all');
+        openDashboard(null);
       } else if (screen === 'chat') {
         closeToChat();
       } else if (screen === 'archive') {
@@ -6022,13 +6090,13 @@
         
         const kpiAmtEl = document.getElementById('kpiUpcomingAmount');
         if (kpiAmtEl) {
-          kpiAmtEl.innerHTML = `<span class="text-lg lg:text-xl font-bold text-[#7A7568] select-none">€</span><span>${formattedAmount}</span>`;
+          kpiAmtEl.innerHTML = `<span class="text-xl sm:text-2xl font-bold text-[#7A7568] select-none">€</span> <span>${formattedAmount}</span>`;
         }
 
         const kpiBadgeEl = document.getElementById('kpiUpcomingBadge');
         if (kpiBadgeEl) {
           const count = kpi.pending_deadlines_count || 0;
-          kpiBadgeEl.textContent = count > 0 ? `${count} in scadenza` : `Nessuna scadenza`;
+          kpiBadgeEl.textContent = count > 0 ? `${count} in scadenza` : `REGOLARE`;
           kpiBadgeEl.className = count > 0
             ? "stamp-oli stamp-terracotta text-[9px] font-bold"
             : "stamp-oli text-[9px] font-bold";
@@ -6039,6 +6107,12 @@
 
         const kpiItemsEl = document.getElementById('kpiItemsCount');
         if (kpiItemsEl) kpiItemsEl.textContent = `${kpi.total_items_count || 0}`;
+
+        const kpiTotEl = document.getElementById('kpiTotalRecordsCount');
+        if (kpiTotEl) {
+          const tot = (kpi.total_documents_count || 0) + (kpi.total_items_count || 0);
+          kpiTotEl.textContent = `${tot}`;
+        }
 
         // Aggiorna data display
         const dateEl = document.getElementById('dashboardDateDisplay');
@@ -7690,6 +7764,7 @@
       currentFilter = filter;
       const btnA = document.getElementById('fAll');
       const btnScad = document.getElementById('fScadenzario');
+      const btnAtti = document.getElementById('fAtti');
       const btnD = document.getElementById('fDeadlines');
       const btnQ = document.getElementById('fQuietanzati');
       const btnI = document.getElementById('fItems');
@@ -7698,7 +7773,7 @@
       const inactiveClass = `${baseBtnClass} text-[#7A7568] hover:text-[#222220]`;
       const activeClass = `${baseBtnClass} bg-[#3C5A48] text-white`;
 
-      [btnA, btnScad, btnD, btnQ, btnI].forEach(b => {
+      [btnA, btnScad, btnAtti, btnD, btnQ, btnI].forEach(b => {
         if (b) {
           b.className = inactiveClass;
           if (b === btnScad || b === btnD || b === btnQ) b.classList.add('flex', 'items-center', 'gap-1');
@@ -7708,6 +7783,9 @@
       if (filter === 'all' && btnA) btnA.className = activeClass;
       if ((filter === 'scadenzario' || filter === 'scadenziario' || filter === 'calendar') && btnScad) {
         btnScad.className = `${activeClass} flex items-center gap-1`;
+      }
+      if ((filter === 'documents' || filter === 'atti' || filter === 'atto') && btnAtti) {
+        btnAtti.className = activeClass;
       }
       if ((filter === 'deadlines' || filter === 'da_pagare') && btnD) {
         btnD.className = `${activeClass} flex items-center gap-1`;
@@ -7723,6 +7801,8 @@
           currentRecords = [...allDashboardRecordsCache];
         } else if (filter === 'items' || filter === 'oggetti') {
           currentRecords = allDashboardRecordsCache.filter(r => r.type === 'physical_item');
+        } else if (filter === 'documents' || filter === 'atti' || filter === 'atto') {
+          currentRecords = allDashboardRecordsCache.filter(r => r.type === 'document');
         } else if (filter === 'deadlines' || filter === 'da_pagare') {
           currentRecords = allDashboardRecordsCache.filter(r => r.type === 'document' && r.status === 'da_pagare');
         } else if (filter === 'quietanzati' || filter === 'quietanzato') {

@@ -1,6 +1,6 @@
 {
-  "version_code": 319,
-  "version_name": "2.10.19",
+  "version_code": 320,
+  "version_name": "2.10.20",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "🌐 Integrazioni Google Unificate: unione impostazioni Google Drive e Calendar nella sezione unificata 'Integrazioni Google', toggle di attivazione/disattivazione indipendenti per i singoli servizi, pulsante di scollegamento account Google e selettore di destinazione scadenze tra Calendario Principale e Calendario Dedicato Dove Lo AI Messo."
+  "release_notes": "🏛️ Riprogettazione Dashboard in 'PANNELLO' Olivetti Industrial: hub a 4 grandi bottoni (Scadenze, Atti, Oggetti, Panoramica) con visualizzazione importi e conteggi in tempo reale, navigazione con tasto di ritorno al pannello e filtro dedicato agli atti."
 }
