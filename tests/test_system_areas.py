@@ -9,7 +9,7 @@ from app.version import APP_VERSION
 
 
 def test_app_version():
-    assert APP_VERSION == "2.10.16"
+    assert APP_VERSION == "2.10.17"
 
 
 def test_index_html_has_system_areas():

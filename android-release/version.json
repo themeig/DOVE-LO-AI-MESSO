@@ -1,6 +1,6 @@
 {
-  "version_code": 316,
-  "version_name": "2.10.16",
+  "version_code": 317,
+  "version_name": "2.10.17",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ UI Polish Olivetti: immagine/icona avatar della chat attiva posizionata a sinistra del nome; icone cloud (Drive e Calendar) rimosse dal titolo della conversazione e posizionate allineate a destra nel container superiore della barra laterale."
+  "release_notes": "✨ UI Polish Scadenzario: rimossa la sezione superiore ridondante 'Scadenzario & Calendario Atti' (Registro Temporale); introdotto controllo dinamico connessione Google Calendar che mantiene il banner normale se connesso oppure mostra un riquadro bianco dedicato per il collegamento immediato se non connesso."
 }

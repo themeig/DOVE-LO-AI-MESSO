@@ -2353,6 +2353,9 @@
         window.currentCalendarConnected = isConnected;
         updateHeaderCloudIndicators(null, isConnected);
         if (typeof updateSystemMenuStatusBadges === 'function') updateSystemMenuStatusBadges();
+        if (typeof currentFilter !== 'undefined' && currentFilter === 'scadenzario' && typeof renderScadenzarioView === 'function' && typeof currentRecords !== 'undefined' && currentRecords && currentRecords.length > 0) {
+          renderScadenzarioView(currentRecords);
+        }
         if (badge) {
           if (isConnected) {
             badge.textContent = 'ATTIVO & COLLEGATO';
@@ -6416,78 +6419,76 @@
       const overdueCount = filtered.filter(d => d.status === 'da_pagare' && (d.urgency === 'overdue' || (d.days_remaining != null && d.days_remaining < 0))).length;
       const upcomingSoonCount = filtered.filter(d => d.status === 'da_pagare' && d.days_remaining != null && d.days_remaining >= 0 && d.days_remaining <= 30).length;
 
-      // 3. Header Top Bar
-      const headerBox = document.createElement('div');
-      headerBox.className = 'bg-white border border-[#E3DDD1] rounded-xs p-4 sm:p-5 shadow-xs flex flex-col md:flex-row justify-between md:items-center gap-4';
-      headerBox.innerHTML = `
-        <div class="flex items-start gap-3">
-          <div class="w-10 h-10 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center shrink-0 text-lg shadow-xs">
-            <i class="fa-solid fa-calendar-days"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-[9px] font-mono-code text-[#7A7568] uppercase font-bold">01 / REGISTRO TEMPORALE</span>
-              <span class="stamp-oli stamp-solid-sage text-[8px] font-bold">UNIVERSALE</span>
-              <span class="stamp-oli text-[8px] font-bold">${allDeadlines.length} SCADENZE TOTALI</span>
-            </div>
-            <h2 class="text-sm sm:text-base font-bold text-[#222220] font-space uppercase tracking-tight mt-0.5">
-              Scadenzario & Calendario Atti
-            </h2>
-            <p class="text-[11px] text-[#7A7568] font-mono-code leading-relaxed">
-              Tracciamento universale di tributi F24, utenze, documenti personali, polizze, contratti e revisioni.
-            </p>
-          </div>
-        </div>
-        <div class="flex items-center gap-2 flex-wrap self-start md:self-center">
-          <button onclick="syncAllToGoogleCalendar()" id="btnSyncGoogleCalendar" class="px-3 py-2 bg-[#2B4C7E] hover:bg-[#1E3557] active:scale-95 text-white rounded-xs text-xs font-bold font-space transition shadow-xs flex items-center gap-1.5 cursor-pointer" title="Sincronizza automaticamente le scadenze con il tuo calendario Google dedicato">
-            <i class="fa-brands fa-google"></i>
-            <span id="txtSyncGoogleCalendar">SINCRONIZZA GOOGLE CALENDAR</span>
-          </button>
-          <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener noreferrer" class="px-3 py-2 bg-white hover:bg-[#FAF8F2] text-[#2B4C7E] border border-[#2B4C7E]/40 active:scale-95 rounded-xs text-xs font-bold font-space transition shadow-xs flex items-center gap-1.5 cursor-pointer" title="Apri Google Calendar in una nuova scheda del browser">
-            <i class="fa-solid fa-arrow-up-right-from-square"></i>
-            <span class="hidden sm:inline">APRI GOOGLE CALENDAR ↗</span>
-          </a>
-          <button onclick="exportDeadlinesToICS(currentRecords)" class="px-3 py-2 bg-[#3C5A48] hover:bg-[#2F4738] active:scale-95 text-white rounded-xs text-xs font-bold font-space transition shadow-xs flex items-center gap-1.5 cursor-pointer" title="Scarica file .ics con promemoria compatibile Google Calendar, Apple e Outlook">
-            <i class="fa-solid fa-calendar-arrow-down"></i>
-            <span>ESPORTA (.ICS)</span>
-          </button>
-          <button onclick="filterTable('all')" class="px-3 py-2 bg-white hover:bg-[#FAF8F2] text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] rounded-xs text-xs font-bold font-space transition flex items-center gap-1.5 cursor-pointer" title="Torna all'elenco completo del faldone">
-            <i class="fa-solid fa-arrow-left"></i>
-            <span class="hidden sm:inline">REGISTRO COMPLETO</span>
-          </button>
-        </div>
-      `;
-      container.appendChild(headerBox);
-
-      // Banner Informativo Google Calendar con guida al filtro
+      // 3. Banner Informativo o Riquadro di Collegamento Google Calendar
+      if (typeof window.currentCalendarConnected === 'undefined' && typeof loadCalendarStatus === 'function') {
+        loadCalendarStatus();
+      }
+      const isCalConnected = (window.currentCalendarConnected === true) || (window.currentDriveConnected === true);
       const calBannerBox = document.createElement('div');
-      calBannerBox.className = 'bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-3 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs';
-      calBannerBox.innerHTML = `
-        <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-xs bg-[#2B4C7E] text-white flex items-center justify-center shrink-0 text-sm shadow-2xs">
-            <i class="fa-brands fa-google"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="font-space font-bold text-[#222220]">Calendario Dedicato: Dove Lo AI Messo - Scadenze</span>
-              <span class="stamp-oli stamp-solid-sage text-[8px] font-bold">ATTIVO & COLLEGATO</span>
+      
+      if (isCalConnected) {
+        // Se già collegato: banner normale attivo con sincronizzazione e filtri
+        calBannerBox.className = 'bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-3 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs';
+        calBannerBox.innerHTML = `
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xs bg-[#2B4C7E] text-white flex items-center justify-center shrink-0 text-sm shadow-2xs">
+              <i class="fa-brands fa-google"></i>
             </div>
-            <p class="text-[11px] text-[#7A7568] font-mono-code mt-0.5">
-              Tutte le scadenze sono salvate in un calendario secondario dedicato per non sovrapporsi ai tuoi impegni personali.
-            </p>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-space font-bold text-[#222220]">Calendario Dedicato: Dove Lo AI Messo - Scadenze</span>
+                <span class="stamp-oli stamp-solid-sage text-[8px] font-bold">ATTIVO & COLLEGATO</span>
+              </div>
+              <p class="text-[11px] text-[#7A7568] font-mono-code mt-0.5">
+                Tutte le scadenze sono salvate in un calendario secondario dedicato per non sovrapporsi ai tuoi impegni personali.
+              </p>
+            </div>
           </div>
-        </div>
-        <div class="flex items-center gap-2 flex-wrap shrink-0">
-          <button onclick="showCalendarFilterGuideModal()" class="px-2.5 py-1.5 bg-white hover:bg-[#F8F5EE] text-[#2B4C7E] border border-[#2B4C7E]/50 rounded-xs text-[11px] font-space font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs" title="Istruzioni per visualizzare e filtrare solo le scadenze del caveau">
-            <i class="fa-solid fa-filter"></i>
-            <span>Come visualizzare e filtrare solo queste scadenze?</span>
-          </button>
-          <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 bg-[#2B4C7E] hover:bg-[#1E3557] text-white rounded-xs text-[11px] font-space font-bold transition flex items-center gap-1.5 shadow-2xs" title="Apri Google Calendar in una nuova scheda">
-            <i class="fa-solid fa-arrow-up-right-from-square"></i>
-            <span>Apri Google Cal</span>
-          </a>
-        </div>
-      `;
+          <div class="flex items-center gap-2 flex-wrap shrink-0">
+            <button onclick="syncAllToGoogleCalendar()" id="btnSyncGoogleCalendar" class="px-2.5 py-1.5 bg-[#2B4C7E] hover:bg-[#1E3557] active:scale-95 text-white rounded-xs text-[11px] font-space font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer" title="Sincronizza subito con Google Calendar">
+              <i class="fa-solid fa-rotate"></i>
+              <span id="txtSyncGoogleCalendar">Sincronizza Ora</span>
+            </button>
+            <button onclick="showCalendarFilterGuideModal()" class="px-2.5 py-1.5 bg-white hover:bg-[#F8F5EE] text-[#2B4C7E] border border-[#2B4C7E]/50 rounded-xs text-[11px] font-space font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs" title="Istruzioni per visualizzare e filtrare solo le scadenze del caveau">
+              <i class="fa-solid fa-filter"></i>
+              <span>Come visualizzare e filtrare solo queste scadenze?</span>
+            </button>
+            <a href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 bg-white hover:bg-[#FAF8F2] text-[#2B4C7E] border border-[#2B4C7E]/50 rounded-xs text-[11px] font-space font-bold transition flex items-center gap-1.5 shadow-2xs" title="Apri Google Calendar in una nuova scheda">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              <span>Apri Google Cal</span>
+            </a>
+          </div>
+        `;
+      } else {
+        // Se non è collegato: riquadro bianco con invito a collegare l'account
+        calBannerBox.className = 'bg-white border border-[#E3DDD1] rounded-xs p-3.5 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs';
+        calBannerBox.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#2B4C7E] flex items-center justify-center shrink-0 text-sm shadow-2xs">
+              <i class="fa-brands fa-google"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-space font-bold text-[#222220]">Vuoi collegare Google Calendar?</span>
+                <span class="stamp-oli text-[8px] font-bold text-[#7A7568]">NON COLLEGATO</span>
+              </div>
+              <p class="text-[11px] text-[#7A7568] font-mono-code mt-0.5">
+                Collega il tuo account Google per sincronizzare automaticamente tributi, bollette e scadenze nel calendario dedicato.
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap shrink-0">
+            <button onclick="openGoogleDriveModal()" class="px-3.5 py-2 bg-[#2B4C7E] hover:bg-[#1E3557] active:scale-95 text-white rounded-xs text-xs font-bold font-space transition shadow-xs flex items-center gap-1.5 cursor-pointer" title="Collega il tuo account Google per sincronizzare le scadenze">
+              <i class="fa-brands fa-google"></i>
+              <span>COLLEGA GOOGLE CALENDAR</span>
+            </button>
+            <button onclick="exportDeadlinesToICS(currentRecords)" class="px-2.5 py-1.5 bg-white hover:bg-[#FAF8F2] text-[#3C5A48] border border-[#3C5A48]/40 active:scale-95 rounded-xs text-[11px] font-space font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer" title="Scarica file .ics con promemoria compatibile Google Calendar, Apple e Outlook">
+              <i class="fa-solid fa-calendar-arrow-down"></i>
+              <span>Esporta .ics</span>
+            </button>
+          </div>
+        `;
+      }
       container.appendChild(calBannerBox);
 
       // 4. Bento KPI Scadenzario
