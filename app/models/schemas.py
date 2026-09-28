@@ -114,6 +114,11 @@ class DashboardKPI(BaseModel):
     total_items_count: int
     quietanzati_count: Optional[int] = 0
     total_deadlines_count: Optional[int] = 0
+    total_messages_count: Optional[int] = 0
+    total_threads_count: Optional[int] = 0
+    overdue_deadlines_count: Optional[int] = 0
+    paid_deadlines_amount: Optional[float] = 0.0
+    compliance_rate: Optional[float] = 100.0
 
 class DashboardResponse(BaseModel):
     kpi: DashboardKPI

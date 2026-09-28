@@ -1386,146 +1386,79 @@
           </div>
         </div>
 
-        <!-- I 4 GROSSI BOTTONI (SCADENZE, ATTI, OGGETTI, PANORAMICA) -->
+        <!-- I 4 GROSSI BOTTONI (PANORAMICA, SCADENZE, ATTI, OGGETTI) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 py-2">
           
-          <!-- 1. BOTTONE SCADENZE -->
-          <button type="button" id="btnPanelScadenze" onclick="openPanelSection('scadenze')" 
-                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#3C5A48] hover:border-[#C84B31] rounded-xs p-6 sm:p-7 flex flex-col justify-between text-left transition-all duration-200 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[220px] shadow-xs relative overflow-hidden select-none" 
-                  title="Clicca per aprire lo Scadenzario Fiscale e Bollette">
-            <!-- Top card: timbro + icona -->
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-mono-code font-bold text-[#7A7568]">01 /</span>
-                <span id="kpiUpcomingBadge" class="stamp-oli stamp-terracotta text-[9px] font-bold">REGOLARE</span>
+          <!-- 1. BOTTONE PANORAMICA (IN ALTO A SINISTRA) -->
+          <button type="button" id="btnPanelPanoramica" onclick="openPanelSection('panoramica')" 
+                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#E3DDD1] hover:border-[#3C5A48] rounded-xs p-6 sm:p-7 flex flex-col justify-between text-left transition-all duration-150 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[170px] sm:min-h-[190px] shadow-xs select-none" 
+                  title="Clicca per aprire la Panoramica Generale e le Statistiche">
+            <div class="flex items-center justify-between">
+              <div class="w-11 h-11 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-lg text-[#3C5A48] group-hover:bg-[#3C5A48] group-hover:text-white transition shadow-2xs">
+                <i class="fa-solid fa-chart-pie"></i>
               </div>
-              <div class="w-12 h-12 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-lg text-[#C84B31] group-hover:bg-[#C84B31] group-hover:text-white transition shadow-2xs shrink-0">
+              <span class="stamp-oli stamp-solid-sage text-[8px] font-bold">REPORT & STATS</span>
+            </div>
+            <div class="mt-4">
+              <h3 class="text-2xl sm:text-3xl font-black font-space text-[#222220] uppercase tracking-tight">PANORAMICA</h3>
+              <div class="mt-1 text-2xl sm:text-3xl font-black font-mono-code text-[#3C5A48]">
+                <span id="kpiTotalRecordsCount">0</span> <span class="text-xs font-mono-code text-[#7A7568] font-bold uppercase">record</span>
+              </div>
+            </div>
+          </button>
+
+          <!-- 2. BOTTONE SCADENZE (IN ALTO A DESTRA) -->
+          <button type="button" id="btnPanelScadenze" onclick="openPanelSection('scadenze')" 
+                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#3C5A48] hover:border-[#C84B31] rounded-xs p-6 sm:p-7 flex flex-col justify-between text-left transition-all duration-150 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[170px] sm:min-h-[190px] shadow-xs select-none" 
+                  title="Clicca per aprire lo Scadenzario Fiscale e Bollette">
+            <div class="flex items-center justify-between">
+              <div class="w-11 h-11 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-lg text-[#C84B31] group-hover:bg-[#C84B31] group-hover:text-white transition shadow-2xs">
                 <i class="fa-solid fa-calendar-days"></i>
               </div>
+              <span id="kpiUpcomingBadge" class="stamp-oli stamp-terracotta text-[8px] font-bold">REGOLARE</span>
             </div>
-
-            <!-- Center: Titolo + Soldi -->
-            <div class="my-3">
-              <span class="text-[11px] font-mono-code font-bold text-[#C84B31] uppercase tracking-wider block">SCADENZARIO & TRIBUTI</span>
-              <h3 class="text-2xl sm:text-3xl font-black font-space text-[#222220] uppercase tracking-tight mt-0.5">SCADENZE</h3>
-              <div id="kpiUpcomingAmount" class="text-3xl sm:text-4xl lg:text-5xl font-black font-mono-code text-[#222220] tracking-tight leading-none mt-2 flex items-baseline gap-1.5 whitespace-nowrap">
-                <span class="text-xl sm:text-2xl font-bold text-[#7A7568] select-none">€</span>
+            <div class="mt-4">
+              <h3 class="text-2xl sm:text-3xl font-black font-space text-[#222220] uppercase tracking-tight">SCADENZE</h3>
+              <div id="kpiUpcomingAmount" class="mt-1 text-2xl sm:text-3xl font-black font-mono-code text-[#222220] whitespace-nowrap flex items-baseline gap-1.5">
+                <span class="text-lg sm:text-xl font-bold text-[#7A7568] select-none">€</span>
                 <span>0,00</span>
               </div>
-              <p class="text-xs text-[#7A7568] font-mono-code mt-1.5">Importo totale imposte e utenze da saldare</p>
-            </div>
-
-            <!-- Bottom: Azione rapida -->
-            <div class="pt-3 border-t border-[#E3DDD1] flex items-center justify-between text-xs font-mono-code">
-              <span class="text-[#7A7568] group-hover:text-[#222220] font-bold transition">Apri Scadenzario e Utenze</span>
-              <span class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-[#C84B31] group-hover:bg-[#C84B31] group-hover:text-white transition">
-                <i class="fa-solid fa-arrow-right text-[10px]"></i>
-              </span>
             </div>
           </button>
 
-          <!-- 2. BOTTONE ATTI -->
+          <!-- 3. BOTTONE ATTI (IN BASSO A SINISTRA) -->
           <button type="button" id="btnPanelAtti" onclick="openPanelSection('atti')" 
-                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#E3DDD1] hover:border-[#3C5A48] rounded-xs p-6 sm:p-7 flex flex-col justify-between text-left transition-all duration-200 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[220px] shadow-xs relative overflow-hidden select-none" 
+                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#E3DDD1] hover:border-[#3C5A48] rounded-xs p-6 sm:p-7 flex flex-col justify-between text-left transition-all duration-150 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[170px] sm:min-h-[190px] shadow-xs select-none" 
                   title="Clicca per aprire l'Archivio degli Atti e Documenti">
-            <!-- Top card: timbro + icona -->
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-mono-code font-bold text-[#7A7568]">02 /</span>
-                <span class="stamp-oli stamp-solid-sage text-[9px] font-bold">ARCHIVIO CIFRATO</span>
-              </div>
-              <div class="w-12 h-12 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-lg text-[#3C5A48] group-hover:bg-[#3C5A48] group-hover:text-white transition shadow-2xs shrink-0">
+            <div class="flex items-center justify-between">
+              <div class="w-11 h-11 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-lg text-[#3C5A48] group-hover:bg-[#3C5A48] group-hover:text-white transition shadow-2xs">
                 <i class="fa-solid fa-file-invoice"></i>
               </div>
+              <span class="stamp-oli stamp-solid-sage text-[8px] font-bold">DOCUMENTI</span>
             </div>
-
-            <!-- Center: Titolo + Numero Atti -->
-            <div class="my-3">
-              <span class="text-[11px] font-mono-code font-bold text-[#3C5A48] uppercase tracking-wider block">DOCUMENTI & CARTE</span>
-              <h3 class="text-2xl sm:text-3xl font-black font-space text-[#222220] uppercase tracking-tight mt-0.5">ATTI</h3>
-              <div class="text-3xl sm:text-4xl lg:text-5xl font-black font-mono-code text-[#222220] tracking-tight leading-none mt-2 flex items-baseline gap-2">
+            <div class="mt-4">
+              <h3 class="text-2xl sm:text-3xl font-black font-space text-[#222220] uppercase tracking-tight">ATTI</h3>
+              <div class="mt-1 text-2xl sm:text-3xl font-black font-mono-code text-[#222220]">
                 <span id="kpiDocsCount">0</span>
-                <span class="text-xs sm:text-sm font-mono-code font-bold text-[#7A7568] uppercase">atti salvati</span>
               </div>
-              <p class="text-xs text-[#7A7568] font-mono-code mt-1.5">Faldoni, fatture, contratti, cedolini e F24</p>
-            </div>
-
-            <!-- Bottom: Azione rapida -->
-            <div class="pt-3 border-t border-[#E3DDD1] flex items-center justify-between text-xs font-mono-code">
-              <span class="text-[#7A7568] group-hover:text-[#222220] font-bold transition">Apri Archivio Atti</span>
-              <span class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-[#3C5A48] group-hover:bg-[#3C5A48] group-hover:text-white transition">
-                <i class="fa-solid fa-arrow-right text-[10px]"></i>
-              </span>
             </div>
           </button>
 
-          <!-- 3. BOTTONE OGGETTI -->
+          <!-- 4. BOTTONE OGGETTI (IN BASSO A DESTRA) -->
           <button type="button" id="btnPanelOggetti" onclick="openPanelSection('oggetti')" 
-                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#E3DDD1] hover:border-[#3C5A48] rounded-xs p-6 sm:p-7 flex flex-col justify-between text-left transition-all duration-200 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[220px] shadow-xs relative overflow-hidden select-none" 
+                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#E3DDD1] hover:border-[#3C5A48] rounded-xs p-6 sm:p-7 flex flex-col justify-between text-left transition-all duration-150 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[170px] sm:min-h-[190px] shadow-xs select-none" 
                   title="Clicca per aprire l'Inventario degli Oggetti Fisici">
-            <!-- Top card: timbro + icona -->
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-mono-code font-bold text-[#7A7568]">03 /</span>
-                <span class="stamp-oli text-[9px] font-bold">STANZE & SPAZI</span>
+            <div class="flex items-center justify-between">
+              <div class="w-11 h-11 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-lg text-[#7A7568] group-hover:bg-[#3C5A48] group-hover:text-white transition shadow-2xs">
+                <i class="fa-solid fa-boxes-stacked"></i>
               </div>
-              <div class="w-12 h-12 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-lg text-[#7A7568] group-hover:bg-[#3C5A48] group-hover:text-white transition shadow-2xs shrink-0">
-                <i class="fa-solid fa-compass-drafting"></i>
-              </div>
+              <span class="stamp-oli text-[8px] font-bold">INVENTARIO</span>
             </div>
-
-            <!-- Center: Titolo + Numero Oggetti -->
-            <div class="my-3">
-              <span class="text-[11px] font-mono-code font-bold text-[#7A7568] uppercase tracking-wider block">INVENTARIO FISICO</span>
-              <h3 class="text-2xl sm:text-3xl font-black font-space text-[#222220] uppercase tracking-tight mt-0.5">OGGETTI</h3>
-              <div class="text-3xl sm:text-4xl lg:text-5xl font-black font-mono-code text-[#222220] tracking-tight leading-none mt-2 flex items-baseline gap-2">
+            <div class="mt-4">
+              <h3 class="text-2xl sm:text-3xl font-black font-space text-[#222220] uppercase tracking-tight">OGGETTI</h3>
+              <div class="mt-1 text-2xl sm:text-3xl font-black font-mono-code text-[#222220]">
                 <span id="kpiItemsCount">0</span>
-                <span class="text-xs sm:text-sm font-mono-code font-bold text-[#7A7568] uppercase">oggetti tracciati</span>
               </div>
-              <p class="text-xs text-[#7A7568] font-mono-code mt-1.5">Mappa ambienti, cassetti e foto degli oggetti</p>
-            </div>
-
-            <!-- Bottom: Azione rapida -->
-            <div class="pt-3 border-t border-[#E3DDD1] flex items-center justify-between text-xs font-mono-code">
-              <span class="text-[#7A7568] group-hover:text-[#222220] font-bold transition">Apri Inventario Oggetti</span>
-              <span class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-[#3C5A48] group-hover:bg-[#3C5A48] group-hover:text-white transition">
-                <i class="fa-solid fa-arrow-right text-[10px]"></i>
-              </span>
-            </div>
-          </button>
-
-          <!-- 4. BOTTONE PANORAMICA -->
-          <button type="button" id="btnPanelPanoramica" onclick="openPanelSection('panoramica')" 
-                  class="group w-full bg-white hover:bg-[#FAF8F2] border-2 border-[#E3DDD1] hover:border-[#3C5A48] rounded-xs p-6 sm:p-7 flex flex-col justify-between text-left transition-all duration-200 hover:shadow-md active:scale-[0.98] cursor-pointer min-h-[220px] shadow-xs relative overflow-hidden select-none" 
-                  title="Clicca per aprire la Panoramica Generale e il Registro Completo">
-            <!-- Top card: timbro + icona -->
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-mono-code font-bold text-[#7A7568]">04 /</span>
-                <span class="stamp-oli stamp-solid-sage text-[9px] font-bold">LEDGER UNIFICATO</span>
-              </div>
-              <div class="w-12 h-12 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-lg text-[#3C5A48] group-hover:bg-[#3C5A48] group-hover:text-white transition shadow-2xs shrink-0">
-                <i class="fa-solid fa-table-cells-large"></i>
-              </div>
-            </div>
-
-            <!-- Center: Titolo + Totale Record -->
-            <div class="my-3">
-              <span class="text-[11px] font-mono-code font-bold text-[#3C5A48] uppercase tracking-wider block">REGISTRO COMPLETO</span>
-              <h3 class="text-2xl sm:text-3xl font-black font-space text-[#222220] uppercase tracking-tight mt-0.5">PANORAMICA</h3>
-              <div class="text-3xl sm:text-4xl lg:text-5xl font-black font-mono-code text-[#222220] tracking-tight leading-none mt-2 flex items-baseline gap-2">
-                <span id="kpiTotalRecordsCount">0</span>
-                <span class="text-xs sm:text-sm font-mono-code font-bold text-[#7A7568] uppercase">record totali</span>
-              </div>
-              <p class="text-xs text-[#7A7568] font-mono-code mt-1.5">Tutti i record in tabella o categorie con filtri avanzati</p>
-            </div>
-
-            <!-- Bottom: Azione rapida -->
-            <div class="pt-3 border-t border-[#E3DDD1] flex items-center justify-between text-xs font-mono-code">
-              <span class="text-[#7A7568] group-hover:text-[#222220] font-bold transition">Apri Registro Unificato</span>
-              <span class="w-6 h-6 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] flex items-center justify-center text-[#3C5A48] group-hover:bg-[#3C5A48] group-hover:text-white transition">
-                <i class="fa-solid fa-arrow-right text-[10px]"></i>
-              </span>
             </div>
           </button>
 
@@ -1562,6 +1495,113 @@
             <span id="panelDetailSectionBadge" class="stamp-oli stamp-terracotta text-[9px] font-bold">SCADENZARIO</span>
           </div>
         </div>
+
+        <!-- SEZIONE STATISTICHE GENERALI DI UTILIZZO (VISIBILE IN PANORAMICA) -->
+        <div id="panoramicaStatsContainer" class="space-y-3">
+          
+          <div class="flex items-center justify-between pb-1 border-b border-[#E3DDD1]">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-[#3C5A48]"></span>
+              <h4 class="text-xs font-bold text-[#222220] uppercase tracking-wider font-space">Statistiche Generali di Utilizzo</h4>
+            </div>
+            <span class="stamp-oli stamp-solid-sage text-[8px] font-bold">MONITORAGGIO CAVEAU</span>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            
+            <!-- Stat 1: Totale Chat / Messaggi -->
+            <div class="bg-white border border-[#E3DDD1] p-3.5 rounded-xs shadow-2xs flex flex-col justify-between">
+              <div class="flex items-center justify-between text-[#7A7568] text-xs">
+                <span class="text-[9px] font-mono-code uppercase font-bold">Interazioni</span>
+                <i class="fa-solid fa-message text-[#3C5A48]"></i>
+              </div>
+              <div class="my-2">
+                <div id="statTotalMessages" class="text-2xl lg:text-3xl font-black font-mono-code text-[#222220]">0</div>
+                <div class="text-[10px] font-space text-[#7A7568] uppercase font-bold">Chat Assistente</div>
+              </div>
+              <div class="text-[9px] font-mono-code text-[#7A7568] border-t border-[#E3DDD1] pt-1">
+                <span id="statTotalThreads">0</span> spazi / thread
+              </div>
+            </div>
+
+            <!-- Stat 2: Documenti Caricati -->
+            <div class="bg-white border border-[#E3DDD1] p-3.5 rounded-xs shadow-2xs flex flex-col justify-between">
+              <div class="flex items-center justify-between text-[#7A7568] text-xs">
+                <span class="text-[9px] font-mono-code uppercase font-bold">Archivio</span>
+                <i class="fa-solid fa-file-invoice text-[#3C5A48]"></i>
+              </div>
+              <div class="my-2">
+                <div id="statTotalDocs" class="text-2xl lg:text-3xl font-black font-mono-code text-[#222220]">0</div>
+                <div class="text-[10px] font-space text-[#7A7568] uppercase font-bold">Atti Caricati</div>
+              </div>
+              <div class="text-[9px] font-mono-code text-[#7A7568] border-t border-[#E3DDD1] pt-1">
+                Fatture, contratti, F24
+              </div>
+            </div>
+
+            <!-- Stat 3: Scadenze Rispettate -->
+            <div class="bg-white border border-[#E3DDD1] p-3.5 rounded-xs shadow-2xs flex flex-col justify-between">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-[9px] font-mono-code uppercase font-bold text-emerald-800">Rispettate</span>
+                <i class="fa-solid fa-circle-check text-emerald-600"></i>
+              </div>
+              <div class="my-2">
+                <div id="statRespectedDeadlines" class="text-2xl lg:text-3xl font-black font-mono-code text-emerald-700">0</div>
+                <div class="text-[10px] font-space text-emerald-800 uppercase font-bold">Saldate / Pagate</div>
+              </div>
+              <div class="text-[9px] font-mono-code text-[#7A7568] border-t border-[#E3DDD1] pt-1 truncate">
+                <span id="statPaidAmount">€ 0,00</span> saldati
+              </div>
+            </div>
+
+            <!-- Stat 4: Scadenze Non Rispettate / Da Saldare -->
+            <div class="bg-white border border-[#E3DDD1] p-3.5 rounded-xs shadow-2xs flex flex-col justify-between">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-[9px] font-mono-code uppercase font-bold text-[#C84B31]">Non Rispettate</span>
+                <i class="fa-solid fa-fire text-[#C84B31]"></i>
+              </div>
+              <div class="my-2">
+                <div id="statUnrespectedDeadlines" class="text-2xl lg:text-3xl font-black font-mono-code text-[#C84B31]">0</div>
+                <div class="text-[10px] font-space text-[#C84B31] uppercase font-bold">Da Saldare</div>
+              </div>
+              <div class="text-[9px] font-mono-code text-[#7A7568] border-t border-[#E3DDD1] pt-1">
+                <span id="statOverdueCount">0</span> scadute · <span id="statPendingCount">0</span> in scad.
+              </div>
+            </div>
+
+            <!-- Stat 5: Puntualità Scadenze -->
+            <div class="bg-white border border-[#E3DDD1] p-3.5 rounded-xs shadow-2xs flex flex-col justify-between">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-[9px] font-mono-code uppercase font-bold text-[#3C5A48]">Puntualità</span>
+                <i class="fa-solid fa-chart-line text-[#3C5A48]"></i>
+              </div>
+              <div class="my-2">
+                <div id="statComplianceRate" class="text-2xl lg:text-3xl font-black font-mono-code text-[#3C5A48]">100%</div>
+                <div class="text-[10px] font-space text-[#7A7568] uppercase font-bold">Indice Rispetto</div>
+              </div>
+              <div class="text-[9px] font-mono-code text-[#7A7568] border-t border-[#E3DDD1] pt-1">
+                Regolarità adempimenti
+              </div>
+            </div>
+
+            <!-- Stat 6: Oggetti Tracciati -->
+            <div class="bg-white border border-[#E3DDD1] p-3.5 rounded-xs shadow-2xs flex flex-col justify-between">
+              <div class="flex items-center justify-between text-xs text-[#7A7568]">
+                <span class="text-[9px] font-mono-code uppercase font-bold">Inventario</span>
+                <i class="fa-solid fa-boxes-stacked text-[#7A7568]"></i>
+              </div>
+              <div class="my-2">
+                <div id="statTotalItems" class="text-2xl lg:text-3xl font-black font-mono-code text-[#222220]">0</div>
+                <div class="text-[10px] font-space text-[#7A7568] uppercase font-bold">Oggetti Tracciati</div>
+              </div>
+              <div class="text-[9px] font-mono-code text-[#7A7568] border-t border-[#E3DDD1] pt-1">
+                Mappa posizioni e stanze
+              </div>
+            </div>
+
+          </div>
+
+        </div> <!-- /#panoramicaStatsContainer -->
 
         <!-- SELETTORE A SCHEDE & REGISTRO UNIFICATO OLIVETTI -->
         <div id="panelDetailFiltersBar" class="bg-white border border-[#E3DDD1] rounded-xs shadow-xs overflow-hidden flex flex-col">

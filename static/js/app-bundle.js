@@ -655,6 +655,8 @@
     function openPanelSection(section) {
       const hub = document.getElementById('panelHubContainer');
       const detail = document.getElementById('panelDetailContainer');
+      const panoStats = document.getElementById('panoramicaStatsContainer');
+
       if (hub) hub.classList.add('hidden');
       if (detail) detail.classList.remove('hidden');
 
@@ -665,6 +667,7 @@
       const norm = (section || 'panoramica').toLowerCase().trim();
 
       if (norm === 'scadenze' || norm === 'deadlines' || norm === 'scadenzario' || norm === 'da_pagare') {
+        if (panoStats) panoStats.classList.add('hidden');
         if (titleEl) titleEl.textContent = 'SCADENZE & TRIBUTI';
         if (iconEl) iconEl.className = 'fa-solid fa-calendar-days text-[#C84B31] text-xs';
         if (badgeEl) {
@@ -673,6 +676,7 @@
         }
         filterTable('scadenzario');
       } else if (norm === 'atti' || norm === 'documents' || norm === 'documenti') {
+        if (panoStats) panoStats.classList.add('hidden');
         if (titleEl) titleEl.textContent = 'ATTI & DOCUMENTI';
         if (iconEl) iconEl.className = 'fa-solid fa-file-invoice text-[#3C5A48] text-xs';
         if (badgeEl) {
@@ -681,8 +685,9 @@
         }
         filterTable('atti');
       } else if (norm === 'oggetti' || norm === 'items') {
+        if (panoStats) panoStats.classList.add('hidden');
         if (titleEl) titleEl.textContent = 'OGGETTI FISICI & STANZE';
-        if (iconEl) iconEl.className = 'fa-solid fa-compass-drafting text-[#7A7568] text-xs';
+        if (iconEl) iconEl.className = 'fa-solid fa-boxes-stacked text-[#7A7568] text-xs';
         if (badgeEl) {
           badgeEl.textContent = 'INVENTARIO';
           badgeEl.className = 'stamp-oli text-[9px] font-bold';
@@ -690,10 +695,11 @@
         filterTable('items');
       } else {
         // panoramica / all
-        if (titleEl) titleEl.textContent = 'PANORAMICA GENERALE';
-        if (iconEl) iconEl.className = 'fa-solid fa-table-cells-large text-[#3C5A48] text-xs';
+        if (panoStats) panoStats.classList.remove('hidden');
+        if (titleEl) titleEl.textContent = 'PANORAMICA & STATISTICHE';
+        if (iconEl) iconEl.className = 'fa-solid fa-chart-pie text-[#3C5A48] text-xs';
         if (badgeEl) {
-          badgeEl.textContent = 'REGISTRO COMPLETO';
+          badgeEl.textContent = 'STATISTICHE & REPORT';
           badgeEl.className = 'stamp-oli stamp-solid-sage text-[9px] font-bold';
         }
         filterTable('all');
@@ -6113,6 +6119,43 @@
           const tot = (kpi.total_documents_count || 0) + (kpi.total_items_count || 0);
           kpiTotEl.textContent = `${tot}`;
         }
+
+        // Popola Statistiche Generali di Utilizzo (sezione Panoramica)
+        const elMsg = document.getElementById('statTotalMessages');
+        if (elMsg) elMsg.textContent = `${kpi.total_messages_count || 0}`;
+
+        const elTh = document.getElementById('statTotalThreads');
+        if (elTh) elTh.textContent = `${kpi.total_threads_count || 0}`;
+
+        const elDocs = document.getElementById('statTotalDocs');
+        if (elDocs) elDocs.textContent = `${kpi.total_documents_count || 0}`;
+
+        const elResp = document.getElementById('statRespectedDeadlines');
+        if (elResp) elResp.textContent = `${kpi.quietanzati_count || 0}`;
+
+        const elPaidAmt = document.getElementById('statPaidAmount');
+        if (elPaidAmt) {
+          const pAmt = kpi.paid_deadlines_amount != null ? kpi.paid_deadlines_amount : 0;
+          elPaidAmt.textContent = `€ ${pAmt.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        const elUnresp = document.getElementById('statUnrespectedDeadlines');
+        if (elUnresp) {
+          const unresp = (kpi.overdue_deadlines_count || 0) + (kpi.pending_deadlines_count || 0);
+          elUnresp.textContent = `${unresp}`;
+        }
+
+        const elOver = document.getElementById('statOverdueCount');
+        if (elOver) elOver.textContent = `${kpi.overdue_deadlines_count || 0}`;
+
+        const elPend = document.getElementById('statPendingCount');
+        if (elPend) elPend.textContent = `${kpi.pending_deadlines_count || 0}`;
+
+        const elComp = document.getElementById('statComplianceRate');
+        if (elComp) elComp.textContent = `${kpi.compliance_rate != null ? kpi.compliance_rate : 100}%`;
+
+        const elIt = document.getElementById('statTotalItems');
+        if (elIt) elIt.textContent = `${kpi.total_items_count || 0}`;
 
         // Aggiorna data display
         const dateEl = document.getElementById('dashboardDateDisplay');

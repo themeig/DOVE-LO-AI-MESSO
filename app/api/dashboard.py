@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.models.database import get_db, Document, PhysicalItem, ChatThread
+from app.models.database import get_db, Document, PhysicalItem, ChatThread, ChatMessage
 from app.models.schemas import DashboardResponse, DashboardKPI, RecordItem
 from app.services.agent_service import categorize_deadline
 from app.version import APP_VERSION
@@ -186,6 +186,9 @@ def get_dashboard(
     all_items = item_query.order_by(PhysicalItem.updated_at.desc()).all()
 
     # 2. Compute KPIs
+    from datetime import date
+    today = date.today()
+
     pending_docs = [d for d in all_docs if d.status == "da_pagare"]
     total_upcoming_amount = round(sum(d.amount for d in pending_docs if d.amount is not None), 2)
     pending_deadlines_count = len(pending_docs)
@@ -196,13 +199,37 @@ def get_dashboard(
     deadlines_docs = [d for d in all_docs if d.due_date is not None]
     total_deadlines_count = len(deadlines_docs)
 
+    # Statistiche dettagliate di utilizzo per la vista Panoramica
+    msg_query = db.query(ChatMessage)
+    if thread_id and thread_id != "all":
+        msg_query = msg_query.filter(ChatMessage.thread_id == thread_id)
+    total_messages_count = msg_query.count()
+    total_threads_count = len(threads)
+
+    overdue_docs = [d for d in pending_docs if d.due_date and d.due_date < today]
+    overdue_deadlines_count = len(overdue_docs)
+    paid_deadlines_amount = round(sum(d.amount for d in quietanzati_docs if d.amount is not None), 2)
+
+    total_scadenze_concluse = quietanzati_count + overdue_deadlines_count
+    if total_scadenze_concluse > 0:
+        compliance_rate = round((quietanzati_count / total_scadenze_concluse) * 100.0, 1)
+    elif (quietanzati_count + pending_deadlines_count) > 0:
+        compliance_rate = round((quietanzati_count / (quietanzati_count + pending_deadlines_count)) * 100.0, 1)
+    else:
+        compliance_rate = 100.0
+
     kpi = DashboardKPI(
         total_upcoming_amount=total_upcoming_amount,
         pending_deadlines_count=pending_deadlines_count,
         total_documents_count=total_documents_count,
         total_items_count=total_items_count,
         quietanzati_count=quietanzati_count,
-        total_deadlines_count=total_deadlines_count
+        total_deadlines_count=total_deadlines_count,
+        total_messages_count=total_messages_count,
+        total_threads_count=total_threads_count,
+        overdue_deadlines_count=overdue_deadlines_count,
+        paid_deadlines_amount=paid_deadlines_amount,
+        compliance_rate=compliance_rate
     )
 
     # 3. Assemble records

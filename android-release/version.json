@@ -1,6 +1,6 @@
 {
-  "version_code": 320,
-  "version_name": "2.10.20",
+  "version_code": 321,
+  "version_name": "2.10.21",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "🏛️ Riprogettazione Dashboard in 'PANNELLO' Olivetti Industrial: hub a 4 grandi bottoni (Scadenze, Atti, Oggetti, Panoramica) con visualizzazione importi e conteggi in tempo reale, navigazione con tasto di ritorno al pannello e filtro dedicato agli atti."
+  "release_notes": "🏛️ Riprogettazione Pannello: Panoramica in alto a sinistra con statistiche generali di utilizzo (totale chat/thread, documenti, scadenze rispettate e importi, scadenze non rispettate, indice di puntualità e oggetti tracciati). Bottoni minimali, puliti e intuitivi."
 }
