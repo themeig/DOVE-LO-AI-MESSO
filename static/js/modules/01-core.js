@@ -101,6 +101,7 @@
       const unauthBox = document.getElementById('authUnauthenticatedBox');
       const authBox = document.getElementById('authAuthenticatedBox');
       const headerBtn = document.getElementById('headerAccountBtn');
+      const headerBadge = document.getElementById('headerAccountBadge');
       const sidebarBtn = document.getElementById('sidebarAccountBtn');
 
       if (!token) {
@@ -108,7 +109,12 @@
         window.currentCloudUser = null;
         if (unauthBox) unauthBox.classList.remove('hidden');
         if (authBox) authBox.classList.add('hidden');
-        if (headerBtn) headerBtn.classList.remove('bg-[#3C5A48]', 'text-white');
+        if (headerBtn) {
+          headerBtn.classList.remove('bg-[#3C5A48]', 'text-white');
+          headerBtn.classList.add('bg-white', 'text-[#3C5A48]');
+          headerBtn.title = "Il mio Account & Profilo Cloud (Offline)";
+        }
+        if (headerBadge) headerBadge.classList.add('hidden');
         if (sidebarBtn) sidebarBtn.classList.remove('bg-[#3C5A48]', 'text-white');
         return null;
       }
@@ -129,7 +135,12 @@
           if (emailEl) emailEl.textContent = user.email || '';
           if (avatarEl) avatarEl.textContent = (user.full_name || user.email || 'U')[0].toUpperCase();
 
-          if (headerBtn) headerBtn.classList.add('bg-[#3C5A48]', 'text-white');
+          if (headerBtn) {
+            headerBtn.classList.add('bg-[#3C5A48]', 'text-white');
+            headerBtn.classList.remove('bg-white', 'text-[#3C5A48]');
+            headerBtn.title = `Il mio Account: ${user.full_name || user.email}`;
+          }
+          if (headerBadge) headerBadge.classList.remove('hidden');
           if (sidebarBtn) sidebarBtn.classList.add('bg-[#3C5A48]', 'text-white');
           return user;
         } else {
@@ -139,6 +150,12 @@
           window.currentCloudUser = null;
           if (unauthBox) unauthBox.classList.remove('hidden');
           if (authBox) authBox.classList.add('hidden');
+          if (headerBtn) {
+            headerBtn.classList.remove('bg-[#3C5A48]', 'text-white');
+            headerBtn.classList.add('bg-white', 'text-[#3C5A48]');
+            headerBtn.title = "Il mio Account & Profilo Cloud (Offline)";
+          }
+          if (headerBadge) headerBadge.classList.add('hidden');
           return null;
         }
       } catch (err) {

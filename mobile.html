@@ -63,7 +63,7 @@
           <h2 class="font-bold text-xs leading-tight uppercase font-space text-[#222220] truncate">Dove lo AI messo</h2>
         </div>
 
-        <!-- Indicatori Cloud & Pulsante Account a destra nel container -->
+        <!-- Indicatori Cloud a destra nel container -->
         <div class="flex items-center gap-1.5 shrink-0">
           <span id="sidebarHeaderDriveStatus" class="hidden text-xs text-[#3C5A48] items-center" title="Google Drive Collegato">
             <i class="fa-brands fa-google-drive"></i>
@@ -71,15 +71,6 @@
           <span id="sidebarHeaderCalendarStatus" class="hidden text-xs text-[#3C5A48] items-center" title="Google Calendar Collegato">
             <i class="fa-solid fa-calendar-check"></i>
           </span>
-          <button 
-            onclick="openAccountModal()" 
-            id="sidebarAccountBtn" 
-            class="w-7 h-7 rounded-xs border border-[#3C5A48] bg-white text-[#3C5A48] hover:bg-[#3C5A48] hover:text-white flex items-center justify-center transition cursor-pointer shadow-xs active:scale-95" 
-            title="Account Cloud & Gruppi Condivisi"
-            aria-label="Account e Gruppi"
-          >
-            <i class="fa-solid fa-user-group text-[11px]"></i>
-          </button>
         </div>
       </div>
 
@@ -151,17 +142,6 @@
 
         <!-- Azioni Header Destra -->
         <div class="flex items-center space-x-2 shrink-0">
-          <!-- Tasto Account & Gruppi Condivisi -->
-          <button 
-            id="headerAccountBtn" 
-            onclick="openAccountModal()" 
-            class="relative w-8 h-8 border border-[#3C5A48] bg-white text-[#3C5A48] rounded-xs flex items-center justify-center hover:bg-[#3C5A48] hover:text-white transition cursor-pointer active:scale-95 shadow-xs" 
-            title="Account Cloud & Gruppi Condivisi"
-            aria-label="Account e Gruppi"
-          >
-            <i class="fa-solid fa-user-group text-xs"></i>
-          </button>
-
           <!-- Campanella Notifiche Scadenze con Badge Dinamico -->
           <button 
             id="deadlinesBellBtn" 
@@ -175,6 +155,22 @@
               id="deadlinesBellBadge" 
               class="hidden absolute -top-1 -right-1 min-w-[15px] h-[15px] bg-[#C84B31] text-white text-[9px] font-bold rounded-full px-0.5 flex items-center justify-center shadow-xs"
             >0</span>
+          </button>
+
+          <!-- Tasto Il Mio Account (in alto a destra vicino al simbolo delle notifiche) -->
+          <button 
+            id="headerAccountBtn" 
+            onclick="openAccountModal('profile')" 
+            class="relative w-8 h-8 border border-[#3C5A48] bg-white text-[#3C5A48] rounded-xs flex items-center justify-center hover:bg-[#3C5A48] hover:text-white transition cursor-pointer active:scale-95 shadow-xs" 
+            title="Il mio Account & Profilo Cloud"
+            aria-label="Il mio Account"
+          >
+            <i id="headerAccountIcon" class="fa-solid fa-circle-user text-sm"></i>
+            <span 
+              id="headerAccountBadge" 
+              class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full shadow-xs"
+              title="Sessione Cloud Attiva"
+            ></span>
           </button>
 
           <!-- Elimina Gruppo/Area Personalizzata -->
@@ -454,18 +450,18 @@
 </div>
 
   <!-- ================================================================= -->
-  <!-- MODAL: CREA NUOVO GRUPPO O AREA TEMATICA (OLIVETTI INDUSTRIAL)    -->
+  <!-- MODAL: CREA NUOVO GRUPPO ONLINE O AREA TEMATICA (OLIVETTI INDUSTRIAL) -->
   <!-- ================================================================= -->
   <div id="newThreadModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
     <div class="modal-card bg-white rounded-xs max-w-md w-full p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 border-2 border-[#3C5A48]">
       <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
         <div class="flex items-center gap-2.5">
           <div class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-sm shadow-xs">
-            <i class="fa-solid fa-comments"></i>
+            <i class="fa-solid fa-users"></i>
           </div>
           <div>
-            <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Crea Nuova Chat / Spazio</h3>
-            <p class="text-[10px] text-[#7A7568] font-mono-code">Nuovo registro o dossier archivistico</p>
+            <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Crea Nuovo Gruppo Online o Spazio</h3>
+            <p class="text-[10px] text-[#7A7568] font-mono-code">Condivisione cloud o dossier archivistico</p>
           </div>
         </div>
         <button onclick="closeNewThreadModal()" class="text-[#7A7568] hover:text-[#222220] p-1 cursor-pointer">
@@ -482,7 +478,7 @@
           class="py-2 text-xs font-bold font-space rounded-xs transition bg-[#3C5A48] text-white shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <i class="fa-solid fa-users"></i>
-          <span>Gruppo Persone</span>
+          <span>Gruppo Online 👥</span>
         </button>
         <button 
           type="button" 
@@ -491,33 +487,45 @@
           class="py-2 text-xs font-bold font-space rounded-xs transition bg-white border border-[#E3DDD1] text-[#7A7568] hover:text-[#222220] flex items-center justify-center gap-1.5 cursor-pointer"
         >
           <i class="fa-solid fa-folder text-[#3C5A48]"></i>
-          <span>Area Tematica</span>
+          <span>Area Tematica 🗂️</span>
         </button>
+      </div>
+
+      <!-- Scheda Successo: Gruppo Creato (Nascosta inizialmente) -->
+      <div id="newThreadSuccessBox" class="hidden p-4 bg-emerald-50 border border-emerald-300 rounded-xs space-y-3 text-center animate-fade-in">
+        <span class="stamp-oli stamp-solid-sage text-[10px]">GRUPPO ONLINE ATTIVATO</span>
+        <h4 id="newThreadSuccessName" class="font-bold text-[#222220] text-sm font-space"></h4>
+        <p class="text-xs text-[#7A7568] font-mono-code">Condividi questo codice d'invito con i partecipanti per accedere al registro comune:</p>
+        <div class="flex items-center justify-center gap-2">
+          <span id="newThreadSuccessCode" class="px-4 py-2 bg-white border-2 border-dashed border-[#3C5A48] text-base font-bold font-mono-code text-[#3C5A48] rounded-xs tracking-widest select-all"></span>
+          <button type="button" onclick="copyNewThreadCode()" class="px-3 py-2 bg-[#3C5A48] hover:bg-[#2F4738] text-white text-xs rounded-xs font-space font-bold transition cursor-pointer shadow-xs active:scale-95" title="Copia codice">
+            <i class="fa-solid fa-copy"></i>
+          </button>
+        </div>
+        <div class="pt-2">
+          <button type="button" id="newThreadSuccessEnterBtn" class="w-full py-2.5 bg-[#3C5A48] hover:bg-[#2F4738] text-white rounded-xs font-space font-bold text-xs shadow-xs transition cursor-pointer active:scale-95 flex items-center justify-center gap-1.5">
+            <span>Apri Registro del Gruppo Subito</span>
+            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+          </button>
+        </div>
       </div>
 
       <!-- Form di creazione -->
       <form id="newThreadForm" onsubmit="handleCreateThread(event)" class="space-y-3.5 text-xs">
+        <!-- Box descrittivo Gruppo Online -->
+        <div id="groupInfoBox" class="p-2.5 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs text-[11px] text-[#7A7568] font-mono-code leading-relaxed">
+          <strong class="text-[#3C5A48]"><i class="fa-solid fa-cloud"></i> Gruppo Online Condiviso:</strong> Genera un codice d'invito univoco. Tutti i membri potranno visualizzare bollette, scadenze e quietanze in tempo reale nel registro ufficiale.
+        </div>
+
         <div>
-          <label class="block font-bold text-[#222220] mb-1 font-space uppercase text-[11px]" id="labelThreadName">Nome del Gruppo</label>
+          <label class="block font-bold text-[#222220] mb-1 font-space uppercase text-[11px]" id="labelThreadName">Nome del Gruppo Online</label>
           <input 
             id="threadNameInput" 
             type="text" 
             required 
-            placeholder="Es. Famiglia, Condominio, Casa Mare..." 
-            class="w-full px-3 py-2 border border-[#3C5A48] rounded-xs outline-none text-[#222220] font-mono-code text-xs"
+            placeholder="Es. Famiglia, Condominio, Casa Mare, Ufficio..." 
+            class="w-full px-3 py-2 border border-[#3C5A48] rounded-xs outline-none text-[#222220] font-mono-code text-xs focus:ring-1 focus:ring-[#3C5A48]"
           >
-        </div>
-
-        <!-- Solo per Gruppi: Membri -->
-        <div id="groupMembersGroup">
-          <label class="block font-bold text-[#222220] mb-1 font-space uppercase text-[11px]">Membri del gruppo (separati da virgola)</label>
-          <input 
-            id="threadMembersInput" 
-            type="text" 
-            placeholder="Es. Io, Chiara, Marco" 
-            class="w-full px-3 py-2 border border-[#3C5A48] rounded-xs outline-none text-[#222220] font-mono-code text-xs"
-          >
-          <p class="text-[10px] text-[#7A7568] mt-1 font-mono-code">L'AI riconoscerà i partecipanti nei messaggi e nelle ricerche.</p>
         </div>
 
         <!-- Solo per Aree Tematiche: Selezione Icona -->
@@ -537,17 +545,33 @@
           <input 
             id="threadDescInput" 
             type="text" 
-            placeholder="Es. Bollette luce/gas e chiavi di riserva" 
-            class="w-full px-3 py-2 border border-[#3C5A48] rounded-xs outline-none text-[#222220] font-mono-code text-xs"
+            placeholder="Es. Spese comuni, bollette luce/gas e tributi" 
+            class="w-full px-3 py-2 border border-[#3C5A48] rounded-xs outline-none text-[#222220] font-mono-code text-xs focus:ring-1 focus:ring-[#3C5A48]"
           >
         </div>
 
         <div class="flex items-center justify-end gap-2 pt-2 border-t border-[#E3DDD1]">
           <button type="button" onclick="closeNewThreadModal()" class="px-3.5 py-2 text-[#7A7568] hover:text-[#222220] rounded-xs font-space font-bold cursor-pointer">Annulla</button>
-          <button type="submit" class="px-4 py-2 bg-[#3C5A48] hover:bg-[#2F4738] text-white rounded-xs font-space font-bold shadow-xs flex items-center gap-1.5 cursor-pointer">
-            <i class="fa-solid fa-check"></i>
-            <span>Crea Spazio</span>
+          <button id="newThreadSubmitBtn" type="submit" class="px-4 py-2 bg-[#3C5A48] hover:bg-[#2F4738] text-white rounded-xs font-space font-bold shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <span id="newThreadSubmitText">Crea Gruppo Online</span>
           </button>
+        </div>
+
+        <!-- Sezione per aderire con codice d'invito -->
+        <div id="newThreadJoinSection" class="pt-3 border-t border-[#E3DDD1]">
+          <button type="button" onclick="toggleNewThreadJoinBox()" class="text-[11px] font-bold text-[#3C5A48] hover:underline flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-key text-[10px]"></i>
+            <span>Hai già un codice invito? Partecipa a un gruppo online</span>
+          </button>
+          <div id="newThreadJoinBox" class="hidden mt-2 p-2.5 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs space-y-2 animate-fade-in">
+            <label class="block text-[10px] font-bold uppercase text-[#7A7568] font-space">Codice Invito Ricevuto (es. ROX-8821)</label>
+            <div class="flex gap-1.5">
+              <input id="newThreadJoinCodeInput" type="text" placeholder="ROX-8821" class="flex-1 px-2.5 py-1.5 border border-[#3C5A48] rounded-xs text-xs font-mono-code uppercase font-bold text-[#222220] outline-none">
+              <button type="button" onclick="handleNewThreadJoinSubmit()" class="px-3.5 py-1.5 bg-[#3C5A48] text-white rounded-xs font-space font-bold text-xs hover:bg-[#2F4738] transition cursor-pointer active:scale-95">Partecipa</button>
+            </div>
+            <p id="newThreadJoinError" class="hidden text-[10px] text-red-600 font-mono-code"></p>
+          </div>
         </div>
       </form>
     </div>

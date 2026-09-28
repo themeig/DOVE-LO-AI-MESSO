@@ -227,7 +227,8 @@
       if (subEl) {
         if (thread.thread_type === 'group') {
           const mList = thread.members && thread.members.length > 0 ? thread.members.join(', ') : 'Io';
-          subEl.textContent = `Membri: ${mList} • online`;
+          const safeName = (thread.name || '').replace(/'/g, "\\'");
+          subEl.innerHTML = `<span class="cursor-pointer hover:underline text-[#3C5A48] font-bold inline-flex items-center gap-1" onclick="openGroupActivityLedger('${thread.id}', '${safeName}')" title="Apri Registro Operativo Ufficiale"><i class="fa-solid fa-cloud text-[9px]"></i> Gruppo Online • <i class="fa-solid fa-book-open text-[9px]"></i> Registro Ufficiale</span> • ${mList}`;
         } else {
           subEl.textContent = `${thread.description || 'Area tematica'} • ${thread.message_count || 0} messaggi`;
         }
@@ -470,19 +471,33 @@
     window.loadChatHistory = () => loadThreadMessages(currentThreadId);
 
 
-    // --- Gestione Modale Nuovo Thread / Gruppo ---
+    // --- Gestione Modale Nuovo Thread / Gruppo Online ---
     function openNewThreadModal() {
       const modal = document.getElementById('newThreadModal');
       if (modal) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+        const formEl = document.getElementById('newThreadForm');
+        const successBox = document.getElementById('newThreadSuccessBox');
+        const joinBox = document.getElementById('newThreadJoinBox');
+        const joinErr = document.getElementById('newThreadJoinError');
+        if (formEl) formEl.classList.remove('hidden');
+        if (successBox) successBox.classList.add('hidden');
+        if (joinBox) joinBox.classList.add('hidden');
+        if (joinErr) joinErr.classList.add('hidden');
         selectThreadType('group');
-        document.getElementById('threadNameInput').value = '';
-        document.getElementById('threadMembersInput').value = '';
-        document.getElementById('threadDescInput').value = '';
-        document.getElementById('threadNameInput').focus();
+        const nameInput = document.getElementById('threadNameInput');
+        if (nameInput) {
+          nameInput.value = '';
+          nameInput.focus();
+        }
+        const descInput = document.getElementById('threadDescInput');
+        if (descInput) descInput.value = '';
+        const codeInput = document.getElementById('newThreadJoinCodeInput');
+        if (codeInput) codeInput.value = '';
       }
     }
+    window.openNewThreadModal = openNewThreadModal;
 
     function closeNewThreadModal() {
       const modal = document.getElementById('newThreadModal');
@@ -491,43 +506,54 @@
         modal.classList.remove('flex');
       }
     }
+    window.closeNewThreadModal = closeNewThreadModal;
 
     function selectThreadType(type) {
       newThreadType = type;
       const tabGroup = document.getElementById('tabTypeGroup');
       const tabThematic = document.getElementById('tabTypeThematic');
-      const groupGroup = document.getElementById('groupMembersGroup');
-      const thematicGroup = document.getElementById('thematicIconGroup');
+      const groupInfoBox = document.getElementById('groupInfoBox');
+      const thematicIconGroup = document.getElementById('thematicIconGroup');
       const labelName = document.getElementById('labelThreadName');
       const nameInput = document.getElementById('threadNameInput');
+      const submitText = document.getElementById('newThreadSubmitText');
+      const joinSection = document.getElementById('newThreadJoinSection');
 
       if (type === 'group') {
-        tabGroup.className = 'py-2 text-xs font-semibold rounded-lg transition bg-white text-slate-900 shadow-xs flex items-center justify-center gap-1.5';
-        tabThematic.className = 'py-2 text-xs font-semibold rounded-lg transition text-slate-500 hover:text-slate-900 flex items-center justify-center gap-1.5';
-        groupGroup.classList.remove('hidden');
-        thematicGroup.classList.add('hidden');
-        labelName.textContent = 'Nome del Gruppo';
-        nameInput.placeholder = 'Es. Famiglia, Condominio, Amici Vacanze...';
+        if (tabGroup) tabGroup.className = 'py-2 text-xs font-bold font-space rounded-xs transition bg-[#3C5A48] text-white shadow-xs flex items-center justify-center gap-1.5 cursor-pointer';
+        if (tabThematic) tabThematic.className = 'py-2 text-xs font-bold font-space rounded-xs transition bg-white border border-[#E3DDD1] text-[#7A7568] hover:text-[#222220] flex items-center justify-center gap-1.5 cursor-pointer';
+        if (groupInfoBox) groupInfoBox.classList.remove('hidden');
+        if (thematicIconGroup) thematicIconGroup.classList.add('hidden');
+        if (joinSection) joinSection.classList.remove('hidden');
+        if (labelName) labelName.textContent = 'Nome del Gruppo Online';
+        if (nameInput) nameInput.placeholder = 'Es. Famiglia, Condominio, Casa Mare, Ufficio...';
+        if (submitText) submitText.textContent = 'Crea Gruppo Online';
       } else {
-        tabThematic.className = 'py-2 text-xs font-semibold rounded-lg transition bg-white text-slate-900 shadow-xs flex items-center justify-center gap-1.5';
-        tabGroup.className = 'py-2 text-xs font-semibold rounded-lg transition text-slate-500 hover:text-slate-900 flex items-center justify-center gap-1.5';
-        groupGroup.classList.add('hidden');
-        thematicGroup.classList.remove('hidden');
-        labelName.textContent = 'Nome dell\'Area Tematica';
-        nameInput.placeholder = 'Es. Lavoro, Fisco & Tasse, Auto & Moto...';
+        if (tabThematic) tabThematic.className = 'py-2 text-xs font-bold font-space rounded-xs transition bg-[#3C5A48] text-white shadow-xs flex items-center justify-center gap-1.5 cursor-pointer';
+        if (tabGroup) tabGroup.className = 'py-2 text-xs font-bold font-space rounded-xs transition bg-white border border-[#E3DDD1] text-[#7A7568] hover:text-[#222220] flex items-center justify-center gap-1.5 cursor-pointer';
+        if (groupInfoBox) groupInfoBox.classList.add('hidden');
+        if (thematicIconGroup) thematicIconGroup.classList.remove('hidden');
+        if (joinSection) joinSection.classList.add('hidden');
+        if (labelName) labelName.textContent = 'Nome dell\'Area Tematica';
+        if (nameInput) nameInput.placeholder = 'Es. Lavoro, Fisco & Tasse, Auto & Moto...';
+        if (submitText) submitText.textContent = 'Crea Area Tematica';
       }
     }
+    window.selectThreadType = selectThreadType;
 
     function selectThematicIcon(icon) {
       selectedThematicIcon = icon;
       document.querySelectorAll('.icon-choice').forEach(btn => {
         if (btn.getAttribute('data-icon') === icon) {
-          btn.classList.add('border-[#128C7E]', 'bg-emerald-50');
+          btn.classList.add('border-[#3C5A48]', 'bg-[#FAF8F2]', 'text-[#3C5A48]');
+          btn.classList.remove('border-[#E3DDD1]', 'bg-white');
         } else {
-          btn.classList.remove('border-[#128C7E]', 'bg-emerald-50');
+          btn.classList.remove('border-[#3C5A48]', 'bg-[#FAF8F2]', 'text-[#3C5A48]');
+          btn.classList.add('border-[#E3DDD1]', 'bg-white');
         }
       });
     }
+    window.selectThematicIcon = selectThematicIcon;
 
     async function handleCreateThread(e) {
       if (e) e.preventDefault();
@@ -535,14 +561,70 @@
       if (!name) return;
 
       const desc = (document.getElementById('threadDescInput')?.value || '').trim();
-      let members = [];
+
       if (newThreadType === 'group') {
-        const rawM = (document.getElementById('threadMembersInput')?.value || '').trim();
-        members = rawM ? rawM.split(',').map(m => m.trim()).filter(m => m.length > 0) : ['Io'];
+        const submitBtn = document.getElementById('newThreadSubmitBtn');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.classList.add('opacity-60');
+        }
+        try {
+          const res = await fetch('/api/groups', {
+            method: 'POST',
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({
+              name: name,
+              description: desc || null,
+              icon: 'fa-house'
+            })
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || "Errore durante la creazione del gruppo online");
+          }
+
+          const group = await res.json();
+          const formEl = document.getElementById('newThreadForm');
+          const successBox = document.getElementById('newThreadSuccessBox');
+          const successName = document.getElementById('newThreadSuccessName');
+          const successCode = document.getElementById('newThreadSuccessCode');
+          const successEnterBtn = document.getElementById('newThreadSuccessEnterBtn');
+
+          if (formEl) formEl.classList.add('hidden');
+          if (successBox) {
+            successBox.classList.remove('hidden');
+            if (successName) successName.textContent = `Gruppo '${group.name}' Attivato!`;
+            if (successCode) successCode.textContent = group.invite_code;
+            if (successEnterBtn) {
+              successEnterBtn.onclick = async () => {
+                closeNewThreadModal();
+                await loadThreads();
+                await switchThread(group.id);
+              };
+            }
+          }
+
+          if (typeof showToast === 'function') {
+            showToast(`🎉 Gruppo online '${group.name}' creato! Codice: ${group.invite_code}`, "success", 5000);
+          }
+          await loadThreads();
+          return;
+        } catch (err) {
+          console.error("Errore creazione gruppo online:", err);
+          alert("Impossibile creare il gruppo online: " + err.message);
+          return;
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-60');
+          }
+        }
       }
 
-      let icon = newThreadType === 'group' ? 'fa-users' : selectedThematicIcon;
-      let color = newThreadType === 'group' ? 'bg-emerald-600' : 'bg-indigo-600';
+      // Altrimenti: Area Tematica Locale
+      const icon = selectedThematicIcon || 'fa-briefcase';
+      let color = 'bg-[#3C5A48]';
       if (icon === 'fa-house') color = 'bg-amber-600';
       if (icon === 'fa-car') color = 'bg-blue-600';
       if (icon === 'fa-heart-pulse') color = 'bg-rose-600';
@@ -551,14 +633,14 @@
       try {
         const res = await fetch('/api/threads', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             name: name,
-            thread_type: newThreadType,
+            thread_type: 'thematic',
             icon: icon,
             color: color,
             description: desc,
-            members: members
+            members: ['Io']
           })
         });
 
@@ -569,9 +651,65 @@
         await switchThread(newThread.id);
       } catch (err) {
         console.error("Errore handleCreateThread:", err);
-        alert("Errore durante la creazione del gruppo o area: " + err.message);
+        alert("Errore durante la creazione dell'area tematica: " + err.message);
       }
     }
+    window.handleCreateThread = handleCreateThread;
+
+    async function handleNewThreadJoinSubmit() {
+      const input = document.getElementById('newThreadJoinCodeInput');
+      const errEl = document.getElementById('newThreadJoinError');
+      const code = input ? input.value.trim().toUpperCase() : '';
+      if (!code) return;
+      if (errEl) errEl.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/groups/join', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ invite_code: code })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || "Codice invito non valido");
+        }
+
+        if (typeof showToast === 'function') {
+          showToast(data.message || `Benvenuto nel gruppo '${data.name}'!`, "success", 4000);
+        }
+        closeNewThreadModal();
+        await loadThreads();
+        await switchThread(data.group_id);
+      } catch (err) {
+        if (errEl) {
+          errEl.textContent = err.message;
+          errEl.classList.remove('hidden');
+        } else {
+          alert("Errore adesione gruppo: " + err.message);
+        }
+      }
+    }
+    window.handleNewThreadJoinSubmit = handleNewThreadJoinSubmit;
+
+    function toggleNewThreadJoinBox() {
+      const box = document.getElementById('newThreadJoinBox');
+      if (box) box.classList.toggle('hidden');
+    }
+    window.toggleNewThreadJoinBox = toggleNewThreadJoinBox;
+
+    function copyNewThreadCode() {
+      const codeEl = document.getElementById('newThreadSuccessCode');
+      const code = codeEl ? codeEl.textContent.trim() : '';
+      if (!code) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(() => {
+          if (typeof showToast === 'function') showToast(`📋 Codice invito ${code} copiato!`, "info", 3000);
+        }).catch(() => prompt("Copia il codice d'invito:", code));
+      } else {
+        prompt("Copia il codice d'invito:", code);
+      }
+    }
+    window.copyNewThreadCode = copyNewThreadCode;
 
     async function confirmDeleteCurrentThread() {
       if (currentThreadId === 'general') {

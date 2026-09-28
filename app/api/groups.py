@@ -3,12 +3,13 @@ Router API per la gestione dei gruppi condivisi, codici d'invito e adesione memb
 """
 import uuid
 import secrets
+import json
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.models.database import get_db, Group, GroupMember, User, ActivityEvent
+from app.models.database import get_db, Group, GroupMember, User, ActivityEvent, ChatThread
 from app.services.auth_service import get_current_user
 from app.services.websocket_manager import group_ws_manager
 
@@ -117,6 +118,21 @@ def create_group(
         payload={"invite_code": code}
     )
     db.add(init_event)
+
+    # Sincronizza il thread nella tabella chat_threads per la visualizzazione nella sidebar
+    thread = db.query(ChatThread).filter(ChatThread.id == new_group.id).first()
+    if not thread:
+        thread = ChatThread(
+            id=new_group.id,
+            name=new_group.name,
+            thread_type="group",
+            icon=new_group.icon or "fa-house",
+            color="bg-[#3C5A48]",
+            description=f"Gruppo Online • Codice Invito: {code}",
+            members=json.dumps([current_user.get("full_name") or "Amministratore"])
+        )
+        db.add(thread)
+
     db.commit()
     db.refresh(new_group)
 
@@ -211,6 +227,21 @@ def join_group(
             payload={"action": "MEMBER_JOINED"}
         )
         db.add(join_event)
+
+        # Assicura presenza del thread nella sidebar locale dell'utente
+        thread = db.query(ChatThread).filter(ChatThread.id == group.id).first()
+        if not thread:
+            thread = ChatThread(
+                id=group.id,
+                name=group.name,
+                thread_type="group",
+                icon=group.icon or "fa-house",
+                color="bg-[#3C5A48]",
+                description=f"Gruppo Online • Codice: {group.invite_code}",
+                members=json.dumps(["Membri"])
+            )
+            db.add(thread)
+
         db.commit()
 
     return {

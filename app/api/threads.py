@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from app.models.database import get_db, ChatThread, ChatMessage, Document, PhysicalItem
+from app.models.database import get_db, ChatThread, ChatMessage, Document, PhysicalItem, Group, GroupMember, ActivityEvent
 from app.models.schemas import (
     ChatThreadCreate,
     ChatThreadResponse,
@@ -248,6 +248,12 @@ def delete_thread(thread_id: str, db: Session = Depends(get_db)):
     db.query(PhysicalItem).filter(PhysicalItem.thread_id == thread_id).update({"thread_id": "general"})
 
     db.delete(thread)
+
+    # Pulizia collegamenti se si tratta di un gruppo condiviso
+    db.query(GroupMember).filter(GroupMember.group_id == thread_id).delete()
+    db.query(ActivityEvent).filter(ActivityEvent.group_id == thread_id).delete()
+    db.query(Group).filter(Group.id == thread_id).delete()
+
     db.commit()
 
     return {"success": True, "message": f"Gruppo/Area '{thread.name}' eliminato con successo."}

@@ -61,5 +61,15 @@ def test_create_and_join_group(monkeypatch):
     invalid_join = client.post("/api/groups/join", json={"invite_code": "NON-ESISTE-99"})
     assert invalid_join.status_code == 404
 
+    # 7. Verifica sincronizzazione ChatThread per la sidebar
+    threads_res = client.get("/api/threads")
+    assert threads_res.status_code == 200
+    th_list = threads_res.json()["threads"]
+    assert any(th["id"] == group_id and th["thread_type"] == "group" for th in th_list)
+
+    # 8. Eliminazione thread e pulizia gruppo
+    del_res = client.delete(f"/api/threads/{group_id}")
+    assert del_res.status_code == 200
+
     # Pulizia overrides
     app.dependency_overrides.clear()

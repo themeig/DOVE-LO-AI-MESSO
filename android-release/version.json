@@ -1,7 +1,7 @@
 {
-  "version_code": 327,
-  "version_name": "2.13.0",
+  "version_code": 328,
+  "version_name": "2.14.0",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "👤 Olivetti Industrial Account & Shared Groups Ledger: Interfaccia utente completa per Autenticazione Cloud (Login/Registrazione), Gestione Profilo, Creazione e Partecipazione a Gruppi con codici invito univoci, e Registro Operativo Ufficiale condiviso (bollette e quietanze) con sincronizzazione WebSocket in tempo reale."
+  "release_notes": "👤 Account in alto a destra & Creazione Rapida Gruppi Online: Tasto Account Cloud riposizionato nell'header superiore accanto alla campanella notifiche; il pulsante '+ NUOVO' della barra laterale consente ora di creare istantaneamente un nuovo Gruppo Online condiviso con codice d'invito o partecipare a un gruppo esistente."
 }
 
