@@ -25,6 +25,7 @@ from app.api.folders import router as folders_router
 from app.api.export import router as export_router
 from app.api.drive import router as drive_router
 from app.api.calendar import router as calendar_router
+from app.api.groups import router as groups_router
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +113,7 @@ app.include_router(folders_router)
 app.include_router(export_router)
 app.include_router(drive_router)
 app.include_router(calendar_router)
+app.include_router(groups_router)
 
 settings = get_settings()
 
