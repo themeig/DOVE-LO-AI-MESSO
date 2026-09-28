@@ -1,6 +1,6 @@
 {
-  "version_code": 323,
-  "version_name": "2.10.23",
+  "version_code": 324,
+  "version_name": "2.10.24",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ Rifinitura grafica Pannello: rimossi badge 'PANNELLO' in testata e barra data/cifratura superiore, preservata la didascalia 'Seleziona uno dei 4 registri per consultare o gestire il caveau'."
+  "release_notes": "✨ Migliorie grafiche bottoni Pannello: scritte e metriche ingrandite su mobile, freccia direzionale verso destra interattiva inserita in ogni quadrato (desktop & mobile) per evidenziare la cliccabilità."
 }
