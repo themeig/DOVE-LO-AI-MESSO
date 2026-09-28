@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, date, timezone
-from sqlalchemy import create_engine, Column, Integer, String, Float, Date, DateTime, Text, inspect, text, types
+from sqlalchemy import create_engine, Column, Integer, String, Float, Date, DateTime, Text, Boolean, inspect, text, types
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from app.config import get_settings
 from app.services.crypto_service import get_vault_manager, encrypt_str, decrypt_str
@@ -194,6 +194,9 @@ class GoogleDriveCredential(Base):
     storage_mode = Column(String(50), default="dual")  # 'dual', 'cloud_only' o 'local_only'
     root_folder_id = Column(String(255), nullable=True)
     google_calendar_id = Column(String(255), nullable=True)
+    calendar_enabled = Column(Boolean, default=True)
+    calendar_target = Column(String(50), default="dedicated")  # 'dedicated' o 'primary'
+    drive_enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -303,6 +306,15 @@ def init_db(engine=None):
             gdc_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(google_drive_credentials)")).fetchall()]
             if "google_calendar_id" not in gdc_cols:
                 conn.execute(text("ALTER TABLE google_drive_credentials ADD COLUMN google_calendar_id VARCHAR(255)"))
+                conn.commit()
+            if "calendar_enabled" not in gdc_cols:
+                conn.execute(text("ALTER TABLE google_drive_credentials ADD COLUMN calendar_enabled BOOLEAN DEFAULT 1"))
+                conn.commit()
+            if "calendar_target" not in gdc_cols:
+                conn.execute(text("ALTER TABLE google_drive_credentials ADD COLUMN calendar_target VARCHAR(50) DEFAULT 'dedicated'"))
+                conn.commit()
+            if "drive_enabled" not in gdc_cols:
+                conn.execute(text("ALTER TABLE google_drive_credentials ADD COLUMN drive_enabled BOOLEAN DEFAULT 1"))
                 conn.commit()
 
         if "watched_folders" in table_names:

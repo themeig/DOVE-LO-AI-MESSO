@@ -17,7 +17,8 @@ router = APIRouter(prefix="/api/drive", tags=["drive"])
 
 
 class DriveSettingsUpdate(BaseModel):
-    storage_mode: Literal["dual", "cloud_only", "local_only"]
+    storage_mode: Optional[Literal["dual", "cloud_only", "local_only"]] = None
+    drive_enabled: Optional[bool] = None
 
 
 @router.get("/status")
@@ -27,10 +28,16 @@ def get_drive_status(db: Session = Depends(get_db)):
     cred = db.query(GoogleDriveCredential).first()
     mode = "real" if hasattr(drive_service, "client_id") and drive_service.client_id else "mock"
 
+    storage_mode = cred.storage_mode if cred else "dual"
+    drive_enabled = getattr(cred, "drive_enabled", True) if cred else False
+    if storage_mode == "local_only":
+        drive_enabled = False
+
     return {
         "connected": bool(cred),
         "user_email": cred.user_email if cred else None,
-        "storage_mode": cred.storage_mode if cred else "dual",
+        "storage_mode": storage_mode,
+        "drive_enabled": drive_enabled,
         "mode": mode,
     }
 
@@ -172,7 +179,7 @@ def update_drive_settings(
     body: DriveSettingsUpdate,
     db: Session = Depends(get_db),
 ):
-    """Aggiorna le impostazioni della modalità di salvataggio ('dual', 'cloud_only' o 'local_only')."""
+    """Aggiorna le impostazioni di Google Drive: modalità storage o abilitazione del servizio."""
     cred = db.query(GoogleDriveCredential).first()
     if not cred:
         raise HTTPException(
@@ -180,12 +187,26 @@ def update_drive_settings(
             detail="Nessun account Google Drive connesso",
         )
 
-    cred.storage_mode = body.storage_mode
+    if body.drive_enabled is not None:
+        cred.drive_enabled = body.drive_enabled
+        if not body.drive_enabled:
+            cred.storage_mode = "local_only"
+        elif cred.storage_mode == "local_only":
+            cred.storage_mode = "dual"
+
+    if body.storage_mode is not None:
+        cred.storage_mode = body.storage_mode
+        cred.drive_enabled = (body.storage_mode != "local_only")
+
     cred.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(cred)
 
-    return {"success": True, "storage_mode": cred.storage_mode}
+    return {
+        "success": True,
+        "storage_mode": cred.storage_mode,
+        "drive_enabled": getattr(cred, "drive_enabled", True),
+    }
 
 
 @router.post("/disconnect")

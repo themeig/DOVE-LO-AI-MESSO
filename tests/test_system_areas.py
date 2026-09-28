@@ -9,7 +9,7 @@ from app.version import APP_VERSION
 
 
 def test_app_version():
-    assert APP_VERSION == "2.10.18"
+    assert APP_VERSION == "2.10.19"
 
 
 def test_index_html_has_system_areas():
@@ -34,6 +34,7 @@ def test_index_html_has_system_areas():
     assert 'id="systemAreaTabs"' in content
     assert 'btnSystemArea_all' in content
     assert 'btnSystemArea_chat' in content
+    assert 'btnSystemArea_google' in content
     assert 'btnSystemArea_drive' in content
     assert 'btnSystemArea_calendar' in content
     assert 'btnSystemArea_pc' in content
@@ -41,10 +42,19 @@ def test_index_html_has_system_areas():
 
     # Verifica presenza sezioni aree tematiche
     assert 'id="settingsArea_chat"' in content
+    assert 'id="settingsArea_google"' in content
     assert 'id="settingsArea_drive"' in content
     assert 'id="settingsArea_calendar"' in content
     assert 'id="settingsArea_pc"' in content
     assert 'id="settingsArea_security"' in content
+
+    # Verifica controlli unificati Google (toggle singoli servizi, disconnessione, scelta calendario)
+    assert 'id="toggleDriveSync"' in content
+    assert 'id="toggleCalendarSync"' in content
+    assert 'confirmDisconnectGoogle()' in content
+    assert 'name="calendarTarget"' in content
+    assert 'value="dedicated"' in content
+    assert 'value="primary"' in content
 
     # Verifica elementi chiave Google Calendar
     assert 'systemCalendarStatusBadge' in content
@@ -88,9 +98,19 @@ def test_mobile_html_has_system_areas():
     assert 'id="systemAreaTabs"' in content
     assert 'btnSystemArea_all' in content
     assert 'btnSystemArea_chat' in content
+    assert 'btnSystemArea_google' in content
     assert 'btnSystemArea_drive' in content
     assert 'btnSystemArea_calendar' in content
     assert 'btnSystemArea_security' in content
+
+    # Verifica presenza sezione unificata Google in mobile
+    assert 'id="settingsArea_google"' in content
+    assert 'id="settingsArea_drive"' in content
+    assert 'id="settingsArea_calendar"' in content
+    assert 'id="toggleDriveSync"' in content
+    assert 'id="toggleCalendarSync"' in content
+    assert 'confirmDisconnectGoogle()' in content
+    assert 'name="calendarTarget"' in content
 
     # Sezione Cartelle PC rimossa da mobile
     assert 'btnSystemArea_pc' not in content
@@ -130,6 +150,16 @@ def test_app_bundle_has_system_area_and_mobile_gestures():
     assert "window.loadCalendarStatus = loadCalendarStatus;" in content
     assert "function updateHeaderCloudIndicators(driveConnected, calendarConnected)" in content
     assert "window.updateHeaderCloudIndicators = updateHeaderCloudIndicators;" in content
+
+    # Verifica funzioni unificate Google (toggles, scollegamento, destinazione calendario)
+    assert "function confirmDisconnectGoogle()" in content
+    assert "window.confirmDisconnectGoogle = confirmDisconnectGoogle;" in content
+    assert "function toggleDriveSyncEnabled(enabled)" in content
+    assert "window.toggleDriveSyncEnabled = toggleDriveSyncEnabled;" in content
+    assert "function toggleCalendarSyncEnabled(enabled)" in content
+    assert "window.toggleCalendarSyncEnabled = toggleCalendarSyncEnabled;" in content
+    assert "function updateCalendarTarget(target)" in content
+    assert "window.updateCalendarTarget = updateCalendarTarget;" in content
 
     # Verifica gestione tasto indietro nativo e gesture swipe interattivo 1:1 per cambio sezioni
     assert "function handleNativeBackPress()" in content

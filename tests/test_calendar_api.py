@@ -134,3 +134,75 @@ def test_document_upload_auto_syncs_calendar_when_connected():
 
     # Cleanup
     client.post("/api/drive/disconnect")
+
+
+def test_calendar_settings_toggle_and_target():
+    # Connetti account Google
+    client.get("/api/drive/callback?code=mock_code")
+
+    # Verifica stato iniziale (dedicato, attivo)
+    res_status = client.get("/api/calendar/status")
+    assert res_status.status_code == 200
+    st = res_status.json()
+    assert st["connected"] is True
+    assert st["calendar_target"] == "dedicated"
+    assert st["calendar_enabled"] is True
+    assert "Dove Lo AI Messo - Scadenze" in st["calendar_name"]
+
+    # Cambia target su "primary" (calendario principale)
+    res_patch = client.patch("/api/calendar/settings", json={"calendar_target": "primary"})
+    assert res_patch.status_code == 200
+    data_patch = res_patch.json()
+    assert data_patch["calendar_target"] == "primary"
+    assert data_patch["calendar_name"] == "Calendario Principale"
+
+    # Verifica status dopo patch target
+    res_status2 = client.get("/api/calendar/status")
+    st2 = res_status2.json()
+    assert st2["calendar_target"] == "primary"
+    assert st2["calendar_name"] == "Calendario Principale"
+
+    # Sincronizza su primary
+    res_sync = client.post("/api/calendar/sync")
+    assert res_sync.status_code == 200
+    assert res_sync.json()["calendar_id"] == "primary"
+
+    # Disattiva il calendario
+    res_patch_disable = client.patch("/api/calendar/settings", json={"calendar_enabled": False})
+    assert res_patch_disable.status_code == 200
+    assert res_patch_disable.json()["calendar_enabled"] is False
+
+    # Disconnessione tramite endpoint calendar
+    res_disc = client.post("/api/calendar/disconnect")
+    assert res_disc.status_code == 200
+    assert res_disc.json()["success"] is True
+
+    # Verifica disconnessione
+    res_final = client.get("/api/calendar/status")
+    assert res_final.json()["connected"] is False
+
+
+def test_drive_settings_toggle_enabled():
+    # Connetti account Google
+    client.get("/api/drive/callback?code=mock_code")
+
+    # Disattiva Google Drive
+    res_patch = client.patch("/api/drive/settings", json={"drive_enabled": False})
+    assert res_patch.status_code == 200
+    assert res_patch.json()["drive_enabled"] is False
+    assert res_patch.json()["storage_mode"] == "local_only"
+
+    # Verifica status drive
+    res_st = client.get("/api/drive/status")
+    assert res_st.json()["drive_enabled"] is False
+    assert res_st.json()["storage_mode"] == "local_only"
+
+    # Riattiva Google Drive
+    res_patch2 = client.patch("/api/drive/settings", json={"drive_enabled": True})
+    assert res_patch2.status_code == 200
+    assert res_patch2.json()["drive_enabled"] is True
+    assert res_patch2.json()["storage_mode"] == "dual"
+
+    # Cleanup
+    client.post("/api/drive/disconnect")
+

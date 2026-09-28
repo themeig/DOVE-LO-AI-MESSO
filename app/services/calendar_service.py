@@ -308,16 +308,22 @@ def set_calendar_service(service: Optional[GoogleCalendarServiceInterface]):
 
 
 def auto_sync_calendar_event(doc: Document, db: Any) -> Optional[Dict[str, Any]]:
-    """Se Google Calendar è collegato e il documento ha data di scadenza (o aveva un evento associato), sincronizza o aggiorna l'evento."""
+    """Se Google Calendar è collegato e attivo e il documento ha data di scadenza (o aveva un evento associato), sincronizza o aggiorna l'evento."""
     cred = db.query(GoogleDriveCredential).first()
     if not cred or not cred.access_token:
         return None
+    if getattr(cred, "calendar_enabled", True) is False:
+        return None
     service = get_calendar_service()
     try:
-        cal_id = cred.google_calendar_id or service.get_or_create_dedicated_calendar(cred.access_token)
-        if not cred.google_calendar_id:
-            cred.google_calendar_id = cal_id
-            db.commit()
+        cal_target = getattr(cred, "calendar_target", "dedicated")
+        if cal_target == "primary":
+            cal_id = "primary"
+        else:
+            cal_id = cred.google_calendar_id or service.get_or_create_dedicated_calendar(cred.access_token)
+            if not cred.google_calendar_id:
+                cred.google_calendar_id = cal_id
+                db.commit()
 
         if doc.due_date:
             res = service.sync_deadline_event(doc, cal_id, cred.access_token)
@@ -355,16 +361,22 @@ def auto_delete_calendar_event(doc: Document, db: Any) -> bool:
 
 
 def auto_sync_all_deadlines(db: Any) -> Optional[Dict[str, Any]]:
-    """Sincronizza tutte le scadenze presenti nel caveau verso Google Calendar se connesso."""
+    """Sincronizza tutte le scadenze presenti nel caveau verso Google Calendar se connesso e attivo."""
     cred = db.query(GoogleDriveCredential).first()
     if not cred or not cred.access_token:
         return None
+    if getattr(cred, "calendar_enabled", True) is False:
+        return None
     service = get_calendar_service()
     try:
-        cal_id = cred.google_calendar_id or service.get_or_create_dedicated_calendar(cred.access_token)
-        if not cred.google_calendar_id:
-            cred.google_calendar_id = cal_id
-            db.commit()
+        cal_target = getattr(cred, "calendar_target", "dedicated")
+        if cal_target == "primary":
+            cal_id = "primary"
+        else:
+            cal_id = cred.google_calendar_id or service.get_or_create_dedicated_calendar(cred.access_token)
+            if not cred.google_calendar_id:
+                cred.google_calendar_id = cal_id
+                db.commit()
         docs = db.query(Document).filter(Document.due_date.isnot(None)).all()
         res = service.sync_all_deadlines(docs, cred.access_token, cal_id)
         db.commit()

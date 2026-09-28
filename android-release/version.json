@@ -1,6 +1,6 @@
 {
-  "version_code": 318,
-  "version_name": "2.10.18",
+  "version_code": 319,
+  "version_name": "2.10.19",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "✨ UI Scadenzario & Nomenclatura: rimosso il banner Google Calendar quando già collegato; sostituito ovunque il termine 'quietanzato' con 'pagato'; aggiunti banner temporali dedicati per 'In Scadenza Domani' e 'In Scadenza Questa Settimana (entro 7 giorni)'."
+  "release_notes": "🌐 Integrazioni Google Unificate: unione impostazioni Google Drive e Calendar nella sezione unificata 'Integrazioni Google', toggle di attivazione/disattivazione indipendenti per i singoli servizi, pulsante di scollegamento account Google e selettore di destinazione scadenze tra Calendario Principale e Calendario Dedicato Dove Lo AI Messo."
 }

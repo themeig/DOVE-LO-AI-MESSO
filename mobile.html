@@ -1620,16 +1620,16 @@
             </div>
           </button>
 
-          <!-- 2. Google Drive Cloud Sync -->
-          <button type="button" onclick="openSystemSection('drive')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-[#FAF8F2] transition cursor-pointer group">
+          <!-- 2. Integrazioni Google (Drive & Calendar) -->
+          <button type="button" onclick="openSystemSection('google')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-[#FAF8F2] transition cursor-pointer group">
             <div class="flex items-center gap-3.5 min-w-0">
               <div class="w-9 h-9 rounded-xs bg-[#E8F0FE] text-[#1A73E8] border border-[#1A73E8]/20 flex items-center justify-center text-sm shrink-0 group-hover:bg-[#1A73E8] group-hover:text-white transition">
-                <i class="fa-brands fa-google-drive"></i>
+                <i class="fa-brands fa-google"></i>
               </div>
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
-                  <span class="font-space font-bold text-sm text-[#222220]">Google Drive Cloud Sync</span>
-                  <span class="stamp-oli text-[8px] py-0.2 px-1" id="menuBadge_drive">CLOUD</span>
+                  <span class="font-space font-bold text-sm text-[#222220]">Integrazioni Google</span>
+                  <span class="stamp-oli text-[8px] py-0.2 px-1" id="menuBadge_google">GOOGLE</span>
                 </div>
               </div>
             </div>
@@ -1638,25 +1638,7 @@
             </div>
           </button>
 
-          <!-- 3. Google Calendar -->
-          <button type="button" onclick="openSystemSection('calendar')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-[#FAF8F2] transition cursor-pointer group">
-            <div class="flex items-center gap-3.5 min-w-0">
-              <div class="w-9 h-9 rounded-xs bg-[#E6F4EA] text-[#0F9D58] border border-[#0F9D58]/20 flex items-center justify-center text-sm shrink-0 group-hover:bg-[#0F9D58] group-hover:text-white transition">
-                <i class="fa-solid fa-calendar-check"></i>
-              </div>
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2">
-                  <span class="font-space font-bold text-sm text-[#222220]">Google Calendar</span>
-                  <span class="stamp-oli text-[8px] py-0.2 px-1" id="menuBadge_calendar">CALENDARIO</span>
-                </div>
-              </div>
-            </div>
-            <div class="flex items-center gap-2 text-[#7A7568] group-hover:text-[#222220] pl-2 shrink-0">
-              <i class="fa-solid fa-chevron-right text-xs group-hover:translate-x-0.5 transition-transform"></i>
-            </div>
-          </button>
-
-          <!-- 4. Sicurezza & Crittografia -->
+          <!-- 3. Sicurezza & Crittografia -->
           <button type="button" onclick="openSystemSection('security')" class="w-full p-3.5 flex items-center justify-between text-left hover:bg-[#FAF8F2] transition cursor-pointer group">
             <div class="flex items-center gap-3.5 min-w-0">
               <div class="w-9 h-9 rounded-xs bg-[#FAF0ED] text-[#C84B31] border border-[#C84B31]/20 flex items-center justify-center text-sm shrink-0 group-hover:bg-[#C84B31] group-hover:text-white transition">
@@ -1700,11 +1682,15 @@
             <i class="fa-solid fa-message text-[#3C5A48] text-[11px]"></i>
             <span>💬 Chat & AI</span>
           </button>
-          <button id="btnSystemArea_drive" type="button" onclick="setSystemArea('drive')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
+          <button id="btnSystemArea_google" type="button" onclick="setSystemArea('google')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
+            <i class="fa-brands fa-google text-[#1A73E8] text-[11px]"></i>
+            <span>🌐 Integrazioni Google</span>
+          </button>
+          <button id="btnSystemArea_drive" type="button" onclick="setSystemArea('google')" class="hidden system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
             <i class="fa-brands fa-google-drive text-emerald-700 text-[11px]"></i>
             <span>☁️ Google Drive</span>
           </button>
-          <button id="btnSystemArea_calendar" type="button" onclick="setSystemArea('calendar')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
+          <button id="btnSystemArea_calendar" type="button" onclick="setSystemArea('google')" class="hidden system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0">
             <i class="fa-solid fa-calendar-check text-[#2B4C7E] text-[11px]"></i>
             <span>📅 Google Calendar</span>
           </button>
@@ -1997,25 +1983,73 @@
       </section>
 
       <!-- ================================================================= -->
-      <!-- AREA 2: IMPOSTAZIONI GOOGLE DRIVE & CLOUD SYNC                    -->
+      <!-- AREA 2: INTEGRAZIONI GOOGLE (DRIVE & CALENDAR)                    -->
       <!-- ================================================================= -->
-      <section id="settingsArea_drive" class="system-area-section space-y-4">
+      <section id="settingsArea_google" class="system-area-section space-y-4">
         <!-- Header Sezione Olivetti -->
         <div class="system-area-header flex items-center justify-between border-b border-[#E3DDD1] pb-2 pt-1">
           <div class="flex items-center gap-2.5">
-            <div class="w-7 h-7 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-emerald-700 flex items-center justify-center text-xs shadow-2xs shrink-0">
-              <i class="fa-brands fa-google-drive"></i>
+            <div class="w-7 h-7 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#1A73E8] flex items-center justify-center text-xs shadow-2xs shrink-0">
+              <i class="fa-brands fa-google"></i>
             </div>
             <div>
-              <h3 class="font-bold text-xs md:text-sm text-[#222220] font-space uppercase">2. Impostazioni Google Drive & Cloud Sync</h3>
-              <p class="text-[9px] text-[#7A7568] font-mono-code">SINCRONIZZAZIONE REMOTA • MODALITÀ ARCHIVIAZIONE • STRUTTURA FALDONI CLOUD</p>
+              <h3 class="font-bold text-xs md:text-sm text-[#222220] font-space uppercase">2. Integrazioni Google (Drive & Calendar)</h3>
+              <p class="text-[9px] text-[#7A7568] font-mono-code">BACKUP REMOTO CLOUD • SINCRONIZZAZIONE SCADENZE • ATTIVAZIONE SINGOLI SERVIZI</p>
             </div>
           </div>
-          <span class="stamp-oli text-[8px] font-mono-code font-bold">AREA GOOGLE DRIVE</span>
+          <span class="stamp-oli text-[8px] font-mono-code font-bold">GOOGLE WORKSPACE</span>
         </div>
 
-        <!-- Card Principale Google Drive -->
-        <div class="bg-white rounded-xs border border-[#E3DDD1] p-5 shadow-xs space-y-5">
+        <!-- Banner Account Google Connesso con Tasto Scollega -->
+        <div id="googleConnectedSettings" class="bg-white rounded-xs border border-[#E3DDD1] p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-xs bg-[#E8F0FE] text-[#1A73E8] border border-[#1A73E8]/20 flex items-center justify-center text-base shrink-0">
+              <i class="fa-brands fa-google"></i>
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="font-space font-bold text-xs text-[#222220] uppercase">Account Google Collegato</span>
+                <span class="stamp-oli stamp-solid-sage text-[8px] py-0.2 px-1">COLLEGATO</span>
+              </div>
+              <p id="systemGoogleConnectedEmail" class="text-xs font-mono-code text-[#4A473E] truncate">Account Google</p>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            onclick="confirmDisconnectGoogle()" 
+            class="px-3.5 py-1.5 bg-[#FAF8F2] hover:bg-[#C84B31] text-[#C84B31] hover:text-white border border-[#C84B31]/30 rounded-xs font-space font-bold text-xs shadow-2xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+            title="Scollega completamente l'account Google"
+          >
+            <i class="fa-solid fa-link-slash text-xs"></i>
+            <span>Scollega Account Google</span>
+          </button>
+        </div>
+
+        <!-- Banner Account Google Non Connesso -->
+        <div id="googleDisconnectedBanner" class="hidden bg-[#FAF8F2] rounded-xs border-2 border-dashed border-[#E3DDD1] p-5 text-center space-y-3 shadow-2xs">
+          <div class="w-10 h-10 mx-auto rounded-xs bg-[#E8F0FE] text-[#1A73E8] flex items-center justify-center text-lg">
+            <i class="fa-brands fa-google"></i>
+          </div>
+          <div>
+            <h4 class="font-space font-bold text-sm text-[#222220] uppercase">Collega il tuo Account Google</h4>
+            <p class="text-xs text-[#7A7568] font-mono-code max-w-md mx-auto mt-1">
+              Connetti Google per attivare il backup crittografato su Drive e la sincronizzazione automatica delle scadenze su Calendar.
+            </p>
+          </div>
+          <div>
+            <button 
+              type="button" 
+              onclick="connectGoogleDrive()" 
+              class="px-4 py-2 bg-[#3C5A48] hover:bg-[#2F4738] text-white rounded-xs font-space font-bold text-xs shadow-xs transition inline-flex items-center gap-2 cursor-pointer active:scale-95"
+            >
+              <i class="fa-brands fa-google text-xs"></i>
+              <span>COLLEGA ACCOUNT GOOGLE</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SOTTO-SEZIONE 1: GOOGLE DRIVE -->
+        <div id="settingsArea_drive" class="bg-white rounded-xs border border-[#E3DDD1] p-5 shadow-xs space-y-4">
           <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-emerald-700 flex items-center justify-center text-sm shadow-2xs">
@@ -2023,10 +2057,18 @@
               </div>
               <div>
                 <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Google Drive Cloud Sync</h3>
-                <p class="text-[10px] text-[#7A7568] font-mono-code">BACKUP REMOTO & CRITTOGRAFIA END-TO-END</p>
+                <p class="text-[10px] text-[#7A7568] font-mono-code">BACKUP REMOTO & ARCHIVIAZIONE SICURA</p>
               </div>
             </div>
-            <span id="toolsDriveBadge" class="stamp-oli text-[8px]">Verifica...</span>
+            <!-- Toggle On/Off Singolo Servizio Drive -->
+            <div class="flex items-center gap-2">
+              <span id="toolsDriveBadge" class="stamp-oli text-[8px] mr-1 hidden">ATTIVO</span>
+              <label class="flex items-center gap-2 cursor-pointer select-none" title="Attiva o disattiva il backup su Google Drive">
+                <span class="text-[11px] font-space font-bold text-[#222220] hidden sm:inline">Attiva Drive</span>
+                <input type="checkbox" id="toggleDriveSync" onchange="toggleDriveSyncEnabled(this.checked)" class="sr-only peer">
+                <div class="w-9 h-5 bg-[#E3DDD1] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#E3DDD1] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#3C5A48] relative"></div>
+              </label>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2034,13 +2076,25 @@
             <div class="bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-3.5 space-y-2.5 shadow-2xs">
               <div class="flex items-center gap-2">
                 <i class="fa-solid fa-shield-halved text-[#3C5A48] text-xs"></i>
-                <span class="text-xs font-bold text-[#222220] font-space uppercase">Tre Modalità di Archiviazione</span>
+                <span class="text-xs font-bold text-[#222220] font-space uppercase">Modalità di Archiviazione</span>
               </div>
-              <ul class="text-[11px] text-[#7A7568] font-mono-code space-y-1.5 leading-snug">
-                <li>• <strong class="text-[#222220]">Duale (Dual - Consigliata):</strong> Copia locale cifrata + copia protetta sul tuo Google Drive.</li>
-                <li>• <strong class="text-[#222220]">Solo Cloud (Cloud Only):</strong> Il file è memorizzato solo su Google Drive per risparmiare spazio su disco.</li>
-                <li>• <strong class="text-[#222220]">Solo Locale (Local Only):</strong> Massima riservatezza offline, nessun backup su cloud.</li>
-              </ul>
+              <div class="space-y-2 text-[11px] font-mono-code">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="driveStorageMode" value="dual" onchange="updateDriveStorageMode(this.value)" class="text-[#3C5A48] focus:ring-[#3C5A48]">
+                  <span class="text-[#222220] font-bold">Duale (Consigliata):</span>
+                  <span class="text-[#7A7568]">Locale + copia protetta Google Drive</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="driveStorageMode" value="cloud_only" onchange="updateDriveStorageMode(this.value)" class="text-[#3C5A48] focus:ring-[#3C5A48]">
+                  <span class="text-[#222220] font-bold">Solo Cloud:</span>
+                  <span class="text-[#7A7568]">Solo su Drive (risparmia spazio su disco)</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="driveStorageMode" value="local_only" onchange="updateDriveStorageMode(this.value)" class="text-[#3C5A48] focus:ring-[#3C5A48]">
+                  <span class="text-[#222220] font-bold">Solo Locale:</span>
+                  <span class="text-[#7A7568]">Offline, nessun invio su cloud</span>
+                </label>
+              </div>
             </div>
 
             <!-- Box Struttura Cartelle Cloud -->
@@ -2088,28 +2142,9 @@
             </a>
           </div>
         </div>
-      </section>
 
-      <!-- ================================================================= -->
-      <!-- AREA 3: IMPOSTAZIONI GOOGLE CALENDAR & SCADENZE                   -->
-      <!-- ================================================================= -->
-      <section id="settingsArea_calendar" class="system-area-section space-y-4">
-        <!-- Header Sezione Olivetti -->
-        <div class="system-area-header flex items-center justify-between border-b border-[#E3DDD1] pb-2 pt-1">
-          <div class="flex items-center gap-2.5">
-            <div class="w-7 h-7 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#2B4C7E] flex items-center justify-center text-xs shadow-2xs shrink-0">
-              <i class="fa-solid fa-calendar-check"></i>
-            </div>
-            <div>
-              <h3 class="font-bold text-xs md:text-sm text-[#222220] font-space uppercase">3. Impostazioni Google Calendar & Scadenze</h3>
-              <p class="text-[9px] text-[#7A7568] font-mono-code">SINCRONIZZAZIONE SCADENZE • CALENDARIO DEDICATO • FILTRO PROMEMORIA • FEED ICAL</p>
-            </div>
-          </div>
-          <span class="stamp-oli text-[8px] font-mono-code font-bold">AREA CALENDAR</span>
-        </div>
-
-        <!-- Card Principale Google Calendar -->
-        <div class="bg-white rounded-xs border border-[#E3DDD1] p-5 shadow-xs space-y-5">
+        <!-- SOTTO-SEZIONE 2: GOOGLE CALENDAR -->
+        <div id="settingsArea_calendar" class="bg-white rounded-xs border border-[#E3DDD1] p-5 shadow-xs space-y-4">
           <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3">
             <div class="flex items-center gap-2.5">
               <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#2B4C7E] flex items-center justify-center text-sm shadow-2xs">
@@ -2117,42 +2152,68 @@
               </div>
               <div>
                 <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Google Calendar & Scadenzario Fiscale</h3>
-                <p id="systemCalendarStatusDetails" class="text-[10px] text-[#7A7568] font-mono-code">CALENDARIO SECONDARIO DEDICATO • NESSUNA SOVRAPPOSIZIONE CON GLI IMPEGNI PERSONALI</p>
+                <p id="systemCalendarStatusDetails" class="text-[10px] text-[#7A7568] font-mono-code">SINCRONIZZAZIONE SCADENZE • TRIBUTI ED UTENZE</p>
               </div>
             </div>
-            <span id="systemCalendarStatusBadge" class="stamp-oli stamp-solid-sage text-[8px] font-bold">ATTIVO & COLLEGATO</span>
+            <!-- Toggle On/Off Singolo Servizio Calendar -->
+            <div class="flex items-center gap-2">
+              <span id="systemCalendarStatusBadge" class="stamp-oli stamp-solid-sage text-[8px] font-bold mr-1">ATTIVO</span>
+              <label class="flex items-center gap-2 cursor-pointer select-none" title="Attiva o disattiva la sincronizzazione su Google Calendar">
+                <span class="text-[11px] font-space font-bold text-[#222220] hidden sm:inline">Attiva Calendar</span>
+                <input type="checkbox" id="toggleCalendarSync" onchange="toggleCalendarSyncEnabled(this.checked)" class="sr-only peer">
+                <div class="w-9 h-5 bg-[#E3DDD1] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#E3DDD1] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#2B4C7E] relative"></div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Selezione Destinazione Calendario (Dedicato vs Principale) -->
+          <div class="bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-3.5 space-y-2.5 shadow-2xs">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-calendar-day text-[#2B4C7E] text-xs"></i>
+              <span class="text-xs font-bold text-[#222220] font-space uppercase">Scelta Calendario di Destinazione</span>
+            </div>
+            <p class="text-[11px] text-[#7A7568] font-mono-code leading-relaxed">
+              Scegli dove memorizzare automaticamente le scadenze (bollette, tributi F24, rate):
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              <label class="flex items-start gap-2.5 p-2.5 bg-white border border-[#E3DDD1] rounded-xs cursor-pointer hover:border-[#2B4C7E] transition">
+                <input type="radio" name="calendarTarget" value="dedicated" onchange="updateCalendarTarget(this.value)" class="mt-0.5 text-[#2B4C7E] focus:ring-[#2B4C7E]" checked>
+                <div class="text-[11px] font-mono-code leading-snug">
+                  <strong class="text-[#222220] block font-space">Calendario Dedicato (Consigliato)</strong>
+                  <span class="text-[#7A7568]">Crea "Dove Lo AI Messo - Scadenze". Isolamento totale, nessuna sovrapposizione con impegni personali.</span>
+                </div>
+              </label>
+              <label class="flex items-start gap-2.5 p-2.5 bg-white border border-[#E3DDD1] rounded-xs cursor-pointer hover:border-[#2B4C7E] transition">
+                <input type="radio" name="calendarTarget" value="primary" onchange="updateCalendarTarget(this.value)" class="mt-0.5 text-[#2B4C7E] focus:ring-[#2B4C7E]">
+                <div class="text-[11px] font-mono-code leading-snug">
+                  <strong class="text-[#222220] block font-space">Calendario Principale</strong>
+                  <span class="text-[#7A7568]">Memorizza direttamente nella tua agenda principale personale del tuo account Google.</span>
+                </div>
+              </label>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Box 1: Calendario Dedicato e Isolamento -->
-            <div class="bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-3.5 space-y-2.5 shadow-2xs">
+            <div class="bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-3.5 space-y-2 shadow-2xs">
               <div class="flex items-center gap-2">
                 <i class="fa-solid fa-calendar-plus text-[#2B4C7E] text-xs"></i>
-                <span class="text-xs font-bold text-[#222220] font-space uppercase">Calendario Dedicato Esclusivo</span>
+                <span class="text-xs font-bold text-[#222220] font-space uppercase">Vantaggi Calendario Dedicato</span>
               </div>
               <p class="text-[11px] text-[#7A7568] font-mono-code leading-relaxed">
-                Tutte le scadenze (bollette, F24, tributi, rate e assicurazioni) vengono sincronizzate nel calendario secondario <strong class="text-[#222220]">"Dove Lo AI Messo - Scadenze"</strong>.
+                Permette di visualizzare o nascondere tutte le scadenze tributarie con un solo clic nella vista mensile o settimanale.
               </p>
-              <div class="bg-white p-2.5 rounded-xs border border-[#E3DDD1] text-[10px] font-mono-code text-[#3C5A48] flex items-center gap-2">
-                <i class="fa-solid fa-circle-check text-xs"></i>
-                <span>Zero interferenze con riunioni, compleanni e appuntamenti di lavoro.</span>
-              </div>
             </div>
 
             <!-- Box 2: Guida al Filtro "Mostra solo questo" -->
-            <div class="bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-3.5 space-y-2.5 shadow-2xs">
+            <div class="bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-3.5 space-y-2 shadow-2xs">
               <div class="flex items-center gap-2">
                 <i class="fa-solid fa-filter text-[#C84B31] text-xs"></i>
-                <span class="text-xs font-bold text-[#222220] font-space uppercase">Filtro "Mostra solo questo"</span>
+                <span class="text-xs font-bold text-[#222220] font-space uppercase">Filtro Rapido Scadenze</span>
               </div>
               <p class="text-[11px] text-[#7A7568] font-mono-code leading-relaxed">
-                Per vedere <em>esclusivamente</em> le scadenze del caveau nella griglia mensile di Google Calendar:
+                Clicca sui tre puntini <strong class="text-[#3C5A48]">⋮</strong> accanto al calendario in Google Calendar e seleziona <strong class="text-[#3C5A48]">"Mostra solo questo"</strong>.
               </p>
-              <div class="bg-white p-2 rounded-xs border border-[#E3DDD1] text-[10px] font-mono-code text-[#222220]">
-                1. Apri Google Calendar sul PC/telefono.<br>
-                2. Nella colonna sinistra, clicca sui tre puntini <strong class="text-[#3C5A48]">⋮</strong> accanto a <em>"Dove Lo AI Messo - Scadenze"</em>.<br>
-                3. Seleziona <strong class="text-[#3C5A48]">"Mostra solo questo"</strong> per isolare le bollette!
-              </div>
             </div>
           </div>
 

@@ -2137,8 +2137,9 @@
 
     const SYSTEM_SECTION_CONFIG = {
       chat: { title: "Chat & Assistente AI", badge: "AI CORE" },
-      drive: { title: "Google Drive Cloud Sync", badge: "CLOUD BACKUP" },
-      calendar: { title: "Google Calendar", badge: "CALENDARIO TRIBUTI" },
+      google: { title: "Integrazioni Google (Drive & Calendar)", badge: "GOOGLE WORKSPACE" },
+      drive: { title: "Integrazioni Google (Drive & Calendar)", badge: "GOOGLE WORKSPACE" },
+      calendar: { title: "Integrazioni Google (Drive & Calendar)", badge: "GOOGLE WORKSPACE" },
       pc: { title: "Cartelle PC & Monitoraggio", badge: "DESKTOP" },
       security: { title: "Sicurezza & Crittografia", badge: "AES-256 ZERO-KNOWLEDGE" }
     };
@@ -2154,10 +2155,26 @@
         menuStatusChat.textContent = `Modello: ${modelLabel}${creditsText} • Prompt di sistema`;
       }
 
-      // 2. Google Drive
+      // 2. Integrazioni Google (Drive & Calendar)
+      const menuBadgeGoogle = document.getElementById('menuBadge_google');
       const menuBadgeDrive = document.getElementById('menuBadge_drive');
       const menuStatusDrive = document.getElementById('menuStatus_drive');
       const driveIsConnected = window.currentDriveConnected || false;
+      const calConnected = (window.currentCalendarConnected !== undefined) 
+        ? window.currentCalendarConnected 
+        : false;
+      const anyGoogleConnected = driveIsConnected || calConnected;
+
+      if (menuBadgeGoogle) {
+        if (anyGoogleConnected) {
+          menuBadgeGoogle.textContent = 'ATTIVO';
+          menuBadgeGoogle.className = 'stamp-oli stamp-solid-sage text-[8px] py-0.2 px-1';
+        } else {
+          menuBadgeGoogle.textContent = 'NON COLLEGATO';
+          menuBadgeGoogle.className = 'stamp-oli text-[8px] py-0.2 px-1';
+        }
+      }
+
       if (menuBadgeDrive) {
         if (driveIsConnected) {
           menuBadgeDrive.textContent = 'COLLEGATO';
@@ -2178,10 +2195,6 @@
       // 3. Google Calendar
       const menuBadgeCalendar = document.getElementById('menuBadge_calendar');
       const menuStatusCalendar = document.getElementById('menuStatus_calendar');
-      const calBadge = document.getElementById('systemCalendarStatusBadge');
-      const calConnected = (window.currentCalendarConnected !== undefined) 
-        ? window.currentCalendarConnected 
-        : (calBadge && (calBadge.textContent.includes('COLLEGATO') || calBadge.textContent.includes('ATTIVO')));
       if (menuBadgeCalendar) {
         if (calConnected) {
           menuBadgeCalendar.textContent = 'ATTIVO';
@@ -2208,14 +2221,15 @@
     window.updateSystemMenuStatusBadges = updateSystemMenuStatusBadges;
 
     function openSystemSection(area) {
-      const validAreas = ['chat', 'drive', 'calendar', 'pc', 'security'];
+      const validAreas = ['chat', 'google', 'drive', 'calendar', 'pc', 'security'];
       if (!validAreas.includes(area)) {
         closeSystemSection();
         return;
       }
-      currentOpenSystemSection = area;
-      sessionStorage.setItem('dove_system_open_section', area);
-      sessionStorage.setItem('dove_system_active_area', area);
+      const mappedArea = (area === 'drive' || area === 'calendar') ? 'google' : area;
+      currentOpenSystemSection = mappedArea;
+      sessionStorage.setItem('dove_system_open_section', mappedArea);
+      sessionStorage.setItem('dove_system_active_area', mappedArea);
 
       const menu = document.getElementById('systemSectionsMenu');
       const detail = document.getElementById('systemSectionDetailView');
@@ -2225,28 +2239,37 @@
       // Imposta titolo e badge della sezione attiva nel sub-header
       const titleEl = document.getElementById('activeSectionTitle');
       const badgeEl = document.getElementById('activeSectionBadge');
-      const cfg = SYSTEM_SECTION_CONFIG[area] || { title: area.toUpperCase(), badge: "ATTIVA" };
+      const cfg = SYSTEM_SECTION_CONFIG[mappedArea] || { title: mappedArea.toUpperCase(), badge: "ATTIVA" };
       if (titleEl) titleEl.textContent = cfg.title;
       if (badgeEl) badgeEl.textContent = cfg.badge;
 
       // Aggiorna visibilità sezioni (solo quella selezionata è visibile)
-      const sectionIds = ['settingsArea_chat', 'settingsArea_drive', 'settingsArea_calendar', 'settingsArea_pc', 'settingsArea_security'];
+      const sectionIds = ['settingsArea_chat', 'settingsArea_google', 'settingsArea_pc', 'settingsArea_security'];
       sectionIds.forEach(id => {
         const sec = document.getElementById(id);
         if (!sec) return;
         const secArea = id.replace('settingsArea_', '');
-        if (secArea === area) {
+        if (secArea === mappedArea) {
           sec.classList.remove('hidden');
         } else {
           sec.classList.add('hidden');
         }
       });
 
+      // Assicura che i sotto-moduli drive e calendar rimangano visibili dentro settingsArea_google
+      if (mappedArea === 'google') {
+        const driveSub = document.getElementById('settingsArea_drive');
+        const calSub = document.getElementById('settingsArea_calendar');
+        if (driveSub) driveSub.classList.remove('hidden');
+        if (calSub) calSub.classList.remove('hidden');
+      }
+
       // Aggiorna classi bottoni Tab per coerenza
-      ['all', 'chat', 'drive', 'calendar', 'pc', 'security'].forEach(a => {
+      ['all', 'chat', 'google', 'drive', 'calendar', 'pc', 'security'].forEach(a => {
         const btn = document.getElementById(`btnSystemArea_${a}`);
         if (!btn) return;
-        if (a === area) {
+        const isActive = (a === mappedArea) || ((a === 'drive' || a === 'calendar') && mappedArea === 'google');
+        if (isActive) {
           btn.className = 'system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-[#3C5A48] text-white shadow-2xs shrink-0';
         } else {
           btn.className = 'system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0';
@@ -2272,7 +2295,7 @@
       if (detail) detail.classList.add('hidden');
 
       // Mantieni tutte le sezioni visibili per compatibilità
-      const sectionIds = ['settingsArea_chat', 'settingsArea_drive', 'settingsArea_calendar', 'settingsArea_pc', 'settingsArea_security'];
+      const sectionIds = ['settingsArea_chat', 'settingsArea_google', 'settingsArea_drive', 'settingsArea_calendar', 'settingsArea_pc', 'settingsArea_security'];
       sectionIds.forEach(id => {
         const sec = document.getElementById(id);
         if (sec) sec.classList.remove('hidden');
@@ -2283,7 +2306,7 @@
       if (btnAll) {
         btnAll.className = 'system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-[#3C5A48] text-white shadow-2xs shrink-0';
       }
-      ['chat', 'drive', 'calendar', 'pc', 'security'].forEach(a => {
+      ['chat', 'google', 'drive', 'calendar', 'pc', 'security'].forEach(a => {
         const btn = document.getElementById(`btnSystemArea_${a}`);
         if (btn) {
           btn.className = 'system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-white text-[#7A7568] hover:text-[#222220] border border-[#E3DDD1] shrink-0';
@@ -2300,7 +2323,7 @@
     window.closeSystemSection = closeSystemSection;
 
     function setSystemArea(area) {
-      const validAreas = ['all', 'chat', 'drive', 'calendar', 'pc', 'security'];
+      const validAreas = ['all', 'chat', 'google', 'drive', 'calendar', 'pc', 'security'];
       const targetArea = validAreas.includes(area) ? area : 'all';
       if (targetArea === 'all') {
         closeSystemSection();
@@ -2345,6 +2368,7 @@
     async function loadCalendarStatus() {
       const badge = document.getElementById('systemCalendarStatusBadge');
       const details = document.getElementById('systemCalendarStatusDetails');
+      const toggleCal = document.getElementById('toggleCalendarSync');
       try {
         const res = await fetch('/api/calendar/status', { headers: authHeaders() });
         if (!res.ok) throw new Error('Stato non disponibile');
@@ -2356,18 +2380,28 @@
         if (typeof currentFilter !== 'undefined' && currentFilter === 'scadenzario' && typeof renderScadenzarioView === 'function' && typeof currentRecords !== 'undefined' && currentRecords && currentRecords.length > 0) {
           renderScadenzarioView(currentRecords);
         }
+        if (toggleCal) {
+          toggleCal.checked = (data.calendar_enabled !== false);
+        }
+        const targetVal = data.calendar_target || 'dedicated';
+        const targetRadios = document.querySelectorAll('input[name="calendarTarget"]');
+        targetRadios.forEach(r => {
+          r.checked = (r.value === targetVal);
+        });
+
         if (badge) {
           if (isConnected) {
-            badge.textContent = 'ATTIVO & COLLEGATO';
-            badge.className = 'stamp-oli stamp-solid-sage text-[8px] font-bold';
+            badge.textContent = (data.calendar_enabled !== false) ? 'ATTIVO & COLLEGATO' : 'DISATTIVATO';
+            badge.className = (data.calendar_enabled !== false) ? 'stamp-oli stamp-solid-sage text-[8px] font-bold' : 'stamp-oli text-[8px] font-bold text-[#7A7568]';
             if (details) {
-              details.textContent = `ACCOUNT: ${(data.user_email || 'GOOGLE').toUpperCase()} • CALENDARIO DEDICATO: ${(data.calendar_name || 'DOVE LO AI MESSO - SCADENZE').toUpperCase()}`;
+              const targetDesc = (targetVal === 'primary') ? 'CALENDARIO PRINCIPALE' : (data.calendar_name || 'DOVE LO AI MESSO - SCADENZE').toUpperCase();
+              details.textContent = `ACCOUNT: ${(data.user_email || 'GOOGLE').toUpperCase()} • DESTINAZIONE: ${targetDesc}`;
             }
           } else {
             badge.textContent = 'NON COLLEGATO';
             badge.className = 'stamp-oli stamp-terracotta text-[8px] font-bold';
             if (details) {
-              details.textContent = 'Collega il tuo account Google nelle impostazioni Google Drive per sincronizzare automaticamente le scadenze.';
+              details.textContent = 'Collega il tuo account Google per sincronizzare automaticamente le scadenze.';
             }
           }
         }
@@ -2410,6 +2444,11 @@
       const emailEl = document.getElementById('driveConnectedEmail');
       const toolsBadge = document.getElementById('toolsDriveBadge');
 
+      const googleConnBox = document.getElementById('googleConnectedSettings');
+      const googleDiscBox = document.getElementById('googleDisconnectedBanner');
+      const sysEmailEl = document.getElementById('systemGoogleConnectedEmail');
+      const toggleDrive = document.getElementById('toggleDriveSync');
+
       if (loadingEl) loadingEl.classList.remove('hidden');
       if (disconnectedEl) disconnectedEl.classList.add('hidden');
       if (connectedEl) connectedEl.classList.add('hidden');
@@ -2432,9 +2471,17 @@
           if (disconnectedEl) disconnectedEl.classList.add('hidden');
           if (emailEl) emailEl.textContent = data.user_email || 'Account Google';
 
+          if (googleConnBox) googleConnBox.classList.remove('hidden');
+          if (googleDiscBox) googleDiscBox.classList.add('hidden');
+          if (sysEmailEl) sysEmailEl.textContent = data.user_email || 'Account Google';
+
           const targetMode = data.storage_mode || 'dual';
           const radio = document.querySelector(`input[name="driveStorageMode"][value="${targetMode}"]`);
           if (radio) radio.checked = true;
+
+          if (toggleDrive) {
+            toggleDrive.checked = (data.drive_enabled !== false && targetMode !== 'local_only');
+          }
 
           if (toolsBadge) {
             toolsBadge.classList.remove('hidden');
@@ -2458,6 +2505,10 @@
           if (typeof updateSystemMenuStatusBadges === 'function') updateSystemMenuStatusBadges();
           if (connectedEl) connectedEl.classList.add('hidden');
           if (disconnectedEl) disconnectedEl.classList.remove('hidden');
+          if (googleConnBox) googleConnBox.classList.add('hidden');
+          if (googleDiscBox) googleDiscBox.classList.remove('hidden');
+          if (toggleDrive) toggleDrive.checked = false;
+
           if (toolsBadge) {
             toolsBadge.classList.add('hidden');
           }
@@ -2479,6 +2530,8 @@
         if (typeof updateSystemMenuStatusBadges === 'function') updateSystemMenuStatusBadges();
         if (loadingEl) loadingEl.classList.add('hidden');
         if (disconnectedEl) disconnectedEl.classList.remove('hidden');
+        if (googleConnBox) googleConnBox.classList.add('hidden');
+        if (googleDiscBox) googleDiscBox.classList.remove('hidden');
       }
     }
 
@@ -2496,12 +2549,16 @@
         }
       } catch (err) {
         console.error("Errore connectGoogleDrive:", err);
-        showToast("⚠️ Impossibile avviare il collegamento con Google Drive", "error");
+        showToast("⚠️ Impossibile avviare il collegamento con Google", "error");
       }
     }
 
     async function disconnectGoogleDrive() {
-      if (!confirm("Sei sicuro di voler disconnettere il tuo account Google Drive?")) {
+      await confirmDisconnectGoogle();
+    }
+
+    async function confirmDisconnectGoogle() {
+      if (!confirm("Sei sicuro di voler scollegare il tuo account Google? Google Drive e Google Calendar verranno disconnessi.")) {
         return;
       }
       try {
@@ -2510,15 +2567,79 @@
           headers: authHeaders()
         });
         if (!res.ok) throw new Error("Errore durante la disconnessione");
+        window.currentDriveConnected = false;
+        window.currentCalendarConnected = false;
         await loadGoogleDriveStatus();
         if (typeof loadCalendarStatus === 'function') await loadCalendarStatus();
         updateHeaderCloudIndicators(false, false);
-        showToast("Google Drive disconnesso con successo", "info");
+        if (typeof updateSystemMenuStatusBadges === 'function') updateSystemMenuStatusBadges();
+        showToast("Account Google scollegato con successo", "info");
       } catch (err) {
-        console.error("Errore disconnectGoogleDrive:", err);
-        showToast("⚠️ Errore durante la disconnessione di Google Drive", "error");
+        console.error("Errore confirmDisconnectGoogle:", err);
+        showToast("⚠️ Errore durante lo scollegamento dell'account Google", "error");
       }
     }
+    window.confirmDisconnectGoogle = confirmDisconnectGoogle;
+
+    async function toggleDriveSyncEnabled(enabled) {
+      try {
+        const res = await fetch('/api/drive/settings', {
+          method: 'PATCH',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ drive_enabled: enabled })
+        });
+        if (!res.ok) throw new Error("Errore aggiornamento impostazioni Google Drive");
+        const data = await res.json();
+        if (googleDriveStatusCache) {
+          googleDriveStatusCache.drive_enabled = data.drive_enabled;
+          googleDriveStatusCache.storage_mode = data.storage_mode;
+        }
+        await loadGoogleDriveStatus();
+        showToast(enabled ? "Backup Google Drive attivato" : "Backup Google Drive disattivato", "info");
+      } catch (err) {
+        console.error("Errore toggleDriveSyncEnabled:", err);
+        showToast("⚠️ Impossibile aggiornare impostazione Drive", "error");
+        await loadGoogleDriveStatus();
+      }
+    }
+    window.toggleDriveSyncEnabled = toggleDriveSyncEnabled;
+
+    async function toggleCalendarSyncEnabled(enabled) {
+      try {
+        const res = await fetch('/api/calendar/settings', {
+          method: 'PATCH',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ calendar_enabled: enabled })
+        });
+        if (!res.ok) throw new Error("Errore aggiornamento impostazioni Google Calendar");
+        await loadCalendarStatus();
+        showToast(enabled ? "Sincronizzazione Google Calendar attivata" : "Sincronizzazione Google Calendar disattivata", "info");
+      } catch (err) {
+        console.error("Errore toggleCalendarSyncEnabled:", err);
+        showToast("⚠️ Impossibile aggiornare impostazione Calendar", "error");
+        await loadCalendarStatus();
+      }
+    }
+    window.toggleCalendarSyncEnabled = toggleCalendarSyncEnabled;
+
+    async function updateCalendarTarget(target) {
+      try {
+        const res = await fetch('/api/calendar/settings', {
+          method: 'PATCH',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ calendar_target: target })
+        });
+        if (!res.ok) throw new Error("Errore aggiornamento destinazione calendario");
+        const label = (target === 'primary') ? 'Calendario Principale' : 'Calendario Dedicato (Dove Lo AI Messo)';
+        showToast(`Destinazione scadenze: ${label}`, "success");
+        await loadCalendarStatus();
+      } catch (err) {
+        console.error("Errore updateCalendarTarget:", err);
+        showToast("⚠️ Impossibile aggiornare la destinazione del calendario", "error");
+        await loadCalendarStatus();
+      }
+    }
+    window.updateCalendarTarget = updateCalendarTarget;
 
     async function updateDriveStorageMode(mode) {
       try {
@@ -2552,7 +2673,8 @@
       if (e.origin !== window.location.origin) return;
       if (e.data && (e.data.type === 'google_drive_auth_success' || e.data.type === 'GOOGLE_DRIVE_AUTH_SUCCESS')) {
         loadGoogleDriveStatus();
-        showToast(`🟢 Google Drive collegato con successo!`, 'success');
+        if (typeof loadCalendarStatus === 'function') loadCalendarStatus();
+        showToast(`🟢 Account Google collegato con successo!`, 'success');
       }
     });
 
