@@ -1327,7 +1327,6 @@
           </div>
           <div class="flex items-center gap-2">
             <h2 class="font-black text-xs md:text-sm text-[#222220] tracking-tight uppercase font-space">DOVE LO AI MESSO</h2>
-            <span class="stamp-oli stamp-solid-sage text-[9px] font-bold">PANNELLO</span>
           </div>
         </div>
       </div>
@@ -1346,12 +1345,6 @@
       
       <!-- STATO 1: HUB DEI 4 GRANDI BOTTONI (PANNELLO DI CONTROLLO OLIVETTI INDUSTRIAL) -->
       <div id="panelHubContainer" class="space-y-4 animate-in fade-in duration-200">
-        
-        <!-- Barra di Stato e Data Dattiloscritta -->
-        <div id="dashboardStatusBar" class="flex items-center justify-between text-xs border-b border-[#E3DDD1] pb-2 font-mono-code text-[#7A7568]">
-          <span id="dashboardDateDisplay">SABATO 28 SETTEMBRE 2026</span>
-          <span class="stamp-oli stamp-solid-sage text-[8px] font-bold"><i class="fa-solid fa-lock text-[7px] mr-1"></i>CAVEAU CIFRATO AES-256</span>
-        </div>
 
         <!-- Banner Notifica File Sensibili Rilevati nelle Cartelle Monitorate -->
         <div id="sensitiveFilesAlertBanner" class="hidden bg-[#FAF8F2] border-2 border-[#C84B31] rounded-xs p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
@@ -1466,6 +1459,7 @@
 
         <!-- Elementi di fallback per compatibilità script esistenti -->
         <div class="hidden" aria-hidden="true">
+          <span id="dashboardDateDisplay"></span>
           <span id="kpiDriveState">DUAL</span>
           <span id="kpiDriveDot"></span>
           <div id="kpiProgressBar"></div>

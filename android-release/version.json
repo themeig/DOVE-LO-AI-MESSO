@@ -1,6 +1,6 @@
 {
-  "version_code": 322,
-  "version_name": "2.10.22",
+  "version_code": 323,
+  "version_name": "2.10.23",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "📱 Ottimizzazione Mobile Pannello: 4 quadrati in formazione quadrata 2x2 compatta (Panoramica, Scadenze, Atti, Oggetti) visibili immediatamente senza scrolling verticale."
+  "release_notes": "✨ Rifinitura grafica Pannello: rimossi badge 'PANNELLO' in testata e barra data/cifratura superiore, preservata la didascalia 'Seleziona uno dei 4 registri per consultare o gestire il caveau'."
 }
