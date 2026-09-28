@@ -43,3 +43,41 @@ def test_get_current_user_dev_fallback(monkeypatch):
     user = get_current_user(credentials=None)
     assert user["sub"] == "local-dev-user"
     assert "local" in user["email"]
+
+
+def test_cloud_signup_login_and_me():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.models.database import init_db
+
+    init_db()
+    client = TestClient(app)
+
+    # 1. Registrazione Cloud / Locale
+    signup_res = client.post("/api/auth/cloud/signup", json={
+        "email": "mario.rossi@test.it",
+        "password": "PasswordSicura123!",
+        "full_name": "Mario Rossi"
+    })
+    assert signup_res.status_code in [200, 201]
+    signup_data = signup_res.json()
+    assert "access_token" in signup_data
+    token = signup_data["access_token"]
+    assert signup_data["user"]["email"] == "mario.rossi@test.it"
+    assert signup_data["user"]["full_name"] == "Mario Rossi"
+
+    # 2. Verifica profilo corrente /me
+    me_res = client.get("/api/auth/cloud/me", headers={"Authorization": f"Bearer {token}"})
+    assert me_res.status_code == 200
+    me_data = me_res.json()
+    assert me_data["email"] == "mario.rossi@test.it"
+    assert me_data["full_name"] == "Mario Rossi"
+
+    # 3. Login con credenziali
+    login_res = client.post("/api/auth/cloud/login", json={
+        "email": "mario.rossi@test.it",
+        "password": "PasswordSicura123!"
+    })
+    assert login_res.status_code == 200
+    assert "access_token" in login_res.json()
+

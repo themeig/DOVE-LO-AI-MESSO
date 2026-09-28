@@ -77,17 +77,76 @@
     document.addEventListener('DOMContentLoaded', syncDeviceEnvironment);
     window.addEventListener('resize', syncDeviceEnvironment);
 
-    // --- Helper Autenticazione con Token Cifrato ---
+    // --- Helper Autenticazione con Token Cifrato & Supabase JWT ---
     function authHeaders(extra = {}) {
       const token = sessionStorage.getItem('vault_token');
+      const cloudToken = localStorage.getItem('supabase_auth_token') || sessionStorage.getItem('supabase_auth_token');
       const h = { ...extra };
       if (token) {
         h['X-Vault-Token'] = token;
+      }
+      if (cloudToken) {
+        h['Authorization'] = `Bearer ${cloudToken}`;
       }
       return h;
     }
     const getAuthHeaders = authHeaders;
     window.getAuthHeaders = authHeaders;
+
+    let currentCloudUser = null;
+    window.currentCloudUser = null;
+
+    async function checkCloudAuthStatus() {
+      const token = localStorage.getItem('supabase_auth_token') || sessionStorage.getItem('supabase_auth_token');
+      const unauthBox = document.getElementById('authUnauthenticatedBox');
+      const authBox = document.getElementById('authAuthenticatedBox');
+      const headerBtn = document.getElementById('headerAccountBtn');
+      const sidebarBtn = document.getElementById('sidebarAccountBtn');
+
+      if (!token) {
+        currentCloudUser = null;
+        window.currentCloudUser = null;
+        if (unauthBox) unauthBox.classList.remove('hidden');
+        if (authBox) authBox.classList.add('hidden');
+        if (headerBtn) headerBtn.classList.remove('bg-[#3C5A48]', 'text-white');
+        if (sidebarBtn) sidebarBtn.classList.remove('bg-[#3C5A48]', 'text-white');
+        return null;
+      }
+
+      try {
+        const res = await fetch('/api/auth/cloud/me', { headers: authHeaders() });
+        if (res.ok) {
+          const user = await res.json();
+          currentCloudUser = user;
+          window.currentCloudUser = user;
+          if (unauthBox) unauthBox.classList.add('hidden');
+          if (authBox) authBox.classList.remove('hidden');
+          
+          const nameEl = document.getElementById('authProfileName');
+          const emailEl = document.getElementById('authProfileEmail');
+          const avatarEl = document.getElementById('authProfileAvatar');
+          if (nameEl) nameEl.textContent = user.full_name || 'Utente';
+          if (emailEl) emailEl.textContent = user.email || '';
+          if (avatarEl) avatarEl.textContent = (user.full_name || user.email || 'U')[0].toUpperCase();
+
+          if (headerBtn) headerBtn.classList.add('bg-[#3C5A48]', 'text-white');
+          if (sidebarBtn) sidebarBtn.classList.add('bg-[#3C5A48]', 'text-white');
+          return user;
+        } else {
+          localStorage.removeItem('supabase_auth_token');
+          sessionStorage.removeItem('supabase_auth_token');
+          currentCloudUser = null;
+          window.currentCloudUser = null;
+          if (unauthBox) unauthBox.classList.remove('hidden');
+          if (authBox) authBox.classList.add('hidden');
+          return null;
+        }
+      } catch (err) {
+        console.warn("Errore checkCloudAuthStatus:", err);
+        return null;
+      }
+    }
+    window.checkCloudAuthStatus = checkCloudAuthStatus;
 
     // --- Sistema Aggiornamenti Over-The-Air (OTA) & Controllo Manuale ---
     window.checkAppUpdates = async function(isManual = true) {

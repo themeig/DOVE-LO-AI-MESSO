@@ -91,17 +91,76 @@
     document.addEventListener('DOMContentLoaded', syncDeviceEnvironment);
     window.addEventListener('resize', syncDeviceEnvironment);
 
-    // --- Helper Autenticazione con Token Cifrato ---
+    // --- Helper Autenticazione con Token Cifrato & Supabase JWT ---
     function authHeaders(extra = {}) {
       const token = sessionStorage.getItem('vault_token');
+      const cloudToken = localStorage.getItem('supabase_auth_token') || sessionStorage.getItem('supabase_auth_token');
       const h = { ...extra };
       if (token) {
         h['X-Vault-Token'] = token;
+      }
+      if (cloudToken) {
+        h['Authorization'] = `Bearer ${cloudToken}`;
       }
       return h;
     }
     const getAuthHeaders = authHeaders;
     window.getAuthHeaders = authHeaders;
+
+    let currentCloudUser = null;
+    window.currentCloudUser = null;
+
+    async function checkCloudAuthStatus() {
+      const token = localStorage.getItem('supabase_auth_token') || sessionStorage.getItem('supabase_auth_token');
+      const unauthBox = document.getElementById('authUnauthenticatedBox');
+      const authBox = document.getElementById('authAuthenticatedBox');
+      const headerBtn = document.getElementById('headerAccountBtn');
+      const sidebarBtn = document.getElementById('sidebarAccountBtn');
+
+      if (!token) {
+        currentCloudUser = null;
+        window.currentCloudUser = null;
+        if (unauthBox) unauthBox.classList.remove('hidden');
+        if (authBox) authBox.classList.add('hidden');
+        if (headerBtn) headerBtn.classList.remove('bg-[#3C5A48]', 'text-white');
+        if (sidebarBtn) sidebarBtn.classList.remove('bg-[#3C5A48]', 'text-white');
+        return null;
+      }
+
+      try {
+        const res = await fetch('/api/auth/cloud/me', { headers: authHeaders() });
+        if (res.ok) {
+          const user = await res.json();
+          currentCloudUser = user;
+          window.currentCloudUser = user;
+          if (unauthBox) unauthBox.classList.add('hidden');
+          if (authBox) authBox.classList.remove('hidden');
+          
+          const nameEl = document.getElementById('authProfileName');
+          const emailEl = document.getElementById('authProfileEmail');
+          const avatarEl = document.getElementById('authProfileAvatar');
+          if (nameEl) nameEl.textContent = user.full_name || 'Utente';
+          if (emailEl) emailEl.textContent = user.email || '';
+          if (avatarEl) avatarEl.textContent = (user.full_name || user.email || 'U')[0].toUpperCase();
+
+          if (headerBtn) headerBtn.classList.add('bg-[#3C5A48]', 'text-white');
+          if (sidebarBtn) sidebarBtn.classList.add('bg-[#3C5A48]', 'text-white');
+          return user;
+        } else {
+          localStorage.removeItem('supabase_auth_token');
+          sessionStorage.removeItem('supabase_auth_token');
+          currentCloudUser = null;
+          window.currentCloudUser = null;
+          if (unauthBox) unauthBox.classList.remove('hidden');
+          if (authBox) authBox.classList.add('hidden');
+          return null;
+        }
+      } catch (err) {
+        console.warn("Errore checkCloudAuthStatus:", err);
+        return null;
+      }
+    }
+    window.checkCloudAuthStatus = checkCloudAuthStatus;
 
     // --- Sistema Aggiornamenti Over-The-Air (OTA) & Controllo Manuale ---
     window.checkAppUpdates = async function(isManual = true) {
@@ -9642,7 +9701,8 @@
       loadDashboard('all');
       checkDeadlineAlerts();
       checkPendingProposalsBanner();
-      loadGoogleDriveStatus();
+      checkGoogleDriveStatus();
+      if (typeof checkCloudAuthStatus === 'function') checkCloudAuthStatus();
       if (typeof loadCalendarStatus === 'function') loadCalendarStatus();
       if (typeof setSystemArea === 'function') setSystemArea(sessionStorage.getItem('dove_system_active_area') || 'all');
       const urlParams = new URLSearchParams(window.location.search);
@@ -9661,6 +9721,470 @@
     });
     // Verifica immediata se il DOM è già pronto
     checkVaultAuth();
+
+
+    // =========================================================================
+    // CONTROLLER ACCOUNT & GRUPPI CONDIVISI (OLIVETTI INDUSTRIAL)
+    // =========================================================================
+    let currentAuthMode = 'login'; // 'login' | 'signup'
+
+    function openAccountModal(defaultTab = 'profile') {
+      const modal = document.getElementById('accountModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        switchAccountTab(defaultTab);
+        if (typeof checkCloudAuthStatus === 'function') {
+          checkCloudAuthStatus();
+        }
+        loadUserGroupsList();
+      }
+    }
+    window.openAccountModal = openAccountModal;
+
+    function closeAccountModal() {
+      const modal = document.getElementById('accountModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+    window.closeAccountModal = closeAccountModal;
+
+    function switchAccountTab(tab) {
+      const tabProfile = document.getElementById('tabBtnAccountProfile');
+      const tabGroups = document.getElementById('tabBtnAccountGroups');
+      const contentProfile = document.getElementById('tabContentProfile');
+      const contentGroups = document.getElementById('tabContentGroups');
+
+      if (tab === 'profile') {
+        if (tabProfile) {
+          tabProfile.classList.add('border-[#3C5A48]', 'text-[#3C5A48]');
+          tabProfile.classList.remove('border-transparent', 'text-[#7A7568]');
+        }
+        if (tabGroups) {
+          tabGroups.classList.remove('border-[#3C5A48]', 'text-[#3C5A48]');
+          tabGroups.classList.add('border-transparent', 'text-[#7A7568]');
+        }
+        if (contentProfile) contentProfile.classList.remove('hidden');
+        if (contentGroups) contentGroups.classList.add('hidden');
+      } else {
+        if (tabGroups) {
+          tabGroups.classList.add('border-[#3C5A48]', 'text-[#3C5A48]');
+          tabGroups.classList.remove('border-transparent', 'text-[#7A7568]');
+        }
+        if (tabProfile) {
+          tabProfile.classList.remove('border-[#3C5A48]', 'text-[#3C5A48]');
+          tabProfile.classList.add('border-transparent', 'text-[#7A7568]');
+        }
+        if (contentProfile) contentProfile.classList.add('hidden');
+        if (contentGroups) contentGroups.classList.remove('hidden');
+        loadUserGroupsList();
+      }
+    }
+    window.switchAccountTab = switchAccountTab;
+
+    function setAuthMode(mode) {
+      currentAuthMode = mode;
+      const loginBtn = document.getElementById('authModeLoginBtn');
+      const signupBtn = document.getElementById('authModeSignupBtn');
+      const fullNameField = document.getElementById('authFullNameField');
+      const submitBtnText = document.getElementById('authSubmitBtnText');
+      const errorMsg = document.getElementById('authErrorMsg');
+      if (errorMsg) errorMsg.classList.add('hidden');
+
+      if (mode === 'signup') {
+        if (loginBtn) {
+          loginBtn.classList.remove('bg-white', 'text-[#222220]', 'shadow-xs');
+          loginBtn.classList.add('text-[#7A7568]');
+        }
+        if (signupBtn) {
+          signupBtn.classList.add('bg-white', 'text-[#222220]', 'shadow-xs');
+          signupBtn.classList.remove('text-[#7A7568]');
+        }
+        if (fullNameField) fullNameField.classList.remove('hidden');
+        if (submitBtnText) submitBtnText.textContent = "Crea Nuovo Account";
+      } else {
+        if (signupBtn) {
+          signupBtn.classList.remove('bg-white', 'text-[#222220]', 'shadow-xs');
+          signupBtn.classList.add('text-[#7A7568]');
+        }
+        if (loginBtn) {
+          loginBtn.classList.add('bg-white', 'text-[#222220]', 'shadow-xs');
+          loginBtn.classList.remove('text-[#7A7568]');
+        }
+        if (fullNameField) fullNameField.classList.add('hidden');
+        if (submitBtnText) submitBtnText.textContent = "Accedi al Caveau";
+      }
+    }
+    window.setAuthMode = setAuthMode;
+
+    async function handleCloudAuthSubmit(e) {
+      if (e) e.preventDefault();
+      const emailInput = document.getElementById('authEmailInput');
+      const passwordInput = document.getElementById('authPasswordInput');
+      const fullNameInput = document.getElementById('authFullNameInput');
+      const errorMsg = document.getElementById('authErrorMsg');
+      const submitBtn = document.getElementById('authSubmitBtn');
+
+      const email = emailInput ? emailInput.value.trim() : '';
+      const password = passwordInput ? passwordInput.value : '';
+      const fullName = fullNameInput ? fullNameInput.value.trim() : '';
+
+      if (!email || !password) return;
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-60');
+      }
+      if (errorMsg) errorMsg.classList.add('hidden');
+
+      try {
+        const endpoint = currentAuthMode === 'signup' ? '/api/auth/cloud/signup' : '/api/auth/cloud/login';
+        const payload = { email, password };
+        if (currentAuthMode === 'signup') {
+          payload.full_name = fullName || email.split('@')[0];
+        }
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || "Errore durante l'autenticazione");
+        }
+
+        if (data.access_token) {
+          localStorage.setItem('supabase_auth_token', data.access_token);
+          if (typeof checkCloudAuthStatus === 'function') {
+            await checkCloudAuthStatus();
+          }
+          if (typeof showToast === 'function') {
+            showToast(currentAuthMode === 'signup' ? "✨ Account creato con successo!" : "✅ Accesso eseguito con successo!", "success", 3000);
+          }
+          loadUserGroupsList();
+        }
+      } catch (err) {
+        if (errorMsg) {
+          errorMsg.textContent = err.message;
+          errorMsg.classList.remove('hidden');
+        }
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('opacity-60');
+        }
+      }
+    }
+    window.handleCloudAuthSubmit = handleCloudAuthSubmit;
+
+    function handleCloudLogout() {
+      localStorage.removeItem('supabase_auth_token');
+      sessionStorage.removeItem('supabase_auth_token');
+      if (typeof checkCloudAuthStatus === 'function') {
+        checkCloudAuthStatus();
+      }
+      if (typeof showToast === 'function') {
+        showToast("Sessione cloud terminata. Passato a modalità locale.", "info", 3000);
+      }
+      loadUserGroupsList();
+    }
+    window.handleCloudLogout = handleCloudLogout;
+
+    function toggleInlineGroupAction(action) {
+      const createBox = document.getElementById('inlineCreateGroupBox');
+      const joinBox = document.getElementById('inlineJoinGroupBox');
+      const successBox = document.getElementById('groupCreatedSuccessBox');
+
+      if (successBox) successBox.classList.add('hidden');
+
+      if (action === 'create') {
+        if (createBox) createBox.classList.toggle('hidden');
+        if (joinBox) joinBox.classList.add('hidden');
+      } else if (action === 'join') {
+        if (joinBox) joinBox.classList.toggle('hidden');
+        if (createBox) createBox.classList.add('hidden');
+      } else {
+        if (createBox) createBox.classList.add('hidden');
+        if (joinBox) joinBox.classList.add('hidden');
+      }
+    }
+    window.toggleInlineGroupAction = toggleInlineGroupAction;
+
+    async function handleCreateGroupSubmit(e) {
+      if (e) e.preventDefault();
+      const nameInput = document.getElementById('groupNameInput');
+      const descInput = document.getElementById('groupDescInput');
+      const name = nameInput ? nameInput.value.trim() : '';
+      const desc = descInput ? descInput.value.trim() : '';
+
+      if (!name) return;
+
+      try {
+        const res = await fetch('/api/groups', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ name, description: desc, icon: 'fa-house' })
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.detail || "Errore nella creazione del gruppo");
+        }
+        const group = await res.json();
+
+        // Mostra banner codice generato
+        const successBox = document.getElementById('groupCreatedSuccessBox');
+        const nameDisplay = document.getElementById('groupCreatedNameDisplay');
+        const codeDisplay = document.getElementById('groupCreatedCodeDisplay');
+        if (nameDisplay) nameDisplay.textContent = `Gruppo '${group.name}' Creato!`;
+        if (codeDisplay) codeDisplay.textContent = group.invite_code;
+
+        if (nameInput) nameInput.value = '';
+        if (descInput) descInput.value = '';
+        toggleInlineGroupAction(null);
+        if (successBox) successBox.classList.remove('hidden');
+
+        if (typeof showToast === 'function') {
+          showToast(`🎉 Gruppo '${group.name}' attivato! Codice: ${group.invite_code}`, "success", 5000);
+        }
+
+        loadUserGroupsList();
+        if (typeof loadThreads === 'function') loadThreads();
+      } catch (err) {
+        alert("Errore creazione gruppo: " + err.message);
+      }
+    }
+    window.handleCreateGroupSubmit = handleCreateGroupSubmit;
+
+    async function handleJoinGroupSubmit(e) {
+      if (e) e.preventDefault();
+      const codeInput = document.getElementById('groupInviteCodeInput');
+      const errorMsg = document.getElementById('joinGroupErrorMsg');
+      const code = codeInput ? codeInput.value.trim().toUpperCase() : '';
+
+      if (!code) return;
+      if (errorMsg) errorMsg.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/groups/join', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ invite_code: code })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || "Codice invito non valido");
+        }
+
+        if (codeInput) codeInput.value = '';
+        toggleInlineGroupAction(null);
+        if (typeof showToast === 'function') {
+          showToast(data.message || `Benvenuto nel gruppo '${data.name}'!`, "success", 4000);
+        }
+        loadUserGroupsList();
+        if (typeof loadThreads === 'function') loadThreads();
+      } catch (err) {
+        if (errorMsg) {
+          errorMsg.textContent = err.message;
+          errorMsg.classList.remove('hidden');
+        }
+      }
+    }
+    window.handleJoinGroupSubmit = handleJoinGroupSubmit;
+
+    function copyGroupCode() {
+      const codeDisplay = document.getElementById('groupCreatedCodeDisplay');
+      const btnText = document.getElementById('copyGroupCodeBtnText');
+      const code = codeDisplay ? codeDisplay.textContent.trim() : '';
+      if (!code) return;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(() => {
+          if (btnText) btnText.textContent = "Copiato!";
+          setTimeout(() => { if (btnText) btnText.textContent = "Copia"; }, 2000);
+          if (typeof showToast === 'function') showToast("Codice copiato negli appunti!", "success", 2000);
+        });
+      } else {
+        prompt("Copia il codice d'invito:", code);
+      }
+    }
+    window.copyGroupCode = copyGroupCode;
+
+    async function loadUserGroupsList() {
+      const listEl = document.getElementById('accountGroupsList');
+      const countBadge = document.getElementById('accountGroupsCountBadge');
+      if (!listEl) return;
+
+      try {
+        const res = await fetch('/api/groups', { headers: authHeaders() });
+        if (!res.ok) {
+          listEl.innerHTML = `<div class="p-4 text-center text-[#7A7568] text-xs font-mono-code">Accedi con il tuo account per visualizzare i tuoi gruppi.</div>`;
+          if (countBadge) countBadge.textContent = '0';
+          return;
+        }
+        const groups = await res.json();
+        if (countBadge) countBadge.textContent = String(groups.length);
+
+        if (groups.length === 0) {
+          listEl.innerHTML = `
+            <div class="bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-5 text-center space-y-2">
+              <i class="fa-solid fa-users text-2xl text-[#7A7568]"></i>
+              <p class="text-xs font-bold text-[#222220] font-space uppercase">Nessun Gruppo Attivo</p>
+              <p class="text-[11px] text-[#7A7568] font-mono-code">Crea un gruppo per la tua famiglia o unisciti tramite codice invito.</p>
+            </div>
+          `;
+          return;
+        }
+
+        listEl.innerHTML = groups.map(g => `
+          <div class="bg-white border border-[#E3DDD1] rounded-xs p-3.5 space-y-2.5 shadow-2xs hover:border-[#3C5A48] transition">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-xs shrink-0 shadow-xs">
+                  <i class="fa-solid ${g.icon || 'fa-house'}"></i>
+                </div>
+                <div class="min-w-0">
+                  <h4 class="font-bold text-xs text-[#222220] font-space truncate">${g.name}</h4>
+                  <p class="text-[10px] text-[#7A7568] font-mono-code">${g.members_count} ${g.members_count === 1 ? 'membro' : 'membri'}</p>
+                </div>
+              </div>
+              <span class="stamp-oli ${g.role === 'admin' ? 'stamp-terracotta' : 'stamp-solid-sage'} text-[8px] uppercase">${g.role}</span>
+            </div>
+            ${g.description ? `<p class="text-[11px] text-[#7A7568] font-mono-code line-clamp-2">${g.description}</p>` : ''}
+            <div class="flex items-center justify-between pt-2 border-t border-[#E3DDD1] text-[10px] font-mono-code">
+              <span class="bg-[#FAF8F2] border border-[#E3DDD1] px-2 py-0.5 rounded-xs text-[#222220] font-bold tracking-wider">
+                INVITO: ${g.invite_code}
+              </span>
+              <button 
+                type="button" 
+                onclick="openGroupActivityLedger('${g.id}', '${g.name.replace(/'/g, "\\'")}')" 
+                class="bg-[#3C5A48] hover:bg-[#2F4738] text-white font-space font-bold px-2.5 py-1 rounded-xs transition flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs"
+              >
+                <span>Apri Registro</span>
+                <i class="fa-solid fa-arrow-right text-[9px]"></i>
+              </button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        listEl.innerHTML = `<div class="p-4 text-center text-[#C84B31] text-xs font-mono-code">Errore caricamento gruppi: ${err.message}</div>`;
+      }
+    }
+    window.loadUserGroupsList = loadUserGroupsList;
+
+    let activeGroupWs = null;
+
+    async function openGroupActivityLedger(groupId, groupName) {
+      closeAccountModal();
+      if (typeof switchScreen === 'function') switchScreen('chat');
+
+      // Aggiorna header conversazione
+      const titleEl = document.getElementById('activeThreadTitle');
+      const subtitleEl = document.getElementById('activeThreadSubtitle');
+      const iconEl = document.getElementById('activeThreadIcon');
+      if (titleEl) titleEl.textContent = groupName;
+      if (subtitleEl) subtitleEl.textContent = `👥 Registro Operativo Condiviso • Connesso`;
+      if (iconEl) iconEl.className = "fa-solid fa-users";
+
+      // Chiudi eventuale websocket precedente
+      if (activeGroupWs) {
+        try { activeGroupWs.close(); } catch(e){}
+        activeGroupWs = null;
+      }
+
+      // Carica feed ufficiale dal ledger
+      const chatFeed = document.getElementById('chatFeed');
+      if (chatFeed) {
+        chatFeed.innerHTML = `
+          <div class="py-12 text-center text-[#7A7568] font-mono-code space-y-2">
+            <i class="fa-solid fa-spinner fa-spin text-xl text-[#3C5A48]"></i>
+            <p class="text-xs">Sincronizzazione Registro Operativo Gruppo '${groupName}'...</p>
+          </div>
+        `;
+      }
+
+      try {
+        const res = await fetch(`/api/groups/${groupId}/feed`, { headers: authHeaders() });
+        if (!res.ok) throw new Error("Impossibile caricare il registro");
+        const events = await res.json();
+
+        if (!chatFeed) return;
+        chatFeed.innerHTML = '';
+
+        // Intestazione registro ufficiale stile Olivetti Ledger
+        const headerBanner = document.createElement('div');
+        headerBanner.className = "p-4 mb-4 bg-white border border-[#3C5A48] rounded-xs shadow-xs text-xs space-y-1.5 font-mono-code";
+        headerBanner.innerHTML = `
+          <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-2">
+            <span class="font-bold text-[#3C5A48] font-space uppercase flex items-center gap-1.5">
+              <i class="fa-solid fa-scroll"></i> REGISTRO OPERATIVO UFFICIALE
+            </span>
+            <span class="stamp-oli stamp-solid-sage text-[8px]">PROT. GRUPPO</span>
+          </div>
+          <p class="text-[11px] text-[#222220]">In questo canale sono ammessi esclusivamente <strong>atti ufficiali, quietanze e notifiche di scadenza</strong>. Nessuna chat informale.</p>
+        `;
+        chatFeed.appendChild(headerBanner);
+
+        if (events.length === 0) {
+          const emptyCard = document.createElement('div');
+          emptyCard.className = "p-8 text-center text-[#7A7568] font-mono-code text-xs space-y-2";
+          emptyCard.innerHTML = `
+            <i class="fa-solid fa-inbox text-2xl text-[#3C5A48]/50"></i>
+            <p>Nessun atto registrato nel gruppo al momento.</p>
+            <p class="text-[10px]">Tutte le bollette o documenti caricati per questo gruppo compariranno qui automaticamente.</p>
+          `;
+          chatFeed.appendChild(emptyCard);
+        } else {
+          events.forEach(ev => {
+            const card = document.createElement('div');
+            card.className = "mb-3 p-3.5 bg-white border border-[#E3DDD1] rounded-xs shadow-2xs font-mono-code text-xs space-y-1.5";
+            let stampHtml = '<span class="stamp-oli stamp-solid-sage text-[8px]">NOTIFICA</span>';
+            if (ev.event_type === 'DOCUMENT_UPLOADED') stampHtml = '<span class="stamp-oli stamp-terracotta text-[8px]">NUOVO ATTO</span>';
+            if (ev.event_type === 'DOCUMENT_PAID') stampHtml = '<span class="stamp-oli stamp-solid-sage text-[8px]">QUIETANZATO</span>';
+
+            card.innerHTML = `
+              <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-1.5 text-[10px] text-[#7A7568]">
+                <span class="font-bold text-[#222220]">${ev.actor_name || 'Sistema'}</span>
+                <div class="flex items-center gap-2">
+                  <span>${ev.created_at ? new Date(ev.created_at).toLocaleString('it-IT') : ''}</span>
+                  ${stampHtml}
+                </div>
+              </div>
+              <div class="font-bold text-[#222220] font-space text-xs">${ev.title}</div>
+              ${ev.content ? `<p class="text-[11px] text-[#7A7568] leading-relaxed">${ev.content}</p>` : ''}
+            `;
+            chatFeed.appendChild(card);
+          });
+        }
+
+        // Connessione WebSocket Real-time
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/api/groups/${groupId}/ws`;
+        try {
+          activeGroupWs = new WebSocket(wsUrl);
+          activeGroupWs.onmessage = function(event) {
+            try {
+              const msg = JSON.parse(event.data);
+              if (typeof showToast === 'function') {
+                showToast(`🔔 Nuovo evento gruppo: ${msg.title || msg.event}`, "info", 4000);
+              }
+              openGroupActivityLedger(groupId, groupName);
+            } catch(e){}
+          };
+        } catch(wsErr) {
+          console.warn("WebSocket non disponibile:", wsErr);
+        }
+
+      } catch(err) {
+        if (chatFeed) {
+          chatFeed.innerHTML = `<div class="p-6 text-center text-[#C84B31] font-mono-code text-xs">Errore sincronizzazione: ${err.message}</div>`;
+        }
+      }
+    }
+    window.openGroupActivityLedger = openGroupActivityLedger;
 
 // <<< FINE MODULO: 07-modals.js >>>
 
