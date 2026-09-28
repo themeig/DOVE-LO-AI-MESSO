@@ -258,3 +258,47 @@ def get_group_members(
             joined_at=m.joined_at.isoformat() if m.joined_at else ""
         ))
     return response
+
+
+@router.get("/{group_id}/feed")
+def get_group_activity_feed(
+    group_id: str,
+    limit: int = 50,
+    offset: int = 0,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Restituisce il registro cronologico delle attività e atti del gruppo (esclusivamente eventi ufficiali).
+    """
+    from app.services.activity_service import list_group_activity_feed
+
+    membership = db.query(GroupMember).filter(
+        GroupMember.group_id == group_id,
+        GroupMember.user_id == current_user["id"]
+    ).first()
+
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Non hai i permessi per visualizzare il registro di questo gruppo."
+        )
+
+    events = list_group_activity_feed(db, group_id, limit=limit, offset=offset)
+    return [
+        {
+            "id": ev.id,
+            "group_id": ev.group_id,
+            "actor_user_id": ev.actor_user_id,
+            "actor_name": ev.actor_name,
+            "event_type": ev.event_type,
+            "title": ev.title,
+            "content": ev.content,
+            "document_id": ev.document_id,
+            "item_id": ev.item_id,
+            "payload": ev.payload or {},
+            "created_at": ev.created_at.isoformat() if ev.created_at else ""
+        }
+        for ev in events
+    ]
+

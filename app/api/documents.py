@@ -828,6 +828,22 @@ def update_document_status(
     db.commit()
     db.refresh(doc)
 
+    # Se l'atto appartiene a un gruppo ed è stato pagato/quietanzato, registra nel registro operativo condiviso
+    if doc.group_id and payload.status == "quietanzato":
+        try:
+            from app.services.activity_service import record_activity_event
+            record_activity_event(
+                db=db,
+                group_id=doc.group_id,
+                event_type="DOCUMENT_PAID",
+                title=f"Atto quietanzato: {doc.title}",
+                content=f"Il documento '{doc.title}' è stato registrato come quietanzato/saldato.",
+                document_id=doc.id,
+                payload={"amount": doc.amount, "due_date": doc.due_date.isoformat() if doc.due_date else None}
+            )
+        except Exception as e:
+            logger.warning(f"Errore registrazione activity event per pagamento doc {doc.id}: {e}")
+
     # Sincronizzazione automatica con Google Calendar se collegato
     auto_sync_calendar_event(doc, db)
 
