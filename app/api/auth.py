@@ -74,9 +74,11 @@ def login(payload: LoginRequest, request: Request, response: Response):
 def get_auth_status(x_vault_token: Optional[str] = Header(None)):
     mgr = get_vault_manager()
     unlocked = mgr.is_unlocked()
+    token = mgr.create_session_token() if unlocked else None
     return {
         "unlocked": unlocked,
-        "has_token": bool(x_vault_token and mgr.validate_token(x_vault_token)) if unlocked else False
+        "has_token": bool(x_vault_token and mgr.validate_token(x_vault_token)) if unlocked else False,
+        "token": token
     }
 
 @router.post("/lock")

@@ -1403,6 +1403,14 @@
       const text = input.value.trim();
       if (!text) return;
 
+      if (!window.currentCloudUser && !localStorage.getItem('supabase_auth_token') && !sessionStorage.getItem('supabase_auth_token')) {
+        if (typeof showToast === 'function') {
+          showToast("⚠️ Accedi al tuo account per inviare messaggi o consultare il registro.", "warning", 3000);
+        }
+        if (typeof openAccountModal === 'function') openAccountModal('profile', true);
+        return;
+      }
+
       const targetThreadId = currentThreadId; // Memorizza la chat di destinazione
       const quotedToSend = currentQuotedMessage;
       cancelQuoteReply(); // Chiudi subito la barra preview della citazione
@@ -1608,6 +1616,15 @@
 
     async function processFilesUpload(fileList) {
       if (!fileList || fileList.length === 0) return;
+
+      if (!window.currentCloudUser && !localStorage.getItem('supabase_auth_token') && !sessionStorage.getItem('supabase_auth_token')) {
+        if (typeof showToast === 'function') {
+          showToast("⚠️ Accedi al tuo account per caricare documenti nel Caveau.", "warning", 3000);
+        }
+        if (typeof openAccountModal === 'function') openAccountModal('profile', true);
+        return;
+      }
+
       const files = Array.from(fileList);
 
       // Filtra file validi (accetta qualsiasi documento/foto/archivio ed esclude solo file di sistema OS e cartelle vuote non risolte)

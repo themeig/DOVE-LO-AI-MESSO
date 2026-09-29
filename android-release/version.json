@@ -1,7 +1,7 @@
 {
-  "version_code": 331,
-  "version_name": "2.16.1",
+  "version_code": 332,
+  "version_name": "2.16.2",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "🔒 Mandatory Session Login & GitHub Push: Accesso obbligatorio e bloccante all'avvio sessione se l'utente non è autenticato (impossibile chiudere il modale o utilizzare l'app senza prima effettuare il login o la registrazione), persistenza account per profilo e sincronizzazione automatica su GitHub."
+  "release_notes": "🔒 Pop-up di Login Obbligatorio al Primo Accesso Sessione: Sblocco automatico token caveau in multi-istanza e comparsa immediata e non bypassabile del pop-up di login/registrazione account in ogni sessione con isolamento account per profilo per testare la chat di gruppo condivisa."
 }
 

@@ -1685,7 +1685,12 @@
       }
     }
 
+    let isAppInitialized = false;
+
     function initApp() {
+      if (isAppInitialized) return;
+      isAppInitialized = true;
+
       applyLayout();
       updateAllBottomNavs('chat');
       loadAiModelSetting();
@@ -1738,7 +1743,7 @@
       const subtitleEl = document.getElementById('accountModalSubtitle');
       const tabGroups = document.getElementById('tabBtnAccountGroups');
 
-      const hasUser = !!(window.currentCloudUser || localStorage.getItem('supabase_auth_token'));
+      const hasUser = !!(window.currentCloudUser || localStorage.getItem('supabase_auth_token') || sessionStorage.getItem('supabase_auth_token'));
       accountModalIsMandatory = isMandatory || !hasUser;
 
       if (closeBtn) {
@@ -1778,9 +1783,16 @@
     window.openAccountModal = openAccountModal;
 
     function closeAccountModal(force = false) {
-      if (!force && accountModalIsMandatory && !window.currentCloudUser && !localStorage.getItem('supabase_auth_token')) {
+      const hasUser = !!(window.currentCloudUser || localStorage.getItem('supabase_auth_token') || sessionStorage.getItem('supabase_auth_token'));
+      if (!force && (accountModalIsMandatory || !hasUser)) {
+        const card = document.querySelector('#accountModal .modal-card');
+        if (card) {
+          card.classList.remove('animate-shake');
+          void card.offsetWidth;
+          card.classList.add('animate-shake');
+        }
         if (typeof showToast === 'function') {
-          showToast("⚠️ È necessario accedere o registrarsi per utilizzare il Caveau.", "warning", 3000);
+          showToast("⚠️ È necessario accedere o registrarsi per utilizzare il Caveau in questa sessione.", "warning", 3000);
         }
         return;
       }
@@ -1908,11 +1920,18 @@
 
         if (data.access_token) {
           localStorage.setItem('supabase_auth_token', data.access_token);
+          sessionStorage.setItem('supabase_auth_token', data.access_token);
           if (typeof checkCloudAuthStatus === 'function') {
             await checkCloudAuthStatus();
           }
           if (typeof showToast === 'function') {
             showToast(currentAuthMode === 'signup' ? "✨ Account creato con successo!" : "✅ Accesso eseguito con successo!", "success", 3000);
+          }
+          if (typeof loadThreads === 'function') {
+            loadThreads();
+          }
+          if (typeof loadDashboard === 'function') {
+            loadDashboard('all');
           }
           loadUserGroupsList();
           // Accesso completato: sblocca e chiudi il modale

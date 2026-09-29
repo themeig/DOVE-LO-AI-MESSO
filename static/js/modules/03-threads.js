@@ -569,6 +569,13 @@
 
     // --- Gestione Modale Nuovo Thread / Gruppo Online ---
     function openNewThreadModal() {
+      if (!window.currentCloudUser && !localStorage.getItem('supabase_auth_token') && !sessionStorage.getItem('supabase_auth_token')) {
+        if (typeof showToast === 'function') {
+          showToast("⚠️ Accedi al tuo account prima di creare o gestire gruppi online.", "warning", 3000);
+        }
+        if (typeof openAccountModal === 'function') openAccountModal('profile', true);
+        return;
+      }
       const modal = document.getElementById('newThreadModal');
       if (modal) {
         modal.classList.remove('hidden');

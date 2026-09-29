@@ -67,6 +67,7 @@ def test_auth_api_exponential_backoff_and_lockout():
     assert res_ok.json()["success"] is True
 
 def test_auth_status_and_lock():
+    mgr = get_vault_manager()
     # Login first
     login_res = client.post("/api/auth/login", json={"password": "1234"})
     assert login_res.status_code == 200
@@ -75,6 +76,8 @@ def test_auth_status_and_lock():
     status_res = client.get("/api/auth/status")
     assert status_res.status_code == 200
     assert status_res.json()["unlocked"] is True
+    assert status_res.json().get("token") is not None
+    assert mgr.validate_token(status_res.json()["token"]) is True
 
     # Lock vault
     lock_res = client.post("/api/auth/lock", headers={"X-Vault-Token": token})

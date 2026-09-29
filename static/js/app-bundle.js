@@ -281,15 +281,19 @@
     }
 
     async function checkVaultAuth() {
-      const token = localStorage.getItem('vault_token') || sessionStorage.getItem('vault_token');
+      let token = localStorage.getItem('vault_token') || sessionStorage.getItem('vault_token');
       try {
         const res = await fetch('/api/auth/status', {
           headers: authHeaders()
         });
         if (res.ok) {
           const data = await res.json();
-          if (data.unlocked && token) {
-            sessionStorage.setItem('vault_token', token);
+          if (data.unlocked) {
+            const effectiveToken = token || data.token;
+            if (effectiveToken) {
+              sessionStorage.setItem('vault_token', effectiveToken);
+              localStorage.setItem('vault_token', effectiveToken);
+            }
             hideLockScreen();
             initApp();
             return true;
@@ -1970,6 +1974,13 @@
 
     // --- Gestione Modale Nuovo Thread / Gruppo Online ---
     function openNewThreadModal() {
+      if (!window.currentCloudUser && !localStorage.getItem('supabase_auth_token') && !sessionStorage.getItem('supabase_auth_token')) {
+        if (typeof showToast === 'function') {
+          showToast("⚠️ Accedi al tuo account prima di creare o gestire gruppi online.", "warning", 3000);
+        }
+        if (typeof openAccountModal === 'function') openAccountModal('profile', true);
+        return;
+      }
       const modal = document.getElementById('newThreadModal');
       if (modal) {
         modal.classList.remove('hidden');
@@ -4518,6 +4529,14 @@
       const text = input.value.trim();
       if (!text) return;
 
+      if (!window.currentCloudUser && !localStorage.getItem('supabase_auth_token') && !sessionStorage.getItem('supabase_auth_token')) {
+        if (typeof showToast === 'function') {
+          showToast("⚠️ Accedi al tuo account per inviare messaggi o consultare il registro.", "warning", 3000);
+        }
+        if (typeof openAccountModal === 'function') openAccountModal('profile', true);
+        return;
+      }
+
       const targetThreadId = currentThreadId; // Memorizza la chat di destinazione
       const quotedToSend = currentQuotedMessage;
       cancelQuoteReply(); // Chiudi subito la barra preview della citazione
@@ -4723,6 +4742,15 @@
 
     async function processFilesUpload(fileList) {
       if (!fileList || fileList.length === 0) return;
+
+      if (!window.currentCloudUser && !localStorage.getItem('supabase_auth_token') && !sessionStorage.getItem('supabase_auth_token')) {
+        if (typeof showToast === 'function') {
+          showToast("⚠️ Accedi al tuo account per caricare documenti nel Caveau.", "warning", 3000);
+        }
+        if (typeof openAccountModal === 'function') openAccountModal('profile', true);
+        return;
+      }
+
       const files = Array.from(fileList);
 
       // Filtra file validi (accetta qualsiasi documento/foto/archivio ed esclude solo file di sistema OS e cartelle vuote non risolte)
@@ -9946,7 +9974,12 @@
       }
     }
 
+    let isAppInitialized = false;
+
     function initApp() {
+      if (isAppInitialized) return;
+      isAppInitialized = true;
+
       applyLayout();
       updateAllBottomNavs('chat');
       loadAiModelSetting();
@@ -9999,7 +10032,7 @@
       const subtitleEl = document.getElementById('accountModalSubtitle');
       const tabGroups = document.getElementById('tabBtnAccountGroups');
 
-      const hasUser = !!(window.currentCloudUser || localStorage.getItem('supabase_auth_token'));
+      const hasUser = !!(window.currentCloudUser || localStorage.getItem('supabase_auth_token') || sessionStorage.getItem('supabase_auth_token'));
       accountModalIsMandatory = isMandatory || !hasUser;
 
       if (closeBtn) {
@@ -10039,9 +10072,16 @@
     window.openAccountModal = openAccountModal;
 
     function closeAccountModal(force = false) {
-      if (!force && accountModalIsMandatory && !window.currentCloudUser && !localStorage.getItem('supabase_auth_token')) {
+      const hasUser = !!(window.currentCloudUser || localStorage.getItem('supabase_auth_token') || sessionStorage.getItem('supabase_auth_token'));
+      if (!force && (accountModalIsMandatory || !hasUser)) {
+        const card = document.querySelector('#accountModal .modal-card');
+        if (card) {
+          card.classList.remove('animate-shake');
+          void card.offsetWidth;
+          card.classList.add('animate-shake');
+        }
         if (typeof showToast === 'function') {
-          showToast("⚠️ È necessario accedere o registrarsi per utilizzare il Caveau.", "warning", 3000);
+          showToast("⚠️ È necessario accedere o registrarsi per utilizzare il Caveau in questa sessione.", "warning", 3000);
         }
         return;
       }
@@ -10169,11 +10209,18 @@
 
         if (data.access_token) {
           localStorage.setItem('supabase_auth_token', data.access_token);
+          sessionStorage.setItem('supabase_auth_token', data.access_token);
           if (typeof checkCloudAuthStatus === 'function') {
             await checkCloudAuthStatus();
           }
           if (typeof showToast === 'function') {
             showToast(currentAuthMode === 'signup' ? "✨ Account creato con successo!" : "✅ Accesso eseguito con successo!", "success", 3000);
+          }
+          if (typeof loadThreads === 'function') {
+            loadThreads();
+          }
+          if (typeof loadDashboard === 'function') {
+            loadDashboard('all');
           }
           loadUserGroupsList();
           // Accesso completato: sblocca e chiudi il modale
