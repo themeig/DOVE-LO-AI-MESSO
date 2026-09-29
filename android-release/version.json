@@ -1,7 +1,7 @@
 {
-  "version_code": 336,
-  "version_name": "2.17.3",
+  "version_code": 337,
+  "version_name": "2.17.4",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "⚡ Analisi parallela multi-file: caricamento batch accelerato con ThreadPoolExecutor (fino a 8 thread in parallelo per l'estrazione AI); ogni file viene analizzato contemporaneamente riducendo i tempi di elaborazione multi-documento. Fix import ExtractedDocument per gestione robusta degli errori AI."
+  "release_notes": "⚡ Parallelismo reale batch upload: migrazione da ThreadPoolExecutor a asyncio puro con httpx.AsyncClient condiviso e connection pool. Il modello AI viene risolto una sola volta, poi tutte le N analisi AI partono contemporaneamente sull'event loop senza overhead di thread. Semaphore(12) per evitare rate limiting."
 }
 

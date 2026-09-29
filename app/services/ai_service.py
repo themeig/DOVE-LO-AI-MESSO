@@ -726,6 +726,211 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
             logger.error(f"Errore OpenRouter extract_document: {e}. Uso fallback Mock.")
             return MockAIService().extract_document(file_bytes, mime_type, filename)
 
+    async def _call_openrouter_async(
+        self,
+        client: "httpx.AsyncClient",
+        messages: list,
+        max_tokens: int = 4096,
+        model_override: str = None,
+        temperature: float = 0.1
+    ) -> str:
+        """Versione async di _call_openrouter — usa il client HTTP condiviso con connection pool."""
+        import asyncio as _asyncio
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "HTTP-Referer": "http://localhost:8000",
+            "X-Title": "Dove lo AI messo",
+            "Content-Type": "application/json"
+        }
+        target_model = model_override or self.primary_model
+        payload = {
+            "model": target_model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature
+        }
+        for attempt in range(2):
+            try:
+                res = await client.post(self.base_url, headers=headers, json=payload, timeout=90.0)
+                if res.status_code == 200:
+                    data = res.json()
+                    choices = data.get("choices", [])
+                    if choices:
+                        msg = choices[0]["message"]
+                        content = msg.get("content")
+                        reasoning = msg.get("reasoning")
+                        if content and content.strip():
+                            return content.strip()
+                        if reasoning and reasoning.strip():
+                            return reasoning.strip()
+                elif res.status_code == 429 and attempt == 0:
+                    await _asyncio.sleep(1.5)
+                    continue
+                else:
+                    logger.warning(f"OpenRouter async errore {target_model}: {res.status_code} - {res.text[:100]}")
+            except Exception as e:
+                logger.warning(f"OpenRouter async eccezione {target_model}: {e}")
+        raise RuntimeError(f"Modello OpenRouter {target_model} non disponibile (async).")
+
+    async def extract_document_async(
+        self,
+        client: "httpx.AsyncClient",
+        file_bytes: bytes,
+        mime_type: str,
+        filename: str = ""
+    ) -> "ExtractedDocument":
+        """
+        Versione completamente asincrona di extract_document.
+        Usa httpx.AsyncClient condiviso per HTTP connection pooling reale.
+        Tutte le operazioni CPU-bound leggere (pypdf, base64) restano nel thread dell'event loop
+        poiché sono veloci; solo la chiamata HTTP è await.
+        """
+        import asyncio as _asyncio
+
+        def _finalize(doc: ExtractedDocument) -> ExtractedDocument:
+            from app.services.category_service import resolve_or_create_category_and_subfolder
+            slug, label, icon, subfolder = resolve_or_create_category_and_subfolder(
+                proposed_label=doc.category_label,
+                document_text=doc.summary,
+                doc_type=doc.doc_type,
+                due_date=doc.due_date,
+                proposed_slug=doc.category,
+                proposed_icon=doc.category_icon,
+                proposed_subfolder=doc.subfolder,
+                filename=filename
+            )
+            doc.category = slug
+            doc.category_label = label
+            doc.category_icon = icon
+            doc.subfolder = subfolder
+            return doc
+
+        try:
+            fn = filename.lower()
+            mt = (mime_type or "").lower()
+            is_pdf = "pdf" in mt or fn.endswith(".pdf") or file_bytes.startswith(b"%PDF")
+
+            # --- PDF con testo estraibile ---
+            if is_pdf:
+                pdf_text = ""
+                scanned_images = []
+                try:
+                    loop = _asyncio.get_running_loop()
+                    reader = await loop.run_in_executor(
+                        None, lambda: pypdf.PdfReader(io.BytesIO(file_bytes))
+                    )
+                    for i, p in enumerate(reader.pages[:20]):
+                        page_str = p.extract_text()
+                        if page_str and page_str.strip():
+                            pdf_text += f"\n--- PAGINA {i+1} ---\n" + page_str.strip() + "\n"
+                        if len(scanned_images) < 8:
+                            try:
+                                page_imgs = []
+                                for img in p.images:
+                                    if img.data and len(img.data) > 1024:
+                                        page_imgs.append((len(img.data), img.data))
+                                if page_imgs:
+                                    page_imgs.sort(key=lambda x: x[0], reverse=True)
+                                    scanned_images.append(page_imgs[0][1])
+                            except Exception:
+                                pass
+                except Exception as p_err:
+                    logger.warning(f"Errore lettura pypdf async: {p_err}")
+
+                if len(pdf_text.strip()) >= 30:
+                    # Riusa il prompt già definito nel metodo sincrono (stessa struttura)
+                    pdf_prompt = (
+                        f"Sei l'assistente 'Dove lo AI messo'. Analizza questo testo estratto dal PDF '{filename}':\n---\n"
+                        f"{pdf_text[:12000]}\n---\n"
+                        "Rispondi ESCLUSIVAMENTE in JSON con i campi: title, doc_type, issuer, amount, due_date, "
+                        "is_payable, is_paid, payment_status, summary, tags, suggest_rename, "
+                        "category, category_label, category_icon, subfolder.\n"
+                        "DIVIETO ASSOLUTO di scrivere 'Riassunto di...' nel campo title. "
+                        "Il titolo deve essere il vero nome del documento (massimo 4-7 parole)."
+                    )
+                    messages = [{"role": "user", "content": pdf_prompt}]
+                    resp_text = await self._call_openrouter_async(client, messages, max_tokens=4096, model_override=self.primary_model, temperature=0.1)
+                    parsed = _extract_json_object(resp_text)
+                    return _finalize(ExtractedDocument(**parsed))
+
+                elif scanned_images:
+                    content_parts = [{"type": "text", "text": f"Sei l'assistente 'Dove lo AI messo'. Analizza questo PDF scansionato '{filename}' composto da {len(scanned_images)} pagine. Rispondi in JSON con: title (max 4-7 parole, VIETATO 'Riassunto di...'), doc_type, issuer, amount, due_date, is_payable, is_paid, payment_status, summary, tags, suggest_rename, category, category_label, category_icon, subfolder."}]
+                    for img_b in scanned_images[:8]:
+                        opt_b, opt_m = optimize_image_for_vision(img_b)
+                        b64_str = base64.b64encode(opt_b).decode("utf-8")
+                        content_parts.append({"type": "image_url", "image_url": {"url": f"data:{opt_m};base64,{b64_str}"}})
+                    messages = [{"role": "user", "content": content_parts}]
+                    resp_text = await self._call_openrouter_async(client, messages, max_tokens=4096, model_override=self.primary_model, temperature=0.1)
+                    parsed = _extract_json_object(resp_text)
+                    return _finalize(ExtractedDocument(**parsed))
+                else:
+                    return MockAIService().extract_document(file_bytes, mime_type, filename)
+
+            # --- Office / Excel / CSV / TXT ---
+            is_office = (
+                any(fn.endswith(ext) for ext in [".docx", ".doc", ".xlsx", ".xls", ".xlsm", ".csv", ".tsv", ".txt", ".json", ".md"])
+                or any(k in mt for k in ["sheet", "excel", "word", "officedocument", "csv"])
+            )
+            if is_office:
+                from app.services.archive_service import extract_text_from_office_file
+                loop = _asyncio.get_running_loop()
+                office_text = await loop.run_in_executor(None, extract_text_from_office_file, file_bytes, filename)
+                if office_text:
+                    office_prompt = (
+                        f"Sei l'assistente 'Dove lo AI messo'. Analizza questo file '{filename}':\n---\n{office_text[:3500]}\n---\n"
+                        "Rispondi in JSON con: title (max 4-7 parole, VIETATO 'Riassunto di...'), doc_type, issuer, "
+                        "amount, due_date, is_payable, is_paid, payment_status, summary, tags, suggest_rename, "
+                        "category, category_label, category_icon, subfolder."
+                    )
+                    messages = [{"role": "user", "content": office_prompt}]
+                    resp_text = await self._call_openrouter_async(client, messages, max_tokens=4096, model_override=self.primary_model, temperature=0.1)
+                    parsed = _extract_json_object(resp_text)
+                    return _finalize(ExtractedDocument(**parsed))
+                return MockAIService().extract_document(file_bytes, mime_type, filename)
+
+            # --- ZIP ---
+            if fn.endswith(".zip") or "archivio" in fn:
+                import zipfile
+                try:
+                    with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as zf:
+                        names = [n for n in zf.namelist() if not n.startswith("__MACOSX") and not Path(n).name.startswith(".")]
+                        clean_stem = Path(filename).stem.replace("_", " ").capitalize()
+                        return _finalize(ExtractedDocument(
+                            title=f"Archivio {clean_stem}", doc_type="archivio_zip",
+                            issuer="Dove lo AI messo", amount=None, due_date=None,
+                            summary=f"Archivio compresso con {len(names)} file: {', '.join(names[:5])}{'...' if len(names) > 5 else ''}.",
+                            tags=["zip", "archivio"], suggest_rename=False,
+                            category="archivi_zip", category_label="Archivi Compressi & ZIP", category_icon="fa-file-zipper"
+                        ))
+                except Exception:
+                    pass
+
+            # --- Immagine (path di default) ---
+            loop = _asyncio.get_running_loop()
+            opt_bytes, opt_mt = await loop.run_in_executor(None, optimize_image_for_vision, file_bytes)
+            b64_img = base64.b64encode(opt_bytes).decode("utf-8")
+            data_url = f"data:{opt_mt};base64,{b64_img}"
+            vision_prompt = (
+                f"Sei l'assistente 'Dove lo AI messo'. Analizza questa immagine '{filename}'. "
+                "Rispondi in JSON con: title (max 4-6 parole, VIETATO 'Riassunto di...'), doc_type, issuer, "
+                "amount, due_date, is_payable, is_paid, payment_status, summary, tags, suggest_rename, "
+                "category, category_label, category_icon, subfolder."
+            )
+            messages = [{"role": "user", "content": [
+                {"type": "text", "text": vision_prompt},
+                {"type": "image_url", "image_url": {"url": data_url}}
+            ]}]
+            response_text = await self._call_openrouter_async(client, messages, max_tokens=4096, model_override=self.vision_model, temperature=0.1)
+            parsed = _extract_json_object(response_text)
+            if not parsed.get("title"):
+                clean_name = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
+                parsed["title"] = f"Foto {clean_name}" if "foto" in parsed.get("doc_type", "") else (clean_name or "Documento")
+            return _finalize(ExtractedDocument(**parsed))
+
+        except Exception as e:
+            logger.error(f"Errore extract_document_async per '{filename}': {e}. Fallback Mock.")
+            return MockAIService().extract_document(file_bytes, mime_type, filename)
+
     def classify_and_extract_intent(self, text: str) -> MessageIntent:
         try:
             prompt = f"""Sei l'assistente 'Dove lo AI messo'. Analizza questo messaggio in italiano dell'utente:

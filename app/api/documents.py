@@ -1,5 +1,5 @@
 import asyncio
-import concurrent.futures
+import httpx
 import json
 import logging
 import re
@@ -642,24 +642,135 @@ async def upload_documents_batch(
             if th and th.thread_type == "group":
                 target_group_id = th.id
 
-    # 3. Analisi AI e cifratura in parallelo su worker pool dedicato
-    loop = asyncio.get_running_loop()
-    max_workers = max(1, min(len(file_payloads), 8))
+    # 3. Precalcola il modello AI UNA VOLTA SOLA (evita N query DB nei task paralleli)
+    ai_service = get_ai_service(db)
+    has_async = hasattr(ai_service, "extract_document_async")
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [
-            loop.run_in_executor(
-                executor,
-                _extract_and_prepare_file_payload,
-                contents,
-                clean_fn,
-                c_type,
-                thread_id,
-                drive_creds_info
+    # 4. Parallelizzazione REALE con asyncio.gather + httpx.AsyncClient condiviso
+    #    Il client HTTP condiviso mantiene un connection pool verso OpenRouter:
+    #    tutte le richieste viaggiano in parallelo sullo stesso pool di connessioni TCP.
+    async def _extract_one_async(client, contents: bytes, clean_fn: str, c_type: str) -> dict:
+        """Estrae metadati AI per un singolo file, completamente async (zero threading overhead)."""
+        # Salvataggio disco (I/O veloce, non blocca significativamente)
+        loop = asyncio.get_running_loop()
+        saved_path = await loop.run_in_executor(None, save_uploaded_file, contents, clean_fn)
+
+        # Estrazione AI asincrona (la vera operazione parallela — HTTP call verso OpenRouter)
+        if has_async:
+            extracted = await ai_service.extract_document_async(client, contents, c_type, filename=clean_fn)
+        else:
+            extracted = await loop.run_in_executor(
+                None, ai_service.extract_document, contents, c_type, clean_fn
             )
+
+        # Parse data scadenza
+        due_date_obj = None
+        if extracted.due_date:
+            try:
+                due_date_obj = datetime.strptime(extracted.due_date, "%Y-%m-%d").date()
+            except ValueError:
+                pass
+
+        # Determinazione stato
+        doc_status = determine_document_status(extracted, due_date_obj)
+
+        # Sanitizzazione titolo anti-allucinazione
+        file_ext = Path(clean_fn).suffix.lstrip(".").lower() or "bin"
+        clean_stem = Path(clean_fn).stem.replace("_", " ").replace("-", " ").strip()
+        if clean_stem:
+            clean_stem = clean_stem[0].upper() + clean_stem[1:]
+        raw_title = (extracted.title or "").strip()
+        cleaned_title = raw_title
+        summary_prefixes = ("riassunto", "sintesi", "estratto", "sommario", "descrizione", "panoramica", "analisi")
+        if any(cleaned_title.lower().startswith(p) for p in summary_prefixes):
+            trimmed = re.sub(
+                r"^(?:riassunto|sintesi|estratto|sommario|descrizione|panoramica|analisi)\s+(?:del|della|dello|dei|degli|delle|di|sul|sulla|sullo|sui|sugli|sulle|su|in|d'\s*|un\s+|una\s+|uno\s+)?",
+                "", cleaned_title, flags=re.IGNORECASE
+            ).strip()
+            words = trimmed.split()
+            if 2 <= len(words) <= 8 and len(trimmed) <= 60:
+                cleaned_title = trimmed[0].upper() + trimmed[1:]
+            else:
+                cleaned_title = ""
+        if len(cleaned_title.split()) > 9 or len(cleaned_title) > 75:
+            cleaned_title = ""
+        title = cleaned_title
+        if not title:
+            if extracted.issuer and extracted.doc_type not in ["generico", "foto", "screenshot"]:
+                title = f"{extracted.doc_type.capitalize()} {extracted.issuer}".strip()
+            else:
+                title = f"Foto {clean_stem}" if file_ext in ["jpg", "jpeg", "png", "webp"] else (clean_stem or clean_fn)
+
+        # Google Drive upload (se configurato) — anch'esso in parallelo
+        drive_file_id = None
+        drive_web_url = None
+        drive_folder_str = None
+        if drive_creds_info and drive_creds_info.get("access_token"):
+            try:
+                drive_service = get_drive_service()
+                folder_path = resolve_drive_folder_path(
+                    extracted.doc_type,
+                    due_date_obj,
+                    category_label=extracted.category_label,
+                    subfolder=extracted.subfolder,
+                    chat_folder=drive_creds_info.get("chat_folder", "Generale"),
+                )
+                drive_res = await loop.run_in_executor(
+                    None,
+                    lambda: drive_service.upload_file(
+                        file_bytes=contents, filename=clean_fn, mime_type=c_type,
+                        folder_path=folder_path, access_token=drive_creds_info["access_token"]
+                    )
+                )
+                drive_file_id = drive_res.get("file_id")
+                drive_web_url = drive_res.get("web_view_link")
+                drive_folder_str = " / ".join(folder_path) if drive_file_id else None
+            except Exception as e:
+                logger.warning(f"Errore Drive upload async per '{clean_fn}': {e}")
+
+        return {
+            "saved_path": saved_path,
+            "filename": clean_fn,
+            "file_ext": file_ext,
+            "title": title,
+            "doc_type": extracted.doc_type,
+            "issuer": extracted.issuer,
+            "amount": extracted.amount,
+            "due_date_obj": due_date_obj,
+            "doc_status": doc_status,
+            "summary": extracted.summary,
+            "drive_file_id": drive_file_id,
+            "drive_web_url": drive_web_url,
+            "drive_folder_str": drive_folder_str,
+            "category": extracted.category,
+            "category_label": extracted.category_label,
+            "category_icon": extracted.category_icon,
+            "subfolder": extracted.subfolder,
+        }
+
+    # Limite di concorrenza per non sovraccaricare l'API (max 12 richieste simultanee)
+    semaphore = asyncio.Semaphore(12)
+
+    async def _extract_with_semaphore(client, contents, clean_fn, c_type):
+        async with semaphore:
+            return await _extract_one_async(client, contents, clean_fn, c_type)
+
+    # httpx.AsyncClient con connection pool condiviso: tutte le N richieste viaggiano in parallelo
+    async with httpx.AsyncClient(limits=httpx.Limits(max_connections=20, max_keepalive_connections=10)) as http_client:
+        tasks = [
+            _extract_with_semaphore(http_client, contents, clean_fn, c_type)
             for contents, clean_fn, c_type in file_payloads
         ]
-        prepared_docs = await asyncio.gather(*futures)
+        prepared_docs = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Rimuovi eventuali eccezioni (fallback a doc generico per non bloccare il batch)
+    valid_prepared = []
+    for i, prep in enumerate(prepared_docs):
+        if isinstance(prep, Exception):
+            logger.error(f"Errore estrazione file {file_names[i]}: {prep}. Skip.")
+        else:
+            valid_prepared.append(prep)
+    prepared_docs = valid_prepared
 
     # 4. Inserimento atomico e sequenziale su SQLite (senza lock o conflitti di concorrenza)
     saved_docs: List[Document] = []

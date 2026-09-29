@@ -10,6 +10,6 @@ Convenzione SemVer (MAJOR.MINOR.PATCH):
 - MAJOR: refactoring architetturali o modifiche strutturali/breaking.
 """
 
-__version__ = "2.17.3"
+__version__ = "2.17.4"
 APP_VERSION = __version__
 
