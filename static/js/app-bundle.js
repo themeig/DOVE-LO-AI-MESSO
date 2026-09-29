@@ -4990,88 +4990,33 @@
           appendUserBubble(userSummaryText, null, getTime());
         }
 
-        // Dimensione ottimale dei blocchi per elaborazione contemporanea:
-        // Ogni blocco invia fino a 10 file simultaneamente al backend.
-        // Il backend li elabora TUTTI contemporaneamente in parallelo (asyncio.gather).
-        const CHUNK_SIZE = 10;
-        const totalBlocks = Math.ceil(totalCount / CHUNK_SIZE);
+        // Elaborazione CONCORRENTE REALE (fino a 8 worker simultanei)
+        // con avanzamento visibile in tempo reale DOCUMENTO PER DOCUMENTO!
+        const CONCURRENCY = Math.min(8, totalCount);
 
-        setGenerationActive(true, `Avvio elaborazione parallela di ${totalCount} file in ${totalBlocks} ${totalBlocks === 1 ? 'blocco' : 'blocchi'}...`, 0, targetThreadId);
+        setGenerationActive(true, `Avvio elaborazione parallela di ${totalCount} file...`, 0, targetThreadId);
         const taskController = activeThreadTasks[targetThreadId]?.abortController;
 
         try {
           const allUploadedDocs = [];
           const allDocumentIds = [];
           const errors = [];
-          let processedCount = 0;
-          let finalReplyText = '';
+          let completedCount = 0;
+          let fileIndex = 0;
 
-          if (totalBlocks === 1) {
-            // Unico blocco (<= 10 file): elaborazione parallela istantanea con salvataggio chat
-            updateTypingIndicator(`⚡ Analisi AI parallela di ${totalCount} file contemporaneamente...`, 30, targetThreadId);
-
-            const formData = new FormData();
-            for (const file of validFiles) {
-              formData.append('files', file);
-            }
-            formData.append('thread_id', targetThreadId);
-            formData.append('save_chat_message', 'true');
-
-            const res = await fetch('/api/documents/upload-batch', {
-              method: 'POST',
-              headers: authHeaders(),
-              body: formData,
-              signal: taskController ? taskController.signal : undefined
-            });
-
-            if (!res.ok) {
-              const errBody = await res.text().catch(() => '');
-              throw new Error(`upload-batch HTTP ${res.status}: ${errBody}`);
-            }
-
-            const batchData = await res.json();
-            const docs = (batchData.documents || []).map(d => ({
-              id: d.id || d.document_id,
-              title: d.title,
-              issuer: d.issuer,
-              amount: d.amount,
-              due_date: d.due_date,
-              status: d.status,
-              summary: d.summary,
-              file_url: d.file_url,
-              download_url: d.download_url,
-              drive_web_url: d.drive_web_url,
-              file_type: d.file_type
-            }));
-            allUploadedDocs.push(...docs);
-            finalReplyText = batchData.chat_reply || '';
-
-          } else {
-            // Più blocchi (es. 100 file divisi in blocchi da 10)
-            for (let blockIdx = 0; blockIdx < totalBlocks; blockIdx++) {
+          const uploadWorker = async () => {
+            while (fileIndex < totalCount) {
               if (taskController?.signal?.aborted) break;
-
-              const start = blockIdx * CHUNK_SIZE;
-              const end = Math.min(start + CHUNK_SIZE, totalCount);
-              const chunkFiles = validFiles.slice(start, end);
-              const chunkSize = chunkFiles.length;
-
-              const pctStart = Math.round((processedCount / totalCount) * 100);
-              updateTypingIndicator(
-                `⚡ [Blocco ${blockIdx + 1}/${totalBlocks}] Analisi AI contemporanea di ${chunkSize} file (file ${start + 1}-${end} di ${totalCount})...`,
-                pctStart,
-                targetThreadId
-              );
+              const currentIdx = fileIndex++;
+              const file = validFiles[currentIdx];
 
               const formData = new FormData();
-              for (const file of chunkFiles) {
-                formData.append('files', file);
-              }
+              formData.append('file', file);
               formData.append('thread_id', targetThreadId);
               formData.append('save_chat_message', 'false');
 
               try {
-                const res = await fetch('/api/documents/upload-batch', {
+                const res = await fetch('/api/documents/upload', {
                   method: 'POST',
                   headers: authHeaders(),
                   body: formData,
@@ -5079,62 +5024,68 @@
                 });
 
                 if (res.ok) {
-                  const batchData = await res.json();
-                  const docs = (batchData.documents || []).map(d => ({
-                    id: d.id || d.document_id,
-                    title: d.title,
-                    issuer: d.issuer,
-                    amount: d.amount,
-                    due_date: d.due_date,
-                    status: d.status,
-                    summary: d.summary,
-                    file_url: d.file_url,
-                    download_url: d.download_url,
-                    drive_web_url: d.drive_web_url,
-                    file_type: d.file_type
-                  }));
-                  allUploadedDocs.push(...docs);
-                  for (const d of docs) {
-                    if (d.id) allDocumentIds.push(d.id);
-                  }
+                  const data = await res.json();
+                  const docItem = {
+                    id: data.document_id || data.id,
+                    title: data.title,
+                    issuer: data.issuer,
+                    amount: data.amount,
+                    due_date: data.due_date,
+                    status: data.status,
+                    summary: data.summary,
+                    file_url: data.file_url,
+                    download_url: data.download_url,
+                    drive_web_url: data.drive_web_url,
+                    file_type: data.file_type
+                  };
+                  allUploadedDocs.push(docItem);
+                  if (docItem.id) allDocumentIds.push(docItem.id);
                 } else {
-                  console.warn(`Errore upload blocco ${blockIdx + 1}: status ${res.status}`);
-                  for (const f of chunkFiles) errors.push(f.name);
+                  console.warn(`Errore upload per ${file.name}: status ${res.status}`);
+                  errors.push(file.name);
                 }
               } catch (err) {
                 if (err.name === 'AbortError' || err.message?.includes('aborted')) break;
-                console.error(`Errore blocco ${blockIdx + 1}:`, err);
-                for (const f of chunkFiles) errors.push(f.name);
+                console.error(`Errore rete upload per ${file.name}:`, err);
+                errors.push(file.name);
+              } finally {
+                completedCount++;
+                const realPct = Math.round((completedCount / totalCount) * 100);
+                updateTypingIndicator(
+                  `⚡ [${completedCount}/${totalCount}] Analizzato: ${file.name}`,
+                  realPct,
+                  targetThreadId
+                );
               }
-
-              processedCount += chunkSize;
-              const currentPct = Math.round((processedCount / totalCount) * 100);
-              updateTypingIndicator(
-                `⚡ Blocco ${blockIdx + 1}/${totalBlocks} completato: ${processedCount}/${totalCount} file elaborati (${currentPct}%)...`,
-                currentPct,
-                targetThreadId
-              );
             }
+          };
 
-            // Registra il messaggio di chat finale aggregato sul server se abbiamo caricato documenti
-            if (allDocumentIds.length > 0 && !taskController?.signal?.aborted) {
-              try {
-                const recRes = await fetch('/api/documents/batch-record-chat', {
-                  method: 'POST',
-                  headers: authHeaders({ 'Content-Type': 'application/json' }),
-                  body: JSON.stringify({
-                    document_ids: allDocumentIds,
-                    thread_id: targetThreadId,
-                    total_files_count: totalCount
-                  })
-                });
-                if (recRes.ok) {
-                  const recData = await recRes.json();
-                  finalReplyText = recData.chat_reply || '';
-                }
-              } catch (e) {
-                console.warn('Errore salvataggio chat aggregata sul server:', e);
+          // Avvia gli 8 worker paralleli simultaneamente
+          const workers = [];
+          for (let w = 0; w < CONCURRENCY; w++) {
+            workers.push(uploadWorker());
+          }
+          await Promise.all(workers);
+
+          // Registra l'unico messaggio finale aggregato nella chat sul database
+          let finalReplyText = '';
+          if (allDocumentIds.length > 0 && !taskController?.signal?.aborted) {
+            try {
+              const recRes = await fetch('/api/documents/batch-record-chat', {
+                method: 'POST',
+                headers: authHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({
+                  document_ids: allDocumentIds,
+                  thread_id: targetThreadId,
+                  total_files_count: totalCount
+                })
+              });
+              if (recRes.ok) {
+                const recData = await recRes.json();
+                finalReplyText = recData.chat_reply || '';
               }
+            } catch (e) {
+              console.warn('Errore salvataggio chat aggregata sul server:', e);
             }
           }
 

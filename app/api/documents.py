@@ -224,6 +224,7 @@ def _process_and_save_single_doc(
 async def upload_document(
     file: UploadFile = File(...),
     thread_id: str = Form("general"),
+    save_chat_message: bool = Form(True),
     db: Session = Depends(get_db),
     current_user: Optional[dict] = Depends(get_optional_user)
 ):
@@ -234,11 +235,64 @@ async def upload_document(
     uploader_name = (current_user.get("full_name") or current_user.get("email") or "Un utente") if current_user else "Un utente"
     uploader_id = current_user.get("id") if current_user else None
 
-    doc = _process_and_save_single_doc(contents, filename, content_type, thread_id, db)
-    if uploader_id:
-        doc.user_id = uploader_id
+    active_cred = db.query(GoogleDriveCredential).first()
+    drive_creds_info = None
+    if active_cred and getattr(active_cred, "storage_mode", "dual") != "local_only":
+        from app.services.drive_service import get_fresh_access_token
+        fresh_token = get_fresh_access_token(active_cred, db)
+        if fresh_token:
+            chat_folder = "Generale"
+            if thread_id and thread_id not in ("general", "all"):
+                th = db.query(ChatThread).filter(ChatThread.id == thread_id).first()
+                chat_folder = sanitize_drive_folder_name(th.name if th else thread_id, thread_id=thread_id)
+            drive_creds_info = {
+                "access_token": fresh_token,
+                "chat_folder": chat_folder
+            }
+
+    target_group_id = None
+    if thread_id and thread_id not in ("general", "all"):
+        grp = db.query(Group).filter(Group.id == thread_id).first()
+        if grp:
+            target_group_id = grp.id
+        else:
+            th = db.query(ChatThread).filter(ChatThread.id == thread_id).first()
+            if th and th.thread_type == "group":
+                target_group_id = th.id
+
+    loop = asyncio.get_running_loop()
+    prep = await loop.run_in_executor(
+        None,
+        _extract_and_prepare_file_payload,
+        contents, filename, content_type, thread_id, drive_creds_info
+    )
+
+    doc = Document(
+        thread_id=thread_id,
+        group_id=target_group_id,
+        user_id=uploader_id,
+        title=prep["title"],
+        file_path=prep["saved_path"],
+        file_type=prep["file_ext"],
+        doc_type=prep["doc_type"],
+        issuer=prep["issuer"],
+        amount=prep["amount"],
+        due_date=prep["due_date_obj"],
+        status=prep["doc_status"],
+        summary=prep["summary"],
+        drive_file_id=prep["drive_file_id"],
+        drive_web_url=prep["drive_web_url"],
+        drive_folder_path=prep["drive_folder_str"],
+        category=prep["category"],
+        category_label=prep["category_label"],
+        category_icon=prep["category_icon"],
+        subfolder=prep["subfolder"]
+    )
+    db.add(doc)
     db.commit()
     db.refresh(doc)
+
+    auto_sync_calendar_event(doc, db)
 
     is_group = bool(doc.group_id or (thread_id and thread_id not in ("general", "all")))
 
@@ -288,6 +342,7 @@ async def upload_document(
         else:
             chat_reply = f"📄 Ho archiviato il documento originale nel caveau: **{doc.title}**.\n🔒 *File integrale custodito e protetto al 100%.* Clicca su **'Vedi'** nella scheda per visualizzarlo o su **'Scarica'**.\n💡 {doc.summary}"
 
+
     active_model = get_app_setting(db, "ai_model", default=get_settings().OPENROUTER_MODEL) or "auto"
     routed_model = "google/gemini-2.5-flash-lite" if active_model == "auto" else active_model
 
@@ -313,87 +368,89 @@ async def upload_document(
         "subfolder": doc.subfolder
     }
 
-    user_msg_content = f"📎 **{uploader_name}** ha inserito questo documento: **{doc.title}**" if is_group else f"Caricato file: {filename}"
+    if save_chat_message:
+        user_msg_content = f"📎 **{uploader_name}** ha inserito questo documento: **{doc.title}**" if is_group else f"Caricato file: {filename}"
 
-    user_msg = ChatMessage(
-        thread_id=thread_id,
-        sender="user",
-        message_type="document",
-        content=user_msg_content,
-        user_id=uploader_id,
-        is_shared=True,
-        metadata_json=json.dumps({
-            "document_id": doc.id,
-            "file_name": filename,
-            "file_url": f"/uploads/{fn}",
-            "download_url": f"/api/documents/{doc.id}/download",
-            "file_type": doc.file_type,
-            "file_size": len(contents),
-            "documents": [doc_info],
-            "uploader_name": uploader_name,
-            "user_name": uploader_name,
-            "user_id": uploader_id,
-            "is_shared": True
-        })
-    )
-    asst_msg = ChatMessage(
-        thread_id=thread_id,
-        sender="assistant",
-        message_type="document",
-        content=chat_reply,
-        user_id=uploader_id,
-        is_shared=True,
-        metadata_json=json.dumps({
-            "document_id": doc.id,
-            "documents": [doc_info],
-            "routed_model": routed_model,
-            "uploader_name": uploader_name,
-            "user_name": uploader_name,
-            "user_id": uploader_id,
-            "is_shared": True
-        })
-    )
-    db.add(user_msg)
-    db.add(asst_msg)
-    db.commit()
-
-    if doc.group_id:
-        try:
-            from app.services.activity_service import record_activity_event
-            record_activity_event(
-                db=db,
-                group_id=doc.group_id,
-                event_type="DOCUMENT_UPLOADED",
-                title=f"📎 {uploader_name} ha inserito questo documento: {doc.title}",
-                content=f"È stato archiviato un nuovo documento '{doc.title}'" + (f" ({doc.amount:.2f} €)" if doc.amount else ""),
-                document_id=doc.id,
-                actor_user_id=uploader_id,
-                actor_name=uploader_name,
-                payload={
-                    "document_id": doc.id,
-                    "title": doc.title,
-                    "amount": doc.amount,
-                    "due_date": doc.due_date.isoformat() if doc.due_date else None,
-                    "status": doc.status,
-                    "uploader_name": uploader_name
-                }
-            )
-            await group_ws_manager.broadcast(doc.group_id, {
-                "event": "DOCUMENT_UPLOADED",
-                "group_id": doc.group_id,
-                "title": f"📎 {uploader_name} ha inserito questo documento: {doc.title}",
+        user_msg = ChatMessage(
+            thread_id=thread_id,
+            sender="user",
+            message_type="document",
+            content=user_msg_content,
+            user_id=uploader_id,
+            is_shared=True,
+            metadata_json=json.dumps({
                 "document_id": doc.id,
-                "data": {
-                    "document_id": doc.id,
-                    "title": doc.title,
-                    "amount": doc.amount,
-                    "due_date": doc.due_date.isoformat() if doc.due_date else None,
-                    "status": doc.status,
-                    "uploader_name": uploader_name
-                }
+                "file_name": filename,
+                "file_url": f"/uploads/{fn}",
+                "download_url": f"/api/documents/{doc.id}/download",
+                "file_type": doc.file_type,
+                "file_size": len(contents),
+                "documents": [doc_info],
+                "uploader_name": uploader_name,
+                "user_name": uploader_name,
+                "user_id": uploader_id,
+                "is_shared": True
             })
-        except Exception as e:
-            logger.warning(f"Errore broadcast activity upload su gruppo {doc.group_id}: {e}")
+        )
+        asst_msg = ChatMessage(
+            thread_id=thread_id,
+            sender="assistant",
+            message_type="document",
+            content=chat_reply,
+            user_id=uploader_id,
+            is_shared=True,
+            metadata_json=json.dumps({
+                "document_id": doc.id,
+                "documents": [doc_info],
+                "routed_model": routed_model,
+                "uploader_name": uploader_name,
+                "user_name": uploader_name,
+                "user_id": uploader_id,
+                "is_shared": True
+            })
+        )
+        db.add(user_msg)
+        db.add(asst_msg)
+        db.commit()
+
+        if doc.group_id:
+            try:
+                from app.services.activity_service import record_activity_event
+                record_activity_event(
+                    db=db,
+                    group_id=doc.group_id,
+                    event_type="DOCUMENT_UPLOADED",
+                    title=f"📎 {uploader_name} ha inserito questo documento: {doc.title}",
+                    content=f"È stato archiviato un nuovo documento '{doc.title}'" + (f" ({doc.amount:.2f} €)" if doc.amount else ""),
+                    document_id=doc.id,
+                    actor_user_id=uploader_id,
+                    actor_name=uploader_name,
+                    payload={
+                        "document_id": doc.id,
+                        "title": doc.title,
+                        "amount": doc.amount,
+                        "due_date": doc.due_date.isoformat() if doc.due_date else None,
+                        "status": doc.status,
+                        "uploader_name": uploader_name
+                    }
+                )
+                await group_ws_manager.broadcast(doc.group_id, {
+                    "event": "DOCUMENT_UPLOADED",
+                    "group_id": doc.group_id,
+                    "title": f"📎 {uploader_name} ha inserito questo documento: {doc.title}",
+                    "document_id": doc.id,
+                    "data": {
+                        "document_id": doc.id,
+                        "title": doc.title,
+                        "amount": doc.amount,
+                        "due_date": doc.due_date.isoformat() if doc.due_date else None,
+                        "status": doc.status,
+                        "uploader_name": uploader_name
+                    }
+                })
+            except Exception as e:
+                logger.warning(f"Errore broadcast activity upload su gruppo {doc.group_id}: {e}")
+
 
     fn = Path(doc.file_path).name
     return {
