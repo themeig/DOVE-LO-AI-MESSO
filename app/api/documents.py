@@ -34,6 +34,147 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
+_shared_upload_client: Optional[httpx.AsyncClient] = None
+
+def get_shared_upload_client() -> httpx.AsyncClient:
+    global _shared_upload_client
+    if _shared_upload_client is None or _shared_upload_client.is_closed:
+        _shared_upload_client = httpx.AsyncClient(
+            limits=httpx.Limits(max_connections=64, max_keepalive_connections=32),
+            timeout=60.0
+        )
+    return _shared_upload_client
+
+
+async def _extract_and_prepare_file_payload_async(
+    client: httpx.AsyncClient,
+    contents: bytes,
+    filename: str,
+    content_type: str,
+    thread_id: str,
+    ai_service,
+    drive_creds_info: Optional[dict] = None
+) -> dict:
+    """
+    Esegue la cifratura locale, l'estrazione AI non bloccante asincrona e la preparazione dei metadati.
+    Sfrutta httpx.AsyncClient condiviso per riusare le connessioni TCP/TLS verso OpenRouter in parallelo.
+    """
+    loop = asyncio.get_running_loop()
+    # 1. Salva e cifra il file localmente su disco
+    saved_path = await loop.run_in_executor(None, save_uploaded_file, contents, filename)
+
+    # 2. Estrazione dati strutturati con modello AI (completamente asincrona)
+    try:
+        if hasattr(ai_service, "extract_document_async"):
+            extracted = await ai_service.extract_document_async(client, contents, content_type, filename=filename)
+        else:
+            extracted = await loop.run_in_executor(None, ai_service.extract_document, contents, content_type, filename)
+    except Exception as e:
+        logger.warning(f"Errore estrazione AI async per '{filename}': {e}. Fallback generico.")
+        extracted = ExtractedDocument(
+            title="",
+            doc_type="generico",
+            summary="File archiviato nel caveau.",
+            tags=[]
+        )
+
+    # 3. Parse data di scadenza (YYYY-MM-DD -> date)
+    due_date_obj = None
+    if extracted.due_date:
+        try:
+            due_date_obj = datetime.strptime(extracted.due_date, "%Y-%m-%d").date()
+        except ValueError:
+            due_date_obj = None
+
+    # 4. Determinazione tipo file e titolo con sanitizzazione anti-allucinazione
+    file_ext = Path(filename).suffix.lstrip(".").lower() or "bin"
+    clean_stem = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
+    if clean_stem:
+        clean_stem = clean_stem[0].upper() + clean_stem[1:]
+    raw_title = (extracted.title or "").strip()
+
+    cleaned_title = raw_title
+    summary_prefixes = (
+        "riassunto", "sintesi", "estratto", "sommario", "descrizione", "panoramica", "analisi"
+    )
+    if any(cleaned_title.lower().startswith(p) for p in summary_prefixes):
+        trimmed = re.sub(
+            r"^(?:riassunto|sintesi|estratto|sommario|descrizione|panoramica|analisi)\s+(?:del|della|dello|dei|degli|delle|di|sul|sulla|sullo|sui|sugli|sulle|su|in|d'\s*|un\s+|una\s+|uno\s+)?",
+            "",
+            cleaned_title,
+            flags=re.IGNORECASE
+        ).strip()
+        words = trimmed.split()
+        if 2 <= len(words) <= 8 and len(trimmed) <= 60:
+            cleaned_title = trimmed[0].upper() + trimmed[1:]
+        else:
+            cleaned_title = ""
+
+    if len(cleaned_title.split()) > 9 or len(cleaned_title) > 75:
+        cleaned_title = ""
+
+    title = cleaned_title
+    if not title:
+        if extracted.issuer and extracted.doc_type not in ["generico", "foto", "screenshot"]:
+            title = f"{extracted.doc_type.capitalize()} {extracted.issuer}".strip()
+        else:
+            title = f"Foto {clean_stem}" if file_ext in ["jpg", "jpeg", "png", "webp"] else (clean_stem or filename)
+
+    # 5. Determinazione stato di pagamento
+    doc_status = determine_document_status(extracted, due_date_obj)
+
+    # 6. Sincronizzazione opzionale su Google Drive
+    drive_file_id = None
+    drive_web_url = None
+    drive_folder_str = None
+    if drive_creds_info and drive_creds_info.get("access_token"):
+        try:
+            drive_service = get_drive_service()
+            folder_path = resolve_drive_folder_path(
+                extracted.doc_type,
+                due_date_obj,
+                category_label=extracted.category_label,
+                subfolder=extracted.subfolder,
+                chat_folder=drive_creds_info.get("chat_folder", "Generale"),
+            )
+            clean_filename = Path(filename).name
+            drive_res = await loop.run_in_executor(
+                None,
+                drive_service.upload_file,
+                contents,
+                clean_filename,
+                content_type,
+                folder_path,
+                drive_creds_info["access_token"]
+            )
+            drive_file_id = drive_res.get("file_id")
+            drive_web_url = drive_res.get("web_view_link")
+            drive_folder_str = " / ".join(folder_path) if drive_file_id else None
+        except Exception as e:
+            logger.warning(f"Errore durante l'upload su Google Drive per '{filename}': {e}")
+            drive_folder_str = None
+            if "401" in str(e) or "Unauthorized" in str(e):
+                drive_creds_info["access_token"] = None
+
+    return {
+        "saved_path": saved_path,
+        "filename": filename,
+        "file_ext": file_ext,
+        "title": title,
+        "doc_type": extracted.doc_type,
+        "issuer": extracted.issuer,
+        "amount": extracted.amount,
+        "due_date_obj": due_date_obj,
+        "doc_status": doc_status,
+        "summary": extracted.summary,
+        "drive_file_id": drive_file_id,
+        "drive_web_url": drive_web_url,
+        "drive_folder_str": drive_folder_str,
+        "category": extracted.category,
+        "category_label": extracted.category_label,
+        "category_icon": extracted.category_icon,
+        "subfolder": extracted.subfolder,
+    }
 
 
 def _extract_and_prepare_file_payload(
@@ -260,11 +401,10 @@ async def upload_document(
             if th and th.thread_type == "group":
                 target_group_id = th.id
 
-    loop = asyncio.get_running_loop()
-    prep = await loop.run_in_executor(
-        None,
-        _extract_and_prepare_file_payload,
-        contents, filename, content_type, thread_id, drive_creds_info
+    ai_service = get_ai_service(db)
+    client = get_shared_upload_client()
+    prep = await _extract_and_prepare_file_payload_async(
+        client, contents, filename, content_type, thread_id, ai_service, drive_creds_info
     )
 
     doc = Document(

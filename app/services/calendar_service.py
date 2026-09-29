@@ -346,6 +346,13 @@ def auto_sync_calendar_event(doc: Document, db: Any) -> Optional[Dict[str, Any]]
             db.commit()
     except Exception as e:
         logger.warning(f"Errore auto_sync_calendar_event per doc #{doc.id}: {e}")
+        if "401" in str(e) or "Unauthorized" in str(e):
+            try:
+                cred.access_token = None
+                db.commit()
+                logger.info("Access token Google revocato/scaduto (401). Resettato in DB per evitare ulteriori chiamate a vuoto.")
+            except Exception:
+                pass
     return None
 
 

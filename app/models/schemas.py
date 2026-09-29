@@ -18,6 +18,25 @@ class ExtractedDocument(BaseModel):
     category_icon: Optional[str] = Field(default=None, description="Icona FontAwesome adatta scelta dall'AI (es. fa-music, fa-utensils, fa-graduation-cap)")
     subfolder: Optional[str] = Field(default=None, description="Sottocartella tematica o temporale (es. '2026', '2025', 'Locazioni', 'Bozze')")
 
+    @field_validator("amount", mode="before")
+    @classmethod
+    def normalize_amount(cls, v: Any) -> Optional[float]:
+        if v is None:
+            return None
+        if isinstance(v, (int, float)):
+            return float(v)
+        if isinstance(v, str):
+            clean = v.strip().replace("€", "").replace("$", "").replace("EUR", "").replace("eur", "").strip()
+            if "," in clean and "." in clean:
+                clean = clean.replace(".", "").replace(",", ".")
+            elif "," in clean:
+                clean = clean.replace(",", ".")
+            try:
+                return float(clean)
+            except ValueError:
+                return None
+        return None
+
     @field_validator("payment_status", mode="before")
     @classmethod
     def normalize_payment_status(cls, v: Any) -> Optional[str]:

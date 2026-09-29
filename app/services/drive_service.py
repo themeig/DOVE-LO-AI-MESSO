@@ -425,7 +425,7 @@ def get_fresh_access_token(cred: Any, db: Any) -> Optional[str]:
     client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
     if not client_id or not client_secret:
         logger.warning("GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET non configurati — impossibile rinnovare il token.")
-        return cred.access_token  # Usa quello esistente sperando sia ancora valido
+        return None
 
     try:
         resp = httpx.post(
@@ -452,9 +452,9 @@ def get_fresh_access_token(cred: Any, db: Any) -> Optional[str]:
             return new_access_token
         else:
             logger.error(f"Risposta token refresh senza access_token: {token_data}")
-            return cred.access_token
+            return None
 
     except Exception as e:
         logger.error(f"Errore rinnovo automatico token Google: {e}")
-        return cred.access_token  # Usa quello existente come ultimo tentativo
+        return None
 

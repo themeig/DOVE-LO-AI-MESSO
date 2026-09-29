@@ -21,3 +21,12 @@ def test_message_intent_schema():
         detailed_location="scrivania"
     )
     assert intent.intent == "STORE_LOCATION"
+
+def test_extracted_document_normalize_amount():
+    doc1 = ExtractedDocument(amount="€ 88,45")
+    assert doc1.amount == 88.45
+    doc2 = ExtractedDocument(amount="1.250,50 EUR")
+    assert doc2.amount == 1250.50
+    doc3 = ExtractedDocument(amount="45,00")
+    assert doc3.amount == 45.00
+
