@@ -34,21 +34,29 @@ class GroupWebSocketManager:
     async def broadcast(self, group_id: str, message: dict):
         """
         Invia un messaggio JSON a tutti i client attivi collegati al gruppo specificato.
+        Supporta sia identificativi con prefisso 'group_' che raw UUID/ID.
         Rimuove automaticamente le connessioni non più attive o interrotte.
         """
-        if group_id not in self._connections:
-            return
+        targets = [group_id]
+        if group_id.startswith("group_"):
+            targets.append(group_id[6:])
+        else:
+            targets.append(f"group_{group_id}")
 
-        dead_connections = []
-        for ws in list(self._connections[group_id]):
-            try:
-                await ws.send_json(message)
-            except Exception as e:
-                logger.warning(f"Errore broadcast su client WebSocket nel gruppo {group_id}: {e}")
-                dead_connections.append(ws)
+        for gid in set(targets):
+            if gid not in self._connections:
+                continue
 
-        for dead_ws in dead_connections:
-            self.disconnect(group_id, dead_ws)
+            dead_connections = []
+            for ws in list(self._connections[gid]):
+                try:
+                    await ws.send_json(message)
+                except Exception as e:
+                    logger.warning(f"Errore broadcast su client WebSocket nel gruppo {gid}: {e}")
+                    dead_connections.append(ws)
+
+            for dead_ws in dead_connections:
+                self.disconnect(gid, dead_ws)
 
     def broadcast_sync(self, group_id: str, message: dict):
         """

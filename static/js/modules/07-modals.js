@@ -1687,9 +1687,13 @@
 
     let isAppInitialized = false;
 
-    function initApp() {
+    async function initApp() {
       if (isAppInitialized) return;
       isAppInitialized = true;
+
+      if (typeof checkSimulatorParam === 'function') {
+        await checkSimulatorParam();
+      }
 
       applyLayout();
       updateAllBottomNavs('chat');
@@ -1701,7 +1705,7 @@
       checkPendingProposalsBanner();
       checkGoogleDriveStatus();
       // Controllo autenticazione cloud: obbligatorio per utilizzare l'applicazione
-      const savedToken = localStorage.getItem('supabase_auth_token') || sessionStorage.getItem('supabase_auth_token');
+      const savedToken = sessionStorage.getItem('supabase_auth_token') || localStorage.getItem('supabase_auth_token');
       if (!savedToken) {
         if (typeof openAccountModal === 'function') openAccountModal('profile', true);
       } else if (typeof checkCloudAuthStatus === 'function') {

@@ -139,7 +139,9 @@ def start_desktop_app(
     host: str = "0.0.0.0",
     port: int = 8000,
     debug: bool = False,
-    profile: Optional[str] = None
+    profile: Optional[str] = None,
+    user: Optional[str] = None,
+    clean: bool = False
 ):
     """
     Avvia l'applicazione nativa Desktop Windows ("Dove lo AI messo")
@@ -187,14 +189,55 @@ def start_desktop_app(
     profiles_base = get_settings().BASE_DIR / "storage" / "desktop_profiles"
     profile_name, profile_dir, lock_handle = acquire_desktop_profile(profiles_base, requested_profile=profile)
 
-    # 3. Imposta il titolo della finestra in base alla sessione
-    session_num = profile_name.replace("sessione_", "").capitalize()
-    if profile_name == "sessione_1" and not is_server_already_running:
-        window_title = "Dove lo AI messo - Desktop"
+    # Se richiesto avvio pulito, rimuovi cache sessione precedente
+    if clean:
+        import shutil
+        print(f"[*] Pulizia storage per sessione pulita: {profile_dir}")
+        try:
+            shutil.rmtree(profile_dir, ignore_errors=True)
+            Path(profile_dir).mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+
+    # 3. Mappatura automatica utente simulato per test chat condivisa
+    user_mapping = {
+        "1": ("marco", "Marco Rossi"),
+        "marco": ("marco", "Marco Rossi"),
+        "2": ("laura", "Laura Bianchi"),
+        "laura": ("laura", "Laura Bianchi"),
+        "3": ("giuseppe", "Giuseppe Verdi"),
+        "giuseppe": ("giuseppe", "Giuseppe Verdi"),
+        "marcone": ("marcone", "Marcone")
+    }
+
+    sim_key = None
+    display_name = None
+    if user:
+        cleaned_user = user.strip().lower()
+        if cleaned_user in user_mapping:
+            sim_key, display_name = user_mapping[cleaned_user]
+        else:
+            sim_key = cleaned_user
+            display_name = user.strip().capitalize()
+    elif not clean:
+        if profile_name == "sessione_1":
+            sim_key, display_name = "marco", "Marco Rossi"
+        elif profile_name == "sessione_2":
+            sim_key, display_name = "laura", "Laura Bianchi"
+        elif profile_name == "sessione_3":
+            sim_key, display_name = "giuseppe", "Giuseppe Verdi"
+
+    # Aggiorna URL e titolo finestra
+    if sim_key and not clean:
+        url = f"{url}?sim_user={sim_key}"
+        window_title = f"Dove lo AI messo - Desktop [{display_name} 👤]"
     else:
+        session_num = profile_name.replace("sessione_", "").capitalize()
         window_title = f"Dove lo AI messo - Desktop (Sessione {session_num})"
 
     print(f"[*] Profilo finestra: {profile_name} (Storage: {profile_dir})")
+    if sim_key:
+        print(f"[*] Simulazione Utente Attiva: {display_name} ({sim_key})")
     print(f"[*] Creazione della finestra Desktop: '{window_title}'...")
 
     window = webview.create_window(

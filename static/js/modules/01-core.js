@@ -79,8 +79,8 @@
 
     // --- Helper Autenticazione con Token Cifrato & Supabase JWT ---
     function authHeaders(extra = {}) {
-      const token = sessionStorage.getItem('vault_token');
-      const cloudToken = localStorage.getItem('supabase_auth_token') || sessionStorage.getItem('supabase_auth_token');
+      const token = sessionStorage.getItem('vault_token') || localStorage.getItem('vault_token');
+      const cloudToken = sessionStorage.getItem('supabase_auth_token') || localStorage.getItem('supabase_auth_token');
       const h = { ...extra };
       if (token) {
         h['X-Vault-Token'] = token;
@@ -96,13 +96,42 @@
     let currentCloudUser = null;
     window.currentCloudUser = null;
 
+    async function checkSimulatorParam() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const simUser = urlParams.get('sim_user') || urlParams.get('user');
+      if (simUser) {
+        try {
+          const res = await fetch('/api/simulator/switch-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_key: simUser })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.access_token) {
+              sessionStorage.setItem('supabase_auth_token', data.access_token);
+              localStorage.setItem('supabase_auth_token', data.access_token);
+              currentCloudUser = data.user;
+              window.currentCloudUser = data.user;
+              return data.user;
+            }
+          }
+        } catch (e) {
+          console.warn("Errore auto-switch sim_user:", e);
+        }
+      }
+      return null;
+    }
+    window.checkSimulatorParam = checkSimulatorParam;
+
     async function checkCloudAuthStatus() {
-      const token = localStorage.getItem('supabase_auth_token') || sessionStorage.getItem('supabase_auth_token');
+      const token = sessionStorage.getItem('supabase_auth_token') || localStorage.getItem('supabase_auth_token');
       const unauthBox = document.getElementById('authUnauthenticatedBox');
       const authBox = document.getElementById('authAuthenticatedBox');
       const headerBtn = document.getElementById('headerAccountBtn');
       const headerBadge = document.getElementById('headerAccountBadge');
       const sidebarBtn = document.getElementById('sidebarAccountBtn');
+      const simLabel = document.getElementById('simulatorActiveUserLabel');
 
       if (!token) {
         currentCloudUser = null;
@@ -116,6 +145,7 @@
         }
         if (headerBadge) headerBadge.classList.add('hidden');
         if (sidebarBtn) sidebarBtn.classList.remove('bg-[#3C5A48]', 'text-white');
+        if (simLabel) simLabel.textContent = "Simula";
         return null;
       }
 
@@ -142,6 +172,10 @@
           }
           if (headerBadge) headerBadge.classList.remove('hidden');
           if (sidebarBtn) sidebarBtn.classList.add('bg-[#3C5A48]', 'text-white');
+          if (simLabel) {
+            const first = (user.full_name || user.email || 'Utente').split(' ')[0];
+            simLabel.textContent = first;
+          }
           return user;
         } else {
           localStorage.removeItem('supabase_auth_token');
@@ -156,10 +190,12 @@
             headerBtn.title = "Il mio Account & Profilo Cloud (Offline)";
           }
           if (headerBadge) headerBadge.classList.add('hidden');
+          if (simLabel) simLabel.textContent = "Simula";
           return null;
         }
       } catch (err) {
         console.warn("Errore checkCloudAuthStatus:", err);
+        if (simLabel) simLabel.textContent = "Simula";
         return null;
       }
     }
@@ -267,7 +303,10 @@
     }
 
     async function checkVaultAuth() {
-      let token = localStorage.getItem('vault_token') || sessionStorage.getItem('vault_token');
+      if (typeof checkSimulatorParam === 'function') {
+        await checkSimulatorParam();
+      }
+      let token = sessionStorage.getItem('vault_token') || localStorage.getItem('vault_token');
       try {
         const res = await fetch('/api/auth/status', {
           headers: authHeaders()
@@ -586,3 +625,92 @@
       }
     }
 
+    // =========================================================================
+    // SIMULATORE MULTI-UTENTE & TESTING CHAT CONDIVISA IN TEMPO REALE
+    // =========================================================================
+    function toggleSimulatorDropdown() {
+      const menu = document.getElementById('simulatorDropdownMenu');
+      if (menu) {
+        menu.classList.toggle('hidden');
+      }
+    }
+    window.toggleSimulatorDropdown = toggleSimulatorDropdown;
+
+    function closeSimulatorDropdown() {
+      const menu = document.getElementById('simulatorDropdownMenu');
+      if (menu) {
+        menu.classList.add('hidden');
+      }
+    }
+    window.closeSimulatorDropdown = closeSimulatorDropdown;
+
+    document.addEventListener('click', (e) => {
+      const btn = document.getElementById('simulatorDropdownBtn');
+      const menu = document.getElementById('simulatorDropdownMenu');
+      if (btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) {
+        menu.classList.add('hidden');
+      }
+    });
+
+    async function switchActiveSimulatorUser(userKey) {
+      closeSimulatorDropdown();
+      if (typeof closeAccountModal === 'function') closeAccountModal();
+      try {
+        const res = await fetch('/api/simulator/switch-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_key: userKey })
+        });
+        if (!res.ok) throw new Error("Errore durante il cambio utente");
+        const data = await res.json();
+        if (data.access_token) {
+          sessionStorage.setItem('supabase_auth_token', data.access_token);
+          localStorage.setItem('supabase_auth_token', data.access_token);
+          currentCloudUser = data.user;
+          window.currentCloudUser = data.user;
+
+          // Aggiorna URL e ricarica per sessione pulita ed isolata
+          const url = new URL(window.location.href);
+          url.searchParams.set('sim_user', userKey);
+          window.location.href = url.toString();
+        }
+      } catch (err) {
+        console.error("Errore switchActiveSimulatorUser:", err);
+        alert("Errore cambio utente simulato: " + err.message);
+      }
+    }
+    window.switchActiveSimulatorUser = switchActiveSimulatorUser;
+
+    async function launchSecondWindowSimulator(userKey = 'laura') {
+      closeSimulatorDropdown();
+      try {
+        if (typeof showToast === 'function') {
+          showToast(`Avvio seconda finestra desktop per ${userKey}...`, 'info');
+        }
+        const res = await fetch('/api/simulator/launch-window', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_key: userKey })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          if (typeof showToast === 'function') {
+            showToast(`Finestra avviata: ${data.message || 'Sessione aperta'}`, 'success');
+          } else {
+            alert(data.message || 'Finestra avviata');
+          }
+        } else {
+          throw new Error(data.detail || 'Impossibile avviare finestra');
+        }
+      } catch (err) {
+        console.error("Errore launchSecondWindowSimulator:", err);
+        alert("Impossibile avviare seconda finestra: " + err.message);
+      }
+    }
+    window.launchSecondWindowSimulator = launchSecondWindowSimulator;
+
+    function openSplitScreenSimulator() {
+      closeSimulatorDropdown();
+      window.open('/simulator/split', '_blank');
+    }
+    window.openSplitScreenSimulator = openSplitScreenSimulator;

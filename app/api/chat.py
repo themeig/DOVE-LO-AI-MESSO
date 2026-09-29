@@ -113,10 +113,12 @@ def handle_chat_message(
         try:
             from app.services.websocket_manager import group_ws_manager
             from app.models.database import Group
-            if db.query(Group).filter(Group.id == thread_id).first():
-                group_ws_manager.broadcast_sync(thread_id, {
+            clean_gid = thread_id.replace("group_", "")
+            group_obj = db.query(Group).filter((Group.id == thread_id) | (Group.id == clean_gid)).first()
+            if group_obj:
+                group_ws_manager.broadcast_sync(group_obj.id, {
                     "event": "CHAT_MESSAGE",
-                    "group_id": thread_id,
+                    "group_id": group_obj.id,
                     "title": "Nuovo messaggio nel gruppo"
                 })
         except Exception:

@@ -14,7 +14,14 @@
         if (found) {
           updateActiveThreadHeader(found);
         } else if (threadsCache.length > 0) {
-          switchThread(threadsCache[0].id, false);
+          const urlParams = new URLSearchParams(window.location.search);
+          const isSimulator = urlParams.has('sim_user') || urlParams.has('user');
+          let targetThread = threadsCache[0];
+          if (isSimulator) {
+            const groupThread = threadsCache.find(t => t.thread_type === 'group' || (t.id && t.id.includes('famiglia')));
+            if (groupThread) targetThread = groupThread;
+          }
+          switchThread(targetThread.id, false);
         }
       } catch (err) {
         console.error("Errore loadThreads:", err);

@@ -185,6 +185,94 @@
             ></span>
           </button>
 
+          <!-- Pulsante e Dropdown Simulatore Multi-Utente (Test Chat di Gruppo) -->
+          <div class="relative">
+            <button 
+              id="simulatorDropdownBtn" 
+              onclick="toggleSimulatorDropdown()" 
+              class="h-8 px-2 border border-[#3C5A48] bg-[#F8F5EE] text-[#3C5A48] hover:bg-[#3C5A48] hover:text-white rounded-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95 shadow-2xs text-[11px] font-bold" 
+              title="Simula più utenti contemporaneamente per testare la chat di gruppo"
+              aria-label="Simulatore Multi-Utente"
+            >
+              <i class="fa-solid fa-users-gear text-xs"></i>
+              <span id="simulatorActiveUserLabel" class="hidden sm:inline font-mono-code font-bold">Simula</span>
+              <i class="fa-solid fa-chevron-down text-[9px] opacity-70"></i>
+            </button>
+
+            <!-- Dropdown Menu Simulatore -->
+            <div 
+              id="simulatorDropdownMenu" 
+              class="hidden absolute right-0 top-full mt-1.5 w-72 bg-[#F8F5EE] border border-[#E3DDD1] rounded-xs shadow-xl z-50 p-2 font-space text-[#222220]"
+            >
+              <div class="px-2 py-1.5 border-b border-[#E3DDD1] mb-2 flex items-center justify-between">
+                <div>
+                  <span class="text-[10px] font-mono-code uppercase font-bold text-[#7A7568]">Simulatore Multi-Utente</span>
+                  <div class="text-xs font-bold text-[#3C5A48]">Test Chat Condivisa</div>
+                </div>
+                <span class="stamp-oli stamp-solid-sage text-[8px] py-0 px-1">LIVE SYNC</span>
+              </div>
+
+              <div class="text-[10px] text-[#7A7568] px-2 mb-1 font-mono-code uppercase tracking-wider">Passa ad account:</div>
+              <div class="space-y-1 mb-2">
+                <button type="button" onclick="switchActiveSimulatorUser('marco')" class="w-full text-left px-2 py-1.5 rounded-xs hover:bg-[#EAE5D9] transition flex items-center justify-between group cursor-pointer">
+                  <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-[#3C5A48] text-white flex items-center justify-center text-[10px] font-bold shrink-0">M</span>
+                    <div class="min-w-0">
+                      <div class="text-xs font-bold leading-tight">Marco Rossi</div>
+                      <div class="text-[9px] text-[#7A7568] font-mono-code truncate">marco.rossi@test.it</div>
+                    </div>
+                  </div>
+                  <span class="text-[9px] font-mono-code text-[#3C5A48] opacity-0 group-hover:opacity-100 font-bold shrink-0">Attiva →</span>
+                </button>
+
+                <button type="button" onclick="switchActiveSimulatorUser('laura')" class="w-full text-left px-2 py-1.5 rounded-xs hover:bg-[#EAE5D9] transition flex items-center justify-between group cursor-pointer">
+                  <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-[#C84B31] text-white flex items-center justify-center text-[10px] font-bold shrink-0">L</span>
+                    <div class="min-w-0">
+                      <div class="text-xs font-bold leading-tight">Laura Bianchi</div>
+                      <div class="text-[9px] text-[#7A7568] font-mono-code truncate">laura.bianchi@test.it</div>
+                    </div>
+                  </div>
+                  <span class="text-[9px] font-mono-code text-[#C84B31] opacity-0 group-hover:opacity-100 font-bold shrink-0">Attiva →</span>
+                </button>
+
+                <button type="button" onclick="switchActiveSimulatorUser('giuseppe')" class="w-full text-left px-2 py-1.5 rounded-xs hover:bg-[#EAE5D9] transition flex items-center justify-between group cursor-pointer">
+                  <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-[#1E3A8A] text-white flex items-center justify-center text-[10px] font-bold shrink-0">G</span>
+                    <div class="min-w-0">
+                      <div class="text-xs font-bold leading-tight">Giuseppe Verdi</div>
+                      <div class="text-[9px] text-[#7A7568] font-mono-code truncate">giuseppe.verdi@test.it</div>
+                    </div>
+                  </div>
+                  <span class="text-[9px] font-mono-code text-[#1E3A8A] opacity-0 group-hover:opacity-100 font-bold shrink-0">Attiva →</span>
+                </button>
+
+                <button type="button" onclick="switchActiveSimulatorUser('marcone')" class="w-full text-left px-2 py-1.5 rounded-xs hover:bg-[#EAE5D9] transition flex items-center justify-between group cursor-pointer">
+                  <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-[#D97706] text-white flex items-center justify-center text-[10px] font-bold shrink-0">M</span>
+                    <div class="min-w-0">
+                      <div class="text-xs font-bold leading-tight">Marcone</div>
+                      <div class="text-[9px] text-[#7A7568] font-mono-code truncate">marcone@gmail.com</div>
+                    </div>
+                  </div>
+                  <span class="text-[9px] font-mono-code text-[#D97706] opacity-0 group-hover:opacity-100 font-bold shrink-0">Attiva →</span>
+                </button>
+              </div>
+
+              <div class="pt-2 border-t border-[#E3DDD1] space-y-1.5">
+                <button type="button" onclick="openSplitScreenSimulator()" class="w-full text-left px-2 py-1.5 rounded-xs bg-[#3C5A48] text-white hover:bg-[#2F4738] transition flex items-center gap-2 text-xs font-bold shadow-2xs cursor-pointer">
+                  <i class="fa-solid fa-table-columns text-xs"></i>
+                  <span>Apri Schermata Split-Screen (2 Utenti)</span>
+                </button>
+
+                <button type="button" onclick="launchSecondWindowSimulator('laura')" class="w-full text-left px-2 py-1.5 rounded-xs bg-white border border-[#3C5A48] text-[#3C5A48] hover:bg-[#EAE5D9] transition flex items-center gap-2 text-[11px] font-bold shadow-2xs cursor-pointer">
+                  <i class="fa-solid fa-window-restore text-xs"></i>
+                  <span>Lancia 2ª Finestra Desktop (Laura)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Elimina Gruppo/Area Personalizzata -->
           <button 
             id="deleteThreadBtn" 
@@ -901,6 +989,47 @@
               >
                 <i class="fa-solid fa-right-from-bracket"></i>
                 <span>Disconnetti</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Box Accesso Rapido Simulatore Multi-Utente (Test Chat di Gruppo) -->
+          <div class="mt-4 pt-3 border-t border-[#E3DDD1] bg-[#FAF8F2] p-3 rounded-xs border">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[10px] font-mono-code uppercase font-bold text-[#7A7568] flex items-center gap-1.5">
+                <i class="fa-solid fa-users-gear text-[#3C5A48]"></i> Simulatore Multi-Utente (Test Rapido)
+              </span>
+              <span class="stamp-oli stamp-solid-sage text-[8px] py-0 px-1">1-CLICK LOGIN</span>
+            </div>
+            <p class="text-[10px] text-[#7A7568] font-mono-code mb-2.5 leading-relaxed">
+              Passa istantaneamente a uno dei profili di test per verificare i messaggi in tempo reale e la sincronizzazione di gruppo:
+            </p>
+            <div class="grid grid-cols-2 gap-1.5 mb-2.5">
+              <button type="button" onclick="switchActiveSimulatorUser('marco')" class="p-2 border border-[#3C5A48] bg-white hover:bg-[#3C5A48] hover:text-white rounded-xs text-left transition cursor-pointer group shadow-2xs">
+                <div class="text-[11px] font-bold text-[#222220] group-hover:text-white">👤 Marco Rossi</div>
+                <div class="text-[9px] text-[#7A7568] group-hover:text-white/80 font-mono-code truncate">marco.rossi@test.it</div>
+              </button>
+              <button type="button" onclick="switchActiveSimulatorUser('laura')" class="p-2 border border-[#C84B31] bg-white hover:bg-[#C84B31] hover:text-white rounded-xs text-left transition cursor-pointer group shadow-2xs">
+                <div class="text-[11px] font-bold text-[#222220] group-hover:text-white">👤 Laura Bianchi</div>
+                <div class="text-[9px] text-[#7A7568] group-hover:text-white/80 font-mono-code truncate">laura.bianchi@test.it</div>
+              </button>
+              <button type="button" onclick="switchActiveSimulatorUser('giuseppe')" class="p-2 border border-[#1E3A8A] bg-white hover:bg-[#1E3A8A] hover:text-white rounded-xs text-left transition cursor-pointer group shadow-2xs">
+                <div class="text-[11px] font-bold text-[#222220] group-hover:text-white">👤 Giuseppe Verdi</div>
+                <div class="text-[9px] text-[#7A7568] group-hover:text-white/80 font-mono-code truncate">giuseppe.verdi@test.it</div>
+              </button>
+              <button type="button" onclick="switchActiveSimulatorUser('marcone')" class="p-2 border border-[#D97706] bg-white hover:bg-[#D97706] hover:text-white rounded-xs text-left transition cursor-pointer group shadow-2xs">
+                <div class="text-[11px] font-bold text-[#222220] group-hover:text-white">👤 Marcone</div>
+                <div class="text-[9px] text-[#7A7568] group-hover:text-white/80 font-mono-code truncate">marcone@gmail.com</div>
+              </button>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" onclick="openSplitScreenSimulator()" class="flex-1 py-1.5 bg-[#3C5A48] text-white hover:bg-[#2F4738] rounded-xs text-[10px] font-bold font-space uppercase transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer">
+                <i class="fa-solid fa-table-columns"></i>
+                <span>Split-Screen (2 Utenti)</span>
+              </button>
+              <button type="button" onclick="launchSecondWindowSimulator('laura')" class="flex-1 py-1.5 bg-white border border-[#3C5A48] text-[#3C5A48] hover:bg-[#EAE5D9] rounded-xs text-[10px] font-bold font-space uppercase transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer">
+                <i class="fa-solid fa-window-restore"></i>
+                <span>2ª Finestra (Laura)</span>
               </button>
             </div>
           </div>
