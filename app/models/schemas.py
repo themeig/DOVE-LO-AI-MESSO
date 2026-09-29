@@ -1,5 +1,5 @@
-from typing import Literal, Optional, List
-from pydantic import BaseModel, Field
+from typing import Literal, Optional, List, Any
+from pydantic import BaseModel, Field, field_validator
 
 class ExtractedDocument(BaseModel):
     title: Optional[str] = Field(default=None, description="Titolo sintetico descrittivo del file o documento")
@@ -17,6 +17,32 @@ class ExtractedDocument(BaseModel):
     category_label: Optional[str] = Field(default=None, description="Titolo visibile della sezione creato o scelto dall'AI (es. Canzoni & Testi Musicali, Ricette & Cucina)")
     category_icon: Optional[str] = Field(default=None, description="Icona FontAwesome adatta scelta dall'AI (es. fa-music, fa-utensils, fa-graduation-cap)")
     subfolder: Optional[str] = Field(default=None, description="Sottocartella tematica o temporale (es. '2026', '2025', 'Locazioni', 'Bozze')")
+
+    @field_validator("payment_status", mode="before")
+    @classmethod
+    def normalize_payment_status(cls, v: Any) -> Optional[str]:
+        if not v or not isinstance(v, str):
+            return None
+        clean = v.strip().lower().replace(" ", "_").replace("-", "_")
+        if clean in ("da_pagare", "scaduto", "insoluto", "in_attesa", "pending"):
+            return "da_pagare"
+        if clean in ("quietanzato", "pagato", "pagata", "saldato", "saldata", "paid", "archiviata"):
+            return "quietanzato"
+        if clean in ("non_richiesto", "n_a", "na", "nessuno", "none"):
+            return "non_richiesto"
+        return None
+
+    @field_validator("suggest_rename", mode="before")
+    @classmethod
+    def normalize_suggest_rename(cls, v: Any) -> bool:
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            clean = v.strip().lower()
+            if clean in ("true", "1", "yes", "si"):
+                return True
+            return False
+        return bool(v)
 
 class MessageIntent(BaseModel):
     intent: Literal["STORE_LOCATION", "QUERY_LOCATION", "QUERY_DEADLINES", "GENERAL"]
