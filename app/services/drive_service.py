@@ -5,7 +5,7 @@ import urllib.parse
 import logging
 from contextlib import contextmanager
 from datetime import date
-from typing import Protocol, Optional
+from typing import Protocol, Optional, Any
 import httpx
 
 import re
@@ -389,3 +389,72 @@ def get_drive_service() -> GoogleDriveServiceInterface:
     if client_id and client_secret:
         return RealGoogleDriveService(client_id=client_id, client_secret=client_secret)
     return MockGoogleDriveService()
+
+
+def get_fresh_access_token(cred: Any, db: Any) -> Optional[str]:
+    """
+    Restituisce un access_token Google valido, rinnovandolo automaticamente
+    tramite il refresh_token se è scaduto o mancante.
+
+    Args:
+        cred: istanza di GoogleDriveCredential (con .access_token, .refresh_token, .token_expiry)
+        db: sessione SQLAlchemy
+
+    Returns:
+        access_token aggiornato, oppure None se non è possibile rinnovare.
+    """
+    from datetime import datetime, timezone, timedelta
+
+    if not cred:
+        return None
+
+    # Controlla se il token è ancora valido (con 5 minuti di margine di sicurezza)
+    if cred.token_expiry and cred.access_token:
+        expiry = cred.token_expiry
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
+        if expiry > datetime.now(timezone.utc) + timedelta(minutes=5):
+            return cred.access_token  # Token ancora valido
+
+    # Token scaduto o mancante: prova a rinnovarlo con il refresh_token
+    if not cred.refresh_token:
+        logger.warning("Token Google scaduto ma nessun refresh_token disponibile. Ricollegare Google.")
+        return None
+
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
+    if not client_id or not client_secret:
+        logger.warning("GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET non configurati — impossibile rinnovare il token.")
+        return cred.access_token  # Usa quello esistente sperando sia ancora valido
+
+    try:
+        resp = httpx.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "refresh_token": cred.refresh_token,
+                "grant_type": "refresh_token",
+            },
+            timeout=15.0,
+        )
+        resp.raise_for_status()
+        token_data = resp.json()
+
+        new_access_token = token_data.get("access_token")
+        expires_in = token_data.get("expires_in", 3600)
+
+        if new_access_token:
+            cred.access_token = new_access_token
+            cred.token_expiry = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+            db.commit()
+            logger.info("✅ Token Google rinnovato automaticamente con refresh_token.")
+            return new_access_token
+        else:
+            logger.error(f"Risposta token refresh senza access_token: {token_data}")
+            return cred.access_token
+
+    except Exception as e:
+        logger.error(f"Errore rinnovo automatico token Google: {e}")
+        return cred.access_token  # Usa quello existente come ultimo tentativo
+

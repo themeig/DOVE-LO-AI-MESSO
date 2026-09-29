@@ -314,26 +314,34 @@ def auto_sync_calendar_event(doc: Document, db: Any) -> Optional[Dict[str, Any]]
         return None
     if getattr(cred, "calendar_enabled", True) is False:
         return None
+
+    # Rinnova il token automaticamente se scaduto
+    from app.services.drive_service import get_fresh_access_token
+    access_token = get_fresh_access_token(cred, db)
+    if not access_token:
+        logger.warning("Token Google non disponibile per Calendar sync — operazione saltata.")
+        return None
+
     service = get_calendar_service()
     try:
         cal_target = getattr(cred, "calendar_target", "dedicated")
         if cal_target == "primary":
             cal_id = "primary"
         else:
-            cal_id = cred.google_calendar_id or service.get_or_create_dedicated_calendar(cred.access_token)
+            cal_id = cred.google_calendar_id or service.get_or_create_dedicated_calendar(access_token)
             if not cred.google_calendar_id:
                 cred.google_calendar_id = cal_id
                 db.commit()
 
         if doc.due_date:
-            res = service.sync_deadline_event(doc, cal_id, cred.access_token)
+            res = service.sync_deadline_event(doc, cal_id, access_token)
             if res and res.get("event_id"):
                 doc.google_calendar_event_id = res["event_id"]
                 db.commit()
             return res
         elif doc.google_calendar_event_id:
             # Se la scadenza è stata rimossa dal documento, elimina l'evento esistente
-            service.delete_deadline_event(doc.google_calendar_event_id, cal_id, cred.access_token)
+            service.delete_deadline_event(doc.google_calendar_event_id, cal_id, access_token)
             doc.google_calendar_event_id = None
             db.commit()
     except Exception as e:
@@ -348,10 +356,14 @@ def auto_delete_calendar_event(doc: Document, db: Any) -> bool:
     cred = db.query(GoogleDriveCredential).first()
     if not cred or not cred.access_token:
         return False
+    from app.services.drive_service import get_fresh_access_token
+    access_token = get_fresh_access_token(cred, db)
+    if not access_token:
+        return False
     service = get_calendar_service()
     try:
         cal_id = cred.google_calendar_id or "primary"
-        res = service.delete_deadline_event(doc.google_calendar_event_id, cal_id, cred.access_token)
+        res = service.delete_deadline_event(doc.google_calendar_event_id, cal_id, access_token)
         doc.google_calendar_event_id = None
         db.commit()
         return res
@@ -367,18 +379,22 @@ def auto_sync_all_deadlines(db: Any) -> Optional[Dict[str, Any]]:
         return None
     if getattr(cred, "calendar_enabled", True) is False:
         return None
+    from app.services.drive_service import get_fresh_access_token
+    access_token = get_fresh_access_token(cred, db)
+    if not access_token:
+        return None
     service = get_calendar_service()
     try:
         cal_target = getattr(cred, "calendar_target", "dedicated")
         if cal_target == "primary":
             cal_id = "primary"
         else:
-            cal_id = cred.google_calendar_id or service.get_or_create_dedicated_calendar(cred.access_token)
+            cal_id = cred.google_calendar_id or service.get_or_create_dedicated_calendar(access_token)
             if not cred.google_calendar_id:
                 cred.google_calendar_id = cal_id
                 db.commit()
         docs = db.query(Document).filter(Document.due_date.isnot(None)).all()
-        res = service.sync_all_deadlines(docs, cred.access_token, cal_id)
+        res = service.sync_all_deadlines(docs, access_token, cal_id)
         db.commit()
         return res
     except Exception as e:

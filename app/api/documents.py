@@ -169,14 +169,17 @@ def _process_and_save_single_doc(
     active_cred = db.query(GoogleDriveCredential).first()
     drive_creds_info = None
     if active_cred and getattr(active_cred, "storage_mode", "dual") != "local_only":
-        chat_folder = "Generale"
-        if thread_id and thread_id not in ("general", "all"):
-            th = db.query(ChatThread).filter(ChatThread.id == thread_id).first()
-            chat_folder = sanitize_drive_folder_name(th.name if th else thread_id, thread_id=thread_id)
-        drive_creds_info = {
-            "access_token": active_cred.access_token,
-            "chat_folder": chat_folder
-        }
+        from app.services.drive_service import get_fresh_access_token
+        fresh_token = get_fresh_access_token(active_cred, db)
+        if fresh_token:
+            chat_folder = "Generale"
+            if thread_id and thread_id not in ("general", "all"):
+                th = db.query(ChatThread).filter(ChatThread.id == thread_id).first()
+                chat_folder = sanitize_drive_folder_name(th.name if th else thread_id, thread_id=thread_id)
+            drive_creds_info = {
+                "access_token": fresh_token,
+                "chat_folder": chat_folder
+            }
 
     target_group_id = None
     if thread_id and thread_id not in ("general", "all"):
@@ -623,14 +626,17 @@ async def upload_documents_batch(
     active_cred = db.query(GoogleDriveCredential).first()
     drive_creds_info = None
     if active_cred and getattr(active_cred, "storage_mode", "dual") != "local_only":
-        chat_folder = "Generale"
-        if thread_id and thread_id not in ("general", "all"):
-            th = db.query(ChatThread).filter(ChatThread.id == thread_id).first()
-            chat_folder = sanitize_drive_folder_name(th.name if th else thread_id, thread_id=thread_id)
-        drive_creds_info = {
-            "access_token": active_cred.access_token,
-            "chat_folder": chat_folder
-        }
+        from app.services.drive_service import get_fresh_access_token
+        fresh_token = get_fresh_access_token(active_cred, db)
+        if fresh_token:
+            chat_folder = "Generale"
+            if thread_id and thread_id not in ("general", "all"):
+                th = db.query(ChatThread).filter(ChatThread.id == thread_id).first()
+                chat_folder = sanitize_drive_folder_name(th.name if th else thread_id, thread_id=thread_id)
+            drive_creds_info = {
+                "access_token": fresh_token,
+                "chat_folder": chat_folder
+            }
 
     target_group_id = None
     if thread_id and thread_id not in ("general", "all"):

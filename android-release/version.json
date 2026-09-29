@@ -1,7 +1,7 @@
 {
-  "version_code": 338,
-  "version_name": "2.17.5",
+  "version_code": 339,
+  "version_name": "2.17.6",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "⚡ Parallelismo reale anche per Scansione Cartella: migrazione scan_local_folder a versione async con asyncio.gather + httpx.AsyncClient condiviso. 100 file in una cartella vengono analizzati contemporaneamente invece di uno alla volta."
+  "release_notes": "🔑 Fix critico token OAuth Google: rinnovo automatico access_token via refresh_token quando scaduto. Drive e Calendar ora funzionano indefinitamente senza dover ricollegare Google ogni ora."
 }
 
