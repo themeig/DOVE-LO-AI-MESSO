@@ -166,6 +166,11 @@ class UnzipVaultRequest(BaseModel):
     file_url: Optional[str] = None
     thread_id: Optional[str] = None
 
+class BatchRecordChatRequest(BaseModel):
+    document_ids: List[int] = Field(..., description="Elenco ID dei documenti caricati nel batch")
+    thread_id: str = Field(default="general", description="ID del canale/chat di destinazione")
+    total_files_count: Optional[int] = Field(default=None, description="Numero totale di file nel batch")
+
 class UIEventCreate(BaseModel):
     thread_id: Optional[str] = "general"
     event_type: str

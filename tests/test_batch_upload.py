@@ -90,3 +90,43 @@ def test_upload_multipage_photos():
     assert "foto" in data["chat_reply"].lower() or "multipagina" in data["chat_reply"].lower()
     assert data["file_url"].endswith(".pdf")
 
+
+def test_upload_batch_without_chat_message_and_batch_record_chat():
+    """Test del flusso a blocchi: caricamento batch senza creare messaggi di chat e successiva registrazione aggregata."""
+    fake_pdf_1 = io.BytesIO(b"%PDF-1.4 blocco 1 doc 1")
+    fake_pdf_2 = io.BytesIO(b"%PDF-1.4 blocco 1 doc 2")
+
+    files = [
+        ("files", ("bolletta_luce_blocco.pdf", fake_pdf_1, "application/pdf")),
+        ("files", ("fattura_gas_blocco.pdf", fake_pdf_2, "application/pdf")),
+    ]
+
+    # Caricamento blocco con save_chat_message=False
+    res = client.post(
+        "/api/documents/upload-batch",
+        files=files,
+        data={"thread_id": "general", "save_chat_message": "false"}
+    )
+    assert res.status_code == 201
+    data = res.json()
+    assert data["success"] is True
+    assert data["count"] == 2
+    doc_ids = [d["id"] for d in data["documents"]]
+    assert len(doc_ids) == 2
+
+    # Registrazione aggregata finale via /api/documents/batch-record-chat
+    record_res = client.post(
+        "/api/documents/batch-record-chat",
+        json={
+            "document_ids": doc_ids,
+            "thread_id": "general",
+            "total_files_count": 2
+        }
+    )
+    assert record_res.status_code == 200
+    rec_data = record_res.json()
+    assert rec_data["success"] is True
+    assert rec_data["count"] == 2
+    assert "2 documenti" in rec_data["chat_reply"] or "documenti" in rec_data["chat_reply"]
+    assert len(rec_data["documents"]) == 2
+

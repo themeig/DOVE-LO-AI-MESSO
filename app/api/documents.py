@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.models.database import get_db, Document, ChatMessage, GoogleDriveCredential, get_app_setting, ChatThread, Group
-from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDeleteResponse, UnzipVaultRequest, ExtractedDocument
+from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDeleteResponse, UnzipVaultRequest, ExtractedDocument, BatchRecordChatRequest
 from app.services.websocket_manager import group_ws_manager
 from app.services.ai_service import get_ai_service
 from app.services.auth_service import get_optional_user
@@ -602,6 +602,7 @@ async def upload_multipage_photos(
 async def upload_documents_batch(
     files: List[UploadFile] = File(...),
     thread_id: str = Form("general"),
+    save_chat_message: bool = Form(True),
     db: Session = Depends(get_db),
     current_user: Optional[dict] = Depends(get_optional_user)
 ):
@@ -893,18 +894,166 @@ async def upload_documents_batch(
             "subfolder": d.subfolder
         })
 
-    is_group = bool(thread_id and thread_id not in ("general", "all"))
-    user_msg_content = f"📎 **{uploader_name}** ha inserito {total_count} documenti nel gruppo: {user_names_str}" if is_group else f"Caricati {total_count} file: {user_names_str}"
+    if save_chat_message:
+        is_group = bool(thread_id and thread_id not in ("general", "all"))
+        user_msg_content = f"📎 **{uploader_name}** ha inserito {total_count} documenti nel gruppo: {user_names_str}" if is_group else f"Caricati {total_count} file: {user_names_str}"
+
+        user_msg = ChatMessage(
+            thread_id=thread_id,
+            sender="user",
+            message_type="document",
+            content=user_msg_content,
+            user_id=uploader_id,
+            is_shared=True,
+            metadata_json=json.dumps({
+                "document_ids": doc_ids,
+                "documents": docs_output,
+                "uploader_name": uploader_name,
+                "user_name": uploader_name,
+                "user_id": uploader_id,
+                "is_shared": True
+            })
+        )
+        asst_msg = ChatMessage(
+            thread_id=thread_id,
+            sender="assistant",
+            message_type="document",
+            content=chat_reply,
+            user_id=uploader_id,
+            is_shared=True,
+            metadata_json=json.dumps({
+                "document_ids": doc_ids,
+                "documents": docs_output,
+                "routed_model": routed_model,
+                "uploader_name": uploader_name,
+                "user_name": uploader_name,
+                "user_id": uploader_id,
+                "is_shared": True
+            })
+        )
+        db.add(user_msg)
+        db.add(asst_msg)
+        db.commit()
+
+        # Se caricamento in un gruppo condiviso, invia broadcast WebSocket immediato
+        if thread_id and thread_id not in ("general", "all"):
+            try:
+                await group_ws_manager.broadcast(thread_id, {
+                    "event": "DOCUMENT_UPLOADED",
+                    "group_id": thread_id,
+                    "title": f"📎 {uploader_name} ha inserito {total_count} documenti",
+                    "data": {"count": total_count, "document_ids": doc_ids, "uploader_name": uploader_name}
+                })
+            except Exception as e:
+                logger.warning(f"Errore broadcast batch su gruppo {thread_id}: {e}")
+
+    return {
+        "success": True,
+        "count": total_count,
+        "uploaded_count": total_count,
+        "documents": docs_output,
+        "chat_reply": chat_reply,
+        "routed_model": routed_model
+    }
+
+
+@router.post("/batch-record-chat")
+async def batch_record_chat(
+    req: BatchRecordChatRequest,
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_optional_user)
+):
+    """
+    Registra un unico messaggio utente e assistente aggregato per un gruppo di documenti
+    caricati a blocchi paralleli, evitando messaggi frammentati nella cronologia della chat.
+    """
+    if not req.document_ids:
+        raise HTTPException(status_code=400, detail="Nessun document_id fornito.")
+
+    uploader_name = (current_user.get("full_name") or current_user.get("email") or "Un utente") if current_user else "Un utente"
+    uploader_id = current_user.get("id") if current_user else None
+
+    # Recupera i documenti dal database
+    docs = db.query(Document).filter(Document.id.in_(req.document_ids)).all()
+    doc_map = {d.id: d for d in docs}
+    ordered_docs = [doc_map[did] for did in req.document_ids if did in doc_map]
+
+    total_count = len(ordered_docs)
+    payable_docs = [d for d in ordered_docs if d.status == "da_pagare"]
+    quietanzati_docs = [d for d in ordered_docs if d.status == "quietanzato"]
+    total_payable_amount = sum(d.amount for d in payable_docs if d.amount is not None)
+    total_quietanzati_amount = sum(d.amount for d in quietanzati_docs if d.amount is not None)
+
+    # Costruisci risposta aggregata
+    lines = []
+    for d in ordered_docs:
+        icon = "📄" if d.file_type == "pdf" else "📸"
+        extra = ""
+        if d.status == "quietanzato":
+            extra_amt = f" — **{d.amount:.2f} €**" if d.amount is not None else ""
+            extra = f"{extra_amt} (✅ Già Pagato / Quietanzato)"
+        elif d.amount is not None:
+            due_info = f", scad. {d.due_date.strftime('%d/%m/%Y')}" if d.due_date else ""
+            status_str = " (Da pagare)" if d.status == "da_pagare" else ""
+            extra = f" — **{d.amount:.2f} €**{due_info}{status_str}"
+        elif d.due_date:
+            extra = f" — *scad. {d.due_date.strftime('%d/%m/%Y')}*"
+        lines.append(f"{icon} **{d.title}** ({d.issuer or 'Varie'}){extra}")
+
+    summary_parts = [
+        f"📁 Ho protocollato e registrato nel caveau **{total_count} documenti** ad alta velocità."
+    ]
+    if payable_docs:
+        if total_payable_amount > 0:
+            summary_parts.append(f"💳 **{len(payable_docs)} pagamenti/scadenze da saldare** per un totale di **{total_payable_amount:.2f} €**.")
+        else:
+            summary_parts.append(f"⏰ **{len(payable_docs)} scadenze attive registrate** nel tuo scadenzario.")
+    if quietanzati_docs:
+        amt_info = f" per complessivi **{total_quietanzati_amount:.2f} €**" if total_quietanzati_amount > 0 else ""
+        summary_parts.append(f"✅ **{len(quietanzati_docs)} documenti già saldati/quietanzati**{amt_info} archiviati a memoria storica.")
+    summary_parts.append("\n**Documenti archiviati:**\n" + "\n".join(lines))
+    summary_parts.append("\nPuoi visualizzarli o scaricarli singolarmente dalle schede qui sotto! ⬇️")
+    chat_reply = "\n\n".join(summary_parts)
+
+    active_model = get_app_setting(db, "ai_model", default=get_settings().OPENROUTER_MODEL) or "auto"
+    routed_model = "google/gemini-2.5-flash-lite" if active_model == "auto" else active_model
+
+    docs_output = []
+    for d in ordered_docs:
+        fn = Path(d.file_path).name
+        docs_output.append({
+            "id": d.id,
+            "document_id": d.id,
+            "title": d.title,
+            "issuer": d.issuer,
+            "amount": d.amount,
+            "due_date": d.due_date.isoformat() if d.due_date else None,
+            "status": d.status,
+            "file_url": f"/uploads/{fn}",
+            "download_url": f"/api/documents/{d.id}/download",
+            "file_type": d.file_type,
+            "summary": d.summary,
+            "drive_file_id": d.drive_file_id,
+            "drive_web_url": d.drive_web_url,
+            "google_calendar_event_id": d.google_calendar_event_id,
+            "category": d.category,
+            "category_label": d.category_label,
+            "category_icon": d.category_icon,
+            "subfolder": d.subfolder
+        })
+
+    is_group = bool(req.thread_id and req.thread_id not in ("general", "all"))
+    user_msg_content = f"📎 **{uploader_name}** ha inserito {total_count} documenti nel gruppo" if is_group else f"Caricati {total_count} file"
 
     user_msg = ChatMessage(
-        thread_id=thread_id,
+        thread_id=req.thread_id,
         sender="user",
         message_type="document",
         content=user_msg_content,
         user_id=uploader_id,
         is_shared=True,
         metadata_json=json.dumps({
-            "document_ids": doc_ids,
+            "document_ids": req.document_ids,
             "documents": docs_output,
             "uploader_name": uploader_name,
             "user_name": uploader_name,
@@ -913,14 +1062,14 @@ async def upload_documents_batch(
         })
     )
     asst_msg = ChatMessage(
-        thread_id=thread_id,
+        thread_id=req.thread_id,
         sender="assistant",
         message_type="document",
         content=chat_reply,
         user_id=uploader_id,
         is_shared=True,
         metadata_json=json.dumps({
-            "document_ids": doc_ids,
+            "document_ids": req.document_ids,
             "documents": docs_output,
             "routed_model": routed_model,
             "uploader_name": uploader_name,
@@ -933,26 +1082,25 @@ async def upload_documents_batch(
     db.add(asst_msg)
     db.commit()
 
-    # Se caricamento in un gruppo condiviso, invia broadcast WebSocket immediato
-    if thread_id and thread_id not in ("general", "all"):
+    if req.thread_id and req.thread_id not in ("general", "all"):
         try:
-            await group_ws_manager.broadcast(thread_id, {
+            await group_ws_manager.broadcast(req.thread_id, {
                 "event": "DOCUMENT_UPLOADED",
-                "group_id": thread_id,
+                "group_id": req.thread_id,
                 "title": f"📎 {uploader_name} ha inserito {total_count} documenti",
-                "data": {"count": total_count, "document_ids": doc_ids, "uploader_name": uploader_name}
+                "data": {"count": total_count, "document_ids": req.document_ids, "uploader_name": uploader_name}
             })
         except Exception as e:
-            logger.warning(f"Errore broadcast batch su gruppo {thread_id}: {e}")
+            logger.warning(f"Errore broadcast batch su gruppo {req.thread_id}: {e}")
 
     return {
         "success": True,
         "count": total_count,
-        "uploaded_count": total_count,
         "documents": docs_output,
         "chat_reply": chat_reply,
         "routed_model": routed_model
     }
+
 
 @router.get("/preview-content")
 def get_document_preview_content(
