@@ -1802,7 +1802,7 @@
       try {
         const res = await fetch(`/api/documents/${documentId}/status`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ status: 'quietanzato' })
         });
         if (!res.ok) throw new Error("Impossibile aggiornare lo stato");

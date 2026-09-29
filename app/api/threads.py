@@ -14,6 +14,7 @@ from app.models.schemas import (
     ChatThreadResponse,
     ThreadListResponse
 )
+from app.services.auth_service import get_optional_user
 
 router = APIRouter(prefix="/api/threads", tags=["threads"])
 
@@ -149,10 +150,17 @@ def create_thread(payload: ChatThreadCreate, db: Session = Depends(get_db)):
     )
 
 @router.get("/{thread_id}/messages")
-def get_thread_messages(thread_id: str, db: Session = Depends(get_db)):
+def get_thread_messages(
+    thread_id: str,
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_optional_user)
+):
     thread = db.query(ChatThread).filter(ChatThread.id == thread_id).first()
     if not thread:
         raise HTTPException(status_code=404, detail="Chat o gruppo non trovato.")
+
+    is_group = bool(thread.thread_type == "group" or thread_id not in ("general", "all"))
+    current_user_id = current_user.get("id") if current_user else None
 
     messages = (
         db.query(ChatMessage)
@@ -169,6 +177,39 @@ def get_thread_messages(thread_id: str, db: Session = Depends(get_db)):
                 meta = json.loads(m.metadata_json)
             except Exception:
                 meta = {}
+
+        # Filtro Privacy per Chat di Gruppo:
+        # I messaggi di conversazione privata con l'assistente (es. 'che giorno è oggi?')
+        # devono essere visibili ESCLUSIVAMENTE all'utente che li ha richiesti.
+        # Sono condivisi a tutto il gruppo:
+        # - Inserimenti di file/documenti
+        # - Notifiche di pagamento/quietanza bollette
+        # - Messaggi di benvenuto/sistema
+        # - Messaggi esplicitamente condivisi (is_shared == True)
+        if is_group:
+            msg_user_id = getattr(m, "user_id", None) or meta.get("user_id")
+            msg_is_shared = getattr(m, "is_shared", None)
+            if msg_is_shared is None:
+                msg_is_shared = meta.get("is_shared")
+
+            is_doc_or_payment = (
+                m.message_type in ("document", "payment", "file", "system")
+                or meta.get("document_id") is not None
+                or meta.get("documents") is not None
+                or meta.get("status") == "quietanzato"
+                or "ha inserito questo documento" in (m.content or "")
+                or "ha pagato la bolletta" in (m.content or "")
+                or "Benvenuto nel gruppo" in (m.content or "")
+            )
+
+            if is_doc_or_payment or msg_is_shared is True:
+                pass  # Visibile a tutti i partecipanti
+            elif msg_is_shared is False or (m.message_type in ("text", "audio") and not is_doc_or_payment):
+                # Conversazione privata con l'assistente: mostra solo all'autore
+                if current_user_id and msg_user_id and str(msg_user_id) != str(current_user_id):
+                    continue
+                elif not current_user_id and msg_user_id:
+                    continue
 
         # Risolvi e arricchisci automaticamente i documenti per garantire che
         # i widget delle schede documento persistano SEMPRE alla riapertura della chat

@@ -80,3 +80,17 @@ def get_current_user(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Autenticazione richiesta. Nessun token Bearer fornito."
     )
+
+
+def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> Optional[Dict[str, Any]]:
+    """
+    Restituisce l'utente autenticato se presente un token valido, altrimenti None senza lanciare 401.
+    """
+    if not credentials or not credentials.credentials:
+        return None
+    try:
+        return get_current_user(credentials)
+    except Exception:
+        return None

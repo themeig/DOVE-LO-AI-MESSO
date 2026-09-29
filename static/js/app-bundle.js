@@ -1999,7 +1999,7 @@
         </div>
       `;
       try {
-        const res = await fetch(`/api/threads/${encodeURIComponent(threadId)}/messages`);
+        const res = await fetch(`/api/threads/${encodeURIComponent(threadId)}/messages`, { headers: authHeaders() });
         if (!res.ok) throw new Error("Errore recupero messaggi");
         const data = await res.json();
         if (threadId !== currentThreadId) return; // Se l'utente ha cambiato chat nel frattempo, non sovrascrivere
@@ -2369,7 +2369,7 @@
       if (!confirmed) return;
 
       try {
-        const res = await fetch(`/api/threads/${encodeURIComponent(currentThreadId)}`, { method: 'DELETE' });
+        const res = await fetch(`/api/threads/${encodeURIComponent(currentThreadId)}`, { method: 'DELETE', headers: authHeaders() });
         if (!res.ok) throw new Error("Errore eliminazione thread");
         await loadThreads();
         await switchThread('general');
@@ -8295,7 +8295,7 @@
       try {
         const res = await fetch(`/api/documents/${documentId}/status`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ status: 'quietanzato' })
         });
         if (!res.ok) throw new Error("Impossibile aggiornare lo stato");

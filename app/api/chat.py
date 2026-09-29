@@ -3,6 +3,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -10,6 +11,7 @@ from app.models.database import get_db, ChatMessage
 from app.models.schemas import ChatRequest, ChatResponse
 from app.services.agent_service import AgenticChatService
 from app.services.document_service import save_uploaded_file
+from app.services.auth_service import get_optional_user
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +28,13 @@ def get_agent() -> AgenticChatService:
 @router.post("/", response_model=ChatResponse, include_in_schema=False)
 def handle_chat_message(
     payload: ChatRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_optional_user)
 ):
     thread_id = payload.thread_id or "general"
+    user_id = current_user.get("id") if current_user else None
+    user_name = current_user.get("full_name") if current_user else None
+    is_group = bool(thread_id and thread_id not in ("general", "all"))
 
     # 1. Save incoming user message with optional quoted text and audio metadata
     user_metadata = {}
@@ -66,11 +72,20 @@ def handle_chat_message(
     else:
         user_msg_content = content_text
 
+    if user_id:
+        user_metadata["user_id"] = user_id
+    if user_name:
+        user_metadata["user_name"] = user_name
+    if is_group:
+        user_metadata["is_shared"] = False
+
     user_msg = ChatMessage(
         thread_id=thread_id,
         sender="user",
         message_type=msg_type,
         content=user_msg_content,
+        user_id=user_id,
+        is_shared=False if is_group else True,
         metadata_json=json.dumps(user_metadata) if user_metadata else None
     )
     db.add(user_msg)
@@ -97,32 +112,27 @@ def handle_chat_message(
         meta_dict["confirmation"] = chat_response.confirmation
     if chat_response.routed_model:
         meta_dict["routed_model"] = chat_response.routed_model
-
+    if user_id:
+        meta_dict["user_id"] = user_id
+    if user_name:
+        meta_dict["user_name"] = user_name
+    if is_group:
+        meta_dict["is_shared"] = False
 
     asst_msg = ChatMessage(
         thread_id=thread_id,
         sender="assistant",
         message_type="text",
         content=chat_response.reply,
+        user_id=user_id,
+        is_shared=False if is_group else True,
         metadata_json=json.dumps(meta_dict)
     )
     db.add(asst_msg)
     db.commit()
 
-    if thread_id and thread_id not in ("general", "all"):
-        try:
-            from app.services.websocket_manager import group_ws_manager
-            from app.models.database import Group
-            clean_gid = thread_id.replace("group_", "")
-            group_obj = db.query(Group).filter((Group.id == thread_id) | (Group.id == clean_gid)).first()
-            if group_obj:
-                group_ws_manager.broadcast_sync(group_obj.id, {
-                    "event": "CHAT_MESSAGE",
-                    "group_id": group_obj.id,
-                    "title": "Nuovo messaggio nel gruppo"
-                })
-        except Exception:
-            pass
+    # Nota: I messaggi di conversazione/domande all'assistente nel gruppo sono privati per l'utente richiedente.
+    # Non vengono inviati in broadcast WebSocket a tutto il gruppo (gli altri utenti non li vedono).
 
     chat_response.created_at = datetime.now(timezone.utc).isoformat()
     return chat_response

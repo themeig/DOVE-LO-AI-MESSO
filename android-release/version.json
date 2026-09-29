@@ -1,7 +1,7 @@
 {
-  "version_code": 333,
-  "version_name": "2.17.0",
+  "version_code": 334,
+  "version_name": "2.17.1",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "👥 Simulatore Multi-Utente, Split-Screen & Finestre Desktop Indipendenti: Sistema completo di simulazione per testare contemporaneamente sullo stesso computer più utenti (Marco Rossi, Laura Bianchi, Giuseppe Verdi) collegati allo stesso gruppo condiviso con sincronizzazione istantanea via WebSocket, vista Dual Split-Screen (/simulator/split) e profili sessione isolati."
+  "release_notes": "🔒 Privacy Chat di Gruppo & Notifiche Condivise: Domande e risposte personali con l'assistente visibili solo all'autore; notifiche chiare con nome autore per inserimento documenti ('X ha inserito questo documento') e quietanza bollette ('X ha pagato la bolletta') condivisi in tempo reale con tutti i partecipanti."
 }
 

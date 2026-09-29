@@ -3,7 +3,7 @@ import logging
 import re
 import time
 import unicodedata
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -14,6 +14,7 @@ from app.models.database import get_db, Document, ChatMessage, GoogleDriveCreden
 from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDeleteResponse, UnzipVaultRequest
 from app.services.websocket_manager import group_ws_manager
 from app.services.ai_service import get_ai_service
+from app.services.auth_service import get_optional_user
 from app.services.document_service import (
     save_uploaded_file,
     read_decrypted_file,
@@ -145,30 +146,46 @@ def _process_and_save_single_doc(
 async def upload_document(
     file: UploadFile = File(...),
     thread_id: str = Form("general"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_optional_user)
 ):
     contents = await file.read()
     filename = file.filename or "upload.bin"
     content_type = file.content_type or "application/octet-stream"
 
+    uploader_name = (current_user.get("full_name") or current_user.get("email") or "Un utente") if current_user else "Un utente"
+    uploader_id = current_user.get("id") if current_user else None
+
     doc = _process_and_save_single_doc(contents, filename, content_type, thread_id, db)
+    if uploader_id:
+        doc.user_id = uploader_id
     db.commit()
     db.refresh(doc)
+
+    is_group = bool(doc.group_id or (thread_id and thread_id not in ("general", "all")))
 
     is_zip = doc.file_type == "zip" or doc.doc_type == "archivio_zip" or filename.lower().endswith(".zip")
     if doc.status == "quietanzato":
         amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
-        chat_reply = f"📄 Ho registrato e archiviato il documento come già saldato/quietanzato: **{doc.title}**{amount_str}.\n💡 {doc.summary}"
+        if is_group:
+            chat_reply = f"✅ **{uploader_name}** ha inserito questo documento già quietanzato: **{doc.title}**{amount_str}.\n💡 {doc.summary}"
+        else:
+            chat_reply = f"📄 Ho registrato e archiviato il documento come già saldato/quietanzato: **{doc.title}**{amount_str}.\n💡 {doc.summary}"
     elif doc.status == "da_pagare":
         amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
         due_str = f" con scadenza {doc.due_date.strftime('%d/%m/%Y')}" if doc.due_date else ""
-        if doc.amount is not None:
+        if is_group:
+            chat_reply = f"📎 **{uploader_name}** ha inserito questo documento da saldare: **{doc.title}**{amount_str}{due_str}."
+        elif doc.amount is not None:
             chat_reply = f"📄 Ho registrato la spesa/scadenza da saldare: {doc.title}{amount_str}{due_str}."
         else:
             chat_reply = f"📄 Ho registrato il documento con scadenza attiva: {doc.title}{due_str}."
     elif doc.due_date is not None:
         due_str = f" con scadenza promemoria {doc.due_date.strftime('%d/%m/%Y')}"
-        chat_reply = f"📄 Ho registrato e archiviato il documento: **{doc.title}**{due_str}.\n💡 {doc.summary}"
+        if is_group:
+            chat_reply = f"📎 **{uploader_name}** ha inserito questo documento: **{doc.title}**{due_str}.\n💡 {doc.summary}"
+        else:
+            chat_reply = f"📄 Ho registrato e archiviato il documento: **{doc.title}**{due_str}.\n💡 {doc.summary}"
     elif is_zip:
         chat_reply = (
             f"📦 Ho archiviato l'archivio compresso: **{doc.title}**.\n"
@@ -178,7 +195,9 @@ async def upload_document(
     else:
         is_scan = "scansion" in filename.lower()
         should_ask_rename = doc.doc_type in ["foto", "foto_oggetto", "oggetto_fisico", "screenshot"] and not is_scan
-        if should_ask_rename:
+        if is_group:
+            chat_reply = f"📎 **{uploader_name}** ha inserito questo documento: **{doc.title}**.\n💡 {doc.summary}"
+        elif should_ask_rename:
             chat_reply = (
                 f"📸 Ho analizzato e salvato il file nel caveau come: **{doc.title}**.\n"
                 f"💡 {doc.summary}\n\n"
@@ -214,11 +233,15 @@ async def upload_document(
         "subfolder": doc.subfolder
     }
 
+    user_msg_content = f"📎 **{uploader_name}** ha inserito questo documento: **{doc.title}**" if is_group else f"Caricato file: {filename}"
+
     user_msg = ChatMessage(
         thread_id=thread_id,
         sender="user",
         message_type="document",
-        content=f"Caricato file: {filename}",
+        content=user_msg_content,
+        user_id=uploader_id,
+        is_shared=True,
         metadata_json=json.dumps({
             "document_id": doc.id,
             "file_name": filename,
@@ -226,7 +249,11 @@ async def upload_document(
             "download_url": f"/api/documents/{doc.id}/download",
             "file_type": doc.file_type,
             "file_size": len(contents),
-            "documents": [doc_info]
+            "documents": [doc_info],
+            "uploader_name": uploader_name,
+            "user_name": uploader_name,
+            "user_id": uploader_id,
+            "is_shared": True
         })
     )
     asst_msg = ChatMessage(
@@ -234,10 +261,16 @@ async def upload_document(
         sender="assistant",
         message_type="document",
         content=chat_reply,
+        user_id=uploader_id,
+        is_shared=True,
         metadata_json=json.dumps({
             "document_id": doc.id,
             "documents": [doc_info],
-            "routed_model": routed_model
+            "routed_model": routed_model,
+            "uploader_name": uploader_name,
+            "user_name": uploader_name,
+            "user_id": uploader_id,
+            "is_shared": True
         })
     )
     db.add(user_msg)
@@ -251,28 +284,32 @@ async def upload_document(
                 db=db,
                 group_id=doc.group_id,
                 event_type="DOCUMENT_UPLOADED",
-                title=f"Nuovo atto protocollato: {doc.title}",
+                title=f"📎 {uploader_name} ha inserito questo documento: {doc.title}",
                 content=f"È stato archiviato un nuovo documento '{doc.title}'" + (f" ({doc.amount:.2f} €)" if doc.amount else ""),
                 document_id=doc.id,
+                actor_user_id=uploader_id,
+                actor_name=uploader_name,
                 payload={
                     "document_id": doc.id,
                     "title": doc.title,
                     "amount": doc.amount,
                     "due_date": doc.due_date.isoformat() if doc.due_date else None,
-                    "status": doc.status
+                    "status": doc.status,
+                    "uploader_name": uploader_name
                 }
             )
             await group_ws_manager.broadcast(doc.group_id, {
                 "event": "DOCUMENT_UPLOADED",
                 "group_id": doc.group_id,
-                "title": f"Nuovo atto protocollato: {doc.title}",
+                "title": f"📎 {uploader_name} ha inserito questo documento: {doc.title}",
                 "document_id": doc.id,
                 "data": {
                     "document_id": doc.id,
                     "title": doc.title,
                     "amount": doc.amount,
                     "due_date": doc.due_date.isoformat() if doc.due_date else None,
-                    "status": doc.status
+                    "status": doc.status,
+                    "uploader_name": uploader_name
                 }
             })
         except Exception as e:
@@ -302,7 +339,8 @@ async def upload_document(
 async def upload_multipage_photos(
     files: List[UploadFile] = File(...),
     thread_id: str = Form("general"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_optional_user)
 ):
     """Compila più foto acquisite da cellulare in un unico documento PDF multipagina standard."""
     if not files:
@@ -317,6 +355,9 @@ async def upload_multipage_photos(
     if not image_bytes_list:
         raise HTTPException(status_code=400, detail="Nessun dato immagine valido da elaborare.")
 
+    uploader_name = (current_user.get("full_name") or current_user.get("email") or "Un utente") if current_user else "Un utente"
+    uploader_id = current_user.get("id") if current_user else None
+
     from app.services.document_service import compile_images_to_pdf
     try:
         pdf_bytes = compile_images_to_pdf(image_bytes_list)
@@ -325,18 +366,31 @@ async def upload_multipage_photos(
 
     filename = f"scansione_{len(image_bytes_list)}_pagine_{int(time.time())}.pdf"
     doc = _process_and_save_single_doc(pdf_bytes, filename, "application/pdf", thread_id, db)
+    if uploader_id:
+        doc.user_id = uploader_id
     db.commit()
     db.refresh(doc)
 
+    is_group = bool(doc.group_id or (thread_id and thread_id not in ("general", "all")))
+
     if doc.status == "quietanzato":
         amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
-        chat_reply = f"📄 Ho protocollato e archiviato il documento multipagina ({len(image_bytes_list)} foto) come quietanzato: **{doc.title}**{amount_str}.\n💡 {doc.summary}"
+        if is_group:
+            chat_reply = f"✅ **{uploader_name}** ha inserito questo documento multipagina ({len(image_bytes_list)} foto) come quietanzato: **{doc.title}**{amount_str}.\n💡 {doc.summary}"
+        else:
+            chat_reply = f"📄 Ho protocollato e archiviato il documento multipagina ({len(image_bytes_list)} foto) come quietanzato: **{doc.title}**{amount_str}.\n💡 {doc.summary}"
     elif doc.status == "da_pagare":
         amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
         due_str = f" con scadenza {doc.due_date.strftime('%d/%m/%Y')}" if doc.due_date else ""
-        chat_reply = f"📄 Ho registrato la spesa/scadenza multipagina ({len(image_bytes_list)} foto): **{doc.title}**{amount_str}{due_str}."
+        if is_group:
+            chat_reply = f"📎 **{uploader_name}** ha inserito questa spesa multipagina ({len(image_bytes_list)} foto) da saldare: **{doc.title}**{amount_str}{due_str}."
+        else:
+            chat_reply = f"📄 Ho registrato la spesa/scadenza multipagina ({len(image_bytes_list)} foto): **{doc.title}**{amount_str}{due_str}."
     else:
-        chat_reply = f"📄 Ho unito e analizzato le {len(image_bytes_list)} foto in un unico documento: **{doc.title}**.\n💡 {doc.summary}"
+        if is_group:
+            chat_reply = f"📎 **{uploader_name}** ha inserito questo documento multipagina ({len(image_bytes_list)} foto): **{doc.title}**.\n💡 {doc.summary}"
+        else:
+            chat_reply = f"📄 Ho unito e analizzato le {len(image_bytes_list)} foto in un unico documento: **{doc.title}**.\n💡 {doc.summary}"
 
     active_model = get_app_setting(db, "ai_model", default=get_settings().OPENROUTER_MODEL) or "auto"
     routed_model = "google/gemini-2.5-flash-lite" if active_model == "auto" else active_model
@@ -363,11 +417,15 @@ async def upload_multipage_photos(
         "subfolder": doc.subfolder
     }
 
+    user_msg_content = f"📎 **{uploader_name}** ha inserito questo documento multipagina: **{doc.title}**" if is_group else f"📸 Acquisite {len(image_bytes_list)} foto unite in documento unico: {filename}"
+
     user_msg = ChatMessage(
         thread_id=thread_id,
         sender="user",
         message_type="document",
-        content=f"📸 Acquisite {len(image_bytes_list)} foto unite in documento unico: {filename}",
+        content=user_msg_content,
+        user_id=uploader_id,
+        is_shared=True,
         metadata_json=json.dumps({
             "document_id": doc.id,
             "file_name": filename,
@@ -375,7 +433,11 @@ async def upload_multipage_photos(
             "download_url": f"/api/documents/{doc.id}/download",
             "file_type": doc.file_type,
             "file_size": len(pdf_bytes),
-            "documents": [doc_info]
+            "documents": [doc_info],
+            "uploader_name": uploader_name,
+            "user_name": uploader_name,
+            "user_id": uploader_id,
+            "is_shared": True
         })
     )
     asst_msg = ChatMessage(
@@ -383,10 +445,16 @@ async def upload_multipage_photos(
         sender="assistant",
         message_type="document",
         content=chat_reply,
+        user_id=uploader_id,
+        is_shared=True,
         metadata_json=json.dumps({
             "document_id": doc.id,
             "documents": [doc_info],
-            "routed_model": routed_model
+            "routed_model": routed_model,
+            "uploader_name": uploader_name,
+            "user_name": uploader_name,
+            "user_id": uploader_id,
+            "is_shared": True
         })
     )
     db.add(user_msg)
@@ -400,28 +468,32 @@ async def upload_multipage_photos(
                 db=db,
                 group_id=doc.group_id,
                 event_type="DOCUMENT_UPLOADED",
-                title=f"Nuovo atto protocollato: {doc.title}",
+                title=f"📎 {uploader_name} ha inserito questo documento: {doc.title}",
                 content=f"È stato archiviato un nuovo documento '{doc.title}'" + (f" ({doc.amount:.2f} €)" if doc.amount else ""),
                 document_id=doc.id,
+                actor_user_id=uploader_id,
+                actor_name=uploader_name,
                 payload={
                     "document_id": doc.id,
                     "title": doc.title,
                     "amount": doc.amount,
                     "due_date": doc.due_date.isoformat() if doc.due_date else None,
-                    "status": doc.status
+                    "status": doc.status,
+                    "uploader_name": uploader_name
                 }
             )
             await group_ws_manager.broadcast(doc.group_id, {
                 "event": "DOCUMENT_UPLOADED",
                 "group_id": doc.group_id,
-                "title": f"Nuovo atto protocollato: {doc.title}",
+                "title": f"📎 {uploader_name} ha inserito questo documento: {doc.title}",
                 "document_id": doc.id,
                 "data": {
                     "document_id": doc.id,
                     "title": doc.title,
                     "amount": doc.amount,
                     "due_date": doc.due_date.isoformat() if doc.due_date else None,
-                    "status": doc.status
+                    "status": doc.status,
+                    "uploader_name": uploader_name
                 }
             })
         except Exception as e:
@@ -450,10 +522,14 @@ async def upload_multipage_photos(
 async def upload_documents_batch(
     files: List[UploadFile] = File(...),
     thread_id: str = Form("general"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_optional_user)
 ):
     if not files:
         raise HTTPException(status_code=400, detail="Nessun file fornito per il caricamento.")
+
+    uploader_name = (current_user.get("full_name") or current_user.get("email") or "Un utente") if current_user else "Un utente"
+    uploader_id = current_user.get("id") if current_user else None
 
     saved_docs: List[Document] = []
     file_names: List[str] = []
@@ -466,6 +542,8 @@ async def upload_documents_batch(
         content_type = f.content_type or "application/octet-stream"
 
         doc = _process_and_save_single_doc(contents, clean_filename, content_type, thread_id, db)
+        if uploader_id:
+            doc.user_id = uploader_id
         saved_docs.append(doc)
         file_names.append(clean_filename)
 
@@ -542,7 +620,7 @@ async def upload_documents_batch(
             "title": d.title,
             "issuer": d.issuer,
             "amount": d.amount,
-            "due_date": d.due_date.isoformat() if d.due_date else None,
+            "due_date": doc.due_date.isoformat() if doc.due_date else None,
             "status": d.status,
             "file_url": f"/uploads/{fn}",
             "download_url": f"/api/documents/{d.id}/download",
@@ -557,14 +635,23 @@ async def upload_documents_batch(
             "subfolder": d.subfolder
         })
 
+    is_group = bool(thread_id and thread_id not in ("general", "all"))
+    user_msg_content = f"📎 **{uploader_name}** ha inserito {total_count} documenti nel gruppo: {user_names_str}" if is_group else f"Caricati {total_count} file: {user_names_str}"
+
     user_msg = ChatMessage(
         thread_id=thread_id,
         sender="user",
         message_type="document",
-        content=f"Caricati {total_count} file: {user_names_str}",
+        content=user_msg_content,
+        user_id=uploader_id,
+        is_shared=True,
         metadata_json=json.dumps({
             "document_ids": doc_ids,
-            "documents": docs_output
+            "documents": docs_output,
+            "uploader_name": uploader_name,
+            "user_name": uploader_name,
+            "user_id": uploader_id,
+            "is_shared": True
         })
     )
     asst_msg = ChatMessage(
@@ -572,10 +659,16 @@ async def upload_documents_batch(
         sender="assistant",
         message_type="document",
         content=chat_reply,
+        user_id=uploader_id,
+        is_shared=True,
         metadata_json=json.dumps({
             "document_ids": doc_ids,
             "documents": docs_output,
-            "routed_model": routed_model
+            "routed_model": routed_model,
+            "uploader_name": uploader_name,
+            "user_name": uploader_name,
+            "user_id": uploader_id,
+            "is_shared": True
         })
     )
     db.add(user_msg)
@@ -588,8 +681,8 @@ async def upload_documents_batch(
             await group_ws_manager.broadcast(thread_id, {
                 "event": "DOCUMENT_UPLOADED",
                 "group_id": thread_id,
-                "title": f"Nuovi atti protocollati ({total_count} documenti)",
-                "data": {"count": total_count, "document_ids": doc_ids}
+                "title": f"📎 {uploader_name} ha inserito {total_count} documenti",
+                "data": {"count": total_count, "document_ids": doc_ids, "uploader_name": uploader_name}
             })
         except Exception as e:
             logger.warning(f"Errore broadcast batch su gruppo {thread_id}: {e}")
@@ -910,52 +1003,88 @@ def save_to_downloads(document_id: int, db: Session = Depends(get_db)):
 async def update_document_status(
     document_id: int,
     payload: DocumentStatusUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_optional_user)
 ):
     doc = db.query(Document).filter(Document.id == document_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Documento non trovato")
 
     doc.status = payload.status
+    payer_name = (current_user.get("full_name") or current_user.get("email") or "Un utente") if current_user else "Un utente"
+    payer_id = current_user.get("id") if current_user else None
+
+    if payload.status == "quietanzato":
+        if payer_id:
+            doc.paid_by_user_id = payer_id
+        doc.paid_at = datetime.now(timezone.utc)
+
     db.commit()
     db.refresh(doc)
 
-    # Se l'atto appartiene a un gruppo ed è stato pagato/quietanzato, registra nel registro operativo condiviso
-    if doc.group_id and payload.status == "quietanzato":
-        try:
-            from app.services.activity_service import record_activity_event
-            record_activity_event(
-                db=db,
-                group_id=doc.group_id,
-                event_type="DOCUMENT_PAID",
-                title=f"Atto quietanzato: {doc.title}",
-                content=f"Il documento '{doc.title}' è stato registrato come quietanzato/saldato.",
-                document_id=doc.id,
-                payload={"amount": doc.amount, "due_date": doc.due_date.isoformat() if doc.due_date else None}
-            )
+    # Se l'atto appartiene a un gruppo/canale ed è stato pagato/quietanzato, registra nel registro operativo condiviso
+    target_channel_id = doc.group_id or (doc.thread_id if doc.thread_id and doc.thread_id not in ("general", "all") else None)
+    if not target_channel_id and doc.thread_id:
+        th = db.query(ChatThread).filter(ChatThread.id == doc.thread_id).first()
+        if th and th.thread_type == "group":
+            target_channel_id = th.id
 
-            # Inserisci messaggio ufficiale nel thread della chat di gruppo
+    if target_channel_id and payload.status == "quietanzato":
+        try:
+            amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
+            msg_content = f"💳 **{payer_name}** ha pagato la bolletta: **{doc.title}**{amount_str} (Atto Quietanzato)."
+
+            if doc.group_id:
+                try:
+                    from app.services.activity_service import record_activity_event
+                    record_activity_event(
+                        db=db,
+                        group_id=doc.group_id,
+                        actor_user_id=payer_id,
+                        actor_name=payer_name,
+                        event_type="DOCUMENT_PAID",
+                        title=f"💳 {payer_name} ha pagato la bolletta: {doc.title}",
+                        content=msg_content,
+                        document_id=doc.id,
+                        payload={"amount": doc.amount, "due_date": doc.due_date.isoformat() if doc.due_date else None, "payer_name": payer_name}
+                    )
+                except Exception as act_err:
+                    logger.warning(f"Errore record_activity_event: {act_err}")
+
+            # Inserisci messaggio ufficiale nel thread della chat di gruppo visibile a tutti
             sys_msg = ChatMessage(
-                thread_id=doc.group_id,
+                thread_id=target_channel_id,
                 sender="assistant",
-                message_type="document",
-                content=f"🟢 **Atto Quietanzato**: Il documento **{doc.title}**" + (f" ({doc.amount:.2f} €)" if doc.amount else "") + " è stato saldato e archiviato.",
-                metadata_json=json.dumps({"document_id": doc.id, "status": "quietanzato"})
+                message_type="payment",
+                content=msg_content,
+                user_id=payer_id,
+                is_shared=True,
+                metadata_json=json.dumps({
+                    "document_id": doc.id,
+                    "status": "quietanzato",
+                    "payer_name": payer_name,
+                    "payer_id": payer_id,
+                    "amount": doc.amount,
+                    "is_shared": True
+                })
             )
             db.add(sys_msg)
             db.commit()
 
             # Broadcast WebSocket in tempo reale a tutti i membri collegati
-            await group_ws_manager.broadcast(doc.group_id, {
+            await group_ws_manager.broadcast(target_channel_id, {
                 "event": "DOCUMENT_PAID",
-                "group_id": doc.group_id,
-                "title": f"Atto quietanzato: {doc.title}",
+                "group_id": target_channel_id,
+                "title": f"💳 {payer_name} ha pagato la bolletta: {doc.title}",
                 "document_id": doc.id,
                 "data": {
                     "document_id": doc.id,
                     "title": doc.title,
                     "amount": doc.amount,
-                    "status": "quietanzato"
+                    "status": "quietanzato",
+                    "payer_name": payer_name,
+                    "payer_id": payer_id,
+                    "message": msg_content
                 }
             })
         except Exception as e:

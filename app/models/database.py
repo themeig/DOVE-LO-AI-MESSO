@@ -222,6 +222,8 @@ class ChatMessage(Base):
     content = Column(EncryptedText, nullable=False)
     metadata_json = Column(EncryptedText, nullable=True)
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    user_id = Column(String(100), nullable=True, index=True)
+    is_shared = Column(Boolean, default=True)
 
 
 class UIEvent(Base):
@@ -317,6 +319,18 @@ def init_db(engine=None):
             if "user_id" not in cols:
                 conn.execute(text("ALTER TABLE physical_items ADD COLUMN user_id VARCHAR(100)"))
                 conn.commit()
+
+        # Ensure user_id, is_shared in chat_messages
+        if "chat_messages" in table_names:
+            cols = [c["name"] for c in inspector.get_columns("chat_messages")]
+            if "user_id" not in cols:
+                conn.execute(text("ALTER TABLE chat_messages ADD COLUMN user_id VARCHAR(100)"))
+                conn.commit()
+            if "is_shared" not in cols:
+                conn.execute(text("ALTER TABLE chat_messages ADD COLUMN is_shared BOOLEAN DEFAULT 1"))
+                conn.commit()
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_chat_messages_user_id ON chat_messages(user_id)"))
+            conn.commit()
 
         # Ensure physical_item_id, is_local_file, original_path, group_id, user_id in documents
         if "documents" in table_names:
