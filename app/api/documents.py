@@ -1,3 +1,5 @@
+import asyncio
+import concurrent.futures
 import json
 import logging
 import re
@@ -11,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.models.database import get_db, Document, ChatMessage, GoogleDriveCredential, get_app_setting, ChatThread, Group
-from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDeleteResponse, UnzipVaultRequest
+from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDeleteResponse, UnzipVaultRequest, ExtractedDocument
 from app.services.websocket_manager import group_ws_manager
 from app.services.ai_service import get_ai_service
 from app.services.auth_service import get_optional_user
@@ -34,21 +36,35 @@ router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 
 
-def _process_and_save_single_doc(
+def _extract_and_prepare_file_payload(
     contents: bytes,
     filename: str,
     content_type: str,
     thread_id: str,
-    db: Session
-) -> Document:
-    # 1. Read file contents and save to disk
+    drive_creds_info: Optional[dict] = None
+) -> dict:
+    """
+    Esegue la cifratura locale, l'estrazione AI e la preparazione dei metadati di un file.
+    Funzione thread-safe e I/O-bound ottimizzata per l'esecuzione in parallelo (ThreadPoolExecutor).
+    Non effettua accessi concorrenti al database SQLite.
+    """
+    # 1. Salva e cifra il file localmente su disco
     saved_path = save_uploaded_file(contents, filename)
 
-    # 2. Extract structured data with AI service
+    # 2. Estrazione dati strutturati con modello AI
     ai_service = get_ai_service()
-    extracted = ai_service.extract_document(contents, content_type, filename=filename)
+    try:
+        extracted = ai_service.extract_document(contents, content_type, filename=filename)
+    except Exception as e:
+        logger.warning(f"Errore estrazione AI per '{filename}': {e}. Fallback generico.")
+        extracted = ExtractedDocument(
+            title="",
+            doc_type="generico",
+            summary="File archiviato nel caveau.",
+            tags=[]
+        )
 
-    # 3. Parse due_date (YYYY-MM-DD -> date)
+    # 3. Parse data di scadenza (YYYY-MM-DD -> date)
     due_date_obj = None
     if extracted.due_date:
         try:
@@ -56,15 +72,13 @@ def _process_and_save_single_doc(
         except ValueError:
             due_date_obj = None
 
-    # 4. Determine file type and title
+    # 4. Determinazione tipo file e titolo con sanitizzazione anti-allucinazione
     file_ext = Path(filename).suffix.lstrip(".").lower() or "bin"
     clean_stem = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
     if clean_stem:
         clean_stem = clean_stem[0].upper() + clean_stem[1:]
     raw_title = (extracted.title or "").strip()
 
-    # Sanitizzazione anti-allucinazione del titolo (specialmente per modelli rapidi come Gemini Flash):
-    # Rimuove prefissi o frasi degenerate come "Riassunto del...", "Sintesi di...", "Descrizione di..."
     cleaned_title = raw_title
     summary_prefixes = (
         "riassunto", "sintesi", "estratto", "sommario", "descrizione", "panoramica", "analisi"
@@ -82,7 +96,6 @@ def _process_and_save_single_doc(
         else:
             cleaned_title = ""
 
-    # Se il titolo è eccessivamente prolisso (più di 9 parole o oltre 75 caratteri), si tratta di una frase riassuntiva
     if len(cleaned_title.split()) > 9 or len(cleaned_title) > 75:
         cleaned_title = ""
 
@@ -93,27 +106,22 @@ def _process_and_save_single_doc(
         else:
             title = f"Foto {clean_stem}" if file_ext in ["jpg", "jpeg", "png", "webp"] else (clean_stem or filename)
 
-    # 5. Save Document in DB (autonomia semantica e gestione quietanze/pagamenti)
+    # 5. Determinazione stato di pagamento
     doc_status = determine_document_status(extracted, due_date_obj)
 
+    # 6. Sincronizzazione opzionale su Google Drive (eseguibile in parallelo nel thread)
     drive_file_id = None
     drive_web_url = None
     drive_folder_str = None
-    active_cred = db.query(GoogleDriveCredential).first()
-    if active_cred and getattr(active_cred, "storage_mode", "dual") != "local_only":
+    if drive_creds_info and drive_creds_info.get("access_token"):
         try:
             drive_service = get_drive_service()
-            chat_folder = "Generale"
-            if thread_id and thread_id not in ("general", "all"):
-                th = db.query(ChatThread).filter(ChatThread.id == thread_id).first()
-                chat_folder = sanitize_drive_folder_name(th.name if th else thread_id, thread_id=thread_id)
-
             folder_path = resolve_drive_folder_path(
                 extracted.doc_type,
                 due_date_obj,
                 category_label=extracted.category_label,
                 subfolder=extracted.subfolder,
-                chat_folder=chat_folder,
+                chat_folder=drive_creds_info.get("chat_folder", "Generale"),
             )
             clean_filename = Path(filename).name
             drive_res = drive_service.upload_file(
@@ -121,7 +129,7 @@ def _process_and_save_single_doc(
                 filename=clean_filename,
                 mime_type=content_type,
                 folder_path=folder_path,
-                access_token=active_cred.access_token
+                access_token=drive_creds_info["access_token"]
             )
             drive_file_id = drive_res.get("file_id")
             drive_web_url = drive_res.get("web_view_link")
@@ -129,6 +137,46 @@ def _process_and_save_single_doc(
         except Exception as e:
             logger.warning(f"Errore durante l'upload su Google Drive per '{filename}': {e}")
             drive_folder_str = None
+
+    return {
+        "saved_path": saved_path,
+        "filename": filename,
+        "file_ext": file_ext,
+        "title": title,
+        "doc_type": extracted.doc_type,
+        "issuer": extracted.issuer,
+        "amount": extracted.amount,
+        "due_date_obj": due_date_obj,
+        "doc_status": doc_status,
+        "summary": extracted.summary,
+        "drive_file_id": drive_file_id,
+        "drive_web_url": drive_web_url,
+        "drive_folder_str": drive_folder_str,
+        "category": extracted.category,
+        "category_label": extracted.category_label,
+        "category_icon": extracted.category_icon,
+        "subfolder": extracted.subfolder,
+    }
+
+
+def _process_and_save_single_doc(
+    contents: bytes,
+    filename: str,
+    content_type: str,
+    thread_id: str,
+    db: Session
+) -> Document:
+    active_cred = db.query(GoogleDriveCredential).first()
+    drive_creds_info = None
+    if active_cred and getattr(active_cred, "storage_mode", "dual") != "local_only":
+        chat_folder = "Generale"
+        if thread_id and thread_id not in ("general", "all"):
+            th = db.query(ChatThread).filter(ChatThread.id == thread_id).first()
+            chat_folder = sanitize_drive_folder_name(th.name if th else thread_id, thread_id=thread_id)
+        drive_creds_info = {
+            "access_token": active_cred.access_token,
+            "chat_folder": chat_folder
+        }
 
     target_group_id = None
     if thread_id and thread_id not in ("general", "all"):
@@ -140,32 +188,32 @@ def _process_and_save_single_doc(
             if th and th.thread_type == "group":
                 target_group_id = th.id
 
+    prep = _extract_and_prepare_file_payload(contents, filename, content_type, thread_id, drive_creds_info)
+
     doc = Document(
         thread_id=thread_id,
         group_id=target_group_id,
-        title=title,
-        file_path=saved_path,
-        file_type=file_ext,
-        doc_type=extracted.doc_type,
-        issuer=extracted.issuer,
-        amount=extracted.amount,
-        due_date=due_date_obj,
-        status=doc_status,
-        summary=extracted.summary,
-        drive_file_id=drive_file_id,
-        drive_web_url=drive_web_url,
-        drive_folder_path=drive_folder_str,
-        category=extracted.category,
-        category_label=extracted.category_label,
-        category_icon=extracted.category_icon,
-        subfolder=extracted.subfolder
+        title=prep["title"],
+        file_path=prep["saved_path"],
+        file_type=prep["file_ext"],
+        doc_type=prep["doc_type"],
+        issuer=prep["issuer"],
+        amount=prep["amount"],
+        due_date=prep["due_date_obj"],
+        status=prep["doc_status"],
+        summary=prep["summary"],
+        drive_file_id=prep["drive_file_id"],
+        drive_web_url=prep["drive_web_url"],
+        drive_folder_path=prep["drive_folder_str"],
+        category=prep["category"],
+        category_label=prep["category_label"],
+        category_icon=prep["category_icon"],
+        subfolder=prep["subfolder"]
     )
     db.add(doc)
     db.flush()
 
-    # Sincronizzazione automatica con Google Calendar se data di scadenza presente e account collegato
     auto_sync_calendar_event(doc, db)
-
     return doc
 
 
@@ -560,26 +608,90 @@ async def upload_documents_batch(
     uploader_name = (current_user.get("full_name") or current_user.get("email") or "Un utente") if current_user else "Un utente"
     uploader_id = current_user.get("id") if current_user else None
 
-    saved_docs: List[Document] = []
-    file_names: List[str] = []
-
+    # 1. Lettura asincrona di tutti i file inviati
+    file_payloads = []
+    file_names = []
     for f in files:
         contents = await f.read()
         filename = f.filename or "upload.bin"
-        # Rimuove percorsi relativi se presenti da cartelle (es. "Fatture/sub/doc.pdf" -> "doc.pdf")
         clean_filename = Path(filename).name
         content_type = f.content_type or "application/octet-stream"
-
-        doc = _process_and_save_single_doc(contents, clean_filename, content_type, thread_id, db)
-        if uploader_id:
-            doc.user_id = uploader_id
-        saved_docs.append(doc)
+        file_payloads.append((contents, clean_filename, content_type))
         file_names.append(clean_filename)
 
-    doc_ids = [d.id for d in saved_docs if d.id]
+    # 2. Informazioni Google Drive e Chat Thread (risolti una volta sola dal DB)
+    active_cred = db.query(GoogleDriveCredential).first()
+    drive_creds_info = None
+    if active_cred and getattr(active_cred, "storage_mode", "dual") != "local_only":
+        chat_folder = "Generale"
+        if thread_id and thread_id not in ("general", "all"):
+            th = db.query(ChatThread).filter(ChatThread.id == thread_id).first()
+            chat_folder = sanitize_drive_folder_name(th.name if th else thread_id, thread_id=thread_id)
+        drive_creds_info = {
+            "access_token": active_cred.access_token,
+            "chat_folder": chat_folder
+        }
+
+    target_group_id = None
+    if thread_id and thread_id not in ("general", "all"):
+        grp = db.query(Group).filter(Group.id == thread_id).first()
+        if grp:
+            target_group_id = grp.id
+        else:
+            th = db.query(ChatThread).filter(ChatThread.id == thread_id).first()
+            if th and th.thread_type == "group":
+                target_group_id = th.id
+
+    # 3. Analisi AI e cifratura in parallelo su worker pool dedicato
+    loop = asyncio.get_running_loop()
+    max_workers = max(1, min(len(file_payloads), 8))
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [
+            loop.run_in_executor(
+                executor,
+                _extract_and_prepare_file_payload,
+                contents,
+                clean_fn,
+                c_type,
+                thread_id,
+                drive_creds_info
+            )
+            for contents, clean_fn, c_type in file_payloads
+        ]
+        prepared_docs = await asyncio.gather(*futures)
+
+    # 4. Inserimento atomico e sequenziale su SQLite (senza lock o conflitti di concorrenza)
+    saved_docs: List[Document] = []
+    for prep in prepared_docs:
+        doc = Document(
+            thread_id=thread_id,
+            group_id=target_group_id,
+            user_id=uploader_id,
+            title=prep["title"],
+            file_path=prep["saved_path"],
+            file_type=prep["file_ext"],
+            doc_type=prep["doc_type"],
+            issuer=prep["issuer"],
+            amount=prep["amount"],
+            due_date=prep["due_date_obj"],
+            status=prep["doc_status"],
+            summary=prep["summary"],
+            drive_file_id=prep["drive_file_id"],
+            drive_web_url=prep["drive_web_url"],
+            drive_folder_path=prep["drive_folder_str"],
+            category=prep["category"],
+            category_label=prep["category_label"],
+            category_icon=prep["category_icon"],
+            subfolder=prep["subfolder"]
+        )
+        db.add(doc)
+        saved_docs.append(doc)
+
     db.commit()
-    if doc_ids:
-        saved_docs = db.query(Document).filter(Document.id.in_(doc_ids)).all()
+    for d in saved_docs:
+        db.refresh(d)
+        auto_sync_calendar_event(d, db)
 
     total_count = len(saved_docs)
     payable_docs = [d for d in saved_docs if d.status == "da_pagare"]
