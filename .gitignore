@@ -6,5 +6,6 @@ storage/uploads/*
 storage/vault.db
 storage/vault_meta.json
 storage/rate_limits.json
+storage/desktop_profiles/*
 .env
 .superpowers/

@@ -1,7 +1,7 @@
 {
-  "version_code": 328,
-  "version_name": "2.14.0",
+  "version_code": 329,
+  "version_name": "2.15.0",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "👤 Account in alto a destra & Creazione Rapida Gruppi Online: Tasto Account Cloud riposizionato nell'header superiore accanto alla campanella notifiche; il pulsante '+ NUOVO' della barra laterale consente ora di creare istantaneamente un nuovo Gruppo Online condiviso con codice d'invito o partecipare a un gruppo esistente."
+  "release_notes": "🖥️ Desktop Multi-Instance & Isolated Profiles: Supporto all'avvio simultaneo di finestre desktop multiple per testare la collaborazione in tempo reale nei gruppi tra account diversi. Connessione automatica al server esistente su porta 8000 e isolamento dei profili WebView2."
 }
 
