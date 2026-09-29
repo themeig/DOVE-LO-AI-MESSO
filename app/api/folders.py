@@ -138,13 +138,14 @@ def add_watched_folder(payload: WatchedFolderCreate, db: Session = Depends(get_d
 
 
 @router.post("/{folder_id}/scan", response_model=FolderScanResult)
-def scan_folder(folder_id: int, db: Session = Depends(get_db)):
-    """Avvia la scansione e l'indicizzazione dei file per la cartella specificata."""
+async def scan_folder(folder_id: int, db: Session = Depends(get_db)):
+    """Avvia la scansione e l'indicizzazione dei file per la cartella specificata (parallela)."""
+    from app.services.folder_service import scan_local_folder_async
     folder = db.query(WatchedFolder).filter(WatchedFolder.id == folder_id).first()
     if not folder:
         raise HTTPException(status_code=404, detail="Cartella non trovata")
 
-    result = scan_local_folder(folder.path, db, thread_id=folder.thread_id, watched_folder_id=folder.id)
+    result = await scan_local_folder_async(folder.path, db, thread_id=folder.thread_id, watched_folder_id=folder.id)
     return result
 
 

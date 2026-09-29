@@ -1,7 +1,9 @@
+import asyncio
 import os
 import sys
 import subprocess
 import logging
+import httpx
 from pathlib import Path
 from datetime import datetime, timezone
 import json
@@ -316,6 +318,228 @@ def scan_local_folder(
         error_count=error_count,
         details=details
     )
+
+
+async def scan_local_folder_async(
+    folder_path: str,
+    db: Session,
+    thread_id: str = "general",
+    recursive: bool = True,
+    watched_folder_id: Optional[int] = None
+) -> FolderScanResult:
+    """
+    Versione ASINCRONA e PARALLELA di scan_local_folder.
+    Fase A: tutti i file vengono analizzati dall'AI contemporaneamente
+             con httpx.AsyncClient condiviso e connection pool.
+    Fase B: scrittura DB sequenziale (sicura su SQLite WAL).
+    """
+    p = Path(folder_path)
+    if not p.exists() or not p.is_dir():
+        return FolderScanResult(
+            folder_id=watched_folder_id, folder_path=folder_path,
+            scanned_files_count=0, new_indexed_count=0,
+            skipped_count=0, error_count=1,
+            details=[f"Cartella '{folder_path}' inesistente o non valida."]
+        )
+
+    ai_service = get_ai_service(db)
+    has_async = hasattr(ai_service, "extract_document_async")
+
+    # 1. Raccolta dei file candidati e check duplicati (sincrono, veloce)
+    pattern = "**/*" if recursive else "*"
+    candidate_files: List[Path] = []
+    try:
+        for f in p.glob(pattern):
+            if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS:
+                candidate_files.append(f)
+    except Exception as e:
+        logger.error(f"Errore scansione directory {folder_path}: {e}")
+        return FolderScanResult(
+            folder_id=watched_folder_id, folder_path=folder_path,
+            scanned_files_count=0, new_indexed_count=0,
+            skipped_count=0, error_count=1,
+            details=[f"Errore lettura cartella: {str(e)}"]
+        )
+
+    scanned_count = len(candidate_files)
+    skipped_count = 0
+
+    # Filtra già indicizzati e file troppo grandi (query DB — una per file, ma sincrona e veloce)
+    files_to_process: List[Path] = []
+    for file_path in candidate_files:
+        norm_file_str = os.path.normpath(str(file_path.resolve()))
+        existing = (
+            db.query(Document)
+            .filter(
+                (Document.file_path == norm_file_str) |
+                (Document.original_path == norm_file_str) |
+                (Document.file_path == str(file_path)) |
+                (Document.original_path == str(file_path))
+            )
+            .first()
+        )
+        if existing:
+            skipped_count += 1
+            continue
+        try:
+            if file_path.stat().st_size > 40 * 1024 * 1024:
+                skipped_count += 1
+                continue
+        except Exception:
+            pass
+        files_to_process.append(file_path)
+
+    if not files_to_process:
+        norm_folder_str = os.path.normpath(str(p.resolve()))
+        _update_watched_folder(db, watched_folder_id, folder_path, norm_folder_str)
+        return FolderScanResult(
+            folder_id=watched_folder_id, folder_path=norm_folder_str,
+            scanned_files_count=scanned_count, new_indexed_count=0,
+            skipped_count=skipped_count, error_count=0, details=[]
+        )
+
+    # 2. FASE A: Estrazione AI parallela (asyncio + httpx.AsyncClient)
+    semaphore = asyncio.Semaphore(12)
+
+    async def _extract_one(client: httpx.AsyncClient, file_path: Path) -> Optional[dict]:
+        norm_file_str = os.path.normpath(str(file_path.resolve()))
+        ext = file_path.suffix.lstrip(".").lower()
+        mime_type = "application/pdf" if ext == "pdf" else f"image/{ext}"
+        try:
+            loop = asyncio.get_running_loop()
+            file_bytes = await loop.run_in_executor(None, file_path.read_bytes)
+            if has_async:
+                extracted = await ai_service.extract_document_async(client, file_bytes, mime_type, filename=file_path.name)
+            else:
+                extracted = await loop.run_in_executor(
+                    None, ai_service.extract_document, file_bytes, mime_type, file_path.name
+                )
+            due_date_obj = None
+            if extracted.due_date:
+                try:
+                    due_date_obj = datetime.strptime(extracted.due_date, "%Y-%m-%d").date()
+                except ValueError:
+                    pass
+            title = (extracted.title or "").strip()
+            if not title:
+                clean_stem = file_path.stem.replace("_", " ").replace("-", " ").strip()
+                if extracted.issuer:
+                    title = f"{extracted.doc_type.capitalize()} {extracted.issuer}".strip()
+                else:
+                    title = f"Foto {clean_stem}" if ext in ["jpg", "jpeg", "png", "webp"] else (clean_stem or file_path.name)
+            doc_status = determine_document_status(extracted, due_date_obj)
+            return {
+                "norm_file_str": norm_file_str,
+                "file_path": file_path,
+                "ext": ext,
+                "title": title,
+                "doc_type": extracted.doc_type,
+                "issuer": extracted.issuer,
+                "amount": extracted.amount,
+                "due_date_obj": due_date_obj,
+                "doc_status": doc_status,
+                "summary": extracted.summary or f"File indicizzato dalla cartella locale: {p.name}",
+                "category": extracted.category,
+                "category_label": extracted.category_label,
+                "category_icon": extracted.category_icon,
+            }
+        except Exception as err:
+            logger.error(f"Errore estrazione async {file_path.name}: {err}")
+            return {"error": str(err), "file_path": file_path}
+
+    async def _with_semaphore(client, fp):
+        async with semaphore:
+            return await _extract_one(client, fp)
+
+    async with httpx.AsyncClient(
+        limits=httpx.Limits(max_connections=20, max_keepalive_connections=10)
+    ) as client:
+        tasks = [_with_semaphore(client, fp) for fp in files_to_process]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # 3. FASE B: Scrittura DB sequenziale (sicura)
+    new_count = 0
+    error_count = 0
+    details: List[str] = []
+
+    for res in results:
+        if isinstance(res, Exception) or (isinstance(res, dict) and "error" in res):
+            error_count += 1
+            fp_name = res.get("file_path", Path("?")).name if isinstance(res, dict) else "?"
+            details.append(f"Errore su {fp_name}: {res.get('error', str(res)) if isinstance(res, dict) else str(res)}")
+            continue
+        if res is None:
+            error_count += 1
+            continue
+        try:
+            doc = Document(
+                thread_id=thread_id,
+                title=res["title"],
+                file_path=res["norm_file_str"],
+                file_type=res["ext"],
+                doc_type=res["doc_type"],
+                issuer=res["issuer"],
+                amount=res["amount"],
+                due_date=res["due_date_obj"],
+                status=res["doc_status"],
+                summary=res["summary"],
+                is_local_file=True,
+                original_path=res["norm_file_str"],
+                category=res["category"],
+                category_label=res["category_label"],
+                category_icon=res["category_icon"],
+            )
+            db.add(doc)
+            db.flush()
+            if doc.due_date:
+                try:
+                    from app.services.calendar_service import auto_sync_calendar_event
+                    auto_sync_calendar_event(doc, db)
+                except Exception as sync_err:
+                    logger.warning(f"Errore calendar sync per {res['file_path'].name}: {sync_err}")
+            new_count += 1
+            details.append(f"Indicizzato: {res['file_path'].name} -> '{res['title']}' ({res['doc_status']})")
+        except Exception as db_err:
+            logger.error(f"Errore DB per {res.get('file_path', '?')}: {db_err}")
+            error_count += 1
+            details.append(f"Errore DB su {res.get('file_path', Path('?')).name}: {str(db_err)}")
+
+    # 4. Aggiorna WatchedFolder e commit
+    norm_folder_str = os.path.normpath(str(p.resolve()))
+    _update_watched_folder(db, watched_folder_id, folder_path, norm_folder_str)
+    db.commit()
+
+    return FolderScanResult(
+        folder_id=watched_folder_id,
+        folder_path=norm_folder_str,
+        scanned_files_count=scanned_count,
+        new_indexed_count=new_count,
+        skipped_count=skipped_count,
+        error_count=error_count,
+        details=details
+    )
+
+
+def _update_watched_folder(db: Session, watched_folder_id: Optional[int], folder_path: str, norm_folder_str: str):
+    """Aggiorna o recupera la WatchedFolder nel DB dopo la scansione."""
+    watched = None
+    if watched_folder_id:
+        watched = db.query(WatchedFolder).filter(WatchedFolder.id == watched_folder_id).first()
+    if not watched:
+        watched = db.query(WatchedFolder).filter(
+            (WatchedFolder.path == norm_folder_str) | (WatchedFolder.path == folder_path)
+        ).first()
+    if watched:
+        watched.last_scanned_at = datetime.now(timezone.utc)
+        all_docs = db.query(Document).all()
+        norm_folder_lower = norm_folder_str.lower()
+        total_in_folder = sum(
+            1 for d in all_docs
+            if (d.original_path and os.path.normpath(d.original_path).lower().startswith(norm_folder_lower))
+            or (d.file_path and os.path.normpath(d.file_path).lower().startswith(norm_folder_lower))
+        )
+        watched.file_count = total_in_folder
+
 
 
 IGNORED_EXTENSIONS = {
