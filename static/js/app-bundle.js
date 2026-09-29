@@ -9956,13 +9956,14 @@
       checkDeadlineAlerts();
       checkPendingProposalsBanner();
       checkGoogleDriveStatus();
-      if (typeof checkCloudAuthStatus === 'function') {
+      // Controllo autenticazione cloud: obbligatorio per utilizzare l'applicazione
+      const savedToken = localStorage.getItem('supabase_auth_token') || sessionStorage.getItem('supabase_auth_token');
+      if (!savedToken) {
+        if (typeof openAccountModal === 'function') openAccountModal('profile', true);
+      } else if (typeof checkCloudAuthStatus === 'function') {
         checkCloudAuthStatus().then(user => {
           if (!user) {
-            // Avvio sessione: se l'utente non è autenticato nel Cloud, apri il modale di accesso
-            setTimeout(() => {
-              if (typeof openAccountModal === 'function') openAccountModal('profile');
-            }, 350);
+            if (typeof openAccountModal === 'function') openAccountModal('profile', true);
           }
         });
       }
@@ -9990,13 +9991,45 @@
     // CONTROLLER ACCOUNT & GRUPPI CONDIVISI (OLIVETTI INDUSTRIAL)
     // =========================================================================
     let currentAuthMode = 'login'; // 'login' | 'signup'
+    let accountModalIsMandatory = false;
 
-    function openAccountModal(defaultTab = 'profile') {
+    function openAccountModal(defaultTab = 'profile', isMandatory = false) {
       const modal = document.getElementById('accountModal');
+      const closeBtn = document.getElementById('accountModalCloseBtn');
+      const subtitleEl = document.getElementById('accountModalSubtitle');
+      const tabGroups = document.getElementById('tabBtnAccountGroups');
+
+      const hasUser = !!(window.currentCloudUser || localStorage.getItem('supabase_auth_token'));
+      accountModalIsMandatory = isMandatory || !hasUser;
+
+      if (closeBtn) {
+        if (accountModalIsMandatory) {
+          closeBtn.classList.add('hidden');
+        } else {
+          closeBtn.classList.remove('hidden');
+        }
+      }
+
+      if (tabGroups) {
+        if (accountModalIsMandatory) {
+          tabGroups.classList.add('opacity-40', 'pointer-events-none');
+        } else {
+          tabGroups.classList.remove('opacity-40', 'pointer-events-none');
+        }
+      }
+
+      if (subtitleEl) {
+        if (accountModalIsMandatory) {
+          subtitleEl.innerHTML = `<span class="stamp-oli stamp-terracotta text-[8px] uppercase mr-1">ACCESSO RICHIESTO</span> Effettua il login o registrati per utilizzare il Caveau`;
+        } else {
+          subtitleEl.textContent = "Accesso Cloud, profilo e registro eventi di gruppo";
+        }
+      }
+
       if (modal) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
-        switchAccountTab(defaultTab);
+        switchAccountTab(accountModalIsMandatory ? 'profile' : defaultTab);
         if (typeof checkCloudAuthStatus === 'function') {
           checkCloudAuthStatus();
         }
@@ -10005,16 +10038,30 @@
     }
     window.openAccountModal = openAccountModal;
 
-    function closeAccountModal() {
+    function closeAccountModal(force = false) {
+      if (!force && accountModalIsMandatory && !window.currentCloudUser && !localStorage.getItem('supabase_auth_token')) {
+        if (typeof showToast === 'function') {
+          showToast("⚠️ È necessario accedere o registrarsi per utilizzare il Caveau.", "warning", 3000);
+        }
+        return;
+      }
       const modal = document.getElementById('accountModal');
       if (modal) {
         modal.classList.add('hidden');
         modal.classList.remove('flex');
+        accountModalIsMandatory = false;
       }
     }
     window.closeAccountModal = closeAccountModal;
 
     function switchAccountTab(tab) {
+      if (tab === 'groups' && !window.currentCloudUser && !localStorage.getItem('supabase_auth_token')) {
+        if (typeof showToast === 'function') {
+          showToast("Accedi prima al tuo account per visualizzare i gruppi.", "warning", 2500);
+        }
+        tab = 'profile';
+      }
+
       const tabProfile = document.getElementById('tabBtnAccountProfile');
       const tabGroups = document.getElementById('tabBtnAccountGroups');
       const contentProfile = document.getElementById('tabContentProfile');
@@ -10129,6 +10176,9 @@
             showToast(currentAuthMode === 'signup' ? "✨ Account creato con successo!" : "✅ Accesso eseguito con successo!", "success", 3000);
           }
           loadUserGroupsList();
+          // Accesso completato: sblocca e chiudi il modale
+          accountModalIsMandatory = false;
+          closeAccountModal(true);
         }
       } catch (err) {
         if (errorMsg) {
@@ -10147,13 +10197,15 @@
     function handleCloudLogout() {
       localStorage.removeItem('supabase_auth_token');
       sessionStorage.removeItem('supabase_auth_token');
+      window.currentCloudUser = null;
       if (typeof checkCloudAuthStatus === 'function') {
         checkCloudAuthStatus();
       }
       if (typeof showToast === 'function') {
-        showToast("Sessione cloud terminata. Passato a modalità locale.", "info", 3000);
+        showToast("Sessione terminata. Effettua nuovamente il login per continuare.", "info", 3000);
       }
       loadUserGroupsList();
+      openAccountModal('profile', true);
     }
     window.handleCloudLogout = handleCloudLogout;
 
