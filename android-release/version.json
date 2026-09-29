@@ -1,7 +1,7 @@
 {
-  "version_code": 329,
-  "version_name": "2.15.0",
+  "version_code": 330,
+  "version_name": "2.16.0",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "🖥️ Desktop Multi-Instance & Isolated Profiles: Supporto all'avvio simultaneo di finestre desktop multiple per testare la collaborazione in tempo reale nei gruppi tra account diversi. Connessione automatica al server esistente su porta 8000 e isolamento dei profili WebView2."
+  "release_notes": "👥 Session Login Persistence, Group Participants & Live WebSocket: Persistenza del login tra riavvii di sessione, prompt automatico di accesso all'avvio, visualizzazione dei partecipanti del gruppo con modale dedicato e aggiornamento istantaneo in tempo reale dei messaggi e degli atti tramite WebSocket."
 }
 

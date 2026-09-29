@@ -37,7 +37,17 @@ def list_threads(db: Session = Depends(get_db)):
         msg_count = db.query(ChatMessage).filter(ChatMessage.thread_id == t.id).count()
 
         members_list = []
-        if t.members:
+        if t.thread_type == "group":
+            from app.models.database import GroupMember, User
+            real_members = (
+                db.query(User.full_name)
+                .join(GroupMember, GroupMember.user_id == User.id)
+                .filter(GroupMember.group_id == t.id)
+                .all()
+            )
+            if real_members:
+                members_list = [m[0] for m in real_members if m[0]]
+        if not members_list and t.members:
             try:
                 members_list = json.loads(t.members)
             except Exception:

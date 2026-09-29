@@ -109,5 +109,18 @@ def handle_chat_message(
     db.add(asst_msg)
     db.commit()
 
+    if thread_id and thread_id not in ("general", "all"):
+        try:
+            from app.services.websocket_manager import group_ws_manager
+            from app.models.database import Group
+            if db.query(Group).filter(Group.id == thread_id).first():
+                group_ws_manager.broadcast_sync(thread_id, {
+                    "event": "CHAT_MESSAGE",
+                    "group_id": thread_id,
+                    "title": "Nuovo messaggio nel gruppo"
+                })
+        except Exception:
+            pass
+
     chat_response.created_at = datetime.now(timezone.utc).isoformat()
     return chat_response

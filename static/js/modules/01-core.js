@@ -267,7 +267,7 @@
     }
 
     async function checkVaultAuth() {
-      const token = sessionStorage.getItem('vault_token');
+      const token = localStorage.getItem('vault_token') || sessionStorage.getItem('vault_token');
       try {
         const res = await fetch('/api/auth/status', {
           headers: authHeaders()
@@ -275,6 +275,7 @@
         if (res.ok) {
           const data = await res.json();
           if (data.unlocked && token) {
+            sessionStorage.setItem('vault_token', token);
             hideLockScreen();
             initApp();
             return true;
@@ -398,6 +399,7 @@
         }
         const data = await res.json();
         sessionStorage.setItem('vault_token', data.token);
+        localStorage.setItem('vault_token', data.token);
         hideLockScreen();
         initApp();
       } catch (err) {
@@ -427,6 +429,7 @@
         console.error('Errore lock vault:', e);
       }
       sessionStorage.removeItem('vault_token');
+      localStorage.removeItem('vault_token');
       showLockScreen();
     }
 

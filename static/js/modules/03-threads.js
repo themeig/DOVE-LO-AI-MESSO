@@ -192,6 +192,67 @@
       renderThreadsList();
     }
 
+    let liveGroupChatWs = null;
+
+    function connectGroupChatWebSocket(groupId) {
+      if (liveGroupChatWs) {
+        try { liveGroupChatWs.close(); } catch(e){}
+        liveGroupChatWs = null;
+      }
+      if (!groupId || groupId === 'general') return;
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/groups/${encodeURIComponent(groupId)}/ws`;
+
+      try {
+        const ws = new WebSocket(wsUrl);
+        liveGroupChatWs = ws;
+
+        ws.onopen = function() {
+          console.log(`[WebSocket] Connesso in tempo reale alla chat di gruppo: ${groupId}`);
+        };
+
+        ws.onmessage = async function(event) {
+          try {
+            const data = JSON.parse(event.data);
+            console.log("[WebSocket] Evento gruppo ricevuto:", data);
+
+            // Se l'utente è attualmente nella schermata di questo gruppo, ricarica subito i messaggi
+            if (currentThreadId === groupId) {
+              await loadThreadMessages(groupId);
+              scrollToBottom(true);
+
+              if (data.title && typeof showToast === 'function') {
+                showToast(`🔔 ${data.title}`, "info", 3500);
+              }
+              if (typeof loadDashboard === 'function') {
+                loadDashboard('all');
+              }
+            } else {
+              // Se l'utente è in un'altra chat o schermata
+              if (typeof showToast === 'function') {
+                showToast(`🔔 [Gruppo] ${data.title || 'Nuovo atto registrato'}`, "info", 4000);
+              }
+              loadThreads();
+            }
+          } catch(err) {
+            console.warn("Errore parsing messaggio WebSocket:", err);
+          }
+        };
+
+        ws.onerror = function(err) {
+          console.warn("[WebSocket] Errore connessione live chat:", err);
+        };
+
+        ws.onclose = function() {
+          if (liveGroupChatWs === ws) liveGroupChatWs = null;
+        };
+      } catch(e) {
+        console.warn("[WebSocket] Impossibile avviare connessione live:", e);
+      }
+    }
+    window.connectGroupChatWebSocket = connectGroupChatWebSocket;
+
     async function switchThread(threadId, fetchMessages = true) {
       currentThreadId = threadId;
       window.currentThreadId = threadId;
@@ -200,6 +261,19 @@
       const thread = threadsCache.find(t => t.id === threadId);
       if (thread) {
         updateActiveThreadHeader(thread);
+        if (thread.thread_type === 'group') {
+          connectGroupChatWebSocket(thread.id);
+        } else {
+          if (liveGroupChatWs) {
+            try { liveGroupChatWs.close(); } catch(e){}
+            liveGroupChatWs = null;
+          }
+        }
+      } else {
+        if (liveGroupChatWs) {
+          try { liveGroupChatWs.close(); } catch(e){}
+          liveGroupChatWs = null;
+        }
       }
       renderThreadsList();
       showConversation();
@@ -217,6 +291,8 @@
       const iconEl = document.getElementById('activeThreadIcon');
       const avatarEl = document.getElementById('activeThreadAvatar');
       const delBtn = document.getElementById('deleteThreadBtn');
+      const groupMembersBtn = document.getElementById('headerGroupMembersBtn');
+      const groupMembersBadge = document.getElementById('headerGroupMembersBadge');
 
       if (titleEl) titleEl.textContent = thread.name;
       if (iconEl) iconEl.className = `fa-solid ${thread.icon || 'fa-compass'}`;
@@ -224,12 +300,32 @@
         avatarEl.className = `w-8 h-8 rounded-xs flex items-center justify-center text-white text-xs font-bold border border-[#E3DDD1] shadow-2xs shrink-0 ${thread.color || 'bg-[#3C5A48]'}`;
       }
 
-      if (subEl) {
-        if (thread.thread_type === 'group') {
-          const mList = thread.members && thread.members.length > 0 ? thread.members.join(', ') : 'Io';
-          const safeName = (thread.name || '').replace(/'/g, "\\'");
-          subEl.innerHTML = `<span class="cursor-pointer hover:underline text-[#3C5A48] font-bold inline-flex items-center gap-1" onclick="openGroupActivityLedger('${thread.id}', '${safeName}')" title="Apri Registro Operativo Ufficiale"><i class="fa-solid fa-cloud text-[9px]"></i> Gruppo Online • <i class="fa-solid fa-book-open text-[9px]"></i> Registro Ufficiale</span> • ${mList}`;
-        } else {
+      if (thread.thread_type === 'group') {
+        if (groupMembersBtn) groupMembersBtn.classList.remove('hidden');
+        const mCount = thread.members ? thread.members.length : 1;
+        if (groupMembersBadge) groupMembersBadge.textContent = String(mCount);
+
+        const mList = thread.members && thread.members.length > 0 ? thread.members.join(', ') : 'Io';
+        if (subEl) {
+          subEl.innerHTML = `<span class="cursor-pointer hover:underline text-[#3C5A48] font-bold inline-flex items-center gap-1" onclick="openGroupMembersModal('${thread.id}')" title="Visualizza i Partecipanti"><i class="fa-solid fa-users text-[9px]"></i> <span id="headerSubMembersCount">${mCount} Partecipanti</span></span> • <span id="headerSubMembersList">${escapeHtml(mList)}</span>`;
+        }
+
+        // Recupera in background la lista reale dei partecipanti per aggiornare i nomi
+        fetch(`/api/groups/${thread.id}/members`, { headers: authHeaders() })
+          .then(r => r.ok ? r.json() : [])
+          .then(members => {
+            if (Array.isArray(members) && members.length > 0) {
+              if (groupMembersBadge) groupMembersBadge.textContent = String(members.length);
+              const subCount = document.getElementById('headerSubMembersCount');
+              const subList = document.getElementById('headerSubMembersList');
+              if (subCount) subCount.textContent = `${members.length} Partecipanti`;
+              if (subList) subList.textContent = members.map(m => m.full_name || m.email).join(', ');
+            }
+          })
+          .catch(() => {});
+      } else {
+        if (groupMembersBtn) groupMembersBtn.classList.add('hidden');
+        if (subEl) {
           subEl.textContent = `${thread.description || 'Area tematica'} • ${thread.message_count || 0} messaggi`;
         }
       }

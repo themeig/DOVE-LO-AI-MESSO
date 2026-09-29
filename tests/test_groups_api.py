@@ -61,13 +61,50 @@ def test_create_and_join_group(monkeypatch):
     invalid_join = client.post("/api/groups/join", json={"invite_code": "NON-ESISTE-99"})
     assert invalid_join.status_code == 404
 
-    # 7. Verifica sincronizzazione ChatThread per la sidebar
+    # 7. Verifica sincronizzazione ChatThread per la sidebar con membri reali
     threads_res = client.get("/api/threads")
     assert threads_res.status_code == 200
     th_list = threads_res.json()["threads"]
-    assert any(th["id"] == group_id and th["thread_type"] == "group" for th in th_list)
+    group_thread = next(th for th in th_list if th["id"] == group_id and th["thread_type"] == "group")
+    assert group_thread is not None
+    assert "Admin Test" in group_thread["members"]
+    assert "Ospite Test" in group_thread["members"]
 
-    # 8. Eliminazione thread e pulizia gruppo
+    # 8. Caricamento documento nella chat di gruppo
+    import io
+    fake_pdf = io.BytesIO(b"%PDF-1.4 Fake Enel Bill for Group Test")
+    up_res = client.post(
+        "/api/documents/upload",
+        files={"file": ("bolletta_enel_gruppo.pdf", fake_pdf, "application/pdf")},
+        data={"thread_id": group_id}
+    )
+    assert up_res.status_code == 201
+    doc_data = up_res.json()
+    doc_id = doc_data["document_id"]
+
+    # Verifica che nel feed di gruppo compaia l'evento DOCUMENT_UPLOADED
+    app.dependency_overrides[get_current_user] = lambda: user2
+    feed_res = client.get(f"/api/groups/{group_id}/feed")
+    assert feed_res.status_code == 200
+    events = feed_res.json()
+    assert any(ev["event_type"] == "DOCUMENT_UPLOADED" and ev["document_id"] == doc_id for ev in events)
+
+    # 9. Quietanza/Saldato dell'atto nel gruppo
+    patch_res = client.patch(f"/api/documents/{doc_id}/status", json={"status": "quietanzato"})
+    assert patch_res.status_code == 200
+
+    # Verifica registrazione evento DOCUMENT_PAID e presenza avviso nel thread
+    feed_res_after = client.get(f"/api/groups/{group_id}/feed")
+    assert feed_res_after.status_code == 200
+    events_after = feed_res_after.json()
+    assert any(ev["event_type"] == "DOCUMENT_PAID" and ev["document_id"] == doc_id for ev in events_after)
+
+    msgs_res = client.get(f"/api/threads/{group_id}/messages")
+    assert msgs_res.status_code == 200
+    msgs = msgs_res.json()["messages"]
+    assert any("Quietanzato" in (m["content"] or "") for m in msgs)
+
+    # 10. Eliminazione thread e pulizia gruppo
     del_res = client.delete(f"/api/threads/{group_id}")
     assert del_res.status_code == 200
 

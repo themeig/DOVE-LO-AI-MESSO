@@ -43,3 +43,32 @@ def test_websocket_manager_connect_and_broadcast():
         assert ws2.sent[1]["event"] == "DOCUMENT_PAID"
 
     asyncio.run(_run())
+
+
+def test_websocket_manager_broadcast_sync():
+    async def _run():
+        manager = GroupWebSocketManager()
+
+        class DummyWS:
+            def __init__(self):
+                self.sent = []
+                self.accepted = False
+
+            async def accept(self):
+                self.accepted = True
+
+            async def send_json(self, data):
+                self.sent.append(data)
+
+        ws = DummyWS()
+        await manager.connect("group-sync", ws)
+
+        # Broadcast sync
+        manager.broadcast_sync("group-sync", {"event": "MEMBER_JOINED", "name": "Mario"})
+        # Yield to let created task execute
+        await asyncio.sleep(0.05)
+
+        assert len(ws.sent) == 1
+        assert ws.sent[0]["event"] == "MEMBER_JOINED"
+
+    asyncio.run(_run())

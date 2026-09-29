@@ -281,7 +281,7 @@
     }
 
     async function checkVaultAuth() {
-      const token = sessionStorage.getItem('vault_token');
+      const token = localStorage.getItem('vault_token') || sessionStorage.getItem('vault_token');
       try {
         const res = await fetch('/api/auth/status', {
           headers: authHeaders()
@@ -289,6 +289,7 @@
         if (res.ok) {
           const data = await res.json();
           if (data.unlocked && token) {
+            sessionStorage.setItem('vault_token', token);
             hideLockScreen();
             initApp();
             return true;
@@ -412,6 +413,7 @@
         }
         const data = await res.json();
         sessionStorage.setItem('vault_token', data.token);
+        localStorage.setItem('vault_token', data.token);
         hideLockScreen();
         initApp();
       } catch (err) {
@@ -441,6 +443,7 @@
         console.error('Errore lock vault:', e);
       }
       sessionStorage.removeItem('vault_token');
+      localStorage.removeItem('vault_token');
       showLockScreen();
     }
 
@@ -1590,6 +1593,67 @@
       renderThreadsList();
     }
 
+    let liveGroupChatWs = null;
+
+    function connectGroupChatWebSocket(groupId) {
+      if (liveGroupChatWs) {
+        try { liveGroupChatWs.close(); } catch(e){}
+        liveGroupChatWs = null;
+      }
+      if (!groupId || groupId === 'general') return;
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/groups/${encodeURIComponent(groupId)}/ws`;
+
+      try {
+        const ws = new WebSocket(wsUrl);
+        liveGroupChatWs = ws;
+
+        ws.onopen = function() {
+          console.log(`[WebSocket] Connesso in tempo reale alla chat di gruppo: ${groupId}`);
+        };
+
+        ws.onmessage = async function(event) {
+          try {
+            const data = JSON.parse(event.data);
+            console.log("[WebSocket] Evento gruppo ricevuto:", data);
+
+            // Se l'utente è attualmente nella schermata di questo gruppo, ricarica subito i messaggi
+            if (currentThreadId === groupId) {
+              await loadThreadMessages(groupId);
+              scrollToBottom(true);
+
+              if (data.title && typeof showToast === 'function') {
+                showToast(`🔔 ${data.title}`, "info", 3500);
+              }
+              if (typeof loadDashboard === 'function') {
+                loadDashboard('all');
+              }
+            } else {
+              // Se l'utente è in un'altra chat o schermata
+              if (typeof showToast === 'function') {
+                showToast(`🔔 [Gruppo] ${data.title || 'Nuovo atto registrato'}`, "info", 4000);
+              }
+              loadThreads();
+            }
+          } catch(err) {
+            console.warn("Errore parsing messaggio WebSocket:", err);
+          }
+        };
+
+        ws.onerror = function(err) {
+          console.warn("[WebSocket] Errore connessione live chat:", err);
+        };
+
+        ws.onclose = function() {
+          if (liveGroupChatWs === ws) liveGroupChatWs = null;
+        };
+      } catch(e) {
+        console.warn("[WebSocket] Impossibile avviare connessione live:", e);
+      }
+    }
+    window.connectGroupChatWebSocket = connectGroupChatWebSocket;
+
     async function switchThread(threadId, fetchMessages = true) {
       currentThreadId = threadId;
       window.currentThreadId = threadId;
@@ -1598,6 +1662,19 @@
       const thread = threadsCache.find(t => t.id === threadId);
       if (thread) {
         updateActiveThreadHeader(thread);
+        if (thread.thread_type === 'group') {
+          connectGroupChatWebSocket(thread.id);
+        } else {
+          if (liveGroupChatWs) {
+            try { liveGroupChatWs.close(); } catch(e){}
+            liveGroupChatWs = null;
+          }
+        }
+      } else {
+        if (liveGroupChatWs) {
+          try { liveGroupChatWs.close(); } catch(e){}
+          liveGroupChatWs = null;
+        }
       }
       renderThreadsList();
       showConversation();
@@ -1615,6 +1692,8 @@
       const iconEl = document.getElementById('activeThreadIcon');
       const avatarEl = document.getElementById('activeThreadAvatar');
       const delBtn = document.getElementById('deleteThreadBtn');
+      const groupMembersBtn = document.getElementById('headerGroupMembersBtn');
+      const groupMembersBadge = document.getElementById('headerGroupMembersBadge');
 
       if (titleEl) titleEl.textContent = thread.name;
       if (iconEl) iconEl.className = `fa-solid ${thread.icon || 'fa-compass'}`;
@@ -1622,12 +1701,32 @@
         avatarEl.className = `w-8 h-8 rounded-xs flex items-center justify-center text-white text-xs font-bold border border-[#E3DDD1] shadow-2xs shrink-0 ${thread.color || 'bg-[#3C5A48]'}`;
       }
 
-      if (subEl) {
-        if (thread.thread_type === 'group') {
-          const mList = thread.members && thread.members.length > 0 ? thread.members.join(', ') : 'Io';
-          const safeName = (thread.name || '').replace(/'/g, "\\'");
-          subEl.innerHTML = `<span class="cursor-pointer hover:underline text-[#3C5A48] font-bold inline-flex items-center gap-1" onclick="openGroupActivityLedger('${thread.id}', '${safeName}')" title="Apri Registro Operativo Ufficiale"><i class="fa-solid fa-cloud text-[9px]"></i> Gruppo Online • <i class="fa-solid fa-book-open text-[9px]"></i> Registro Ufficiale</span> • ${mList}`;
-        } else {
+      if (thread.thread_type === 'group') {
+        if (groupMembersBtn) groupMembersBtn.classList.remove('hidden');
+        const mCount = thread.members ? thread.members.length : 1;
+        if (groupMembersBadge) groupMembersBadge.textContent = String(mCount);
+
+        const mList = thread.members && thread.members.length > 0 ? thread.members.join(', ') : 'Io';
+        if (subEl) {
+          subEl.innerHTML = `<span class="cursor-pointer hover:underline text-[#3C5A48] font-bold inline-flex items-center gap-1" onclick="openGroupMembersModal('${thread.id}')" title="Visualizza i Partecipanti"><i class="fa-solid fa-users text-[9px]"></i> <span id="headerSubMembersCount">${mCount} Partecipanti</span></span> • <span id="headerSubMembersList">${escapeHtml(mList)}</span>`;
+        }
+
+        // Recupera in background la lista reale dei partecipanti per aggiornare i nomi
+        fetch(`/api/groups/${thread.id}/members`, { headers: authHeaders() })
+          .then(r => r.ok ? r.json() : [])
+          .then(members => {
+            if (Array.isArray(members) && members.length > 0) {
+              if (groupMembersBadge) groupMembersBadge.textContent = String(members.length);
+              const subCount = document.getElementById('headerSubMembersCount');
+              const subList = document.getElementById('headerSubMembersList');
+              if (subCount) subCount.textContent = `${members.length} Partecipanti`;
+              if (subList) subList.textContent = members.map(m => m.full_name || m.email).join(', ');
+            }
+          })
+          .catch(() => {});
+      } else {
+        if (groupMembersBtn) groupMembersBtn.classList.add('hidden');
+        if (subEl) {
           subEl.textContent = `${thread.description || 'Area tematica'} • ${thread.message_count || 0} messaggi`;
         }
       }
@@ -9857,7 +9956,16 @@
       checkDeadlineAlerts();
       checkPendingProposalsBanner();
       checkGoogleDriveStatus();
-      if (typeof checkCloudAuthStatus === 'function') checkCloudAuthStatus();
+      if (typeof checkCloudAuthStatus === 'function') {
+        checkCloudAuthStatus().then(user => {
+          if (!user) {
+            // Avvio sessione: se l'utente non è autenticato nel Cloud, apri il modale di accesso
+            setTimeout(() => {
+              if (typeof openAccountModal === 'function') openAccountModal('profile');
+            }, 350);
+          }
+        });
+      }
       if (typeof loadCalendarStatus === 'function') loadCalendarStatus();
       if (typeof setSystemArea === 'function') setSystemArea(sessionStorage.getItem('dove_system_active_area') || 'all');
       const urlParams = new URLSearchParams(window.location.search);
@@ -10340,6 +10448,138 @@
       }
     }
     window.openGroupActivityLedger = openGroupActivityLedger;
+
+    // =========================================================================
+    // MODALE PARTECIPANTI GRUPPO CONDIVISO (OLIVETTI INDUSTRIAL)
+    // =========================================================================
+    async function openGroupMembersModal(targetGroupId) {
+      const groupId = targetGroupId || currentThreadId;
+      if (!groupId || groupId === 'general') return;
+
+      const modal = document.getElementById('groupMembersModal');
+      const listEl = document.getElementById('groupMembersModalList');
+      const titleEl = document.getElementById('groupMembersModalGroupName');
+      const countEl = document.getElementById('groupMembersModalCount');
+      const inviteCodeDisplay = document.getElementById('groupMembersModalInviteCode');
+
+      const thread = (threadsCache || []).find(t => t.id === groupId);
+      if (titleEl) titleEl.textContent = thread ? thread.name : 'Gruppo Condiviso';
+
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+
+      if (listEl) {
+        listEl.innerHTML = `
+          <div class="py-8 text-center text-[#7A7568] font-mono-code text-xs space-y-2">
+            <i class="fa-solid fa-spinner fa-spin text-lg text-[#3C5A48]"></i>
+            <p>Caricamento partecipanti del gruppo...</p>
+          </div>
+        `;
+      }
+
+      try {
+        const res = await fetch(`/api/groups/${groupId}/members`, { headers: authHeaders() });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Impossibile recuperare i membri del gruppo.");
+        }
+        const members = await res.json();
+
+        if (countEl) countEl.textContent = `${members.length} ${members.length === 1 ? 'partecipante' : 'partecipanti'}`;
+        const badge = document.getElementById('headerGroupMembersBadge');
+        if (badge) badge.textContent = String(members.length);
+
+        // Recupera codice invito dal thread o dall'API
+        if (inviteCodeDisplay) {
+          if (thread && thread.description && thread.description.includes('Codice:')) {
+            const match = thread.description.match(/Codice:\s*([A-Z0-9\-]+)/i);
+            if (match) inviteCodeDisplay.textContent = match[1];
+          } else {
+            fetch('/api/groups', { headers: authHeaders() })
+              .then(r => r.json())
+              .then(grps => {
+                const g = grps.find(x => x.id === groupId);
+                if (g && inviteCodeDisplay) inviteCodeDisplay.textContent = g.invite_code;
+              })
+              .catch(() => {});
+          }
+        }
+
+        if (listEl) {
+          if (members.length === 0) {
+            listEl.innerHTML = `
+              <div class="p-6 text-center text-[#7A7568] font-mono-code text-xs">
+                Nessun partecipante trovato in questo gruppo.
+              </div>
+            `;
+          } else {
+            listEl.innerHTML = members.map(m => {
+              const initial = (m.full_name || m.email || 'U')[0].toUpperCase();
+              const isAdmin = m.role === 'admin';
+              const roleStamp = isAdmin 
+                ? '<span class="stamp-oli stamp-terracotta text-[8px] uppercase">AMMINISTRATORE</span>'
+                : '<span class="stamp-oli stamp-solid-sage text-[8px] uppercase">PARTECIPANTE</span>';
+
+              const dateStr = m.joined_at ? new Date(m.joined_at).toLocaleDateString('it-IT') : '';
+
+              return `
+                <div class="flex items-center justify-between p-3 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs shadow-2xs hover:border-[#3C5A48] transition">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-9 h-9 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                      ${initial}
+                    </div>
+                    <div class="min-w-0">
+                      <div class="font-bold text-xs text-[#222220] font-space truncate">${escapeHtml(m.full_name || m.email)}</div>
+                      <div class="text-[10px] text-[#7A7568] font-mono-code truncate">${escapeHtml(m.email)}</div>
+                      ${dateStr ? `<div class="text-[9px] text-[#7A7568]/80 font-mono-code">Adesione: ${dateStr}</div>` : ''}
+                    </div>
+                  </div>
+                  <div class="shrink-0 ml-2">
+                    ${roleStamp}
+                  </div>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+      } catch (err) {
+        if (listEl) {
+          listEl.innerHTML = `
+            <div class="p-5 text-center text-[#C84B31] font-mono-code text-xs space-y-1">
+              <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+              <p>${escapeHtml(err.message)}</p>
+              <p class="text-[10px] text-[#7A7568]">Verifica di essere autenticato con un account associato a questo gruppo.</p>
+            </div>
+          `;
+        }
+      }
+    }
+    window.openGroupMembersModal = openGroupMembersModal;
+
+    function closeGroupMembersModal() {
+      const modal = document.getElementById('groupMembersModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+    window.closeGroupMembersModal = closeGroupMembersModal;
+
+    function copyGroupMembersInviteCode() {
+      const el = document.getElementById('groupMembersModalInviteCode');
+      const text = el ? el.textContent.trim() : '';
+      if (!text || text === '...') return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          if (typeof showToast === 'function') showToast(`Codice d'invito '${text}' copiato!`, "success", 2500);
+        });
+      } else {
+        prompt("Copia il codice d'invito:", text);
+      }
+    }
+    window.copyGroupMembersInviteCode = copyGroupMembersInviteCode;
 
 // <<< FINE MODULO: 07-modals.js >>>
 

@@ -91,7 +91,11 @@ def acquire_desktop_profile(profiles_base: Path, requested_profile: Optional[str
     profiles_base.mkdir(parents=True, exist_ok=True)
 
     if requested_profile:
-        candidates = [requested_profile]
+        cleaned = requested_profile.strip()
+        if cleaned.isdigit():
+            candidates = [f"sessione_{cleaned}"]
+        else:
+            candidates = [cleaned]
     else:
         candidates = [f"sessione_{i}" for i in range(1, 20)]
 

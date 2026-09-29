@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSoc
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.models.database import get_db, Group, GroupMember, User, ActivityEvent, ChatThread
+from app.models.database import get_db, Group, GroupMember, User, ActivityEvent, ChatThread, ChatMessage
 from app.services.auth_service import get_current_user
 from app.services.websocket_manager import group_ws_manager
 
@@ -242,7 +242,27 @@ def join_group(
             )
             db.add(thread)
 
+        # Inserisci avviso ufficiale nel feed della chat di gruppo
+        member_name = current_user.get("full_name") or "Nuovo Membro"
+        notice_msg = ChatMessage(
+            thread_id=group.id,
+            sender="assistant",
+            message_type="system",
+            content=f"👥 **Nuovo Partecipante**: **{member_name}** è entrato nel gruppo.",
+            metadata_json=json.dumps({"action": "MEMBER_JOINED", "user_id": current_user["id"], "full_name": member_name})
+        )
+        db.add(notice_msg)
+
         db.commit()
+
+        # Notifica immediata a tutti i client connessi al gruppo via WebSocket
+        group_ws_manager.broadcast_sync(group.id, {
+            "event": "MEMBER_JOINED",
+            "group_id": group.id,
+            "title": f"{member_name} è entrato nel gruppo",
+            "user_id": current_user["id"],
+            "full_name": member_name
+        })
 
     return {
         "group_id": group.id,

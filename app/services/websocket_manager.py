@@ -50,5 +50,19 @@ class GroupWebSocketManager:
         for dead_ws in dead_connections:
             self.disconnect(group_id, dead_ws)
 
+    def broadcast_sync(self, group_id: str, message: dict):
+        """
+        Versione sicura e non-bloccante di broadcast invocabile da endpoint o thread sincroni.
+        """
+        import asyncio
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self.broadcast(group_id, message))
+        except RuntimeError:
+            try:
+                asyncio.run(self.broadcast(group_id, message))
+            except Exception as e:
+                logger.warning(f"Errore broadcast_sync su gruppo {group_id}: {e}")
+
 
 group_ws_manager = GroupWebSocketManager()

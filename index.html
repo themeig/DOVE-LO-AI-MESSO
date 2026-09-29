@@ -141,6 +141,19 @@
 
         <!-- Azioni Header Destra -->
         <div class="flex items-center space-x-2 shrink-0">
+          <!-- Tasto Partecipanti Gruppo (visibile esclusivamente nei gruppi condivisi) -->
+          <button 
+            id="headerGroupMembersBtn" 
+            onclick="openGroupMembersModal()" 
+            class="hidden px-2.5 h-8 border border-[#3C5A48] bg-white text-[#3C5A48] rounded-xs flex items-center gap-1.5 hover:bg-[#3C5A48] hover:text-white transition cursor-pointer active:scale-95 shadow-2xs font-space font-bold text-xs" 
+            title="Visualizza i partecipanti del gruppo"
+            aria-label="Partecipanti Gruppo"
+          >
+            <i class="fa-solid fa-users text-xs"></i>
+            <span class="hidden sm:inline">Partecipanti</span>
+            <span id="headerGroupMembersBadge" class="bg-[#3C5A48] text-white text-[9px] px-1.5 py-0.5 rounded-full font-mono-code">1</span>
+          </button>
+
           <!-- Campanella Notifiche Scadenze con Badge Dinamico -->
           <button 
             id="deadlinesBellBtn" 
@@ -1048,6 +1061,71 @@
           </div>
         </div>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- MODAL PARTECIPANTI GRUPPO CONDIVISO (OLIVETTI INDUSTRIAL)          -->
+  <!-- ================================================================= -->
+  <div id="groupMembersModal" onclick="if(event.target === this) closeGroupMembersModal()" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-3 sm:p-4 backdrop-blur-xs">
+    <div class="modal-card bg-white rounded-xs max-w-lg w-full p-5 shadow-2xl space-y-4 animate-fade-in border-2 border-[#3C5A48] max-h-[92vh] flex flex-col overflow-hidden">
+      <!-- Header Modale -->
+      <div class="flex items-center justify-between border-b border-[#E3DDD1] pb-3 shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xs bg-[#3C5A48] text-white flex items-center justify-center text-sm shadow-xs">
+            <i class="fa-solid fa-users"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-[#222220] text-sm font-space uppercase">Partecipanti del Gruppo</h3>
+            <p class="text-[10px] text-[#7A7568] font-mono-code"><span id="groupMembersModalGroupName">Gruppo</span> • <span id="groupMembersModalCount">0 partecipanti</span></p>
+          </div>
+        </div>
+        <button onclick="closeGroupMembersModal()" class="text-[#7A7568] hover:text-[#222220] p-1 cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Box Invito Nuovi Membri -->
+      <div class="bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs p-3 space-y-2 shrink-0">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold text-[#222220] font-space uppercase flex items-center gap-1.5">
+            <i class="fa-solid fa-key text-[#3C5A48]"></i> Codice Invito per Nuovi Membri
+          </span>
+          <button 
+            type="button" 
+            onclick="copyGroupMembersInviteCode()" 
+            class="bg-[#3C5A48] hover:bg-[#2F4738] text-white text-[10px] font-space font-bold px-2 py-0.5 rounded-xs transition flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs"
+          >
+            <i class="fa-regular fa-copy text-[9px]"></i>
+            <span>Copia Codice</span>
+          </button>
+        </div>
+        <div class="flex items-center justify-between bg-white border border-[#E3DDD1] px-3 py-1.5 rounded-xs">
+          <span id="groupMembersModalInviteCode" class="font-mono-code text-sm font-bold text-[#222220] tracking-widest">...</span>
+          <span class="text-[10px] text-[#7A7568] font-mono-code">Condividi con i membri</span>
+        </div>
+      </div>
+
+      <!-- Elenco Partecipanti -->
+      <div class="space-y-1 shrink-0">
+        <h4 class="text-xs font-bold text-[#222220] font-space uppercase flex items-center gap-1.5">
+          <i class="fa-solid fa-user-check text-[#3C5A48]"></i> Membri Attivi nel Caveau
+        </h4>
+      </div>
+      <div id="groupMembersModalList" class="flex-1 overflow-y-auto space-y-2 custom-scroll pr-1">
+        <!-- Render dinamico da openGroupMembersModal() -->
+      </div>
+
+      <!-- Footer Modale -->
+      <div class="border-t border-[#E3DDD1] pt-3 flex justify-end shrink-0">
+        <button 
+          type="button" 
+          onclick="closeGroupMembersModal()" 
+          class="border border-[#E3DDD1] bg-[#FAF8F2] hover:bg-[#EFECE3] text-[#222220] font-space font-bold text-xs px-4 py-2 rounded-xs transition cursor-pointer"
+        >
+          Chiudi
+        </button>
       </div>
     </div>
   </div>

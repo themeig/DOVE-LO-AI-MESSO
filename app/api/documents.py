@@ -10,8 +10,9 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models.database import get_db, Document, ChatMessage, GoogleDriveCredential, get_app_setting, ChatThread
+from app.models.database import get_db, Document, ChatMessage, GoogleDriveCredential, get_app_setting, ChatThread, Group
 from app.models.schemas import DocumentStatusUpdate, BulkDeleteRequest, BulkDeleteResponse, UnzipVaultRequest
+from app.services.websocket_manager import group_ws_manager
 from app.services.ai_service import get_ai_service
 from app.services.document_service import (
     save_uploaded_file,
@@ -101,8 +102,19 @@ def _process_and_save_single_doc(
             logger.warning(f"Errore durante l'upload su Google Drive per '{filename}': {e}")
             drive_folder_str = None
 
+    target_group_id = None
+    if thread_id and thread_id not in ("general", "all"):
+        grp = db.query(Group).filter(Group.id == thread_id).first()
+        if grp:
+            target_group_id = grp.id
+        else:
+            th = db.query(ChatThread).filter(ChatThread.id == thread_id).first()
+            if th and th.thread_type == "group":
+                target_group_id = th.id
+
     doc = Document(
         thread_id=thread_id,
+        group_id=target_group_id,
         title=title,
         file_path=saved_path,
         file_type=file_ext,
@@ -232,6 +244,40 @@ async def upload_document(
     db.add(asst_msg)
     db.commit()
 
+    if doc.group_id:
+        try:
+            from app.services.activity_service import record_activity_event
+            record_activity_event(
+                db=db,
+                group_id=doc.group_id,
+                event_type="DOCUMENT_UPLOADED",
+                title=f"Nuovo atto protocollato: {doc.title}",
+                content=f"È stato archiviato un nuovo documento '{doc.title}'" + (f" ({doc.amount:.2f} €)" if doc.amount else ""),
+                document_id=doc.id,
+                payload={
+                    "document_id": doc.id,
+                    "title": doc.title,
+                    "amount": doc.amount,
+                    "due_date": doc.due_date.isoformat() if doc.due_date else None,
+                    "status": doc.status
+                }
+            )
+            await group_ws_manager.broadcast(doc.group_id, {
+                "event": "DOCUMENT_UPLOADED",
+                "group_id": doc.group_id,
+                "title": f"Nuovo atto protocollato: {doc.title}",
+                "document_id": doc.id,
+                "data": {
+                    "document_id": doc.id,
+                    "title": doc.title,
+                    "amount": doc.amount,
+                    "due_date": doc.due_date.isoformat() if doc.due_date else None,
+                    "status": doc.status
+                }
+            })
+        except Exception as e:
+            logger.warning(f"Errore broadcast activity upload su gruppo {doc.group_id}: {e}")
+
     fn = Path(doc.file_path).name
     return {
         "document_id": doc.id,
@@ -346,6 +392,40 @@ async def upload_multipage_photos(
     db.add(user_msg)
     db.add(asst_msg)
     db.commit()
+
+    if doc.group_id:
+        try:
+            from app.services.activity_service import record_activity_event
+            record_activity_event(
+                db=db,
+                group_id=doc.group_id,
+                event_type="DOCUMENT_UPLOADED",
+                title=f"Nuovo atto protocollato: {doc.title}",
+                content=f"È stato archiviato un nuovo documento '{doc.title}'" + (f" ({doc.amount:.2f} €)" if doc.amount else ""),
+                document_id=doc.id,
+                payload={
+                    "document_id": doc.id,
+                    "title": doc.title,
+                    "amount": doc.amount,
+                    "due_date": doc.due_date.isoformat() if doc.due_date else None,
+                    "status": doc.status
+                }
+            )
+            await group_ws_manager.broadcast(doc.group_id, {
+                "event": "DOCUMENT_UPLOADED",
+                "group_id": doc.group_id,
+                "title": f"Nuovo atto protocollato: {doc.title}",
+                "document_id": doc.id,
+                "data": {
+                    "document_id": doc.id,
+                    "title": doc.title,
+                    "amount": doc.amount,
+                    "due_date": doc.due_date.isoformat() if doc.due_date else None,
+                    "status": doc.status
+                }
+            })
+        except Exception as e:
+            logger.warning(f"Errore broadcast activity scan su gruppo {doc.group_id}: {e}")
 
     return {
         "document_id": doc.id,
@@ -501,6 +581,18 @@ async def upload_documents_batch(
     db.add(user_msg)
     db.add(asst_msg)
     db.commit()
+
+    # Se caricamento in un gruppo condiviso, invia broadcast WebSocket immediato
+    if thread_id and thread_id not in ("general", "all"):
+        try:
+            await group_ws_manager.broadcast(thread_id, {
+                "event": "DOCUMENT_UPLOADED",
+                "group_id": thread_id,
+                "title": f"Nuovi atti protocollati ({total_count} documenti)",
+                "data": {"count": total_count, "document_ids": doc_ids}
+            })
+        except Exception as e:
+            logger.warning(f"Errore broadcast batch su gruppo {thread_id}: {e}")
 
     return {
         "success": True,
@@ -815,7 +907,7 @@ def save_to_downloads(document_id: int, db: Session = Depends(get_db)):
     }
 
 @router.patch("/{document_id}/status")
-def update_document_status(
+async def update_document_status(
     document_id: int,
     payload: DocumentStatusUpdate,
     db: Session = Depends(get_db)
@@ -841,6 +933,31 @@ def update_document_status(
                 document_id=doc.id,
                 payload={"amount": doc.amount, "due_date": doc.due_date.isoformat() if doc.due_date else None}
             )
+
+            # Inserisci messaggio ufficiale nel thread della chat di gruppo
+            sys_msg = ChatMessage(
+                thread_id=doc.group_id,
+                sender="assistant",
+                message_type="document",
+                content=f"🟢 **Atto Quietanzato**: Il documento **{doc.title}**" + (f" ({doc.amount:.2f} €)" if doc.amount else "") + " è stato saldato e archiviato.",
+                metadata_json=json.dumps({"document_id": doc.id, "status": "quietanzato"})
+            )
+            db.add(sys_msg)
+            db.commit()
+
+            # Broadcast WebSocket in tempo reale a tutti i membri collegati
+            await group_ws_manager.broadcast(doc.group_id, {
+                "event": "DOCUMENT_PAID",
+                "group_id": doc.group_id,
+                "title": f"Atto quietanzato: {doc.title}",
+                "document_id": doc.id,
+                "data": {
+                    "document_id": doc.id,
+                    "title": doc.title,
+                    "amount": doc.amount,
+                    "status": "quietanzato"
+                }
+            })
         except Exception as e:
             logger.warning(f"Errore registrazione activity event per pagamento doc {doc.id}: {e}")
 
