@@ -131,12 +131,17 @@ REGOLE OPERATIVE:
     - Se l'utente chiede come azzerare o eliminare tutto il database, spiegagli che per la sua sicurezza l'operazione è accessibile dal menu "Strumenti -> 🗑️ Elimina Tutto il Database".
     - Richiede obbligatoriamente l'inserimento della Password Master del Caveau, offre la scelta di eliminare o meno la cartella 'DoveLoAIMesso' su Google Drive, ed è protetta da blocco anti-bruteforce.
 
-19. LETTURA PUNTUALE CONTENUTO FILE, FOGLI EXCEL, TABELLE E DIVIETO ASSOLUTO DI ALLUCINAZIONE:
-    - DIVIETO ASSOLUTO DI INVENTARE DATI O NUMERI CONTENUTI IN FILE EXCEL, CSV, TABELLE O DOCUMENTI!
-    - Se l'utente ti pone domande specifiche sul contenuto di un file (es. 'cosa c'è nella riga 5?', 'quanto ha fatturato a marzo?', 'qual è il valore della cella C2?', 'quali sono i totali nella tabella?', 'leggi la colonna importo', 'chi ha l'importo più alto?'):
+19. LETTURA PUNTUALE CONTENUTO FILE, TESTI INTEGRALI, FOGLI EXCEL, TABELLE E DIVIETO ASSOLUTO DI ALLUCINAZIONE:
+    - DIVIETO ASSOLUTO DI INVENTARE DATI O NUMERI E DIVIETO DI RISPONDERE CON UN SEMPLICE RIASSUNTO QUANDO L'UTENTE CHIEDE COSA CONTIENE O COSA C'È SCRITTO IN UN DOCUMENTO!
+    - Se l'utente ti chiede:
+      * 'Cosa c'è scritto nel documento / file / pdf?'
+      * 'Cosa dice il documento / contratto / verbale / testo?'
+      * 'Fammi leggere il documento' / 'Leggimi il file' / 'Mostrami il testo del documento'
+      * Domande su righe, colonne, celle, totali o valori di fogli di calcolo Excel o CSV (es. 'cosa c'è nella riga 5?', 'quanto ha fatturato a marzo?', 'qual è il valore della cella C2?'):
       DEVI SEMPRE E OBBLIGATORIAMENTE USARE IL TOOL `read_vault_document_content(document_title=..., query=..., sheet_name=...)` prima di rispondere!
-    - Questo strumento decifra il file in RAM ed estrae i dati reali (comprese formule calcolate, fogli di lavoro multipli, coordinate A/B/C e numeri di riga esatti).
-    - Rispondi citando con precisione le righe, le celle o le colonne reali estratte dallo strumento, senza mai tirare a indovinare!
+    - Questo strumento decifra il file in RAM ed estrae il testo integrale e i dati reali (comprese formule calcolate, fogli di lavoro multipli, coordinate A/B/C e testo formattato).
+    - Mostra sempre la scheda interattiva del documento (`show_document_card`) così che l'utente possa aprirlo per intero con [👁️ Vedi] o scaricarlo con [⬇️ Scarica].
+    - Rispondi citando con precisione i passi del testo, le righe o le tabelle reali estratte dallo strumento, senza mai tirare a indovinare e senza limitarti alla sola breve sintesi di archiviazione!
 """
 
 

@@ -1121,6 +1121,26 @@ def execute_vault_tool(name: str, args: Dict[str, Any], db: Session, thread_id: 
                 "document_title": doc.title
             }
 
+        doc_fn = Path(doc.file_path).name if doc.file_path else ""
+        doc_item = {
+            "id": doc.id,
+            "document_id": doc.id,
+            "title": doc.title,
+            "issuer": doc.issuer,
+            "amount": doc.amount,
+            "due_date": doc.due_date.isoformat() if doc.due_date else None,
+            "status": doc.status,
+            "file_url": f"/uploads/{doc_fn}" if doc_fn else None,
+            "download_url": f"/api/documents/{doc.id}/download",
+            "file_type": doc.file_type,
+            "summary": doc.summary,
+            "drive_file_id": doc.drive_file_id,
+            "drive_web_url": doc.drive_web_url,
+            "category": doc.category,
+            "category_label": doc.category_label,
+            "category_icon": doc.category_icon
+        }
+
         try:
             file_bytes = read_decrypted_file(doc.file_path)
             result = inspect_document_content(
@@ -1133,6 +1153,8 @@ def execute_vault_tool(name: str, args: Dict[str, Any], db: Session, thread_id: 
             )
             result["document_id"] = doc.id
             result["document_title"] = doc.title
+            result["documents"] = [doc_item]
+            result["document"] = doc_item
 
             if not result.get("success"):
                 if doc.summary:
@@ -1159,7 +1181,9 @@ def execute_vault_tool(name: str, args: Dict[str, Any], db: Session, thread_id: 
                         "content_text": "### Scheda Informativa ed Analisi Ottica AI del Documento:\n" + "\n".join(meta_parts),
                         "summary": doc.summary,
                         "document_id": doc.id,
-                        "document_title": doc.title
+                        "document_title": doc.title,
+                        "documents": [doc_item],
+                        "document": doc_item
                     }
                 return result
 
@@ -1214,7 +1238,9 @@ def execute_vault_tool(name: str, args: Dict[str, Any], db: Session, thread_id: 
                     "content_text": "### Scheda Informativa ed Analisi Ottica AI del Documento:\n" + "\n".join(meta_parts),
                     "summary": doc.summary,
                     "document_id": doc.id,
-                    "document_title": doc.title
+                    "document_title": doc.title,
+                    "documents": [doc_item],
+                    "document": doc_item
                 }
             return {
                 "success": False,

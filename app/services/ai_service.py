@@ -454,7 +454,10 @@ class OpenRouterAIService:
 ---
 
 Identifica con la massima precisione:
-1. 'title': un titolo chiaro, elegante e sintetico per il documento (es. 'Certificato TOLC-E CISIA', 'Bolletta Enel Energia Luce', 'Modello F24 IVA', 'Carta d'Identità Mario Rossi')
+1. 'title': il NOME REALE o TITOLO PROPRIO del documento (massimo 4-7 parole, es. 'Certificato TOLC-E CISIA', 'Bolletta Enel Energia Luce', 'Modello F24 IVA', 'Carta d'Identità Mario Rossi').
+   REGOLA FONDAMENTALE DI ARCHIVIAZIONE INTEGRALE:
+   Il documento viene archiviato INTEGRALMENTE COSÌ COM'È nel caveau.
+   DIVIETO ASSOLUTO DI SCRIVERE 'Riassunto di...', 'Sintesi di...', 'Descrizione di...' o intere frasi nel campo 'title'! Il titolo deve essere il vero nome dell'atto o del file.
 2. 'doc_type': tipo documento (certificato, bolletta, f24, contratto, ricevuta, fattura, documento_identita, patente, polizza, testo_personale, generico)
 3. 'issuer': nome ente, università, azienda, fornitore o ministero (oppure null)
 4. 'due_date': se il documento presenta una data di scadenza, termine di pagamento o fine validità (es. bollette, fatture, F24, ma anche carte d'identità, patenti, passaporti, contratti di affitto, polizze assicurative, abbonamenti, tessere sanitarie), estrai la data nel formato YYYY-MM-DD. ATTENZIONE: estrai ESCLUSIVAMENTE la data di scadenza ('valido fino al', 'scade il', 'data di scadenza', 'termine'); NON confondere la data di rilascio, stipula o emissione con la scadenza! Se non c'è alcuna scadenza o termine, imposta rigorosamente due_date=null.
@@ -468,7 +471,7 @@ Identifica con la massima precisione:
      imposta "is_paid": false, "payment_status": "da_pagare", "is_payable": true.
    - Per documenti personali, carte d'identità, patenti, certificati o contratti senza importo monetario pendente:
      imposta "is_paid": null, "payment_status": "non_richiesto", "is_payable": false.
-7. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano che riassume tutti i dettagli (punteggi, codici, esiti, intestatario, date).
+7. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano che riassume tutti i dettagli (punteggi, codici, esiti, intestatario, date), tenendo presente che il documento integrale originale viene archiviato al 100% inalterato nel caveau.
 8. 'suggest_rename': false (i documenti formali hanno già un titolo chiaro).
 9. 'category_label': consulta PRIMA queste cartelle generali di sistema: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Fatture, Spese & Ricevute', 'Contratti, Polizze & Assicurazioni', 'Documenti Personali & Identità', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Archivi Compressi & ZIP', 'Foto, Immagini & Ricordi'. Se il file è inerente a una di esse, USA QUELLA CARTELLA per evitare doppioni! Crea una nuova sezione tematica SOLO se il file non ha alcuna pertinenza con quelle sopra.
 10. 'category': slug normalizzato in minuscolo con underscore (es. 'canzoni_musica', 'utenze_bollette', 'fisco_tributi', 'documenti_identita').
@@ -505,7 +508,9 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
 Nome file originale: '{filename}'.
 
 Esamina attentamente TUTTE le pagine visive fornite per comprendere ed estrarre i dati completi del documento:
-1. 'title': un titolo descrittivo, chiaro, elegante e sintetico (es. 'Bolletta Enel Energia', 'Modello F24 Versamento Tributi', 'Contratto di Locazione Commerciale', 'Fattura Professionale', 'Certificato Medico').
+1. 'title': il NOME REALE o TITOLO PROPRIO del documento (massimo 4-7 parole, es. 'Bolletta Enel Energia', 'Modello F24 Versamento Tributi', 'Contratto di Locazione Commerciale', 'Fattura Professionale', 'Certificato Medico').
+   REGOLA FONDAMENTALE DI ARCHIVIAZIONE INTEGRALE:
+   Il documento viene archiviato INTEGRALE COSÌ COM'È. DIVIETO ASSOLUTO DI SCRIVERE 'Riassunto di...', 'Sintesi di...' o frasi lunghe nel campo 'title'! Il titolo deve essere il vero nome dell'atto.
 2. 'doc_type': tipo documento formale ('bolletta', 'f24', 'contratto', 'fattura', 'ricevuta', 'documento_identita', 'patente', 'polizza', 'certificato', 'generico'). NON classificarlo MAI come 'foto' o 'screenshot' se è un documento o modulo scansionato!
 3. 'issuer': nome ente, università, azienda, fornitore o ministero emittente (oppure null se non rilevabile).
 4. 'due_date': se è presente una data di scadenza, fine validità, termine pagamento o rinnovo in una qualsiasi delle pagine (es. bollette, fatture, F24, patenti, carte identità, polizze, contratti), estrai la data nel formato YYYY-MM-DD. NON confondere la data di rilascio, stipula o emissione con la scadenza! Se non c'è scadenza o termine, imposta rigorosamente due_date=null.
@@ -578,7 +583,10 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido:
 ---
 
 Identifica con la massima precisione:
-1. 'title': un titolo chiaro, elegante e sintetico (es. 'Contratto di Consulenza Software', 'Foglio Spese e Scadenze Aziendali', 'Elenco Fornitori', 'Testo Canzone ...')
+1. 'title': il NOME REALE o TITOLO PROPRIO del documento (massimo 4-7 parole, es. 'Contratto di Consulenza Software', 'Foglio Spese e Scadenze Aziendali', 'Elenco Fornitori', 'Testo Canzone ...').
+   REGOLA FONDAMENTALE DI ARCHIVIAZIONE INTEGRALE:
+   Il documento originale viene archiviato INTEGRALMENTE COSÌ COM'È nel caveau.
+   DIVIETO ASSOLUTO DI SCRIVERE 'Riassunto di...', 'Sintesi di...', 'Descrizione di...' o intere frasi nel campo 'title'! Il titolo deve essere il vero nome dell'atto o del file.
 2. 'doc_type': scegli liberamente il tipo più adatto (es. 'canzone', 'poesia', 'testo_personale', 'ricetta', 'contratto', 'foglio_calcolo', 'spese', 'fattura', 'ricevuta', 'documento_word', 'report', 'generico'). Se il testo contiene strofe, canzoni, versi, rime o poesie, NON classificarlo MAI come bolletta o utenza!
 3. 'issuer': nome ente, azienda, autore, artista o controparte (oppure null)
 4. 'due_date': se contiene una data di scadenza, fine validità, termine o rinnovo (es. termine contratto, scadenza polizza, termine pagamento fattura/canone, foglio scadenze), estraila in formato YYYY-MM-DD. NON confondere la data di stipula con la scadenza! Se non c'è una scadenza o termine, imposta null.
@@ -592,7 +600,7 @@ Identifica con la massima precisione:
      imposta "is_paid": false, "payment_status": "da_pagare", "is_payable": true.
    - Per contratti, note, testi musicali o file senza scadenze monetarie pendenti:
      imposta "is_paid": null, "payment_status": "non_richiesto", "is_payable": false.
-7. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano con i punti chiave, autore, argomenti, intestatari o dati più importanti.
+7. 'summary': spiegazione chiara e completa di 2-3 frasi in italiano con i punti chiave, autore, argomenti, intestatari o dati più importanti, tenendo conto che il documento originale integrale è preservato inalterato nel caveau.
 8. 'suggest_rename': false.
 9. 'category_label': consulta PRIMA queste cartelle generali di sistema: 'Utenze & Bollette', 'Fisco, Tributi & F24', 'Fatture, Spese & Ricevute', 'Contratti, Polizze & Assicurazioni', 'Documenti Personali & Identità', 'Sanità & Spese Mediche', 'Formazione, Studio & Certificati', 'Automobili & Veicoli', 'Canzoni, Musica & Testi Personali', 'Archivi Compressi & ZIP', 'Foto, Immagini & Ricordi'. Se il file è inerente a una di esse (es. testo canzone/poesia -> 'Canzoni, Musica & Testi Personali', scontrino/ricevuta -> 'Fatture, Spese & Ricevute'), USA QUELLA CARTELLA per evitare doppioni! Crea una nuova sezione tematica SOLO se il file non ha alcuna pertinenza con quelle sopra.
 10. 'category': slug normalizzato in minuscolo con underscore (es. 'canzoni_musica', 'ricette_cucina', 'fogli_calcolo', 'contratti_polizze').
@@ -657,9 +665,9 @@ Rispondi ESCLUSIVAMENTE in formato JSON valido con questa struttura esatta:
             prompt = (
                 "Sei l'assistente 'Dove lo AI messo'. Analizza con precisione visiva questa immagine caricata dall'utente.\n\n"
                 "Istruzioni:\n"
-                "1. 'title': genera un titolo sintetico e descrittivo (massimo 4-6 parole) di ciò che vedi nell'immagine. "
+                "1. 'title': genera il NOME REALE, sintetico e descrittivo (massimo 4-6 parole) di ciò che vedi nell'immagine o nel documento scansionato. "
                 "Ad esempio se vedi un volante o quick release scrivi 'Base Volante con attacco rapido', se vedi delle chiavi scrivi 'Mazzo chiavi con telecomando', se vedi una bolletta scrivi 'Bolletta Enel Energia', se vedi una patente scrivi 'Patente di Guida', se vedi una carta d'identità scrivi 'Carta d'Identità'. "
-                "NON usare MAI 'Generico File Utente' o nomi anonimi!\n"
+                "REGOLA FONDAMENTALE DI ARCHIVIAZIONE INTEGRALE: L'immagine o documento viene archiviato INTEGRALE nel caveau. DIVIETO ASSOLUTO DI SCRIVERE 'Riassunto di...', 'Sintesi di...' o intere frasi nel campo 'title'! NON usare MAI 'Generico File Utente' o nomi anonimi!\n"
                 "2. 'doc_type': scegli tra 'bolletta', 'f24', 'ricevuta', 'fattura', 'patente', 'documento_identita', 'polizza', 'contratto', 'foto', 'screenshot', 'oggetto_fisico', 'generico'.\n"
                 "3. 'issuer': se riconosci un ente, azienda, marchio o ministero visibile (es. 'Enel', 'Fanatec', 'Apple', 'Ministero Interno', 'INPS'), indicalo; altrimenti imposta null.\n"
                 "4. 'due_date': se l'immagine mostra un documento con una data di scadenza o fine validità (es. scadenza carta d'identità, patente, passaporto, bolletta, revisione auto, contratti, polizze), estrai la data nel formato YYYY-MM-DD. NON confondere la data di rilascio con la scadenza! Se non c'è una data di scadenza, imposta null.\n"

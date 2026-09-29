@@ -1,7 +1,7 @@
 {
-  "version_code": 334,
-  "version_name": "2.17.1",
+  "version_code": 335,
+  "version_name": "2.17.2",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "🔒 Privacy Chat di Gruppo & Notifiche Condivise: Domande e risposte personali con l'assistente visibili solo all'autore; notifiche chiare con nome autore per inserimento documenti ('X ha inserito questo documento') e quietanza bollette ('X ha pagato la bolletta') condivisi in tempo reale con tutti i partecipanti."
+  "release_notes": "🔒 Archiviazione Integrale Anti-Riassunto & Ispezione Testo: Sanitizzazione attiva contro titoli generati come 'Riassunto di...' con preservazione del titolo proprio; notifica rassicurante con [Vedi] e [Scarica]; estrazione puntuale del contenuto e lettura integrale su richiesta per documenti, PDF e file Office."
 }
 

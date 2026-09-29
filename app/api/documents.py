@@ -58,12 +58,39 @@ def _process_and_save_single_doc(
 
     # 4. Determine file type and title
     file_ext = Path(filename).suffix.lstrip(".").lower() or "bin"
-    title = (extracted.title or "").strip()
+    clean_stem = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
+    if clean_stem:
+        clean_stem = clean_stem[0].upper() + clean_stem[1:]
+    raw_title = (extracted.title or "").strip()
+
+    # Sanitizzazione anti-allucinazione del titolo (specialmente per modelli rapidi come Gemini Flash):
+    # Rimuove prefissi o frasi degenerate come "Riassunto del...", "Sintesi di...", "Descrizione di..."
+    cleaned_title = raw_title
+    summary_prefixes = (
+        "riassunto", "sintesi", "estratto", "sommario", "descrizione", "panoramica", "analisi"
+    )
+    if any(cleaned_title.lower().startswith(p) for p in summary_prefixes):
+        trimmed = re.sub(
+            r"^(?:riassunto|sintesi|estratto|sommario|descrizione|panoramica|analisi)\s+(?:del|della|dello|dei|degli|delle|di|sul|sulla|sullo|sui|sugli|sulle|su|in|d'\s*|un\s+|una\s+|uno\s+)?",
+            "",
+            cleaned_title,
+            flags=re.IGNORECASE
+        ).strip()
+        words = trimmed.split()
+        if 2 <= len(words) <= 8 and len(trimmed) <= 60:
+            cleaned_title = trimmed[0].upper() + trimmed[1:]
+        else:
+            cleaned_title = ""
+
+    # Se il titolo è eccessivamente prolisso (più di 9 parole o oltre 75 caratteri), si tratta di una frase riassuntiva
+    if len(cleaned_title.split()) > 9 or len(cleaned_title) > 75:
+        cleaned_title = ""
+
+    title = cleaned_title
     if not title:
-        if extracted.issuer:
+        if extracted.issuer and extracted.doc_type not in ["generico", "foto", "screenshot"]:
             title = f"{extracted.doc_type.capitalize()} {extracted.issuer}".strip()
         else:
-            clean_stem = Path(filename).stem.replace("_", " ").replace("-", " ").strip()
             title = f"Foto {clean_stem}" if file_ext in ["jpg", "jpeg", "png", "webp"] else (clean_stem or filename)
 
     # 5. Save Document in DB (autonomia semantica e gestione quietanze/pagamenti)
@@ -168,27 +195,28 @@ async def upload_document(
     if doc.status == "quietanzato":
         amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
         if is_group:
-            chat_reply = f"✅ **{uploader_name}** ha inserito questo documento già quietanzato: **{doc.title}**{amount_str}.\n💡 {doc.summary}"
+            chat_reply = f"✅ **{uploader_name}** ha inserito questo documento già quietanzato: **{doc.title}**{amount_str}.\n🔒 *File originale integrale custodito nel caveau del gruppo.*\n💡 {doc.summary}"
         else:
-            chat_reply = f"📄 Ho registrato e archiviato il documento come già saldato/quietanzato: **{doc.title}**{amount_str}.\n💡 {doc.summary}"
+            chat_reply = f"📄 Ho registrato e archiviato il documento originale come già saldato/quietanzato: **{doc.title}**{amount_str}.\n🔒 *File originale integrale protetto e custodito nel caveau.* Clicca su **'Vedi'** nella scheda per aprirlo o su **'Scarica'**.\n💡 {doc.summary}"
     elif doc.status == "da_pagare":
         amount_str = f" ({doc.amount:.2f} €)" if doc.amount is not None else ""
         due_str = f" con scadenza {doc.due_date.strftime('%d/%m/%Y')}" if doc.due_date else ""
         if is_group:
-            chat_reply = f"📎 **{uploader_name}** ha inserito questo documento da saldare: **{doc.title}**{amount_str}{due_str}."
+            chat_reply = f"📎 **{uploader_name}** ha inserito questo documento da saldare: **{doc.title}**{amount_str}{due_str}.\n🔒 *File originale integrale custodito nel caveau.* Puoi consultarlo con **'Vedi'** o scaricarlo."
         elif doc.amount is not None:
-            chat_reply = f"📄 Ho registrato la spesa/scadenza da saldare: {doc.title}{amount_str}{due_str}."
+            chat_reply = f"📄 Ho archiviato il documento originale e registrato la spesa da saldare: **{doc.title}**{amount_str}{due_str}.\n🔒 *File originale integrale conservato nel caveau.* Clicca su **'Vedi'** nella scheda per aprirlo o su **'Scarica'**.\n💡 {doc.summary}"
         else:
-            chat_reply = f"📄 Ho registrato il documento con scadenza attiva: {doc.title}{due_str}."
+            chat_reply = f"📄 Ho archiviato il documento originale con scadenza attiva: **{doc.title}**{due_str}.\n🔒 *File integrale conservato nel caveau.* Clicca su **'Vedi'** per aprirlo o su **'Scarica'**.\n💡 {doc.summary}"
     elif doc.due_date is not None:
         due_str = f" con scadenza promemoria {doc.due_date.strftime('%d/%m/%Y')}"
         if is_group:
-            chat_reply = f"📎 **{uploader_name}** ha inserito questo documento: **{doc.title}**{due_str}.\n💡 {doc.summary}"
+            chat_reply = f"📎 **{uploader_name}** ha inserito questo documento: **{doc.title}**{due_str}.\n🔒 *File originale integrale custodito nel caveau.*\n💡 {doc.summary}"
         else:
-            chat_reply = f"📄 Ho registrato e archiviato il documento: **{doc.title}**{due_str}.\n💡 {doc.summary}"
+            chat_reply = f"📄 Ho registrato e archiviato il documento originale: **{doc.title}**{due_str}.\n🔒 *File integrale conservato nel caveau.* Clicca su **'Vedi'** nella scheda per consultarlo o su **'Scarica'**.\n💡 {doc.summary}"
     elif is_zip:
         chat_reply = (
-            f"📦 Ho archiviato l'archivio compresso: **{doc.title}**.\n"
+            f"📦 Ho archiviato l'archivio compresso originale: **{doc.title}**.\n"
+            f"🔒 *File integro protetto nel caveau.*\n"
             f"💡 {doc.summary}\n\n"
             f"⚡ *Vuoi che lo scompatti per te per analizzare e registrare singolarmente ogni documento? Clicca su **'Estrai'** qui sotto oppure dimmi 'scompatta lo zip'!*"
         )
@@ -196,17 +224,18 @@ async def upload_document(
         is_scan = "scansion" in filename.lower()
         should_ask_rename = doc.doc_type in ["foto", "foto_oggetto", "oggetto_fisico", "screenshot"] and not is_scan
         if is_group:
-            chat_reply = f"📎 **{uploader_name}** ha inserito questo documento: **{doc.title}**.\n💡 {doc.summary}"
+            chat_reply = f"📎 **{uploader_name}** ha inserito questo documento: **{doc.title}**.\n🔒 *File originale integrale custodito nel caveau.*\n💡 {doc.summary}"
         elif should_ask_rename:
             chat_reply = (
-                f"📸 Ho analizzato e salvato il file nel caveau come: **{doc.title}**.\n"
+                f"📸 Ho analizzato e salvato il file originale nel caveau come: **{doc.title}**.\n"
+                f"🔒 *File integrale protetto nel caveau.* Clicca su **'Vedi'** per visualizzarlo o su **'Scarica'**.\n"
                 f"💡 {doc.summary}\n\n"
                 f"*Desideri dargli un nome specifico o dirmi dove lo conservi?* (es. 'Chiamalo Base Volante' oppure 'Mettilo nello studio')"
             )
         elif is_scan:
-            chat_reply = f"📄 Ho analizzato e protocollato il documento: **{doc.title}**.\n💡 {doc.summary}"
+            chat_reply = f"📄 Ho archiviato e protocollato il documento originale: **{doc.title}**.\n🔒 *File integrale custodito nel caveau.* Clicca su **'Vedi'** per visualizzarlo per intero o su **'Scarica'**.\n💡 {doc.summary}"
         else:
-            chat_reply = f"📸 Ho analizzato e archiviato il file: **{doc.title}**.\n💡 {doc.summary}"
+            chat_reply = f"📄 Ho archiviato il documento originale nel caveau: **{doc.title}**.\n🔒 *File integrale custodito e protetto al 100%.* Clicca su **'Vedi'** nella scheda per visualizzarlo o su **'Scarica'**.\n💡 {doc.summary}"
 
     active_model = get_app_setting(db, "ai_model", default=get_settings().OPENROUTER_MODEL) or "auto"
     routed_model = "google/gemini-2.5-flash-lite" if active_model == "auto" else active_model
@@ -620,7 +649,7 @@ async def upload_documents_batch(
             "title": d.title,
             "issuer": d.issuer,
             "amount": d.amount,
-            "due_date": doc.due_date.isoformat() if doc.due_date else None,
+            "due_date": d.due_date.isoformat() if d.due_date else None,
             "status": d.status,
             "file_url": f"/uploads/{fn}",
             "download_url": f"/api/documents/{d.id}/download",
@@ -690,6 +719,7 @@ async def upload_documents_batch(
     return {
         "success": True,
         "count": total_count,
+        "uploaded_count": total_count,
         "documents": docs_output,
         "chat_reply": chat_reply,
         "routed_model": routed_model

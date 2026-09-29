@@ -728,8 +728,16 @@ class AgenticChatService:
                 "cella ", "celle", "tabella", "leggi il file", "leggi il foglio", "leggimi il file",
                 "cosa c'è nel file", "cosa ce nel file", "cosa c'è nel foglio", "cosa ce nel foglio",
                 "cosa contiene il file", "cosa contiene il foglio", "dati del foglio", "dati di excel",
-                ".xlsx", ".xls", ".csv"
-            ]) or (any(k in lower_t for k in ["riga", "colonna", "cella", "importo", "fatturato", "valore"]) and any(k in lower_t for k in ["excel", "xlsx", "xls", "tabella", "foglio"]))
+                ".xlsx", ".xls", ".csv",
+                "cosa c'è scritto", "cosa ce scritto", "cosa c'è nel documento", "cosa ce nel documento",
+                "cosa dice il documento", "cosa dice il file", "cosa dice il testo", "cosa dice la bolletta",
+                "cosa dice il contratto", "cosa dice il verbale", "leggi il documento", "leggimi il documento",
+                "leggimi il testo", "leggi il testo", "fammi leggere", "mostrami il testo", "testo del documento",
+                "testo integrale", "contenuto integrale", "contenuto del documento", "cosa contiene il documento",
+                "leggimi cosa c'è", "cosa è scritto", "cosa riporta il documento", "cosa c'è scritto nel"
+            ])
+            or (any(k in lower_t for k in ["riga", "colonna", "cella", "importo", "fatturato", "valore"]) and any(k in lower_t for k in ["excel", "xlsx", "xls", "tabella", "foglio"]))
+            or (any(k in lower_t for k in ["cosa c'è", "cosa ce", "cosa dice", "leggi", "leggimi", "mostra il testo", "fammi leggere"]) and any(k in lower_t for k in ["documento", "pdf", "file", "contratto", "verbale", "ricevuta", "scritto"]))
         ) and not is_delete_request and not is_rename_request
 
         is_unzip_request = any(k in lower_t for k in [
@@ -988,10 +996,12 @@ class AgenticChatService:
                     tbl = c_out.get("markdown_table") or c_out.get("content_text") or ""
                     doc_title = c_out.get("document_title") or "Documento"
                     sheet_info = f" (Foglio: **{c_out.get('active_sheet')}**)" if c_out.get("active_sheet") else ""
+                    docs_payload = c_out.get("documents") or []
                     return ChatResponse(
-                        reply=f"📊 **Dati estratti dal file '{doc_title}'**{sheet_info}:\n\n{tbl}\n\n💡 *{c_out.get('summary', '')}*",
+                        reply=f"📄 **Contenuto estratto da '{doc_title}'**{sheet_info}:\n\n{tbl}\n\n🔒 *File originale integrale custodito nel caveau. Clicca su [Vedi] per consultarlo o su [Scarica].*\n💡 *{c_out.get('summary', '')}*",
                         action="read_vault_document_content",
-                        data=c_out
+                        data=c_out,
+                        documents=docs_payload
                     )
 
             clean_test = lower_t.replace("?", "").strip()
@@ -1474,7 +1484,7 @@ class AgenticChatService:
                                 doc_title = (tool_data or {}).get("document_title") or "documento"
                                 tbl = (tool_data or {}).get("markdown_table") or (tool_data or {}).get("content_text") or ""
                                 sheet_info = f" (Foglio: **{(tool_data or {}).get('active_sheet')}**)" if (tool_data or {}).get('active_sheet') else ""
-                                final_text = f"📊 **Dati estratti dal file '{doc_title}'**{sheet_info}:\n\n{tbl}\n\n💡 *{(tool_data or {}).get('summary', '')}*"
+                                final_text = f"📄 **Contenuto estratto da '{doc_title}'**{sheet_info}:\n\n{tbl}\n\n🔒 *File originale integrale custodito nel caveau. Clicca su [Vedi] per consultarlo o su [Scarica].*\n💡 *{(tool_data or {}).get('summary', '')}*"
                             elif tool_action == "unzip_vault_archive":
                                 ext_cnt = (tool_data or {}).get("extracted_count", 0)
                                 final_text = f"📦 Ho scompattato con successo l'archivio ed estratto {ext_cnt} documenti nel Caveau!"
@@ -1592,6 +1602,8 @@ class AgenticChatService:
                         if tool_action in ["show_document_card", "unzip_vault_archive"]:
                             filtered_docs = docs_found
                             tool_action = "show_document_card"
+                        elif tool_action == "read_vault_document_content":
+                            filtered_docs = docs_found
                         elif tool_action == "get_upcoming_deadlines":
                             if docs_found and (mentions_cards_in_text or is_download_or_show or not is_meta_or_help):
                                 filtered_docs = docs_found[:5]
@@ -2149,13 +2161,24 @@ class AgenticChatService:
                 return ChatResponse(reply="📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines), action="get_upcoming_deadlines", data=t_out, documents=docs)
             return ChatResponse(reply="✅ Non ci sono scadenze o pagamenti in sospeso al momento.", action="get_upcoming_deadlines", data=t_out)
 
-        # 3b. Ispezione dati tabelle e fogli Excel / CSV / Word
-        is_content_query = any(k in lower_t for k in [
-            "foglio excel", "file excel", "foglio di calcolo", "riga ", "righe", "colonna ", "colonne",
-            "cella ", "celle", "tabella", "leggi il file", "leggi il foglio", "leggimi il file",
-            "cosa c'è nel file", "cosa ce nel file", "cosa c'è nel foglio", "cosa ce nel foglio",
-            "cosa contiene il file", "cosa contiene il foglio", "dati del foglio", "dati di excel"
-        ]) or (any(k in lower_t for k in ["riga", "colonna", "cella", "importo", "fatturato", "valore"]) and any(k in lower_t for k in ["excel", "xlsx", "xls", "tabella", "foglio"]))
+        # 3b. Ispezione dati tabelle, fogli Excel / CSV / Word e testi integrali di documenti
+        is_content_query = (
+            any(k in lower_t for k in [
+                "foglio excel", "file excel", "foglio di calcolo", "riga ", "righe", "colonna ", "colonne",
+                "cella ", "celle", "tabella", "leggi il file", "leggi il foglio", "leggimi il file",
+                "cosa c'è nel file", "cosa ce nel file", "cosa c'è nel foglio", "cosa ce nel foglio",
+                "cosa contiene il file", "cosa contiene il foglio", "dati del foglio", "dati di excel",
+                ".xlsx", ".xls", ".csv",
+                "cosa c'è scritto", "cosa ce scritto", "cosa c'è nel documento", "cosa ce nel documento",
+                "cosa dice il documento", "cosa dice il file", "cosa dice il testo", "cosa dice la bolletta",
+                "cosa dice il contratto", "cosa dice il verbale", "leggi il documento", "leggimi il documento",
+                "leggimi il testo", "leggi il testo", "fammi leggere", "mostrami il testo", "testo del documento",
+                "testo integrale", "contenuto integrale", "contenuto del documento", "cosa contiene il documento",
+                "leggimi cosa c'è", "cosa è scritto", "cosa riporta il documento", "cosa c'è scritto nel"
+            ])
+            or (any(k in lower_t for k in ["riga", "colonna", "cella", "importo", "fatturato", "valore"]) and any(k in lower_t for k in ["excel", "xlsx", "xls", "tabella", "foglio"]))
+            or (any(k in lower_t for k in ["cosa c'è", "cosa ce", "cosa dice", "leggi", "leggimi", "mostra il testo", "fammi leggere"]) and any(k in lower_t for k in ["documento", "pdf", "file", "contratto", "verbale", "ricevuta", "scritto"]))
+        )
 
         if is_content_query:
             c_res = self.execute_tool("read_vault_document_content", {"query": user_text}, db=db, thread_id=thread_id)
@@ -2163,15 +2186,18 @@ class AgenticChatService:
                 tbl = c_res.get("markdown_table") or c_res.get("content_text") or ""
                 doc_title = c_res.get("document_title") or "Documento"
                 sheet_info = f" (Foglio: **{c_res.get('active_sheet')}**)" if c_res.get("active_sheet") else ""
+                docs_payload = c_res.get("documents") or []
                 reply_text = (
-                    f"📊 **Dati estratti dal file '{doc_title}'**{sheet_info}:\n\n"
+                    f"📄 **Contenuto estratto da '{doc_title}'**{sheet_info}:\n\n"
                     f"{tbl}\n\n"
+                    f"🔒 *File originale integrale custodito nel caveau. Clicca su [Vedi] per consultarlo o su [Scarica].*\n"
                     f"💡 *{c_res.get('summary', '')}*"
                 )
                 return ChatResponse(
                     reply=reply_text,
                     action="read_vault_document_content",
-                    data=c_res
+                    data=c_res,
+                    documents=docs_payload
                 )
 
         # 4. Liste o elenchi del caveau
