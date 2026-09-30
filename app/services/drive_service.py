@@ -139,7 +139,7 @@ class GoogleDriveServiceInterface(Protocol):
     ) -> dict:
         ...
 
-    def delete_vault_root_folder(self, access_token: str) -> bool:
+    def delete_vault_root_folder(self, access_token: str, root_folder_id: Optional[str] = None) -> bool:
         ...
 
 
@@ -172,9 +172,10 @@ class MockGoogleDriveService:
         return {
             "file_id": mock_id,
             "web_view_link": f"https://drive.google.com/file/d/{mock_id}/view",
+            "root_folder_id": "mock-root-folder-id",
         }
 
-    def delete_vault_root_folder(self, access_token: str) -> bool:
+    def delete_vault_root_folder(self, access_token: str, root_folder_id: Optional[str] = None) -> bool:
         return True
 
 
@@ -288,6 +289,23 @@ class RealGoogleDriveService:
         if files:
             return files[0]["id"]
 
+        # Fallback per cartella radice: se 'root' in parents non trova la cartella,
+        # cerca per solo nome (compatibilità con account Google Workspace, Drive condivisi o ID radice specifici)
+        if not parent_id:
+            fb_q = f"mimeType = 'application/vnd.google-apps.folder' and name = '{safe_name}' and trashed = false"
+            try:
+                res_fb = client.get(
+                    "https://www.googleapis.com/drive/v3/files",
+                    headers=headers,
+                    params={"q": fb_q, "fields": "files(id, name)"},
+                )
+                if res_fb.status_code == 200:
+                    fb_files = res_fb.json().get("files", [])
+                    if fb_files:
+                        return fb_files[0]["id"]
+            except Exception as fb_err:
+                logger.debug(f"Fallback ricerca cartella radice non riuscito: {fb_err}")
+
         # Cartella non trovata: creala
         body = {
             "name": folder_name,
@@ -314,7 +332,8 @@ class RealGoogleDriveService:
     ) -> dict:
         with self._client_ctx() as client:
             parent_id = None
-            for folder_name in folder_path:
+            root_folder_id = None
+            for idx, folder_name in enumerate(folder_path):
                 cleaned = folder_name.strip()
                 if cleaned:
                     parent_id = self.get_or_create_folder(
@@ -323,6 +342,8 @@ class RealGoogleDriveService:
                         access_token=access_token,
                         client=client,
                     )
+                    if idx == 0:
+                        root_folder_id = parent_id
 
             boundary = f"=====boundary_{uuid.uuid4().hex}====="
             metadata = {"name": filename}
@@ -355,32 +376,95 @@ class RealGoogleDriveService:
             return {
                 "file_id": file_id,
                 "web_view_link": web_view_link,
+                "root_folder_id": root_folder_id,
             }
 
-    def delete_vault_root_folder(self, access_token: str) -> bool:
-        """Elimina la cartella radice DoveLoAIMesso e tutti i relativi file su Google Drive."""
+    def delete_vault_root_folder(self, access_token: str, root_folder_id: Optional[str] = None) -> bool:
+        """
+        Elimina la cartella radice DoveLoAIMesso e tutti i relativi file su Google Drive.
+        Garantisce la rimozione completa sia tramite root_folder_id che tramite scansione
+        del perimetro dell'app (scope drive.file).
+        """
         with self._client_ctx() as client:
             headers = {"Authorization": f"Bearer {access_token}"}
-            q = "mimeType = 'application/vnd.google-apps.folder' and name = 'DoveLoAIMesso' and trashed = false and 'root' in parents"
+            deleted_any = False
+            errors = []
+
+            # 1. Se root_folder_id è specificato, prova ad eliminarlo direttamente
+            if root_folder_id:
+                try:
+                    del_res = client.delete(
+                        f"https://www.googleapis.com/drive/v3/files/{root_folder_id}",
+                        headers=headers,
+                    )
+                    if del_res.status_code in (200, 204):
+                        deleted_any = True
+                        logger.info(f"Cartella radice Drive {root_folder_id} eliminata con successo.")
+                except Exception as e:
+                    logger.warning(f"Tentativo eliminazione root_folder_id {root_folder_id} non riuscito: {e}")
+
+            # 2. Cerca ed elimina tutte le cartelle con nome 'DoveLoAIMesso'
             try:
+                q = "mimeType = 'application/vnd.google-apps.folder' and name = 'DoveLoAIMesso' and trashed = false"
                 res = client.get(
                     "https://www.googleapis.com/drive/v3/files",
                     headers=headers,
-                    params={"q": q, "fields": "files(id, name)"}
+                    params={"q": q, "fields": "files(id, name)"},
                 )
                 if res.status_code == 200:
                     files = res.json().get("files", [])
                     for f in files:
                         fid = f.get("id")
-                        if fid:
-                            client.delete(f"https://www.googleapis.com/drive/v3/files/{fid}", headers=headers)
-                    return True
-                else:
+                        if fid and fid != root_folder_id:
+                            try:
+                                d_res = client.delete(
+                                    f"https://www.googleapis.com/drive/v3/files/{fid}",
+                                    headers=headers,
+                                )
+                                if d_res.status_code in (200, 204):
+                                    deleted_any = True
+                            except Exception as e:
+                                errors.append(str(e))
+                elif res.status_code in (401, 403):
                     logger.warning(f"Google Drive search folder failed ({res.status_code}): {res.text}")
                     return False
+                else:
+                    logger.warning(f"Google Drive search folder failed ({res.status_code}): {res.text}")
             except Exception as e:
-                logger.error(f"Errore durante eliminazione cartella radice DoveLoAIMesso da Drive: {e}")
+                errors.append(str(e))
+                logger.error(f"Errore durante ricerca ed eliminazione cartelle DoveLoAIMesso: {e}")
+
+            # 3. Pulizia esaustiva: sotto scope drive.file l'app può vedere e gestire esclusivamente i file che ha creato.
+            # Rimuoviamo qualsiasi file o cartella orfana residua non ancora cestinata.
+            try:
+                res_all = client.get(
+                    "https://www.googleapis.com/drive/v3/files",
+                    headers=headers,
+                    params={"q": "trashed = false", "fields": "files(id, name)"},
+                )
+                if res_all.status_code == 200:
+                    remaining = res_all.json().get("files", [])
+                    for rf in remaining:
+                        rf_id = rf.get("id")
+                        if rf_id:
+                            try:
+                                d_res = client.delete(
+                                    f"https://www.googleapis.com/drive/v3/files/{rf_id}",
+                                    headers=headers,
+                                )
+                                if d_res.status_code in (200, 204):
+                                    deleted_any = True
+                            except Exception as e:
+                                errors.append(str(e))
+                elif res_all.status_code in (401, 403):
+                    logger.warning(f"Google Drive list remaining files failed ({res_all.status_code}): {res_all.text}")
+                    return False
+            except Exception as e:
+                logger.warning(f"Errore durante pulizia file orfani drive.file: {e}")
+
+            if errors and not deleted_any:
                 return False
+            return True
 
 
 def get_drive_service() -> GoogleDriveServiceInterface:

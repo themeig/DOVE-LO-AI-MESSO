@@ -156,10 +156,24 @@ def wipe_database(
     if payload.delete_drive:
         try:
             active_cred = db.query(GoogleDriveCredential).first()
-            if active_cred and active_cred.access_token:
-                drive_service = get_drive_service()
-                drive_service.delete_vault_root_folder(active_cred.access_token)
-                drive_deleted = True
+            if active_cred:
+                from app.services.drive_service import get_fresh_access_token
+                fresh_token = get_fresh_access_token(active_cred, db)
+                token_to_use = fresh_token or active_cred.access_token
+                if token_to_use:
+                    drive_service = get_drive_service()
+                    root_folder_id = getattr(active_cred, "root_folder_id", None)
+                    success = drive_service.delete_vault_root_folder(
+                        access_token=token_to_use,
+                        root_folder_id=root_folder_id,
+                    )
+                    drive_deleted = bool(success)
+                    if drive_deleted:
+                        logger.info("Cartella radice e file del Caveau eliminati con successo da Google Drive.")
+                    else:
+                        logger.warning("Eliminazione da Google Drive non completata o parziale.")
+                else:
+                    logger.warning("Impossibile rinnovare o ottenere il token Google Drive per l'eliminazione remota.")
             db.query(GoogleDriveCredential).delete()
         except Exception as e:
             logger.warning(f"Errore durante l'eliminazione da Google Drive: {e}")

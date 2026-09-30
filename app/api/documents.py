@@ -127,6 +127,7 @@ async def _extract_and_prepare_file_payload_async(
     drive_file_id = None
     drive_web_url = None
     drive_folder_str = None
+    root_folder_id = None
     if drive_creds_info and drive_creds_info.get("access_token"):
         try:
             drive_service = get_drive_service()
@@ -149,10 +150,12 @@ async def _extract_and_prepare_file_payload_async(
             )
             drive_file_id = drive_res.get("file_id")
             drive_web_url = drive_res.get("web_view_link")
+            root_folder_id = drive_res.get("root_folder_id")
             drive_folder_str = " / ".join(folder_path) if drive_file_id else None
         except Exception as e:
             logger.warning(f"Errore durante l'upload su Google Drive per '{filename}': {e}")
             drive_folder_str = None
+            root_folder_id = None
             if "401" in str(e) or "Unauthorized" in str(e):
                 drive_creds_info["access_token"] = None
 
@@ -169,6 +172,7 @@ async def _extract_and_prepare_file_payload_async(
         "summary": extracted.summary,
         "drive_file_id": drive_file_id,
         "drive_web_url": drive_web_url,
+        "root_folder_id": root_folder_id,
         "drive_folder_str": drive_folder_str,
         "category": extracted.category,
         "category_label": extracted.category_label,
@@ -254,6 +258,7 @@ def _extract_and_prepare_file_payload(
     drive_file_id = None
     drive_web_url = None
     drive_folder_str = None
+    root_folder_id = None
     if drive_creds_info and drive_creds_info.get("access_token"):
         try:
             drive_service = get_drive_service()
@@ -274,10 +279,12 @@ def _extract_and_prepare_file_payload(
             )
             drive_file_id = drive_res.get("file_id")
             drive_web_url = drive_res.get("web_view_link")
+            root_folder_id = drive_res.get("root_folder_id")
             drive_folder_str = " / ".join(folder_path) if drive_file_id else None
         except Exception as e:
             logger.warning(f"Errore durante l'upload su Google Drive per '{filename}': {e}")
             drive_folder_str = None
+            root_folder_id = None
 
     return {
         "saved_path": saved_path,
@@ -292,6 +299,7 @@ def _extract_and_prepare_file_payload(
         "summary": extracted.summary,
         "drive_file_id": drive_file_id,
         "drive_web_url": drive_web_url,
+        "root_folder_id": root_folder_id,
         "drive_folder_str": drive_folder_str,
         "category": extracted.category,
         "category_label": extracted.category_label,
@@ -434,6 +442,8 @@ async def upload_document(
         subfolder=prep["subfolder"]
     )
     db.add(doc)
+    if active_cred and prep.get("root_folder_id") and not getattr(active_cred, "root_folder_id", None):
+        active_cred.root_folder_id = prep["root_folder_id"]
     db.commit()
     db.refresh(doc)
 
@@ -922,6 +932,7 @@ async def upload_documents_batch(
         drive_file_id = None
         drive_web_url = None
         drive_folder_str = None
+        root_folder_id = None
         if drive_creds_info and drive_creds_info.get("access_token"):
             try:
                 drive_service = get_drive_service()
@@ -941,9 +952,11 @@ async def upload_documents_batch(
                 )
                 drive_file_id = drive_res.get("file_id")
                 drive_web_url = drive_res.get("web_view_link")
+                root_folder_id = drive_res.get("root_folder_id")
                 drive_folder_str = " / ".join(folder_path) if drive_file_id else None
             except Exception as e:
                 logger.warning(f"Errore Drive upload async per '{clean_fn}': {e}")
+                root_folder_id = None
 
         return {
             "saved_path": saved_path,
@@ -958,6 +971,7 @@ async def upload_documents_batch(
             "summary": extracted.summary,
             "drive_file_id": drive_file_id,
             "drive_web_url": drive_web_url,
+            "root_folder_id": root_folder_id,
             "drive_folder_str": drive_folder_str,
             "category": extracted.category,
             "category_label": extracted.category_label,
@@ -1015,6 +1029,12 @@ async def upload_documents_batch(
         )
         db.add(doc)
         saved_docs.append(doc)
+
+    if active_cred and not getattr(active_cred, "root_folder_id", None):
+        for prep in prepared_docs:
+            if prep.get("root_folder_id"):
+                active_cred.root_folder_id = prep["root_folder_id"]
+                break
 
     db.commit()
     for d in saved_docs:

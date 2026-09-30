@@ -1,7 +1,7 @@
 {
-  "version_code": 346,
-  "version_name": "2.19.0",
+  "version_code": 347,
+  "version_name": "2.19.1",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "💳 Gestione stato pagamenti (pagato / da pagare) e consultazione rapida scadenzario fiscale & bollette tramite AI."
+  "release_notes": "☁️ Fix sincronizzazione Google Drive, rinnovo automatico del token di accesso e cancellazione completa della cartella remota e dei file durante l'azzeramento del database (wipe)."
 }
 
