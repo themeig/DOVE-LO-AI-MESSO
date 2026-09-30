@@ -437,6 +437,14 @@ async def upload_document(
     db.commit()
     db.refresh(doc)
 
+    try:
+        from app.services.vector_service import store_document_chunks
+        text_to_index = f"{doc.title or ''} {doc.issuer or ''} {doc.summary or ''} {doc.doc_type or ''} {doc.category or ''}".strip()
+        if text_to_index:
+            store_document_chunks(db, doc.id, text_to_index, user_id=doc.user_id)
+    except Exception as e:
+        logger.warning(f"Errore indicizzazione vettoriale per doc {doc.id}: {e}")
+
     auto_sync_calendar_event(doc, db)
 
     is_group = bool(doc.group_id or (thread_id and thread_id not in ("general", "all")))
@@ -1011,6 +1019,13 @@ async def upload_documents_batch(
     db.commit()
     for d in saved_docs:
         db.refresh(d)
+        try:
+            from app.services.vector_service import store_document_chunks
+            text_to_index = f"{d.title or ''} {d.issuer or ''} {d.summary or ''} {d.doc_type or ''} {d.category or ''}".strip()
+            if text_to_index:
+                store_document_chunks(db, d.id, text_to_index, user_id=d.user_id)
+        except Exception:
+            pass
         auto_sync_calendar_event(d, db)
 
     total_count = len(saved_docs)

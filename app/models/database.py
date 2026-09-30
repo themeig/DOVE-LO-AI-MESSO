@@ -1,11 +1,59 @@
 import json
 from datetime import datetime, date, timezone
-from sqlalchemy import create_engine, Column, Integer, String, Float, Date, DateTime, Text, Boolean, JSON, inspect, text, types
-from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from sqlalchemy import create_engine, Column, Integer, String, Float, Date, DateTime, Text, Boolean, JSON, inspect, text, types, ForeignKey
+from sqlalchemy.orm import declarative_base, sessionmaker, Session, relationship
 from app.config import get_settings
 from app.services.crypto_service import get_vault_manager, encrypt_str, decrypt_str
 
+try:
+    from pgvector.sqlalchemy import Vector
+    HAS_PGVECTOR = True
+except ImportError:
+    HAS_PGVECTOR = False
+    Vector = None
+
 Base = declarative_base()
+
+
+class VectorType(types.TypeDecorator):
+    """
+    Tipo di colonna ibrido compatibile con PostgreSQL + pgvector nativo (tipo Vector)
+    e con fallback trasparente (JSON float array) per SQLite o ambienti di test.
+    """
+    impl = types.Text
+    cache_ok = True
+
+    def __init__(self, dim=768, *args, **kwargs):
+        self.dim = dim
+        super().__init__(*args, **kwargs)
+
+    def load_dialect_impl(self, dialect):
+        if HAS_PGVECTOR and dialect.name == "postgresql" and Vector is not None:
+            return dialect.type_descriptor(Vector(self.dim))
+        return dialect.type_descriptor(types.Text())
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if HAS_PGVECTOR and dialect.name == "postgresql":
+            return value
+        if isinstance(value, (list, tuple)):
+            return json.dumps([float(x) for x in value])
+        return str(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        if HAS_PGVECTOR and dialect.name == "postgresql":
+            return list(value)
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except Exception:
+                return []
+        if isinstance(value, (list, tuple)):
+            return list(value)
+        return value
 
 
 class EncryptedString(types.TypeDecorator):
@@ -159,6 +207,21 @@ class Document(Base):
     subfolder = Column(EncryptedString(255), nullable=True)
     drive_folder_path = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    embeddings = relationship("DocumentEmbedding", back_populates="document", cascade="all, delete-orphan", passive_deletes=True)
+
+
+class DocumentEmbedding(Base):
+    __tablename__ = "document_embeddings"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(100), nullable=True, index=True)
+    document_id = Column(Integer, ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    chunk_index = Column(Integer, nullable=False, default=0)
+    chunk_text = Column(Text, nullable=False)
+    embedding = Column(VectorType(dim=768), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    document = relationship("Document", back_populates="embeddings")
 
 
 class WatchedFolder(Base):
@@ -425,6 +488,11 @@ def init_db(engine=None):
             if "monitoring_started_at" not in wf_cols:
                 conn.execute(text("ALTER TABLE watched_folders ADD COLUMN monitoring_started_at DATETIME"))
                 conn.commit()
+
+        if "document_embeddings" in table_names:
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_document_embeddings_user_id ON document_embeddings(user_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS ix_document_embeddings_document_id ON document_embeddings(document_id)"))
+            conn.commit()
 
         # Seed default threads if table exists and is empty
         if "chat_threads" in table_names:

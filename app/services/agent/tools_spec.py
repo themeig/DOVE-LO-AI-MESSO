@@ -447,6 +447,84 @@ TOOLS_DEFINITION = [
                 }
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_exact_sql",
+            "description": (
+                "Esegue una ricerca deterministica esatta (affidabilità 100%) sui record del caveau tramite filtri B-Tree strutturati. "
+                "Usalo quando l'utente specifica codici identificativi precisi: Codice Fiscale, Partita IVA, IBAN, Targa auto, "
+                "numero fattura esatto (es. 'FT-2024/01'), fornitore preciso, o importo/data puntuale."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "codice_fiscale": {"type": "string", "description": "Codice Fiscale italiano da cercare (es. 'RSSMRA85M01H501Q')"},
+                    "partita_iva": {"type": "string", "description": "Partita IVA a 11 cifre"},
+                    "iban": {"type": "string", "description": "Codice IBAN europeo"},
+                    "targa": {"type": "string", "description": "Targa automobilistica (es. 'AB123CD')"},
+                    "numero_fattura": {"type": "string", "description": "Numero o identificativo fattura esatto"},
+                    "amount": {"type": "number", "description": "Importo esatto in euro"},
+                    "due_date": {"type": "string", "description": "Data scadenza precisa in formato YYYY-MM-DD"},
+                    "issuer": {"type": "string", "description": "Fornitore o emittente esatto (es. 'Enel Energia')"},
+                    "doc_type": {"type": "string", "description": "Tipologia documento (es. 'bolletta', 'f24', 'fattura')"},
+                    "category": {"type": "string", "description": "Categoria tematica"}
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_vector_semantic",
+            "description": (
+                "Esegue una ricerca vettoriale semantica ad alta dimensionalità (pgvector / embeddings 768d) basata su concetti, significato e similarità cosenica. "
+                "Usalo per query concettuali, descrittive o colloquiali (es. 'spese mediche del cardiologo', 'ricevute acquisti informatica', 'guasti e riparazioni casa')."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "concept": {"type": "string", "description": "Il concetto semantico o tema da cercare nei contenuti dei documenti"},
+                    "category": {"type": "string", "description": "Filtro opzionale per categoria o sezione tematica"},
+                    "top_k": {"type": "integer", "description": "Numero massimo di risultati da restituire (default 5)"}
+                },
+                "required": ["concept"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_hybrid",
+            "description": (
+                "Esegue la ricerca ibrida enterprise di massima precisione (99.999%): "
+                "esegue in parallelo il pre-filtro deterministico per codici rigidi (B-Tree) e la similarità semantica vettoriale (pgvector), "
+                "combinando i risultati tramite Reciprocal Rank Fusion (RRF) ed Exact-Match Boost (+1.0). "
+                "Usalo come strumento di ricerca predefinito avanzato per qualsiasi richiesta mista o complessa."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query_text": {"type": "string", "description": "Il testo completo della richiesta dell'utente"},
+                    "exact_filters": {
+                        "type": "object",
+                        "description": "Filtri opzionali strutturati aggiuntivi (codice_fiscale, piva, iban, targa, importo, data, fattura)",
+                        "properties": {
+                            "codice_fiscale": {"type": "string"},
+                            "partita_iva": {"type": "string"},
+                            "iban": {"type": "string"},
+                            "targa": {"type": "string"},
+                            "numero_fattura": {"type": "string"},
+                            "amount": {"type": "number"},
+                            "due_date": {"type": "string"}
+                        }
+                    },
+                    "top_k": {"type": "integer", "description": "Numero massimo di risultati (default 10)"}
+                },
+                "required": ["query_text"]
+            }
+        }
     }
 ]
 

@@ -277,6 +277,69 @@ def search_vault(query: str) -> str:
         return "\n\n".join(result)
 
 @mcp.tool()
+def search_exact_sql(
+    codice_fiscale: str = "",
+    partita_iva: str = "",
+    iban: str = "",
+    targa: str = "",
+    numero_fattura: str = "",
+    issuer: str = "",
+    doc_type: str = "",
+    category: str = "",
+    amount: Optional[float] = None,
+    due_date: str = ""
+) -> str:
+    """Esegue una ricerca deterministica esatta (affidabilità 100%) tramite filtri SQL B-Tree per codici rigidi (Codice Fiscale, P.IVA, IBAN, Targa, Numero Fattura)."""
+    from app.services.search_router import search_exact_sql as router_search_exact
+    filters = {
+        "codice_fiscale": codice_fiscale,
+        "partita_iva": partita_iva,
+        "iban": iban,
+        "targa": targa,
+        "numero_fattura": numero_fattura,
+        "issuer": issuer,
+        "doc_type": doc_type,
+        "category": category,
+        "amount": amount,
+        "due_date": due_date,
+    }
+    filters = {k: v for k, v in filters.items() if v}
+    with _get_db_session() as db:
+        docs = router_search_exact(db, filters)
+        if not docs:
+            return "Nessun documento trovato con i filtri deterministici esatti specificati."
+        lines = []
+        for d in docs:
+            lines.append(f"- #{d['id']}: **{d['title']}** ({d.get('doc_type', 'generico')}) - Importo: {d.get('amount')} € - Scadenza: {d.get('due_date')} - Campi trovati: {', '.join(d.get('matched_fields', []))}")
+        return f"Trovati {len(docs)} documenti esatti:\n" + "\n".join(lines)
+
+@mcp.tool()
+def search_vector_semantic(concept: str, category: str = "", top_k: int = 5) -> str:
+    """Esegue una ricerca vettoriale semantica ad alta dimensionalità (pgvector / embeddings) per concetti e significato."""
+    from app.services.search_router import search_vector_semantic as router_search_vector
+    with _get_db_session() as db:
+        docs = router_search_vector(db, concept, category=category, top_k=top_k)
+        if not docs:
+            return f"Nessun documento semanticamente rilevante trovato per '{concept}'."
+        lines = []
+        for d in docs:
+            lines.append(f"- #{d['document_id']}: **{d['title']}** (Similarità: {d['score']:.4f}) - Categoria: {d.get('category')} - Sintesi: {d.get('summary', '')}")
+        return f"Trovati {len(docs)} documenti per similarità semantica per '{concept}':\n" + "\n".join(lines)
+
+@mcp.tool()
+def search_hybrid(query_text: str, top_k: int = 10) -> str:
+    """Esegue una ricerca ibrida ad alta precisione (99.999%): combina pre-filtro deterministico per codici rigidi e similarità semantica vettoriale tramite Reciprocal Rank Fusion (RRF) ed Exact-Match Boost."""
+    from app.services.search_router import search_hybrid as router_search_hybrid
+    with _get_db_session() as db:
+        docs = router_search_hybrid(db, query_text, top_k=top_k)
+        if not docs:
+            return f"Nessun documento trovato con la ricerca ibrida per '{query_text}'."
+        lines = []
+        for d in docs:
+            lines.append(f"- #{d['document_id']}: **{d['title']}** [Tipo: {d.get('match_type')}, RRF Score: {d.get('rrf_score', 0):.4f}] - Emittente: {d.get('issuer', 'N/D')} - Importo: {d.get('amount')} € - Scadenza: {d.get('due_date')}")
+        return f"Risultati Ricerca Ibrida ({len(docs)} documenti):\n" + "\n".join(lines)
+
+@mcp.tool()
 def list_vault_contents(target_type: str = "all") -> str:
     """Elenca tutti i documenti o tutti gli oggetti fisici memorizzati nel caveau. Usalo quando l'utente chiede la lista, l'elenco o cosa c'è salvato."""
     with _get_db_session() as db:

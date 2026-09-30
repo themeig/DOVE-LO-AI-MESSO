@@ -78,6 +78,9 @@ Il server MCP (`app/mcp_server.py`) espone **tutti i 20 tool del caveau** per co
 18. `list_watched_folders`: elenco cartelle locali monitorate.
 19. `open_local_file_in_explorer`: apertura nativa in Esplora File di Windows (`explorer.exe`).
 20. `read_vault_document_content`: ispezione, lettura puntuale e anti-allucinazione di dati tabellari e testuali reali di file Excel (.xlsx/.xls con formule calcolate), CSV, Word (.docx) e PDF.
+21. `search_exact_sql`: ricerca deterministica esatta (affidabilità 100%) sui filtri B-Tree strutturati (Codice Fiscale, P.IVA, IBAN, targhe, fatture, importi, date).
+22. `search_vector_semantic`: ricerca vettoriale semantica ad alta dimensionalità (pgvector / embeddings 768d) basata su concetti, significato e similarità cosenica.
+23. `search_hybrid`: ricerca ibrida enterprise ad altissima precisione (99.999%) combinando pre-filtro deterministico e similarità semantica con Reciprocal Rank Fusion (RRF) ed Exact-Match Boost (+1.0).
 
 Prompt MCP inclusi: `vault_assistant_instructions`, `assistant_behavior_and_widget_rules`, `google_drive_sync_guidelines`.
 

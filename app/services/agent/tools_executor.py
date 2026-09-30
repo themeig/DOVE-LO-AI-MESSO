@@ -52,6 +52,42 @@ def execute_vault_tool(name: str, args: Dict[str, Any], db: Session, thread_id: 
             "found_physical_items": item_results[:5]
         }
 
+    elif name == "search_exact_sql":
+        from app.services.search_router import search_exact_sql
+        results = search_exact_sql(db, args, user_id=None, thread_id=thread_id)
+        return {
+            "filters": args,
+            "found_documents": results,
+            "total_matches": len(results),
+            "message": f"Ricerca deterministica esatta completata: {len(results)} documenti trovati."
+        }
+
+    elif name == "search_vector_semantic":
+        from app.services.search_router import search_vector_semantic
+        concept = (args.get("concept") or "").strip()
+        category = args.get("category")
+        top_k = int(args.get("top_k") or 5)
+        results = search_vector_semantic(db, concept, category=category, top_k=top_k, user_id=None)
+        return {
+            "concept": concept,
+            "found_documents": results,
+            "total_matches": len(results),
+            "message": f"Ricerca semantica vettoriale completata: {len(results)} documenti trovati per '{concept}'."
+        }
+
+    elif name == "search_hybrid":
+        from app.services.search_router import search_hybrid
+        query_text = (args.get("query_text") or "").strip()
+        exact_filters = args.get("exact_filters")
+        top_k = int(args.get("top_k") or 10)
+        results = search_hybrid(db, query_text, exact_filters=exact_filters, user_id=None, thread_id=thread_id, top_k=top_k)
+        return {
+            "query_text": query_text,
+            "found_documents": results,
+            "total_matches": len(results),
+            "message": f"Ricerca ibrida completata (RRF + Exact-Match Boost): {len(results)} documenti trovati."
+        }
+
     elif name == "get_recent_vault_documents":
         limit = args.get("limit", 3)
         docs = (

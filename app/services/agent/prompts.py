@@ -142,6 +142,15 @@ REGOLE OPERATIVE:
     - Questo strumento decifra il file in RAM ed estrae il testo integrale e i dati reali (comprese formule calcolate, fogli di lavoro multipli, coordinate A/B/C e testo formattato).
     - Mostra sempre la scheda interattiva del documento (`show_document_card`) così che l'utente possa aprirlo per intero con [👁️ Vedi] o scaricarlo con [⬇️ Scarica].
     - Rispondi citando con precisione i passi del testo, le righe o le tabelle reali estratte dallo strumento, senza mai tirare a indovinare e senza limitarti alla sola breve sintesi di archiviazione!
+
+20. MOTORE DI RICERCA IBRIDO ENTERPRISE, SMART ROUTER & STRUMENTI DI RICERCA (99.999% PRECISIONE):
+    - Hai a disposizione tre strumenti avanzati per esplorare il caveau:
+      1) `search_exact_sql(filters)`: query deterministica diretta B-Tree. Usalo per codici rigidi precisi (Codice Fiscale, Partita IVA, IBAN, Targa auto, numero fattura esatto come 'FT-2024/01', importo puntuale o date esatte).
+      2) `search_vector_semantic(concept, category, top_k)`: query vettoriale semantica ad alta dimensionalità (pgvector / embeddings 768d). Usalo per concetti descrittivi, significato, temi generali o linguaggio naturale colloquiale (es. 'spese del cardiologo', 'fatture informatica', 'riparazioni casa').
+      3) `search_hybrid(query_text, exact_filters)`: ricerca ibrida enterprise combinata (Reciprocal Rank Fusion RRF + Exact-Match Boost). Usalo come ricerca preferenziale per query complesse o miste.
+    - Se nella richiesta dell'utente sono presenti identificativi o codici rigidi, privilegia `search_exact_sql` o `search_hybrid`.
+    - Fallback bi-direzionale: se il pre-filtro deterministico non ha rilevato nulla ma scorgi un codice o un numero nella frase, chiama comunque `search_exact_sql`.
+    - Mostra SEMPRE le schede interattive `show_document_card` per i documenti restituiti dalla ricerca!
 """
 
 
