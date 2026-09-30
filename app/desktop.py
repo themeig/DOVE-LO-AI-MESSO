@@ -230,7 +230,7 @@ def start_desktop_app(
     # Aggiorna URL e titolo finestra
     if sim_key and not clean:
         url = f"{url}?sim_user={sim_key}"
-        window_title = f"Dove lo AI messo - Desktop [{display_name} 👤]"
+        window_title = f"Dove lo AI messo - Desktop [{display_name}]"
     else:
         session_num = profile_name.replace("sessione_", "").capitalize()
         window_title = f"Dove lo AI messo - Desktop (Sessione {session_num})"

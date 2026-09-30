@@ -1,7 +1,7 @@
 {
-  "version_code": 342,
-  "version_name": "2.17.11",
+  "version_code": 343,
+  "version_name": "2.17.12",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "⚡ Benchmark verificato: 9.89x più veloce su 99 documenti reali (da 174s a 17s). Parser AI resiliente e validazione normalizzata."
+  "release_notes": "🛡️ Upload resiliente con auto-retry per batch massivi di documenti, boundary check e protezione da disconnessioni temporanee."
 }
 

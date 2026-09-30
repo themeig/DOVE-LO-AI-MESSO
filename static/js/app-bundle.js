@@ -5008,55 +5008,72 @@
             while (fileIndex < totalCount) {
               if (taskController?.signal?.aborted) break;
               const currentIdx = fileIndex++;
+              if (currentIdx >= totalCount) break;
               const file = validFiles[currentIdx];
+              if (!file) break;
 
               const formData = new FormData();
               formData.append('file', file);
               formData.append('thread_id', targetThreadId);
               formData.append('save_chat_message', 'false');
 
-              try {
-                const res = await fetch('/api/documents/upload', {
-                  method: 'POST',
-                  headers: authHeaders(),
-                  body: formData,
-                  signal: taskController ? taskController.signal : undefined
-                });
+              let uploadedOk = false;
+              for (let attempt = 0; attempt < 3 && !uploadedOk; attempt++) {
+                if (taskController?.signal?.aborted) break;
+                try {
+                  const res = await fetch('/api/documents/upload', {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: formData,
+                    signal: taskController ? taskController.signal : undefined
+                  });
 
-                if (res.ok) {
-                  const data = await res.json();
-                  const docItem = {
-                    id: data.document_id || data.id,
-                    title: data.title,
-                    issuer: data.issuer,
-                    amount: data.amount,
-                    due_date: data.due_date,
-                    status: data.status,
-                    summary: data.summary,
-                    file_url: data.file_url,
-                    download_url: data.download_url,
-                    drive_web_url: data.drive_web_url,
-                    file_type: data.file_type
-                  };
-                  allUploadedDocs.push(docItem);
-                  if (docItem.id) allDocumentIds.push(docItem.id);
-                } else {
-                  console.warn(`Errore upload per ${file.name}: status ${res.status}`);
-                  errors.push(file.name);
+                  if (res.ok) {
+                    const data = await res.json();
+                    const docItem = {
+                      id: data.document_id || data.id,
+                      title: data.title,
+                      issuer: data.issuer,
+                      amount: data.amount,
+                      due_date: data.due_date,
+                      status: data.status,
+                      summary: data.summary,
+                      file_url: data.file_url,
+                      download_url: data.download_url,
+                      drive_web_url: data.drive_web_url,
+                      file_type: data.file_type
+                    };
+                    allUploadedDocs.push(docItem);
+                    if (docItem.id) allDocumentIds.push(docItem.id);
+                    uploadedOk = true;
+                  } else if (res.status === 429 && attempt < 2) {
+                    await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                  } else {
+                    if (attempt === 2) {
+                      console.warn(`Errore upload definitivo per ${file.name}: status ${res.status}`);
+                      errors.push(file.name);
+                    } else {
+                      await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
+                    }
+                  }
+                } catch (err) {
+                  if (err.name === 'AbortError' || err.message?.includes('aborted')) break;
+                  if (attempt === 2) {
+                    console.error(`Errore rete definitivo upload per ${file.name}:`, err);
+                    errors.push(file.name);
+                  } else {
+                    await new Promise(r => setTimeout(r, 700 * (attempt + 1)));
+                  }
                 }
-              } catch (err) {
-                if (err.name === 'AbortError' || err.message?.includes('aborted')) break;
-                console.error(`Errore rete upload per ${file.name}:`, err);
-                errors.push(file.name);
-              } finally {
-                completedCount++;
-                const realPct = Math.round((completedCount / totalCount) * 100);
-                updateTypingIndicator(
-                  `⚡ [${completedCount}/${totalCount}] Analizzato: ${file.name}`,
-                  realPct,
-                  targetThreadId
-                );
               }
+
+              completedCount++;
+              const realPct = Math.round((completedCount / totalCount) * 100);
+              updateTypingIndicator(
+                `⚡ [${completedCount}/${totalCount}] Analizzato: ${file.name}`,
+                realPct,
+                targetThreadId
+              );
             }
           };
 
