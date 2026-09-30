@@ -648,14 +648,49 @@ class AgenticChatService:
             "della ", "del ", "dell'", "dei ", "delle ", "di ", "per "
         ]) or any(k in lower_t for k in ["rinnovo", "rinnovare", "valida fino", "validità", "fino a quando"])
 
-        is_deadline_request = (
+        is_payment_query = (
             any(k in lower_t for k in [
-                "scadenz", "da pagare", "bollette da pagare", "tributi da pagare",
-                "cosa devo pagare", "quanto devo pagare", "prossime scadenze", "scadenze in sospeso"
+                "quanto ho pagato", "quanto abbiamo pagato", "quanto è stato pagato", "quanto e stato pagato",
+                "quanto speso", "quando ho pagato", "quando è stato pagato", "quando e stato pagato",
+                "chi ha pagato", "a chi ho pagato", "se ho pagato", "se abbiamo pagato",
+                "se è stato pagato", "se e stato pagato", "se è stata pagata", "se e stata pagata",
+                "è già stata pagata", "e gia stata pagata", "è già stato pagato", "e gia stato pagato",
+                "risulta già pagat", "risulta gia pagat", "risulta pagat"
             ])
+            or lower_t.startswith("quanto ")
+            or lower_t.startswith("quando ")
+            or lower_t.startswith("chi ")
+            or ("quanto" in lower_t and "?" in lower_t)
+            or ("quando" in lower_t and "?" in lower_t)
+        )
+
+        is_payment_status_update = (
+            not is_payment_query
+            and any(k in lower_t for k in [
+                "segna come pagat", "segna come saldat", "segna come quietanzat",
+                "marca come pagat", "marca come saldat", "marca come quietanzat",
+                "imposta come pagat", "imposta come saldat", "imposta come quietanzat",
+                "segna pagat", "segna saldat", "segna quietanzat",
+                "ho pagato", "abbiamo pagato", "è stata pagata", "e stata pagata", "è stato pagato", "e stato pagato",
+                "segna come da pagare", "marca come da pagare", "imposta come da pagare", "rimetti come da pagare",
+                "segna da pagare", "rimetti in scadenza"
+            ])
+            and not is_store_or_update
+            and not is_where_request
+        )
+
+        is_deadline_request = (
+            (
+                "scadenzario" in lower_t
+                or any(k in lower_t for k in [
+                    "scadenz", "da pagare", "bollette da pagare", "tributi da pagare",
+                    "cosa devo pagare", "quanto devo pagare", "prossime scadenze", "scadenze in sospeso"
+                ])
+            )
             and not is_listing_request
             and not is_store_or_update
-            and not has_specific_subject
+            and not is_payment_status_update
+            and not (has_specific_subject and "scadenzario" not in lower_t)
         )
 
         is_rename_request = (
@@ -1220,6 +1255,14 @@ class AgenticChatService:
                     rep = "\n\n".join(parts) if parts else "Nel caveau non sono presenti documenti o oggetti memorizzati al momento."
                     return ChatResponse(reply=rep, action="list_vault_contents", data=tool_out, documents=docs[:5])
 
+            if is_payment_status_update:
+                target_status = "da_pagare" if any(k in lower_t for k in ["non pagat", "da pagare", "non ho pagat", "non ancora", "in sospeso"]) else "quietanzato"
+                t_out = self.execute_tool("update_document_payment_status", {"status": target_status, "document_title": user_text}, db, thread_id=thread_id)
+                if t_out.get("success"):
+                    rep = f"✅ Registrato con successo! Ho contrassegnato '{t_out.get('title')}' come **{t_out.get('status_label')}**."
+                    return ChatResponse(reply=rep, action="update_document_payment_status", data=t_out, documents=t_out.get("documents"))
+                return ChatResponse(reply=t_out.get("message", "Non ho trovato il documento da aggiornare."), action="update_document_payment_status", data=t_out)
+
             if is_deadline_request:
                 t_out = self.execute_tool("get_upcoming_deadlines", {}, db, thread_id=thread_id)
                 docs = t_out.get("deadlines") or t_out.get("upcoming_documents", [])
@@ -1477,6 +1520,10 @@ class AgenticChatService:
                             elif tool_action == "rename_vault_document":
                                 n_title = (tool_data or {}).get("new_title", "nuovo nome")
                                 final_text = f"✅ Ho rinominato il file in '**{n_title}**'!"
+                            elif tool_action == "update_document_payment_status":
+                                doc_title = (tool_data or {}).get("title") or "documento"
+                                status_label = (tool_data or {}).get("status_label") or "aggiornato"
+                                final_text = f"✅ Operazione registrata con successo! Ho contrassegnato **{doc_title}** come **{status_label}**."
                             elif tool_action == "delete_vault_record":
                                 t_tit = (tool_data or {}).get("title") or "elemento"
                                 final_text = f"⚠️ Ho preparato la richiesta per eliminare **{t_tit}** dal caveau. Clicca sul pulsante qui sotto per confermare o annullare l'operazione."
@@ -1562,6 +1609,12 @@ class AgenticChatService:
                                 if n_title and n_title.lower() not in final_text.lower():
                                     final_text = f"✅ Ho rinominato il file in '**{n_title}**'!\n{final_text}"
 
+                            elif tool_action == "update_document_payment_status":
+                                st_lbl = (tool_data or {}).get("status_label", "aggiornato")
+                                d_tit = (tool_data or {}).get("title", "")
+                                if d_tit and d_tit.lower() not in final_text.lower():
+                                    final_text = f"✅ Ho registrato l'aggiornamento: **{d_tit}** è ora contrassegnato come **{st_lbl}**!\n\n{final_text}"
+
                             elif tool_action == "unzip_vault_archive":
                                 if "scompattat" not in final_text.lower() and "estratti" not in final_text.lower():
                                     ext_cnt = (tool_data or {}).get("extracted_count", len(docs_found) if docs_found else 0)
@@ -1599,7 +1652,7 @@ class AgenticChatService:
                         # 2) get_upcoming_deadlines -> se ci sono scadenze e il testo menziona schede/visualizzazione/download o l'utente le cerca, allega SEMPRE le schede!
                         # 3) search_vault -> filtra la pertinenza dei documenti
                         # 4) Se final_text menziona schede e docs_found è presente -> allega sempre le schede!
-                        if tool_action in ["show_document_card", "unzip_vault_archive"]:
+                        if tool_action in ["show_document_card", "unzip_vault_archive", "update_document_payment_status"]:
                             filtered_docs = docs_found
                             tool_action = "show_document_card"
                         elif tool_action == "read_vault_document_content":
@@ -1682,6 +1735,14 @@ class AgenticChatService:
                                 urg = f" - ⚠️ {d['urgency_label']}" if d.get('urgency_label') else ""
                                 lines.append(f"- 📄 **{d['title']}** — {d.get('amount','?')} € scad. {d.get('due_date','?')}{urg}")
                             return ChatResponse(reply="📅 Ecco le tue scadenze in sospeso:\n\n" + "\n".join(lines), action="get_upcoming_deadlines", data=t_out, documents=docs)
+
+                    if "update_document_payment_status" in raw_tc:
+                        target_status = "da_pagare" if any(k in lower_t for k in ["non pagat", "da pagare", "non ho pagat", "non ancora", "in sospeso"]) else "quietanzato"
+                        t_out = self.execute_tool("update_document_payment_status", {"status": target_status, "document_title": extracted_query or user_text}, db, thread_id=thread_id)
+                        if t_out.get("success"):
+                            rep = f"✅ Registrato con successo! Ho contrassegnato '{t_out.get('title')}' come **{t_out.get('status_label')}**."
+                            return ChatResponse(reply=rep, action="update_document_payment_status", data=t_out, documents=t_out.get("documents"))
+                        return ChatResponse(reply=t_out.get("message", "Non sono riuscito a trovare il documento per aggiornare lo stato di pagamento."), action="update_document_payment_status", data=t_out)
 
                     if "read_vault_document_content" in raw_tc:
                         c_out = self.execute_tool("read_vault_document_content", {"query": extracted_query or user_text}, db=db, thread_id=thread_id)
@@ -1836,6 +1897,14 @@ class AgenticChatService:
                             rep = "\n\n".join(parts) if parts else "Nel caveau non sono presenti documenti o oggetti memorizzati al momento."
                             reply_out = direct_reply if direct_reply else rep
                             return ChatResponse(reply=reply_out, action="list_vault_contents", data=l_res, documents=docs[:5])
+
+                    if is_payment_status_update:
+                        target_status = "da_pagare" if any(k in lower_t for k in ["non pagat", "da pagare", "non ho pagat", "non ancora", "in sospeso"]) else "quietanzato"
+                        d_res = self.execute_tool("update_document_payment_status", {"status": target_status, "document_title": user_text}, db=db, thread_id=thread_id)
+                        if d_res.get("success"):
+                            rep = f"✅ Registrato con successo! Ho contrassegnato '{d_res.get('title')}' come **{d_res.get('status_label')}**."
+                            reply_out = direct_reply if direct_reply else rep
+                            return ChatResponse(reply=reply_out, action="update_document_payment_status", data=d_res, documents=d_res.get("documents"))
 
                     if is_deadline_request:
                         d_res = self.execute_tool("get_upcoming_deadlines", {}, db=db, thread_id=thread_id)
@@ -2149,8 +2218,38 @@ class AgenticChatService:
             db_res = self.execute_tool("store_physical_item", {"item_name": item_n, "primary_location": loc_n}, db, thread_id=thread_id)
             return ChatResponse(reply=f"✅ Memorizzato! Ho salvato la posizione di '{item_n}' in: {loc_n}.", action="store_physical_item", data=db_res)
 
+        # 2b. Aggiornamento stato pagamento (quietanzato / da pagare)
+        is_payment_query = (
+            any(k in lower_t for k in [
+                "quanto ho pagato", "quanto abbiamo pagato", "quanto è stato pagato", "quanto e stato pagato",
+                "quanto speso", "quando ho pagato", "quando è stato pagato", "quando e stato pagato",
+                "chi ha pagato", "a chi ho pagato", "se ho pagato", "se abbiamo pagato",
+                "se è stato pagato", "se e stato pagato", "se è stata pagata", "se e stata pagata",
+                "è già stata pagata", "e gia stata pagata", "è già stato pagato", "e gia stato pagato",
+                "risulta già pagat", "risulta gia pagat", "risulta pagat"
+            ])
+            or lower_t.startswith("quanto ")
+            or lower_t.startswith("quando ")
+            or lower_t.startswith("chi ")
+            or ("quanto" in lower_t and "?" in lower_t)
+            or ("quando" in lower_t and "?" in lower_t)
+        )
+        if not is_payment_query and any(k in lower_t for k in [
+            "segna come pagat", "segna come saldat", "segna come quietanzat",
+            "marca come pagat", "marca come saldat", "marca come quietanzat",
+            "ho pagato", "abbiamo pagato", "è stata pagata", "e stata pagata", "è stato pagato", "e stato pagato",
+            "segna come da pagare", "marca come da pagare", "non ho ancora pagato", "rimetti come da pagare",
+            "segna da pagare"
+        ]):
+            target_status = "da_pagare" if any(k in lower_t for k in ["non pagat", "da pagare", "non ho pagat", "non ancora", "in sospeso"]) else "quietanzato"
+            t_out = self.execute_tool("update_document_payment_status", {"status": target_status, "document_title": user_text}, db, thread_id=thread_id)
+            if t_out.get("success"):
+                rep = f"✅ Registrato con successo! Ho contrassegnato '{t_out.get('title')}' come **{t_out.get('status_label')}**."
+                return ChatResponse(reply=rep, action="update_document_payment_status", data=t_out, documents=t_out.get("documents"))
+            return ChatResponse(reply=t_out.get("message", "Non ho trovato il documento corrispondente."), action="update_document_payment_status", data=t_out)
+
         # 3. Scadenze in sospeso
-        if any(k in lower_t for k in ["scadenz", "da pagare", "quanto devo pagare", "cosa scade"]):
+        if "scadenzario" in lower_t or any(k in lower_t for k in ["scadenz", "da pagare", "quanto devo pagare", "cosa scade"]):
             t_out = self.execute_tool("get_upcoming_deadlines", {}, db, thread_id=thread_id)
             docs = t_out.get("deadlines") or t_out.get("upcoming_documents", [])
             if docs:

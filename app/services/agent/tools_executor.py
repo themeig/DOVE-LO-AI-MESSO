@@ -1285,4 +1285,113 @@ def execute_vault_tool(name: str, args: Dict[str, Any], db: Session, thread_id: 
                 "document_title": doc.title
             }
 
+    elif name == "update_document_payment_status":
+        raw_status = (args.get("status") or "").strip().lower()
+        doc_id = args.get("document_id")
+        doc_title = (args.get("document_title") or "").strip()
+        query_str = (args.get("query") or "").strip()
+        payer_name = (args.get("payer_name") or "").strip()
+
+        # Normalizza lo stato
+        if any(w in raw_status for w in ["quietanz", "pagat", "saldat", "paid"]):
+            new_status = "quietanzato"
+        elif any(w in raw_status for w in ["da_pagar", "da pagar", "non pagat", "sospes", "unpaid"]):
+            new_status = "da_pagare"
+        elif any(w in raw_status for w in ["archiv", "archived"]):
+            new_status = "archiviato"
+        else:
+            new_status = "quietanzato" if "pag" in raw_status else "da_pagare"
+
+        doc = None
+        if doc_id:
+            try:
+                doc = db.query(Document).filter(Document.id == int(doc_id)).first()
+            except (ValueError, TypeError):
+                pass
+
+        search_term = doc_title or query_str
+        if not doc and search_term:
+            clean_term = re.sub(
+                r"^(?:segna|marca|imposta|ho\s+pagato|pagato|pagata|da\s+pagare|il|lo|la|i|gli|le|l'|un|una|uno)\s+",
+                "",
+                search_term,
+                flags=re.IGNORECASE
+            ).strip(" !.?")
+
+            matched = search_vault_documents(db, clean_term or search_term, thread_id=thread_id)
+            if matched:
+                doc = db.query(Document).filter(Document.id == matched[0]["id"]).first()
+
+            if not doc:
+                docs_like = db.query(Document).filter(
+                    or_(
+                        Document.title.ilike(f"%{clean_term or search_term}%"),
+                        Document.issuer.ilike(f"%{clean_term or search_term}%"),
+                        Document.summary.ilike(f"%{clean_term or search_term}%")
+                    )
+                ).all()
+                if docs_like:
+                    doc = docs_like[0]
+
+        if not doc:
+            q_fallback = db.query(Document)
+            if thread_id and thread_id != "general" and thread_id != "all":
+                q_fallback = q_fallback.filter(Document.thread_id == thread_id)
+            doc = q_fallback.filter(or_(Document.due_date.isnot(None), Document.amount.isnot(None))).order_by(Document.id.desc()).first()
+            if not doc:
+                doc = q_fallback.order_by(Document.id.desc()).first()
+
+        if not doc:
+            return {
+                "success": False,
+                "message": f"Nessun documento trovato nel caveau corrispondente a '{search_term or 'richiesto'}'.",
+                "document": None
+            }
+
+        prev_status = doc.status
+        doc.status = new_status
+        if new_status == "quietanzato":
+            doc.paid_at = datetime.now(timezone.utc)
+            if payer_name:
+                doc.summary = (doc.summary or "") + f" [Saldato da {payer_name}]"
+        elif new_status == "da_pagare":
+            doc.paid_at = None
+
+        db.commit()
+        db.refresh(doc)
+
+        fn = Path(doc.file_path).name if doc.file_path else ""
+        doc_item = {
+            "id": doc.id,
+            "document_id": doc.id,
+            "title": doc.title,
+            "issuer": doc.issuer,
+            "amount": doc.amount,
+            "due_date": doc.due_date.isoformat() if doc.due_date else None,
+            "status": doc.status,
+            "summary": doc.summary,
+            "file_url": f"/uploads/{fn}" if fn else None,
+            "download_url": f"/api/documents/{doc.id}/download",
+            "file_type": doc.file_type or "application/pdf"
+        }
+
+        status_label = "Quietanzato / Pagato" if new_status == "quietanzato" else ("Da pagare (In sospeso)" if new_status == "da_pagare" else "Archiviato")
+
+        return {
+            "success": True,
+            "document_id": doc.id,
+            "title": doc.title,
+            "amount": doc.amount,
+            "due_date": doc.due_date.isoformat() if doc.due_date else None,
+            "previous_status": prev_status,
+            "status": doc.status,
+            "new_status": doc.status,
+            "status_label": status_label,
+            "paid_at": doc.paid_at.isoformat() if doc.paid_at else None,
+            "message": f"Lo stato del documento '{doc.title}' è stato aggiornato con successo a '{status_label}'.",
+            "documents": [doc_item],
+            "document": doc_item
+        }
+
     return {"error": f"Strumento non riconosciuto: {name}"}
+

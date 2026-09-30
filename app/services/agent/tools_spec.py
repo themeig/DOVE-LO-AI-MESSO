@@ -88,7 +88,9 @@ TOOLS_DEFINITION = [
         "function": {
             "name": "get_upcoming_deadlines",
             "description": (
-                "Recupera lo scadenzario delle bollette, tributi o pagamenti in sospeso da pagare registrati nel caveau. "
+                "Recupera e visualizza lo scadenzario delle imposte, tributi F24, bollette e pagamenti in sospeso registrati nel caveau con il conto dei giorni rimanenti e grado d'urgenza. "
+                "DEVI SEMPRE chiamare questo strumento quando l'utente chiede di consultare, aprire o vedere lo scadenzario (es. 'mostrami lo scadenzario', 'apri lo scadenzario', "
+                "'fammi vedere le scadenze', 'visualizza lo scadenzario', 'cosa devo pagare entro fine mese?', 'quali sono le mie prossime scadenze?'). "
                 "Se l'utente chiede la scadenza di un documento specifico (es. patente, carta d'identità, passaporto, garanzia, contratto), "
                 "puoi indicare il parametro 'query' (es. 'patente') oppure usare direttamente search_vault."
             ),
@@ -525,6 +527,47 @@ TOOLS_DEFINITION = [
                 "required": ["query_text"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_document_payment_status",
+            "description": (
+                "Aggiorna lo stato di pagamento di una bolletta, tributo F24, fattura o documento nel caveau, "
+                "segnandolo come 'quietanzato' (pagato, saldato) oppure come 'da_pagare' (non pagato, in sospeso) o 'archiviato'. "
+                "DEVI SEMPRE chiamare questo strumento quando l'utente comunica di aver pagato un documento o chiede di segnarlo/marcarlo come pagato o da pagare "
+                "(es. 'segna la bolletta Enel come pagata', 'ho pagato l'F24', 'segna come saldato', 'rimetti la bolletta come da pagare', 'marca come quietanzato', 'segna come non pagato'). "
+                "Aggiorna il database SQLite, registra l'ora del saldo e restituisce la scheda aggiornata del documento con il nuovo timbro."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": ["quietanzato", "da_pagare", "archiviato"],
+                        "description": "Il nuovo stato: 'quietanzato' per pagato/saldato, 'da_pagare' per non pagato/in sospeso, 'archiviato' per archiviato senza pendenze."
+                    },
+                    "document_id": {
+                        "type": "integer",
+                        "description": "ID numerico del documento da aggiornare se già noto nel contesto"
+                    },
+                    "document_title": {
+                        "type": "string",
+                        "description": "Titolo o nome del documento/bolletta da aggiornare (es. 'Bolletta Enel', 'Modello F24', 'Tari')"
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": "Parola chiave opzionale per cercare il documento nel caveau se il titolo esatto non è noto"
+                    },
+                    "payer_name": {
+                        "type": "string",
+                        "description": "Nome opzionale di chi ha effettuato il pagamento (es. 'Mario Rossi')"
+                    }
+                },
+                "required": ["status"]
+            }
+        }
     }
 ]
+
 

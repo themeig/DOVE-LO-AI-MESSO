@@ -1,7 +1,7 @@
 {
-  "version_code": 345,
-  "version_name": "2.18.1",
+  "version_code": 346,
+  "version_name": "2.19.0",
   "apk_url": "https://raw.githubusercontent.com/themeig/DOVE-LO-AI-MESSO/main/android-release/app-debug.apk",
-  "release_notes": "⚡ Motore di ricerca ibrido enterprise (99.999%): database vettoriale pgvector/embeddings 768d, pre-filtro deterministico B-Tree (<1ms) e Smart Router Agentico con RRF ed Exact-Match Boost."
+  "release_notes": "💳 Gestione stato pagamenti (pagato / da pagare) e consultazione rapida scadenzario fiscale & bollette tramite AI."
 }
 

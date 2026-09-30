@@ -57,7 +57,7 @@ Questo documento definisce l'architettura, le convenzioni di design e i vincoli 
 ---
 
 ## 5. Server MCP Completo (Model Context Protocol)
-Il server MCP (`app/mcp_server.py`) espone **tutti i 20 tool del caveau** per consentire a client ed agenti esterni (es. Claude Desktop, cursor, AGY, script) di operare al 100% sul sistema:
+Il server MCP (`app/mcp_server.py`) espone **tutti i 24 tool del caveau** per consentire a client ed agenti esterni (es. Claude Desktop, cursor, AGY, script) di operare al 100% sul sistema:
 1. `get_current_date`: data, ora, giorno della settimana e formato italiano per calcolo scadenze.
 2. `get_app_version`: restituisce la versione dell'applicazione (`APP_VERSION`).
 3. `get_vault_stats`: statistiche generali, conteggi KPI, totale insoluti in euro e stato cloud.
@@ -81,6 +81,7 @@ Il server MCP (`app/mcp_server.py`) espone **tutti i 20 tool del caveau** per co
 21. `search_exact_sql`: ricerca deterministica esatta (affidabilità 100%) sui filtri B-Tree strutturati (Codice Fiscale, P.IVA, IBAN, targhe, fatture, importi, date).
 22. `search_vector_semantic`: ricerca vettoriale semantica ad alta dimensionalità (pgvector / embeddings 768d) basata su concetti, significato e similarità cosenica.
 23. `search_hybrid`: ricerca ibrida enterprise ad altissima precisione (99.999%) combinando pre-filtro deterministico e similarità semantica con Reciprocal Rank Fusion (RRF) ed Exact-Match Boost (+1.0).
+24. `update_document_payment_status`: aggiornamento dello stato di pagamento di documenti, fatture e bollette ('quietanzato'/'pagato', 'da_pagare'/'in sospeso', 'archiviato') con sincronizzazione istantanea del registro contabile e della dashboard.
 
 Prompt MCP inclusi: `vault_assistant_instructions`, `assistant_behavior_and_widget_rules`, `google_drive_sync_guidelines`.
 

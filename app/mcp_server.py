@@ -63,13 +63,14 @@ GUIDA PER SITUAZIONI SPECIFICHE:
 1. Ricerca Documenti: individua subito i file con `search_vault`, esponi emittente, importo, scadenza e sintesi, e fornisci i link per visualizzazione e download.
 2. Oggetti Fisici: cerca con `search_vault` o salva con `store_physical_item`. Specifica sempre stanza e cassetto/ripiano.
 3. Foto collegate agli oggetti: con `link_document_to_item` associa foto di scontrini o posizioni agli oggetti fisici.
-4. Scadenze: usa `get_upcoming_deadlines`, calcola l'urgenza esatta rispetto alla data odierna, avvisando con prontezza delle scadenze imminenti o scadute.
+4. Scadenze & Scadenzario: usa `get_upcoming_deadlines` per mostrare lo scadenzario tributario e utenze, calcola l'urgenza esatta rispetto alla data odierna, avvisando con prontezza delle scadenze imminenti o scadute.
 5. File Office: per fogli Excel (.xlsx/.xls) e Word (.docx), informa l'utente che cliccando su [👁️ Vedi] potrà consultare tabelle stilizzate e testi formattati direttamente a schermo intero.
 6. Archivi ZIP: usa `create_zip_archive` per raggruppare file e `unzip_vault_archive` per estrarli e catalogarli automaticamente nel caveau.
 7. Google Drive: usa `get_google_drive_status`. Conosci le modalità 'dual', 'cloud_only' e 'local_only', l'alberatura `DoveLoAIMesso / <Anno> / <Categoria> / ...` e il pulsante [Drive ↗]. Non dire mai di non avere accesso a Drive!
 8. Cartelle PC: usa `scan_local_folder`, `list_watched_folders` e `open_local_file_in_explorer` per aprire i file nativamente in Windows Explorer.
 9. Sicurezza: il caveau usa crittografia a riposo AES-128 / Fernet, blocco con scarico chiavi dalla RAM e wipe database protetto da password.
 10. Lettura Dati Puntuali e Tabelle (Zero Allucinazioni): quando l'utente o il client richiede dettagli precisi su righe, colonne, valori, importi o celle di un foglio Excel, CSV, Word o documento (es. 'cosa c'è nella riga 5?', 'chi ha l'importo più alto?'), USA SEMPRE `read_vault_document_content` per leggere i dati reali e calcolati dal file in memoria prima di rispondere.
+11. Gestione Stato Pagamento (Pagato / Da Pagare): usa `update_document_payment_status` per contrassegnare bollette, tributi o fatture come saldati/quietanzati o da pagare/in sospeso, aggiornando in tempo reale il registro e la dashboard contabile.
 """
 
 mcp = MCPServer(
@@ -912,6 +913,44 @@ def read_vault_document_content(
             return "\n".join(lines)
         except Exception as e:
             return f"Eccezione durante la lettura di '{doc.title}': {e}"
+
+
+@mcp.tool()
+def update_document_payment_status(
+    status: str,
+    document_id: Optional[int] = None,
+    document_title: Optional[str] = None
+) -> str:
+    """Aggiorna lo stato di pagamento di un documento o bolletta del caveau ('quietanzato' / 'pagato', 'da_pagare' / 'in sospeso', o 'archiviato').
+
+    Args:
+        status: Nuovo stato contabile ('quietanzato', 'pagato', 'saldato', 'da_pagare', 'in sospeso', 'archiviato').
+        document_id: ID numerico del documento (facoltativo se fornito document_title).
+        document_title: Titolo o parte del nome del documento da contrassegnare (es. 'Bolletta Enel', 'F24').
+    """
+    from app.services.agent.tools_executor import execute_vault_tool
+
+    with _get_db_session() as db:
+        res = execute_vault_tool(
+            "update_document_payment_status",
+            {
+                "status": status,
+                "document_id": document_id,
+                "document_title": document_title
+            },
+            db=db
+        )
+        if not res.get("success"):
+            return f"❌ {res.get('message', 'Errore durante l\'aggiornamento dello stato del documento.')}"
+
+        lines = [
+            f"✅ {res.get('message')}",
+            f"- Documento: '{res.get('title')}' (ID {res.get('document_id')})",
+            f"- Nuovo stato: **{res.get('status_label')}** ({res.get('status')})"
+        ]
+        if res.get("paid_at"):
+            lines.append(f"- Data quietanza: {res.get('paid_at')}")
+        return "\n".join(lines)
 
 
 if __name__ == "__main__":
