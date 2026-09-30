@@ -378,7 +378,12 @@ async def upload_document(
 
     active_cred = db.query(GoogleDriveCredential).first()
     drive_creds_info = None
-    if active_cred and getattr(active_cred, "storage_mode", "dual") != "local_only":
+    has_active_google = bool(
+        active_cred
+        and (getattr(active_cred, "access_token", None) or getattr(active_cred, "refresh_token", None))
+        and getattr(active_cred, "storage_mode", "dual") != "local_only"
+    )
+    if has_active_google:
         from app.services.drive_service import get_fresh_access_token
         fresh_token = get_fresh_access_token(active_cred, db)
         if fresh_token:

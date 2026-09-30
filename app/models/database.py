@@ -282,10 +282,20 @@ _session_maker = None
 
 def get_engine(db_url: str = None):
     global _engine
+    target_url = db_url or get_settings().DATABASE_URL
+    is_memory = ":memory:" in target_url
+    engine_kwargs = {"connect_args": {"check_same_thread": False}}
+    if not is_memory:
+        engine_kwargs.update({
+            "pool_size": 30,
+            "max_overflow": 60,
+            "pool_timeout": 60.0
+        })
+
     if db_url:
-        return create_engine(db_url, connect_args={"check_same_thread": False})
+        return create_engine(db_url, **engine_kwargs)
     if _engine is None:
-        _engine = create_engine(get_settings().DATABASE_URL, connect_args={"check_same_thread": False})
+        _engine = create_engine(target_url, **engine_kwargs)
     return _engine
 
 

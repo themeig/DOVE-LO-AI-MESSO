@@ -17,13 +17,16 @@ class AIServiceInterface(Protocol):
         ...
     def classify_and_extract_intent(self, text: str) -> MessageIntent:
         ...
-def optimize_image_for_vision(image_bytes: bytes, max_bytes: int = 3 * 1024 * 1024, max_dim: int = 1600) -> tuple[bytes, str]:
-    """Ridimensiona e comprime l'immagine per evitare errori 413 (>30MB payload) e velocizzare le chiamate Vision."""
-    if len(image_bytes) <= max_bytes:
-        return image_bytes, "image/jpeg"
+def optimize_image_for_vision(image_bytes: bytes, max_bytes: int = 1024 * 1024, max_dim: int = 1200) -> tuple[bytes, str]:
+    """Ridimensiona e comprime l'immagine per minimizzare i token visivi e velocizzare le chiamate Vision."""
     try:
         from PIL import Image
         img = Image.open(io.BytesIO(image_bytes))
+        w, h = img.size
+        needs_resize = w > max_dim or h > max_dim or len(image_bytes) > max_bytes
+        if not needs_resize and getattr(img, "format", "") == "JPEG":
+            return image_bytes, "image/jpeg"
+
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
         img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)

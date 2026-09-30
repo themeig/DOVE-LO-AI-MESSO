@@ -4990,9 +4990,9 @@
           appendUserBubble(userSummaryText, null, getTime());
         }
 
-        // Elaborazione CONCORRENTE REALE (fino a 8 worker simultanei)
+        // Elaborazione CONCORRENTE REALE (fino a 12 worker simultanei)
         // con avanzamento visibile in tempo reale DOCUMENTO PER DOCUMENTO!
-        const CONCURRENCY = Math.min(8, totalCount);
+        const CONCURRENCY = Math.min(12, totalCount);
 
         setGenerationActive(true, `Avvio elaborazione parallela di ${totalCount} file...`, 0, targetThreadId);
         const taskController = activeThreadTasks[targetThreadId]?.abortController;
