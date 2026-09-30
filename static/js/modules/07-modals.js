@@ -1736,7 +1736,7 @@
 
 
     // =========================================================================
-    // CONTROLLER ACCOUNT & GRUPPI CONDIVISI (OLIVETTI INDUSTRIAL)
+    // CONTROLLER ACCOUNT & GRUPPI CONDIVISI (INDUSTRIAL MODERN)
     // =========================================================================
     let currentAuthMode = 'login'; // 'login' | 'signup'
     let accountModalIsMandatory = false;
@@ -2191,7 +2191,7 @@
         if (!chatFeed) return;
         chatFeed.innerHTML = '';
 
-        // Intestazione registro ufficiale stile Olivetti Ledger
+        // Intestazione registro ufficiale stile Modern Ledger
         const headerBanner = document.createElement('div');
         headerBanner.className = "p-4 mb-4 bg-white border border-[#3C5A48] rounded-xs shadow-xs text-xs space-y-1.5 font-mono-code";
         headerBanner.innerHTML = `
@@ -2264,7 +2264,7 @@
     window.openGroupActivityLedger = openGroupActivityLedger;
 
     // =========================================================================
-    // MODALE PARTECIPANTI GRUPPO CONDIVISO (OLIVETTI INDUSTRIAL)
+    // MODALE PARTECIPANTI GRUPPO CONDIVISO (INDUSTRIAL MODERN)
     // =========================================================================
     async function openGroupMembersModal(targetGroupId) {
       const groupId = targetGroupId || currentThreadId;

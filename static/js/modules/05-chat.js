@@ -305,7 +305,7 @@
       renderThreadsList();
     }
 
-    // --- Sistema Notifiche & Schede Protocollo Toast (Olivetti Industrial) ---
+    // --- Sistema Notifiche & Schede Protocollo Toast (Industrial Modern) ---
     function showToast(message, type = 'info', duration = 4000) {
       const container = document.getElementById('toastContainer');
       if (!container) return;
@@ -1980,7 +1980,7 @@
           return;
         }
 
-        // Se sono state scansionate 2 o più pagine/documenti: apri la modale di scelta Olivetti
+        // Se sono state scansionate 2 o più pagine/documenti: apri la modale di scelta
         openMultiScanChoiceModal(pageCount, hasPdf, _multiScanTargetThreadId);
       } catch (err) {
         console.error("Errore onNativeScanResult:", err);
@@ -2117,7 +2117,7 @@
     };
 
     // =========================================================================
-    // GESTIONE MULTI-FOTO CONTINUA DA CELLULARE SENZA BORDI (Olivetti Style)
+    // GESTIONE MULTI-FOTO CONTINUA DA CELLULARE SENZA BORDI (Industrial Style)
     // =========================================================================
     let multiPhotosSession = [];
     let multiPhotoTargetThreadId = null;

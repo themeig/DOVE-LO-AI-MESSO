@@ -44,14 +44,14 @@
   <div id="appScreensViewport" class="flex-1 w-full overflow-hidden relative">
 
     <!-- ================================================================= -->
-    <!-- 1. VISTA CHAT (REGISTRO DATTILOSCRITTO OLIVETTI)                  -->
+    <!-- 1. VISTA CHAT (REGISTRO DATTILOSCRITTO REGISTRO)                  -->
     <!-- ================================================================= -->
     <div id="chatView" class="w-full h-full flex flex-col bg-[#F8F5EE] overflow-hidden">
     
     <!-- Area Principale Chat: Sidebar + Conversazione affiancate -->
     <div id="chatMainArea" class="flex-1 flex w-full overflow-hidden relative">
 
-      <!-- A. SIDEBAR CANALI / GRUPPI OLIVETTI -->
+      <!-- A. SIDEBAR CANALI / GRUPPI REGISTRO -->
       <aside id="sidebarPanel" class="shrink-0 border-r border-[#E3DDD1] bg-[#F8F5EE] flex flex-col h-full z-10 transition-transform duration-300">
       
       <!-- Top Bar Sidebar -->
@@ -74,7 +74,7 @@
         </div>
       </div>
 
-      <!-- Barra di Ricerca Chat Olivetti -->
+      <!-- Barra di Ricerca Chat Registro -->
       <div class="p-2.5 border-b border-[#E3DDD1] bg-[#F8F5EE]">
         <div class="flex items-center bg-white rounded-xs px-2.5 py-1.5 border border-[#3C5A48] text-xs">
           <i class="fa-solid fa-magnifying-glass text-[#7A7568] mr-2 text-xs"></i>
@@ -110,10 +110,10 @@
       </div>
     </aside>
 
-    <!-- B. PANNELLO CONVERSAZIONE ATTIVA (OLIVETTI INDUSTRIAL) -->
+    <!-- B. PANNELLO CONVERSAZIONE ATTIVA (INDUSTRIAL MODERN) -->
     <main id="conversationPanel" class="flex-1 flex flex-col h-full bg-[#F8F5EE] relative overflow-hidden transition-transform duration-300">
       
-      <!-- Top Bar Olivetti Chat Attiva -->
+      <!-- Top Bar Registro Chat Attiva -->
       <header class="h-[60px] bg-[#F8F5EE] border-b border-[#E3DDD1] text-[#222220] px-3.5 flex items-center justify-between shadow-xs shrink-0 z-20 select-none box-border">
         <div class="flex items-center space-x-2.5 min-w-0">
           <!-- Back button per mobile (torna all'elenco chat) -->
@@ -350,7 +350,7 @@
           <p class="text-xs text-[#FAF8F2] max-w-sm mt-1 pointer-events-none font-mono-code">Caricamento automatico di documenti multipli e cartelle nel caveau</p>
         </div>
       </div>
-      <!-- Barra Preview Messaggio Quotato (Olivetti Industrial) -->
+      <!-- Barra Preview Messaggio Quotato (Industrial Modern) -->
       <div id="quotePreviewBar" class="hidden bg-[#F0F2F5] px-3 pt-2 pb-0.5 border-t border-slate-200/80 shrink-0 transition-all select-none">
         <div class="quote-preview-card bg-white/95 rounded-xl p-2.5 flex items-center justify-between gap-3 shadow-xs border-l-4 border-[#075E54]">
           <div class="min-w-0 flex-1">
@@ -367,10 +367,10 @@
         </div>
       </div>
 
-      <!-- Barra Input Stile Olivetti Industrial (Tasti Lettera 22) -->
+      <!-- Barra Input Stile Industrial Modern (Tasti Meccanici) -->
       <footer class="bg-[#F8F5EE] border-t border-[#E3DDD1] px-3 py-2 flex flex-col shrink-0 select-none relative">
         <div class="flex items-center space-x-2">
-          <!-- Tasto Più (+) con Menu Allegati Olivetti -->
+          <!-- Tasto Più (+) con Menu Allegati Registro -->
           <div class="relative">
             <button 
               type="button" 
@@ -433,7 +433,7 @@
             </div>
           </div>
 
-          <!-- Input di Testo Dattiloscritto Olivetti (Senza fotocamera a destra) -->
+          <!-- Input di Testo Dattiloscritto Registro (Senza fotocamera a destra) -->
           <form id="chatForm" onsubmit="handleSend(event)" class="flex-1 h-[42px] min-h-[42px] flex items-center bg-white rounded-xs px-3 border border-[#3C5A48] shadow-xs">
             <input 
               id="messageInput" 
@@ -445,7 +445,7 @@
             >
           </form>
 
-          <!-- Barra di Registrazione Vocale Olivetti -->
+          <!-- Barra di Registrazione Vocale Registro -->
           <div id="voiceRecordingBar" class="hidden flex-1 h-[42px] min-h-[42px] flex items-center justify-between bg-[#FAF8F2] rounded-xs px-3.5 border border-[#C84B31] shadow-xs">
             <div class="flex items-center gap-2.5 min-w-0">
               <span class="relative flex h-2.5 w-2.5 shrink-0">
@@ -492,7 +492,7 @@
 
           <!-- Gruppo Azioni Destra con Pulsante Torna in Basso (Scroll to Bottom) SOPRA il Microfono -->
           <div class="relative shrink-0 flex items-center">
-            <!-- Pulsante Torna in Basso (Scroll to Bottom) Olivetti posizionato SOPRA il microfono -->
+            <!-- Pulsante Torna in Basso (Scroll to Bottom) Registro posizionato SOPRA il microfono -->
             <button 
               id="scrollToBottomBtn" 
               type="button" 
@@ -505,7 +505,7 @@
               <span id="scrollUnreadBadge" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#C84B31] border border-white rounded-full"></span>
             </button>
 
-            <!-- Microfono Vocale Lettera 22 (Stessa altezza h-[42px] del form) -->
+            <!-- Microfono Vocale Meccanico (Stessa altezza h-[42px] del form) -->
             <button 
               id="micBtn" 
               data-testid="btnVoiceRecord"
@@ -518,7 +518,7 @@
               <i class="fa-solid fa-microphone text-sm"></i>
             </button>
 
-            <!-- Tasto Invio Terracotta Lettera 22 (Stessa altezza h-[42px] del form) -->
+            <!-- Tasto Invio Terracotta Meccanico (Stessa altezza h-[42px] del form) -->
             <button 
               id="sendBtn" 
               type="button" 
@@ -550,7 +550,7 @@
 </div>
 
   <!-- ================================================================= -->
-  <!-- MODAL: CREA NUOVO GRUPPO ONLINE O AREA TEMATICA (OLIVETTI INDUSTRIAL) -->
+  <!-- MODAL: CREA NUOVO GRUPPO ONLINE O AREA TEMATICA (INDUSTRIAL MODERN) -->
   <!-- ================================================================= -->
   <div id="newThreadModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
     <div class="modal-card bg-white rounded-xs max-w-md w-full p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 border-2 border-[#3C5A48]">
@@ -856,7 +856,7 @@
   </div>
 
   <!-- ================================================================= -->
-  <!-- MODAL ACCOUNT & GRUPPI CONDIVISI (OLIVETTI INDUSTRIAL)            -->
+  <!-- MODAL ACCOUNT & GRUPPI CONDIVISI (INDUSTRIAL MODERN)            -->
   <!-- ================================================================= -->
   <div id="accountModal" onclick="if(event.target === this) closeAccountModal()" class="fixed inset-0 bg-black/60 z-[80] hidden items-center justify-center p-3 sm:p-4 backdrop-blur-xs">
     <div class="modal-card bg-white rounded-xs max-w-lg w-full p-5 shadow-2xl space-y-4 animate-fade-in border-2 border-[#3C5A48] max-h-[92vh] flex flex-col overflow-hidden">
@@ -1166,7 +1166,7 @@
   </div>
 
   <!-- ================================================================= -->
-  <!-- MODAL PARTECIPANTI GRUPPO CONDIVISO (OLIVETTI INDUSTRIAL)          -->
+  <!-- MODAL PARTECIPANTI GRUPPO CONDIVISO (INDUSTRIAL MODERN)          -->
   <!-- ================================================================= -->
   <div id="groupMembersModal" onclick="if(event.target === this) closeGroupMembersModal()" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-3 sm:p-4 backdrop-blur-xs">
     <div class="modal-card bg-white rounded-xs max-w-lg w-full p-5 shadow-2xl space-y-4 animate-fade-in border-2 border-[#3C5A48] max-h-[92vh] flex flex-col overflow-hidden">
@@ -1451,10 +1451,10 @@
             <div class="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 space-y-1.5">
               <div class="font-bold text-emerald-900 flex items-center gap-2">
                 <i class="fa-solid fa-feather-pointed text-emerald-700 text-base"></i>
-                <span>Terminale Dattiloscritto Olivetti</span>
+                <span>Terminale Dattiloscritto & Registro</span>
               </div>
               <p class="text-xs text-emerald-800">
-                Design sistemico ispirato alla Lettera 22 di Nizzoli e a Sottsass per azzerare la curva d'apprendimento. Invia foto, PDF, documenti Word/Excel, note vocali Whisper e chiedi all'archivio con immediata naturalezza.
+                Design sistemico in stile Registro Industriale Moderno per azzerare la curva d'apprendimento. Invia foto, PDF, documenti Word/Excel, note vocali Whisper e chiedi all'archivio con immediata naturalezza.
               </p>
             </div>
             <div class="p-4 rounded-2xl bg-slate-100/90 border border-slate-200/80 space-y-1.5">
@@ -1482,7 +1482,7 @@
             <pre class="leading-relaxed">
 ┌────────────────────────────────────────────────────────────────────────┐
 │                  FRONTEND SPA (HTML5 / Tailwind CSS)                   │
-│   ├─ 💬 Terminale Dattiloscritto Olivetti                              │
+│   ├─ 💬 Terminale Dattiloscritto & Registro                            │
 │   ├─ 📊 Executive Bento Dashboard (SaaS Modern)                        │
 │   └─ 📄 White Paper & Viewer Modals                                    │
 └───────────────────────────────────┬────────────────────────────────────┘
@@ -1741,7 +1741,7 @@
                 <tr>
                   <td class="p-2 font-semibold text-slate-800">Interfaccia Duale</td>
                   <td class="p-2">Registro Dattiloscritto + Bento Dashboard</td>
-                  <td class="p-2 text-slate-600">Terminale dattiloscritto Olivetti e console KPI di precisione.</td>
+                  <td class="p-2 text-slate-600">Terminale dattiloscritto e console KPI di precisione.</td>
                 </tr>
                 <tr>
                   <td class="p-2 font-semibold text-slate-800">Feedback Dinamico</td>
@@ -1794,7 +1794,7 @@
 
 
   <!-- ================================================================= -->
-  <!-- 2. VISTA DASHBOARD (OLIVETTI INDUSTRIAL LEDGER & PROTOCOLLO)       -->
+  <!-- 2. VISTA DASHBOARD (INDUSTRIAL MODERN LEDGER & PROTOCOLLO)       -->
   <!-- ================================================================= -->
   <div id="dashboardView" class="hidden w-full h-full flex-col bg-[#F8F5EE] overflow-hidden relative">
     
@@ -1807,7 +1807,7 @@
       <p class="text-xs text-[#EFECE3] max-w-sm mt-1 pointer-events-none font-mono-code">I documenti verranno analizzati dall'AI e catalogati nello scadenzario</p>
     </div>
 
-    <!-- Top Bar Dashboard Olivetti -->
+    <!-- Top Bar Dashboard Registro -->
     <header class="bg-[#F8F5EE] border-b border-[#E3DDD1] px-4 md:px-6 py-3 flex items-center justify-between shrink-0 select-none">
       
       <!-- Titolo Dashboard -->
@@ -1822,7 +1822,7 @@
         </div>
       </div>
 
-      <!-- Azioni Rapide & Strumenti Olivetti -->
+      <!-- Azioni Rapide & Strumenti Registro -->
       <div class="flex items-center space-x-2">
         
 
@@ -1831,7 +1831,7 @@
       </div>
     </header>
 
-    <!-- Contenuto Dashboard Scrollabile Olivetti -->
+    <!-- Contenuto Dashboard Scrollabile Registro -->
     <main class="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 max-w-6xl w-full mx-auto custom-scroll bg-[#F8F5EE]">
       
       <!-- STATO 1: HUB DEI 4 GRANDI BOTTONI (PANORAMICA, SCADENZE, ATTI, OGGETTI) -->
@@ -2089,7 +2089,7 @@
 
         </div> <!-- /#panoramicaStatsContainer -->
 
-        <!-- SELETTORE A SCHEDE & REGISTRO UNIFICATO OLIVETTI -->
+        <!-- SELETTORE A SCHEDE & REGISTRO UNIFICATO REGISTRO -->
         <div id="panelDetailFiltersBar" class="bg-white border border-[#E3DDD1] rounded-xs shadow-xs overflow-hidden flex flex-col">
           
           <!-- Header Tabella con Filtri Segmentati -->
@@ -2139,7 +2139,7 @@
             <!-- Popolato dinamicamente da renderGroupedView -->
           </div>
 
-          <!-- Tabella con Design Dattiloscritto Olivetti -->
+          <!-- Tabella con Design Dattiloscritto Registro -->
           <div id="dashboardTableContainer" class="overflow-x-auto hidden bg-white">
             <table class="w-full text-left text-xs border-collapse">
               <thead>
@@ -2159,7 +2159,7 @@
             </table>
           </div>
 
-          <!-- Vista Scadenzario Dedicato & Cronologico Olivetti Industrial -->
+          <!-- Vista Scadenzario Dedicato & Cronologico Industrial Modern -->
           <div id="dashboardScadenzarioContainer" class="p-4 md:p-6 space-y-5 bg-[#FAF8F2] hidden">
             <!-- Popolato dinamicamente da renderScadenzarioView -->
           </div>
@@ -2183,11 +2183,11 @@
   </div>
 
   <!-- ================================================================= -->
-  <!-- 2B. VISTA SISTEMA (REGISTRO CONFIGURAZIONE & PARAMETRI OLIVETTI)  -->
+  <!-- 2B. VISTA SISTEMA (REGISTRO CONFIGURAZIONE & PARAMETRI REGISTRO)  -->
   <!-- ================================================================= -->
   <div id="systemView" class="hidden w-full h-full flex-col bg-[#F8F5EE] overflow-hidden relative">
     
-    <!-- Top Bar Sistema Olivetti -->
+    <!-- Top Bar Sistema Registro -->
     <header class="bg-[#F8F5EE] border-b border-[#E3DDD1] px-4 md:px-6 py-3 flex items-center justify-between shrink-0 select-none">
       
       <!-- Titolo Sistema -->
@@ -2233,10 +2233,10 @@
       </div>
     </header>
 
-    <!-- Contenuto Scrollabile Sistema Olivetti (Bento-Grid) -->
+    <!-- Contenuto Scrollabile Sistema Registro (Bento-Grid) -->
     <main class="flex-1 p-4 md:p-6 overflow-y-auto space-y-6 max-w-6xl w-full mx-auto custom-scroll bg-[#F8F5EE]">
 
-      <!-- Banner Rilevamento Ambiente Operativo Olivetti -->
+      <!-- Banner Rilevamento Ambiente Operativo Registro -->
       <div class="bg-white p-3.5 rounded-xs border border-[#E3DDD1] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-xs bg-[#FAF8F2] text-[#3C5A48] border border-[#E3DDD1] flex items-center justify-center text-xs shadow-2xs shrink-0">
@@ -2340,7 +2340,7 @@
           </div>
         </div>
 
-        <!-- SELETTORE AREE SISTEMA (TABS OLIVETTI INDUSTRIAL) -->
+        <!-- SELETTORE AREE SISTEMA (TABS INDUSTRIAL MODERN) -->
         <div id="systemAreaTabs" class="hidden flex items-center gap-1.5 p-1.5 bg-[#FAF8F2] border border-[#E3DDD1] rounded-xs overflow-x-auto custom-scroll select-none shadow-2xs">
           <button id="btnSystemArea_all" type="button" onclick="setSystemArea('all')" class="system-area-tab px-3 py-1.5 rounded-xs text-xs font-space font-bold uppercase transition flex items-center gap-1.5 cursor-pointer bg-[#3C5A48] text-white shadow-2xs shrink-0">
             <i class="fa-solid fa-layer-group text-[11px]"></i>
@@ -2372,7 +2372,7 @@
       <!-- AREA 1: IMPOSTAZIONI CHAT & MOTORE AI                             -->
       <!-- ================================================================= -->
       <section id="settingsArea_chat" class="system-area-section space-y-4">
-        <!-- Header Sezione Olivetti -->
+        <!-- Header Sezione Registro -->
         <div class="system-area-header flex items-center justify-between border-b border-[#E3DDD1] pb-2 pt-1">
           <div class="flex items-center gap-2.5">
             <div class="w-7 h-7 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#3C5A48] flex items-center justify-center text-xs shadow-2xs shrink-0">
@@ -2406,7 +2406,7 @@
                 <span id="aiModelSavingNotice" class="text-[10px] text-[#7A7568] font-mono-code">Salvataggio automatico</span>
               </div>
 
-              <!-- Quick Switch Pill / Toggle Modalità Gratuita Olivetti -->
+              <!-- Quick Switch Pill / Toggle Modalità Gratuita Registro -->
               <div class="bg-[#FAF8F2] p-3 rounded-xs border border-[#E3DDD1] flex items-center justify-between shadow-2xs">
                 <div class="flex items-center gap-2.5">
                   <div class="w-8 h-8 rounded-xs bg-white text-[#3C5A48] border border-[#E3DDD1] flex items-center justify-center text-xs shadow-2xs">
@@ -2441,7 +2441,7 @@
                 </button>
               </div>
 
-              <!-- Scelte Modello Card Olivetti -->
+              <!-- Scelte Modello Card Registro -->
               <div class="space-y-2.5" id="aiModelsList">
                 <!-- Opzione 0: Router Intelligente Dinamico (Consigliato) -->
                 <div 
@@ -2570,7 +2570,7 @@
                   <span class="text-[11px] text-[#7A7568] font-mono-code">disponibili all'uso</span>
                 </div>
 
-                <!-- Progress Bar Olivetti -->
+                <!-- Progress Bar Registro -->
                 <div class="w-full bg-[#E3DDD1] h-2 rounded-xs overflow-hidden mb-1.5 p-0.5">
                   <div id="creditsProgressBar" class="h-full bg-[#3C5A48] rounded-xs transition-all duration-500" style="width: 0%;"></div>
                 </div>
@@ -2654,7 +2654,7 @@
       <!-- AREA 2: INTEGRAZIONI GOOGLE (DRIVE & CALENDAR)                    -->
       <!-- ================================================================= -->
       <section id="settingsArea_google" class="system-area-section space-y-4">
-        <!-- Header Sezione Olivetti -->
+        <!-- Header Sezione Registro -->
         <div class="system-area-header flex items-center justify-between border-b border-[#E3DDD1] pb-2 pt-1">
           <div class="flex items-center gap-2.5">
             <div class="w-7 h-7 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#1A73E8] flex items-center justify-center text-xs shadow-2xs shrink-0">
@@ -2934,7 +2934,7 @@
       <!-- AREA 4: IMPOSTAZIONI SICUREZZA, BACKUP & CAVEAU                   -->
       <!-- ================================================================= -->
       <section id="settingsArea_security" class="system-area-section space-y-4">
-        <!-- Header Sezione Olivetti -->
+        <!-- Header Sezione Registro -->
         <div class="system-area-header flex items-center justify-between border-b border-[#E3DDD1] pb-2 pt-1">
           <div class="flex items-center gap-2.5">
             <div class="w-7 h-7 rounded-xs bg-[#FAF8F2] border border-[#E3DDD1] text-[#7A7568] flex items-center justify-center text-xs shadow-2xs shrink-0">
@@ -3071,7 +3071,7 @@
 </div> <!-- /#appScreensViewport -->
 
   <!-- ================================================================= -->
-  <!-- BARRA DI NAVIGAZIONE GLOBALE FISSA (OLIVETTI INDUSTRIAL)          -->
+  <!-- BARRA DI NAVIGAZIONE GLOBALE FISSA (INDUSTRIAL MODERN)          -->
   <!-- Esterna al viewport animato: fissa e permanente in basso          -->
   <!-- ================================================================= -->
   <nav id="globalBottomNav" class="bottom-nav-bar bg-[#F8F5EE] border-t border-[#E3DDD1] p-2 flex items-center justify-around text-[10px] font-space text-[#7A7568] shrink-0 select-none z-40 w-full">
@@ -3092,7 +3092,7 @@
   <!-- JAVASCRIPT: Scanner Ottico, Gestione Transizione, Live API Chat & Dashboard -->
   <script src="/static/js/mobile-scanner.js"></script>
   <script src="/static/js/pdf.min.js"></script>
-  <script src="/static/js/app-bundle.js?v=2.18.0" defer></script>
+  <script src="/static/js/app-bundle.js?v=2.18.1" defer></script>
 
   <!-- ================================================================= -->
   <!-- 3. MODALE VIEWER DOCUMENTI & ANTEPRIME                            -->
@@ -3124,7 +3124,7 @@
       <div class="flex-1 bg-[#FAF8F2] relative overflow-hidden flex items-center justify-center p-2 sm:p-4">
         <!-- Visualizzatore PDF Canvas per Mobile & Desktop (Mozilla PDF.js) -->
         <div id="modalPdfViewer" class="w-full h-full flex flex-col bg-[#222220] rounded-xs overflow-hidden border border-[#E3DDD1] hidden select-none">
-          <!-- Toolbar Controlli PDF Olivetti Industrial -->
+          <!-- Toolbar Controlli PDF Industrial Modern -->
           <div id="pdfControls" class="bg-[#F8F5EE] border-b border-[#E3DDD1] px-3 py-2 flex items-center justify-between gap-2 shrink-0 text-xs font-mono-code select-none shadow-xs">
             <div class="flex items-center gap-1.5">
               <button type="button" id="pdfPrevBtn" onclick="pdfPrevPage()" class="px-2.5 py-1 bg-white hover:bg-[#FAF8F2] text-[#222220] border border-[#E3DDD1] rounded-xs transition active:scale-95 flex items-center gap-1 font-bold cursor-pointer" title="Pagina precedente">
@@ -3429,7 +3429,7 @@
     </div>
   </div>
 
-  <!-- Schede Protocollo Toast Notifiche (Design Sistemico Olivetti Industrial) -->
+  <!-- Schede Protocollo Toast Notifiche (Design Sistemico Industrial Modern) -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2.5 pointer-events-none max-w-sm w-full px-4 sm:px-0"></div>
 
   <!-- Custom In-App Confirmation Modal (Zero Native Popups) -->
@@ -3461,7 +3461,7 @@
     <div class="h-14 bg-black/70 border-b border-white/10 px-4 flex items-center justify-between text-white shrink-0 safe-top">
       <div class="flex items-center gap-2">
         <i class="fa-solid fa-expand text-[#C84B31]"></i>
-        <span class="font-bold text-xs uppercase font-space tracking-wide">Scanner Ottico Olivetti</span>
+        <span class="font-bold text-xs uppercase font-space tracking-wide">Scanner Ottico Digitale</span>
       </div>
       <button 
         type="button" 
@@ -3622,7 +3622,7 @@
 
   </div>
 
-  <!-- Modal Scelta Scansione Multipla (Olivetti Style) -->
+  <!-- Modal Scelta Scansione Multipla (Industrial Style) -->
   <div id="multiScanChoiceModal" class="hidden fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-xs select-none animate-in fade-in duration-150">
     <div class="bg-[#FAF8F2] border border-[#D8D2C4] w-full max-w-md rounded-xs p-5 shadow-2xl relative font-sans text-[#222220]">
       <div class="flex items-center justify-between pb-3 border-b border-[#E3DDD1] mb-4">
@@ -3685,7 +3685,7 @@
     </div>
   </div>
 
-  <!-- Modal Acquisizione Multi-Foto Senza Bordi & Invio all'AI (Olivetti Style) -->
+  <!-- Modal Acquisizione Multi-Foto Senza Bordi & Invio all'AI (Industrial Style) -->
   <div id="multiPhotoModal" class="hidden fixed inset-0 bg-black/65 z-[65] flex items-center justify-center p-3 sm:p-5 backdrop-blur-xs select-none animate-in fade-in duration-150">
     <div class="bg-[#FAF8F2] border border-[#D8D2C4] w-full max-w-md rounded-xs p-4 sm:p-5 shadow-2xl relative font-sans text-[#222220] flex flex-col max-h-[92vh]">
       <!-- Header -->

@@ -2,7 +2,7 @@
 <resources>
     <!-- Vecchio Logo Launcher Ufficiale (Mantenuto intatto) -->
     <color name="ic_launcher_bg">#075E54</color>
-    <!-- Tema Android Olivetti Industrial -->
+    <!-- Tema Android Industrial Modern -->
     <color name="primary">#3C5A48</color>
     <color name="primary_dark">#2F4738</color>
     <color name="accent">#C84B31</color>

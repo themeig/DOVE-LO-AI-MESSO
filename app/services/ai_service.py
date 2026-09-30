@@ -964,7 +964,7 @@ Regole:
     def generate_conversational_reply(self, text: str, chat_history: list = None) -> str:
         try:
             system_prompt = (
-                "Sei l'assistente virtuale intelligente e cordiale di 'Dove lo AI messo' (Registro Dattiloscritto Olivetti). "
+                "Sei l'assistente virtuale intelligente e cordiale di 'Dove lo AI messo' (Terminale Dattiloscritto & Registro Caveau). "
                 "Aiuti famiglie e professionisti a ricordare dove hanno riposto oggetti importanti, "
                 "a catalogare bollette e documenti (che l'utente può inviare allegando file o foto), "
                 "e a tenere d'occhio le scadenze nella Dashboard in alto a destra.\n"

@@ -455,7 +455,7 @@
     }
     window.closeCalendarFilterGuideModal = closeCalendarFilterGuideModal;
 
-    // Render del widget interattivo Olivetti Industrial per ogni atto
+    // Render del widget interattivo Industrial Modern per ogni atto
     function renderDocumentWidgetHtml(doc) {
       const docId = doc.id || doc.document_id;
       const title = escapeHtml(doc.title || 'Documento');

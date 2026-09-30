@@ -271,7 +271,7 @@
     }
     fetchAppVersion();
 
-    // --- Design Sistemico Olivetti Industrial ---
+    // --- Design Sistemico Industrial Modern ---
     function getActiveTheme() {
       return 'olivetti';
     }
@@ -282,7 +282,7 @@
       localStorage.setItem('app_theme', 'olivetti');
     }
 
-    // Inizializza subito il design sistemico Olivetti Industrial
+    // Inizializza subito il design sistemico Industrial Modern
     setAppTheme();
 
     // --- Gestione Sicurezza Caveau & Lock Screen ---

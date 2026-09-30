@@ -4,16 +4,16 @@ Questo documento definisce l'architettura, le convenzioni di design e i vincoli 
 
 ---
 
-## 1. Filosofia del Prodotto: Design Sistemico Olivetti Industrial (Lettera 22 & Sottsass)
-* **Chat Screen = Dattiloscritto & Registro Meccanico Olivetti**:
-  * Autentico look & feel Olivetti Industrial ispirato ai capolavori di Marcello Nizzoli ed Ettore Sottsass (Lettera 22, Praxis 48, Valentine).
+## 1. Filosofia del Prodotto: Design Sistemico Industrial Modern & Registro Meccanico
+* **Chat Screen = Dattiloscritto & Registro Meccanico**:
+  * Autentico look & feel Industrial Modern ispirato al design industriale e meccanico di precisione.
   * Carta avorio naturale (`#F8F5EE` / `#EFECE3`), Verde Salvia d'archivio (`#3C5A48`), Rosso Terracotta vintage (`#C84B31`) e Inchiostro carbone (`#222220`).
   * Nastro dattilografico bicolore, timbri ufficiali d'archivio (`stamp-oli`, `stamp-terracotta`, `stamp-solid-sage`), schede protocollo squadrate (`rounded-xs` a 2-3px) e font d'eccellenza: `Space Grotesk` per i titoli e `JetBrains Mono` per codici, date e dettagli contabili.
   * Barra input con tasti a macchina per scrivere, pulsanti meccanici sagomati e didascalia nastro bicolore.
   * Tasto dedicato e visibile nell'header: **"DASHBOARD"**.
 
 * **Dashboard = Registro Ledger Industriale & Bento-Grid Sofisticata**:
-  * Stile registro contabile meccanico unito all'ergonomia contemporanea (Dieter Rams & Sottsass).
+  * Stile registro contabile meccanico unito all'ergonomia contemporanea (Dieter Rams & modern fintech).
   * Sfondo carta avorio, Bento-grid di indicatori KPI con bordature sottili a filo macchina (`border-[#E3DDD1]`), barre di avanzamento grafite/salvia e timbri di stato dinamici (In Scadenza, Quietanzato, Conservato).
   * Selettori a cartella d'archivio, tabella scadenze a schede dattiloscritte e azioni rapide con anteprima file.
   * Tasto immediato: **"← Torna al Registro / Chat"**.
@@ -21,7 +21,7 @@ Questo documento definisce l'architettura, le convenzioni di design e i vincoli 
 ---
 
 ## 2. Modalità di Interazione
-1. **Chat & Protocollo Conversazionale (Olivetti Industrial UI)**:
+1. **Chat & Protocollo Conversazionale (Industrial Modern UI)**:
    * Foto / PDF (📎): l'utente invia la foto $\to$ l'AI estrae fornitore, importo e scadenza e archivia con scheda protocollo.
    * Vocale (🎤): trascrizione Whisper e memorizzazione posizione oggetti/documenti.
    * Testo: domande libere in linguaggio naturale con risposte da concierge esecutivo.
@@ -32,7 +32,7 @@ Questo documento definisce l'architettura, le convenzioni di design e i vincoli 
 
 ## 3. Architettura Tecnica
 * **Frontend**:
-  * **Desktop**: `index.html` (SPA reattiva Olivetti Industrial per computer, isolata per garantire massima stabilità e assenza di regressioni).
+  * **Desktop**: `index.html` (SPA reattiva Industrial Modern per computer, isolata per garantire massima stabilità e assenza di regressioni).
   * **Mobile & APK**: `mobile.html` servita su `/m` (con redirect automatico da `/` per smartphone e Android APK), con mirino scanner ottico integrato (`static/js/mobile-scanner.js`: fotocamera live, rilevamento 4 bordi, dewarping prospettico, filtri contrasto/B&W e gestione permessi guidata per fotocamera e microfono).
 * **Backend**: Python 3.12+ (FastAPI):
   * `GET /m` (servizio dedicato interfaccia mobile)

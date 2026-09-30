@@ -9,7 +9,7 @@
       --wa-bubble-ai: #FFFFFF;
       --wa-ticks: #53bdeb;
 
-      /* Olivetti Industrial Design Tokens */
+      /* Industrial Modern Design Tokens */
       --oli-paper: #F8F5EE;
       --oli-paper-dark: #EFECE3;
       --oli-card: #FFFFFF;
@@ -25,7 +25,7 @@
     }
 
     /* ========================================================================= */
-    /* OLIVETTI INDUSTRIAL THEME (LETTERA 22 & SOTTSASS) — DEFAULT LOOK & FEEL  */
+    /* INDUSTRIAL MODERN THEME — DEFAULT LOOK & FEEL                             */
     /* ========================================================================= */
     html, body {
       margin: 0;
@@ -59,7 +59,7 @@
       font-family: 'Newsreader', Georgia, serif !important;
     }
 
-    /* Timbri e Badge Ufficiali Olivetti */
+    /* Timbri e Badge Ufficiali di Registro */
     .stamp-oli {
       border: 1.5px solid var(--oli-sage);
       color: var(--oli-sage);
@@ -103,7 +103,7 @@
       position: relative;
     }
 
-    /* Sfondo e pannelli Olivetti Industrial */
+    /* Sfondo e pannelli Industrial Modern */
     body {
       background-color: var(--oli-paper) !important;
       color: var(--oli-ink) !important;
@@ -124,7 +124,7 @@
       background-image: none !important;
     }
 
-    /* Header e Barre Superiori in stile Carta Avorio & Verde Salvia Olivetti */
+    /* Header e Barre Superiori in stile Carta Avorio & Verde Salvia */
     #sidebarPanel > div:first-child,
     header {
       background-color: var(--oli-paper) !important;
@@ -139,7 +139,7 @@
       color: var(--oli-ink) !important;
     }
 
-    /* Bolle Conversazione Olivetti (Schede Dattiloscritte con Bordi Salvia) */
+    /* Bolle Conversazione (Schede Dattiloscritte con Bordi Salvia) */
     .wa-bubble-out {
       background-color: #FFFFFF !important;
       border: 1.5px solid var(--oli-sage) !important;
@@ -193,7 +193,7 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
     }
 
-    /* Barra Preview Messaggio Quotato (Olivetti Industrial) */
+    /* Barra Preview Messaggio Quotato (Industrial Modern) */
     #quotePreviewBar {
       background-color: var(--oli-paper) !important;
       border-top: 1px solid var(--oli-line) !important;
@@ -251,7 +251,7 @@
       border-color: var(--oli-terracotta) !important;
     }
 
-    /* Citazioni Blockquote in Markdown (Olivetti Industrial) */
+    /* Citazioni Blockquote in Markdown (Industrial Modern) */
     blockquote {
       border-left: 3.5px solid var(--oli-sage) !important;
       background-color: #FAF8F2 !important;
@@ -360,7 +360,7 @@
       display: flex !important;
     }
 
-    /* Dashboard Olivetti */
+    /* Dashboard Registro */
     #dashboardView {
       background-color: var(--oli-paper) !important;
       color: var(--oli-ink) !important;
@@ -375,7 +375,7 @@
       display: none !important;
     }
 
-    /* Finestre Modali Stile Olivetti Industrial */
+    /* Finestre Modali Stile Industrial Modern */
     .modal-card {
       background-color: #FFFFFF !important;
       border: 2px solid var(--oli-sage) !important;
@@ -433,7 +433,7 @@
       }
     }
 
-    /* Scrollbar calda per Olivetti */
+    /* Scrollbar calda */
     .custom-scroll::-webkit-scrollbar {
       width: 5px;
       height: 5px;
@@ -456,7 +456,7 @@
       backface-visibility: hidden;
     }
 
-    /* Typing indicator Olivetti Industrial */
+    /* Typing indicator Industrial Modern */
     .typing-indicator {
       display: inline-flex;
       flex-direction: column;
@@ -496,7 +496,7 @@
       30% { transform: translateY(-5px); opacity: 1; }
     }
 
-    /* Schermate Applicative Olivetti & Transizioni Slide Orizzontali */
+    /* Schermate Applicative & Transizioni Slide Orizzontali */
     #appScreensViewport {
       position: relative;
       flex: 1 1 0%;
